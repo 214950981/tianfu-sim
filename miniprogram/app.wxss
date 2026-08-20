@@ -1,0 +1,35 @@
+/**app.wxss**/
+
+/* 1. 保证全局暗黑底色，杜绝白屏闪烁 */
+page {
+  background-color: #050508; 
+  color: #d0d0d0;
+  font-family: 'PingFang SC', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 28rpx;
+  line-height: 1.6;
+}
+
+/* 2. 依然保留盒模型重置，这是布局不乱的关键 */
+view, text, scroll-view, button, image, input, picker {
+  box-sizing: border-box;
+}
+
+/* 3. ⭐ 重点：只拔掉按钮的边框，不碰它的 padding 和 margin */
+/* 这样能保留微信原生的垂直居中支撑力 */
+button::after {
+  border: none !important; 
+}
+
+/* 4. 依然保留隐藏滚动条，提升原生感 */
+::-webkit-scrollbar {
+  display: none;
+  width: 0 !important;
+  height: 0 !important;
+  color: transparent !important;
+  background: transparent !important;
+}
+
+/* 5. 全局通用工具类 */
+.text-center { text-align: center; }
+.color-Gold { color: #FFD700 !important; }
+.color-Red { color: #ff4444 !important; }
