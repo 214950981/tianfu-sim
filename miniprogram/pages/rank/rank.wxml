@@ -1,0 +1,82 @@
+<view class="rank-container">
+
+<view class="rank-header">
+  <view class="tab-box">
+    <view class="tab-item {{currentTab === 'total' ? 'active' : ''}}" bindtap="switchTab" data-tab="total">诸天总榜</view>
+    <view class="tab-item {{currentTab === 'daily' ? 'active' : ''}}" bindtap="switchTab" data-tab="daily">今日仙榜</view>
+  </view>
+  <view class="header-desc">天道酬勤：膜拜榜首大能可感悟天机（获钻石）</view>
+</view>
+
+<scroll-view 
+  class="rank-scroll-view" 
+  scroll-y="true" 
+  enable-back-to-top="true"
+>
+  <view wx:if="{{loading}}" class="loading-state">
+    <view class="loading-icon"></view>
+    <text>正在窥探天机，莫急...</text>
+  </view>
+
+  <block wx:else>
+    <view 
+      wx:for="{{rankList}}" 
+      wx:key="uid" 
+      class="rank-row {{item.isMe ? 'is-me' : ''}} row-rank-{{item.rank}}"
+    >
+      <view class="rank-index-wrap">
+        <view wx:if="{{item.rank <= 3}}" class="rank-medal medal-{{item.rank}}">{{item.rank}}</view>
+        <text wx:else class="rank-number">{{item.rank}}</text>
+      </view>
+
+      <view class="avatar-wrap">
+            <image class="user-avatar" src="{{item.avatar}}" mode="aspectFill"></image>
+           <view class="avatar-glow border-{{item.rank}}" wx:if="{{item.rank <= 3}}"></view>
+      </view>
+
+      <view class="user-content">
+        <view class="name-line">
+          <text class="user-nickname">{{item.nickname}}</text>
+          <text class="user-title title-tier-{{item.rank <= 3 ? item.rank : 'normal'}}">【{{item.title}}】</text>
+        </view>
+        <view class="realm-line">
+          <text class="realm-tag">{{item.realm}}</text>
+          <view class="province-badge">{{item.province}}</view>
+        </view>
+        <view class="id-line">ID: {{item.uid}}</view>
+      </view>
+
+      <view class="power-display">
+        <view class="power-label">综合战力</view>
+        <view class="power-value">{{item.powerStr}}</view>
+        <view class="worship-hint" wx:if="{{item.rank <= 3}}" bindtap="worship" data-uid="{{item.uid}}" data-rank="{{item.rank}}" data-nickname="{{item.nickname}}">🙏 膜拜</view>
+      </view>
+
+      <view wx:if="{{item.isMe}}" class="me-indicator">你</view>
+    </view>
+  </block>
+
+  <view class="list-footer-gap"></view>
+</scroll-view>
+
+<view class="my-rank-sticky" wx:if="{{!loading && myRankInfo}}">
+  <view class="my-rank-num">{{myRankInfo.rank || '未入榜'}}</view>
+  <view class="my-avatar-box">
+    <image class="my-avatar" src="{{myRankInfo.avatar}}"></image>
+  </view>
+  <view class="my-info-detail">
+    <view class="my-name-row">
+      <text class="my-nick">{{myRankInfo.nickname}}</text>
+      <text class="my-province">[{{myRankInfo.province}}]</text>
+    </view>
+    <view class="my-power-row">
+      <text style="margin-right: 12rpx; color: #55ccff;">【{{myRankInfo.realm || '炼气期'}}】</text>
+      我的战力：<text class="text-gold">{{myRankInfo.powerStr}}</text>
+    </view>
+  </view>
+  <view class="rank-status-tag {{myRankInfo.rank <= 100 ? 'top-tier' : ''}}">
+    {{myRankInfo.title || (myRankInfo.rank <= 100 ? '诸天百强' : '潜心苦修')}}
+  </view>
+</view>
+
+</view>
