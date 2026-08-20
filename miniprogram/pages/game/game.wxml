@@ -3,7 +3,7 @@
     if (!text) return '';
     var res = text;
     // 1. 拦截所有数字 (包含正负号与万、亿等单位)，套上土豪金高亮
-    var regNum = getRegExp('([+-]?[0-9]+[万亿兆京]?)', 'g');
+    var regNum = getRegExp('([+-]?[0-9]+万亿兆京]?)', 'g');
     res = res.replace(regNum, '<span style="color: #FFD700; font-weight: bold; font-family: Courier New; text-shadow: 0 0 5px rgba(255,215,0,0.4); margin: 0 2px;">$1</span>');
     
     // 2. 拦截资源关键字，套上专属色彩
