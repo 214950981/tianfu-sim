@@ -1,0 +1,141 @@
+<view class="container">
+  
+  <view class="header">
+    <view class="title">顶级气运 <text class="help-icon" bindtap="toggleHelp">❔说明</text></view>
+    <view class="assets">
+      <view class="asset-item" bindtap="toggleRechargeModal">
+        <text class="icon">💎</text> {{diamonds}} <text class="add-btn">➕</text>
+      </view>
+      <view class="asset-item">
+        <text class="icon">🙏</text> {{consumedMerit}}
+      </view>
+    </view>
+  </view>
+
+  <view class="display-board">
+    
+    <view class="section-title">仙路奇缘</view>
+    <view class="traits-list">
+      <view class="trait-item border-{{currentTalents[index].rarity || 'Gray'}}" wx:for="{{[0, 1, 2]}}" wx:key="*this">
+        <view class="trait-content" wx:if="{{currentTalents[index]}}">
+          <text class="trait-name color-{{currentTalents[index].rarity}}">{{currentTalents[index].name}}</text>
+          <text class="trait-desc">{{currentTalents[index].desc}}</text>
+        </view>
+        <view class="trait-content empty" wx:else>
+          <text class="trait-name color-Gray">尚未凝聚</text>
+        </view>
+        <view class="lock-btn {{lockedTalents[index] ? 'locked' : ''}}" bindtap="toggleLockTalent" data-index="{{index}}">
+          <text class="lock-icon">{{lockedTalents[index] ? '🔒' : '🔓'}}</text> {{lockedTalents[index] ? '已锁' : '锁定'}}
+        </view>
+      </view>
+    </view>
+
+    <view class="section-title mt-20">本命灵根</view>
+    <view class="root-box border-{{currentRoot.color || 'Gray'}}">
+      <view class="root-info">
+        <view class="root-name color-{{currentRoot.color}}">{{currentRoot.name || '凡人无灵根'}}</view>
+        <view class="root-desc">修炼倍率: x{{currentRoot.multi || 1.0}}</view>
+      </view>
+      <view class="lock-btn root-lock {{isRootLocked ? 'locked' : ''}}" bindtap="toggleLockRoot">
+        <text class="lock-icon">{{isRootLocked ? '🔒' : '🔓'}}</text> {{isRootLocked ? '已锁' : '锁定'}}
+      </view>
+    </view>
+
+    <view class="section-title mt-20">命格属性 <text class="total-pts">({{totalPointsInfo}} | 总分: {{totalAttrPoints}})</text></view>
+    <view class="attr-grid">
+      <view class="attr-box"><text class="attr-label">家境</text><text class="attr-val">{{finalAttrs.wealth}}</text></view>
+      <view class="attr-box"><text class="attr-label">体魄</text><text class="attr-val">{{finalAttrs.body}}</text></view>
+      <view class="attr-box"><text class="attr-label">根骨</text><text class="attr-val">{{finalAttrs.talent}}</text></view>
+      <view class="attr-box"><text class="attr-label">福源</text><text class="attr-val">{{finalAttrs.luck}}</text></view>
+      <view class="attr-box"><text class="attr-label">悟性</text><text class="attr-val">{{finalAttrs.insight}}</text></view>
+    </view>
+  </view>
+
+  <view class="action-zone">
+    <view class="reroll-area">
+      <view class="ticket-info" bindtap="toggleBuyTicketModal">剩余投胎次数: <text class="highlight">{{ad_tickets}}</text> <text class="add-icon">➕</text></view>
+      
+      <view class="btn-row">
+        <button class="btn-reroll {{isAutoRolling ? 'btn-danger' : ''}}" bindtap="toggleAutoRollModal">
+          {{isAutoRolling ? '⏹️ 停止洗髓 (' + autoRollLeft + ')' : '♾️ 自动极品'}}
+        </button>
+        <button class="btn-reroll" bindtap="reRoll">🎲 单次洗髓</button>
+      </view>
+      <view class="hint-text">有极品将自动停止。当前锁定惩罚: 每次额外扣除钻石</view>
+    </view>
+
+    <view class="start-area">
+      <button class="btn-start" bindtap="launchGame">✨ 踏 入 仙 途 ✨</button>
+    </view>
+  </view>
+
+  <view class="modal-mask" wx:if="{{showAutoRollModal}}">
+    <view class="modal-content small-modal">
+      <view class="modal-title">自动极品设置</view>
+      <view class="modal-body text-center">
+        <text class="modal-text">请输入连续洗髓次数：</text>
+        <input type="number" class="num-input" value="{{autoRollAmount}}" bindinput="onAutoRollInput" />
+        <picker mode="selector" range="{{tierPickerList}}" range-key="name" value="{{stopTierIndex}}" bindchange="onTierChange">
+          <text class="hint-text mt-10" style="text-decoration: underline; color: #FFD700;">期间若刷出【{{tierPickerList[stopTierIndex].name}}】会自动停止 ⚙️</text>
+        </picker>
+      </view>
+      <view class="modal-footer">
+        <button class="btn-cancel" bindtap="toggleAutoRollModal">取消</button>
+        <button class="btn-confirm" bindtap="startAutoRoll">开始执行</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="modal-mask" wx:if="{{showRechargeModal}}">
+    <view class="modal-content">
+      <view class="modal-title">福利商行 <text class="close-btn" bindtap="toggleRechargeModal">×</text></view>
+      <view class="modal-body text-center">
+        <view class="recharge-notice" style="color: #FFD700; font-size: 24rpx; margin-bottom: 30rpx; padding: 0 20rpx;">
+          {{rechargeNotice}}
+        </view>
+        
+        <view class="recharge-grid single-item">
+          <block wx:for="{{rechargeTiers}}" wx:key="index">
+            <button open-type="share" data-type="{{item.type}}" class="recharge-item" hover-class="none" style="width: 260rpx; margin: 0 auto;">
+              <view class="r-icon">💎</view>
+              <view class="r-base">{{item.base}} 钻</view>
+              <view class="r-price">{{item.name}}</view>
+            </button>
+          </block>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="modal-mask" wx:if="{{showBuyTicketModal}}">
+    <view class="modal-content small-modal">
+      <view class="modal-title">获取轮回次数</view>
+      <view class="modal-body text-center">
+        <view class="buy-section">
+          <text class="modal-text">使用仙玉购买 (1钻=1次)</text>
+          <view class="input-row">
+            <input type="number" class="num-input flex-1" value="{{buyAmount}}" bindinput="onAmountInput" />
+            <button class="btn-mini" bindtap="buyMaxTickets">最大</button>
+          </view>
+          <button class="btn-confirm mt-10" bindtap="confirmBuyTickets">确认购买</button>
+        </view>
+        </view>
+      <view class="modal-footer">
+        <button class="btn-cancel full-width" bindtap="toggleBuyTicketModal">关闭</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="modal-mask" wx:if="{{showHelp}}">
+    <view class="modal-content scroll-modal">
+      <view class="modal-title">{{helpData.title}}</view>
+      <scroll-view scroll-y="true" class="help-scroll">
+        <text class="help-text">{{helpData.content}}</text>
+      </scroll-view>
+      <view class="modal-footer">
+        <button class="btn-confirm full-width" bindtap="toggleHelp">我已了解</button>
+      </view>
+    </view>
+  </view>
+
+</view>
