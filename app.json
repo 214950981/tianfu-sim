@@ -1,0 +1,33 @@
+{
+  "pages": [
+    "pages/start/start",
+    "pages/game/game",
+    "pages/rank/rank"
+  ],
+  "window": {
+    "navigationBarTextStyle": "white",
+    "navigationBarTitleText": "天赋模拟小工具",
+    "navigationBarBackgroundColor": "#0a0a0a",
+    "backgroundColor": "#030303"
+  },
+  "tabBar": {
+    "color": "#666666",
+    "selectedColor": "#ffd700",
+    "backgroundColor": "#1a1a1a",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/game/game",
+        "text": "仙途"
+      },
+      {
+        "pagePath": "pages/rank/rank",
+        "text": "仙榜"
+      }
+    ]
+  },
+  "style": "v2",
+  "componentFramework": "glass-easel",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents"
+}
