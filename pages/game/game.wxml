@@ -1,0 +1,243 @@
+<wxs module="logFormatter">
+  function format(text) {
+    if (!text) return '';
+    var res = text;
+    // 1. 拦截所有数字 (包含正负号与万、亿等单位)，套上土豪金高亮
+    var regNum = getRegExp('([+-]?[0-9]+[万亿兆京]?)', 'g');
+    res = res.replace(regNum, '<span style="color: #FFD700; font-weight: bold; font-family: Courier New; text-shadow: 0 0 5px rgba(255,215,0,0.4); margin: 0 2px;">$1</span>');
+    
+    // 2. 拦截资源关键字，套上专属色彩
+    var regGold = getRegExp('灵石', 'g');
+    res = res.replace(regGold, '<span style="color: #55ff55; font-weight: bold;">灵石</span>');
+    var regLife = getRegExp('寿元', 'g');
+    res = res.replace(regLife, '<span style="color: #ffaa00; font-weight: bold;">寿元</span>');
+    
+    var regPower = getRegExp('战力', 'g');
+    res = res.replace(regPower, '<span style="color: #55ccff; font-weight: bold;">战力</span>');
+
+    // 3. 拦截五维属性关键字，套上紫阶色彩
+    var regAttr = getRegExp('(悟性|体魄|根骨|福源|家境)', 'g');
+    res = res.replace(regAttr, '<span style="color: #dd55ff; font-weight: bold;">$1</span>');
+
+    // 4. 拦截修为/经验关键字
+    var regExp = getRegExp('修为', 'g');
+    res = res.replace(regExp, '<span style="color: #55ccff;">修为</span>');
+
+    return res;
+  }
+  module.exports = { format: format };
+</wxs>
+
+<view class="container">
+
+  <view class="header-monitor">
+    <view class="realm-box">
+      <view class="realm-title color-{{realmColorClass}}">{{realmName}}</view>
+      <view class="suicide-btn" bindtap="suicide" wx:if="{{!isDead}}">☠️ 兵解</view>
+    </view>
+    
+    <view class="exp-progress-wrap">
+      <view class="exp-progress-bar color-bg-{{realmColorClass}} {{isWandering ? 'bar-wandering' : ''}}" style="width: {{expPercent+ '%'}};"></view>
+    </view>
+    <view class="exp-text">
+      <text>{{isWandering ? '修为已压制 (游历中)' : '修为进度: ' + expPercent + '%'}}</text>
+      <text class="exp-nums">({{expStr}} / {{nextExpStr}})</text>
+    </view>
+  </view>
+
+  <view class="stats-grid">
+    <view class="stat-card">
+      <view class="stat-label">寿元</view>
+      <view class="stat-val {{age >= maxAge - 5 ? 'color-Red' : ''}}">{{age}} / {{maxAge}}</view>
+    </view>
+    <view class="stat-card">
+      <view class="stat-label">战力</view>
+      <view class="stat-val color-Blue">{{powerStr}}</view>
+    </view>
+    <view class="stat-card">
+      <view class="stat-label">灵根</view>
+      <view class="stat-val color-{{rootColorClass}}" style="font-size: 24rpx;">{{rootName}}</view>
+    </view>
+    <view class="stat-card">
+      <view class="stat-label">灵石</view>
+      <view class="stat-val color-Green">{{gold}}</view>
+    </view>
+    <view class="stat-card clickable-card" bindtap="toggleRechargeModal">
+      <view class="stat-label color-Gold">钻石 ➕</view>
+      <view class="stat-val color-Gold">{{diamonds}}</view>
+    </view>
+  </view>
+
+  <view class="attr-bar">
+    <view class="attr-item"><text class="attr-name">家境</text><text class="attr-val">{{playerAttrs.wealth}}</text></view>
+    <view class="attr-item"><text class="attr-name">体魄</text><text class="attr-val">{{playerAttrs.body}}</text></view>
+    <view class="attr-item"><text class="attr-name">根骨</text><text class="attr-val">{{playerAttrs.talent}}</text></view>
+    <view class="attr-item"><text class="attr-name">福源</text><text class="attr-val">{{playerAttrs.luck}}</text></view>
+    <view class="attr-item"><text class="attr-name">悟性</text><text class="attr-val">{{playerAttrs.insight}}</text></view>
+    <view class="attr-item rate-box">
+      <text class="attr-name color-Red" style="font-weight:bold;">雷劫胜率</text>
+      <text class="attr-val color-Gold">{{breakthroughRate}}%</text>
+    </view>
+  </view>
+
+  <scroll-view class="log-scroll-view" scroll-y="true" scroll-into-view="{{lastLogId}}" scroll-with-animation="true">
+    <block wx:for="{{logs}}" wx:key="id">
+      <view class="log-row {{item.type}}" id="{{item.id}}">
+        <text class="log-year">[{{item.year}}岁]</text>
+        <rich-text class="log-content" nodes="{{logFormatter.format(item.text)}}"></rich-text>
+      </view>
+    </block>
+    <view id="log-bottom-anchor" class="anchor-point"></view>
+  </scroll-view>
+
+  <view class="footer-control-panel">
+    
+    <block wx:if="{{isDead}}">
+      <view class="dead-panel">
+        <view class="dead-tips">此生已尽，岁月长河不再留痕...</view>
+        <view class="btn-rebirth" bindtap="goToRebirth">
+          凝聚功德并轮回 (获得功德 <text class="text-merit">+{{earnedMerit}}</text>)
+        </view>
+      </view>
+    </block>
+    
+    <block wx:else>
+      <block wx:if="{{isBigBottleneck}}">
+        <view class="tribulation-action">
+          <button class="btn-tribulation" bindtap="handleBigBottleneck">⚡ 迎 接 雷 劫 ⚡</button>
+          <text class="tribulation-hint">修为已至瓶颈，不进则退！</text>
+        </view>
+      </block>
+      
+      <block wx:else>
+        <view class="btn-matrix">
+          <button class="game-btn {{isRunning ? 'btn-active' : ''}}" bindtap="toggleEngine">
+            <text class="btn-icon">{{isRunning ? '🧘' : '⏸️'}}</text>
+            <view class="btn-texts">
+              <text class="btn-main">{{isRunning ? '闭关吐纳' : '暂停岁月'}}</text>
+              <text class="btn-sub">(正常涨修)</text>
+            </view>
+          </button>
+
+          <button class="game-btn btn-skip" bindtap="skipRealm" disabled="{{isWandering}}">
+            <text class="btn-icon">🚀</text>
+            <view class="btn-texts">
+              <text class="btn-main">飞升推演</text>
+              <text class="btn-sub">(耗钻极速)</text>
+            </view>
+          </button>
+
+          <button class="game-btn {{isWandering ? 'btn-wander' : ''}}" bindtap="toggleWander">
+            <text class="btn-icon">{{isWandering ? '🚶' : '🏔️'}}</text>
+            <view class="btn-texts">
+              <text class="btn-main">{{isWandering ? '结束游历' : '红尘游历'}}</text>
+              <text class="btn-sub">{{isWandering ? '(重归闭关)' : '(奇遇飙升)'}}</text>
+            </view>
+          </button>
+
+          <button class="game-btn btn-speed" bindtap="toggleSpeedModal">
+            <text class="btn-icon">⏳</text>
+            <view class="btn-texts">
+              <text class="btn-main">岁月流速</text>
+              <text class="btn-sub color-Gold">当前 x{{gameSpeed}}</text>
+            </view>
+          </button>
+        </view>
+      </block>
+    </block>
+
+  </view>
+
+  <view class="modal-mask" wx:if="{{showRebirthModal}}">
+    <view class="modal-content death-modal">
+      <view class="modal-title color-Red">功 德 圆 满</view>
+      <view class="modal-body text-center">
+        <view class="death-icon">👻</view>
+        <text class="death-text">是否将本世修仙录传颂天下？</text>
+        <view class="merit-box">
+          <text class="merit-label">本次共聚功德</text>
+          <text class="merit-val highlight color-Gold">+ {{earnedMerit}}</text>
+        </view>
+        <text class="hint-text color-Red mb-20">今日传道还可获赠投胎次数：{{3 - dailyShareCount}} 次</text>
+        
+        <button class="btn-share-rebirth mb-10" open-type="share">📤 传道天下 (分享道果)</button>
+        <button class="btn-cancel-rebirth" bindtap="doRealRebirth">踏入轮回 (默默重开)</button>
+      </view>
+    </view>
+  </view>
+
+  <view class="modal-mask" wx:if="{{showSpeedModal}}">
+    <view class="modal-content speed-modal">
+      <view class="modal-title">岁月法则 <text class="close-btn" bindtap="toggleSpeedModal">×</text></view>
+      <view class="modal-body text-center">
+        <view class="speed-status">当前已解锁最高流速: <text class="highlight color-Gold">x{{unlockedSpeed}}</text></view>
+        
+        <view class="speed-grid">
+          <view wx:for="{{[1,2,3,4,5,6,7,8,9,10]}}" wx:key="*this" wx:if="{{item <= unlockedSpeed}}" 
+                class="speed-item {{gameSpeed === item ? 'active' : ''}}" 
+                bindtap="setGameSpeed" data-speed="{{item}}">
+            x{{item}}
+          </view>
+        </view>
+
+        <view class="divider">突破天道限制</view>
+
+        <view class="unlock-free" wx:if="{{unlockedSpeed < 5}}">
+          <button class="btn-ad mb-10" bindtap="unlockSpeedFree" data-type="ad">📺 观摩天道 (免费升至 x{{unlockedSpeed + 1}})</button>
+          <button class="btn-share" open-type="share" data-type="speed">📤 传道于人 (免费升至 x{{unlockedSpeed + 1}})</button>
+        </view>
+
+        <view class="unlock-pay" wx:if="{{unlockedSpeed < 10}}">
+          <button class="btn-pay-speed" bindtap="buySpeed" data-target="{{unlockedSpeed + 1}}">
+            💎 豪掷 {{(unlockedSpeed + 1 - unlockedSpeed) * 1}} 钻石突破至 x{{unlockedSpeed + 1}}
+          </button>
+        </view>
+        <view class="hint-text mt-10">免费最高可至5倍，钻石最多可至10倍</view>
+      </view>
+    </view>
+  </view>
+
+  <view class="modal-mask" wx:if="{{showRechargeModal}}">
+    <view class="modal-content">
+      <view class="modal-title">福利商行 <text class="close-btn" bindtap="toggleRechargeModal">×</text></view>
+      <view class="modal-body">
+        <view class="recharge-grid">
+          <block wx:for="{{rechargeTiers}}" wx:key="index">
+            <view wx:if="{{item.type === 'free'}}" class="recharge-item" bindtap="doRecharge" data-index="{{index}}">
+              <view class="r-icon">💎</view>
+              <view class="r-base">{{item.base}} 钻</view>
+              <view class="r-bonus" wx:if="{{item.bonus > 0}}">赠 {{item.bonus}}</view>
+              <view class="r-price">{{item.name}}</view>
+            </view>
+            
+            <button wx:else open-type="share" data-type="{{item.type}}" class="recharge-item" data-index="{{index}}" hover-class="none">
+              <view class="r-icon">💎</view>
+              <view class="r-base">{{item.base}} 钻</view>
+              <view class="r-bonus" wx:if="{{item.bonus > 0}}">赠 {{item.bonus}}</view>
+              <view class="r-price">{{item.name}}</view>
+            </button>
+          </block>
+        </view>
+      </view>
+    </view>
+  </view>
+
+  <view class="auth-mask" wx:if="{{!hasRealInfo}}">
+    <view class="auth-panel">
+      <view class="auth-title">初入仙途 · 铭刻真容</view>
+      <view class="auth-desc">天道法则更迭，需留存真人印记方可登临仙榜</view>
+
+      <button class="avatar-btn" open-type="chooseAvatar" bindchooseavatar="onChooseAvatar">
+        <image class="avatar-img" src="{{tempAvatar || '/assets/default_avatar.png'}}" mode="aspectFill"></image>
+        <view class="avatar-hint">点击凝聚真容</view>
+      </button>
+
+      <view class="nickname-box">
+        <input type="nickname" class="nickname-input" placeholder="在此输入修仙道号" bindinput="onInputNickname" bindchange="onInputNickname" bindblur="onInputNickname" value="{{tempNickName}}" />
+      </view>
+
+      <button class="auth-submit-btn" bindtap="saveProfileToCloud">铭刻天道</button>
+    </view>
+  </view>
+
+</view>
