@@ -1,2 +1,1 @@
-# tianfu-sim
-微信小程序：天赋模拟小工具
+PLACEHOLDER_USE_PAYLOAD_FILE
