@@ -1,0 +1,307 @@
+/* pages/rank/rank.wxss */
+page {
+  background-color: #050508;
+  color: #d0d0d0;
+  font-family: 'PingFang SC', 'Helvetica Neue', sans-serif;
+  height: 100vh;
+  overflow: hidden;
+}
+
+.rank-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ==========================================
+   1. 顶部页签切换区
+   ========================================== */
+   .rank-header {
+    /* 将原本的 30rpx 改为 40rpx，避开所有手机的刘海和胶囊按钮 */
+    padding: 30rpx 20rpx 20rpx 20rpx; 
+    background: linear-gradient(180deg, #111116 0%, #050508 100%);
+    border-bottom: 1rpx solid #1a1a20;
+  }
+.tab-box {
+  display: flex;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 40rpx;
+  padding: 6rpx;
+  margin-bottom: 20rpx;
+}
+.tab-item {
+  flex: 1;
+  text-align: center;
+  padding: 16rpx 0;
+  font-size: 28rpx;
+  color: #888;
+  border-radius: 34rpx;
+  transition: all 0.3s;
+}
+/* 选中页签：土豪金渐变 */
+.tab-item.active {
+  background: linear-gradient(135deg, #FFDF00 0%, #D4AF37 100%);
+  color: #3E2723;
+  font-weight: 900;
+  box-shadow: 0 4rpx 15rpx rgba(212, 175, 55, 0.4);
+}
+.header-desc {
+  font-size: 22rpx;
+  color: #666;
+  text-align: center;
+  font-style: italic;
+}
+
+/* ==========================================
+   2. 榜单主轴滚动区
+   ========================================== */
+.rank-scroll-view {
+  flex: 1;
+  min-height: 0;
+}
+
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 200rpx;
+  color: #555;
+}
+.loading-icon {
+  width: 60rpx;
+  height: 60rpx;
+  border: 4rpx solid #222;
+  border-top: 4rpx solid #FFD700;
+  border-radius: 50%;
+  margin-bottom: 20rpx;
+  animation: spin 1s linear infinite;
+}
+@keyframes spin { 100% { transform: rotate(360deg); } }
+
+/* 榜单行基础：暗黑浮雕质感 */
+.rank-row {
+  display: flex;
+  align-items: center;
+  padding: 30rpx 24rpx;
+  margin: 16rpx 20rpx;
+  background: linear-gradient(90deg, #121218 0%, #0a0a0d 100%);
+  border-radius: 16rpx;
+  border: 1rpx solid #1a1a20;
+  position: relative;
+}
+/* “我”的特殊高亮 */
+.is-me {
+  background: linear-gradient(90deg, #1a1a25 0%, #11111a 100%);
+  border-color: rgba(255, 215, 0, 0.3);
+  box-shadow: inset 0 0 15rpx rgba(255, 215, 0, 0.05);
+}
+
+/* 排名索引 */
+.rank-index-wrap {
+  width: 70rpx;
+  display: flex;
+  justify-content: center;
+  margin-right: 16rpx;
+}
+/* 4. ⭐ 修复前三名没有数字的 Bug */
+.rank-medal {
+  width: 50rpx;
+  height: 60rpx;
+  border-radius: 10rpx;
+  /* 👇 新增下面这几行，让文字居中并变成白色高光 👇 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #FFFFFF;
+  font-size: 32rpx;
+  font-weight: 900;
+  text-shadow: 0 2rpx 4rpx rgba(0,0,0,0.6); 
+}
+/* 位次专属色 */
+.medal-1 { background: radial-gradient(circle, #FFDF00, #B8860B); box-shadow: 0 0 10rpx #FFD700; }
+.medal-2 { background: radial-gradient(circle, #E0E0E0, #808080); box-shadow: 0 0 10rpx #C0C0C0; }
+.medal-3 { background: radial-gradient(circle, #CD7F32, #8B4513); box-shadow: 0 0 10rpx #CD7F32; }
+.rank-number { font-size: 32rpx; font-weight: bold; color: #555; font-family: monospace; }
+
+/* ⭐ 头像区与“灵光”呼吸灯特效 */
+.avatar-wrap {
+  position: relative;
+  width: 90rpx;
+  height: 90rpx;
+  margin-right: 24rpx; /* 还原为原本的正常间距 */
+  flex-shrink: 0;
+}
+.user-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2rpx solid #333;
+}
+/* 流光动画 */
+.avatar-glow {
+  position: absolute;
+  top: -6rpx; left: -6rpx; right: -6rpx; bottom: -6rpx;
+  border-radius: 50%;
+  border: 4rpx solid transparent;
+  animation: rotateGlow 2.5s ease-in-out infinite;
+}
+.border-1 { border-color: #FFD700; box-shadow: 0 0 20rpx rgba(255, 215, 0, 0.6); }
+.border-2 { border-color: #C0C0C0; box-shadow: 0 0 15rpx rgba(192, 192, 192, 0.5); }
+.border-3 { border-color: #CD7F32; box-shadow: 0 0 12rpx rgba(205, 127, 50, 0.4); }
+
+@keyframes rotateGlow {
+  0%, 100% { opacity: 0.5; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.08); }
+}
+
+/* 膜拜(请安)标签 */
+/* 3. 请安按钮：取消绝对定位，自然推开距离 */
+.worship-hint {
+  position: relative; /* ⭐ 取消绝对定位 */
+  margin-top: 12rpx;  /* ⭐ 和上方的战力数字拉开一点呼吸感 */
+  background: linear-gradient(135deg, #FFDF00 0%, #D4AF37 100%);
+  color: #3E2723;
+  font-size: 20rpx;
+  font-weight: 900;
+  padding: 6rpx 20rpx;
+  border-radius: 20rpx;
+  white-space: nowrap;
+  border: 2rpx solid #FFE4B5;
+  box-shadow: 0 4rpx 10rpx rgba(0,0,0,0.6);
+}
+
+/* 用户内容展示 */
+.user-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+.name-line {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6rpx;
+}
+.user-nickname {
+  font-size: 28rpx;
+  font-weight: bold;
+  color: #fff;
+  margin-right: 12rpx;
+}
+/* ⭐ 尊号色彩 */
+.user-title {
+  font-size: 22rpx;
+  font-weight: 900;
+  font-style: italic;
+}
+.title-tier-1 { color: #ffff55; text-shadow: 0 0 10rpx #ffff55; }
+.title-tier-2 { color: #dddddd; text-shadow: 0 0 8rpx #ffffff; }
+.title-tier-3 { color: #ffa54f; text-shadow: 0 0 8rpx #ffa54f; }
+.title-tier-normal { color: #00b0ff; }
+
+.realm-line {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+.realm-tag {
+  font-size: 18rpx;
+  color: #55ccff;
+  background: rgba(85, 204, 255, 0.1);
+  padding: 2rpx 10rpx;
+  border-radius: 6rpx;
+}
+.province-badge {
+  font-size: 18rpx;
+  color: #777;
+}
+.id-line {
+  font-size: 16rpx;
+  color: #333;
+  font-family: monospace;
+}
+
+/* 2. 战力展示区：设置为垂直居中排布 */
+.power-display {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: center; /* 确保战力和按钮整体居中 */
+}
+.power-label { font-size: 16rpx; color: #444; text-transform: uppercase; }
+.power-value {
+  font-size: 32rpx;
+  font-weight: 900;
+  color: #FFD700;
+  text-shadow: 0 0 10rpx rgba(255, 215, 0, 0.3);
+  font-family: 'Courier New', monospace;
+}
+
+.me-indicator {
+  position: absolute;
+  top: 0; right: 0;
+  background: #ff4444;
+  color: #fff;
+  font-size: 18rpx;
+  padding: 4rpx 12rpx;
+  border-bottom-left-radius: 12rpx;
+  font-weight: bold;
+}
+
+.list-footer-gap { height: 160rpx; }
+
+/* ==========================================
+   3. 吸底：个人排名信息栏
+   ========================================== */
+.my-rank-sticky {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  background: linear-gradient(180deg, #1a1a25 0%, #08080a 100%);
+  border-top: 2rpx solid rgba(255, 215, 0, 0.5);
+  padding: 24rpx 30rpx;
+  display: flex;
+  align-items: center;
+  z-index: 100;
+  box-shadow: 0 -10rpx 30rpx rgba(0,0,0,0.8);
+}
+.my-rank-num {
+  font-size: 44rpx;
+  font-weight: 900;
+  color: #FFD700;
+  width: 90rpx;
+}
+.my-avatar-box {
+  width: 80rpx; height: 80rpx;
+  margin-right: 20rpx;
+}
+.my-avatar {
+  width: 100%; height: 100%;
+  border-radius: 50%;
+  border: 2rpx solid #FFD700;
+}
+.my-info-detail {
+  flex: 1;
+}
+.my-name-row {
+  font-size: 26rpx;
+  color: #fff;
+}
+.my-nick { font-weight: bold; }
+.my-province { color: #888; font-size: 22rpx; margin-left: 8rpx;}
+.my-power-row {
+  font-size: 24rpx;
+  color: #999;
+}
+.text-gold { color: #FFD700; font-weight: bold; font-size: 30rpx; }
+
+.rank-status-tag {
+  font-size: 22rpx;
+  padding: 8rpx 20rpx;
+  border-radius: 30rpx;
+  background: #222;
+  color: #666;
+}
+.top-tier {
+  background: rgba(255, 215, 0, 0.15) !important;
+  color: #FFD700 !important;
+  border: 1rpx solid rgba(255, 215, 0, 0.5);
+}
