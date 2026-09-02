@@ -1,0 +1,9 @@
+// REFERENCE CONTRACT v0.1; implementation may refine syntax, not semantics without ADR.
+export type GameState={schemaVersion:number;rulesVersion:string;contentVersion:string;stateVersion:number;run:RunState;metaView:MetaView};
+export type RunState={runId:string;playerId:string;seed:string;status:'active'|'dying'|'ended'|'abandoned';nodeIndex:number;age:number;maxAge:number;realm:RealmState;attributes:AttributeState;resources:ResourceState;conditions:Condition[];identity:IdentityState;actions:ActionState;events:EventRunState;causes:CauseState;npcs:NpcRunState;build:BuildState;world:WorldState;ending?:EndingState;rng:RngState;director:DirectorState};
+export type AttributeState={insight:number;body:number;spiritSense:number;fortune:number}; // D001 must be resolved before implementation.
+export type RngState={algorithm:string;seed:string;drawIndex:number;stream?:string};
+export type MetaState={playerId:string;metaCurrency:number;unlocks:string[];discoveries:string[];achievements:string[];cosmetics:string[];entitlements:string[];settings:Record<string,unknown>;stats:Record<string,number>};
+export type MetaView=Pick<MetaState,'unlocks'|'entitlements'>;
+// Remaining domain aliases are implementation-owned but must be schema-validated.
+type RealmState=unknown; type ResourceState=unknown; type Condition=unknown; type IdentityState=unknown; type ActionState=unknown; type EventRunState=unknown; type CauseState=unknown; type NpcRunState=unknown; type BuildState=unknown; type WorldState=unknown; type EndingState=unknown; type DirectorState=unknown;

@@ -1,0 +1,17 @@
+id: A05
+title: reducer-start-run
+read: [.codex/contracts/reducer.ref,.codex/contracts/state.ref,.codex/contracts/command.ref]
+in:
+  - implement reducer as sole Core rule entry
+  - immutable input -> new state + effects + narrativeFacts + trace
+  - implement minimal START_RUN using supplied valid destinyId fixture; A07 owns 3-choice generation
+  - stateVersion +1 only on successful command
+  - assert invariants after reduce
+out: [full destiny system,event system,cause,DB,UI]
+accept:
+  - same input produces byte/canonical-equivalent rule output
+  - input object not mutated
+  - failure leaves RuleState/stateVersion/RNG unchanged
+  - Core does no IO/time/platform/AI
+security: []
+tests: [CORE-INV-06,CORE-INV-08,reducer_purity,start_run_golden,property_1000]

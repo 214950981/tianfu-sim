@@ -1,0 +1,18 @@
+id: A02
+title: seeded-rng
+read: [.codex/DECISIONS.yaml]
+blockers: [D003]
+in:
+  - implement deterministic root seed + stable substreams: world,event,check,npc,timeline
+  - every draw increments traceable stream drawIndex
+  - algorithm id locked in state/rulesVersion
+  - add deterministic serialization/fixture support
+out: [event selection, gameplay probability tuning, UI]
+accept:
+  - same seed+stream+draw sequence identical across 100 runs
+  - adding draw in one substream does not perturb another
+  - no Math.random/Date.now rule randomness in new Core
+  - invalid seed/input handled deterministically
+  - trace exposes stream + index + sampled value/debug token
+security: []
+tests: [DET-001,DET-005,stream_isolation,golden_rng]

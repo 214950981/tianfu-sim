@@ -1,0 +1,17 @@
+id: A03
+title: game-state-v0.1
+read: [.codex/DECISIONS.yaml,.codex/contracts/state.ref]
+blockers: [D001]
+in:
+  - implement GameState/RunState/MetaState split + runtime schema validation
+  - implement invariants for age, finite numbers, versions, status, rng state
+  - implement canonical RuleState serialization for later hashing
+out: [commands,reducer,event logic,persistence,UI]
+accept:
+  - valid state round-trip stable
+  - invalid enums/NaN/Infinity/negative illegal fields rejected
+  - Run locks rulesVersion/contentVersion/seed
+  - Meta changes cannot mutate ended Run snapshot
+  - no platform/DB/AI dependency
+security: []
+tests: [schema_roundtrip,CORE-INV-01,CORE-INV-03,CORE-INV-04]

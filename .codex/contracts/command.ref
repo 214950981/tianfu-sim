@@ -1,0 +1,17 @@
+export type CommandEnvelope<T extends GameCommand>={commandId:string;playerId:string;runId:string;expectedStateVersion:number;rulesVersion:string;contentVersion:string;clientPlatform:'wechat'|'douyin'|'dev';clientBuild:string;issuedAtClient?:number;command:T};
+export type GameCommand=
+ |{type:'START_RUN';destinyId:string}
+ |{type:'CHOOSE_ACTION';actionId:string}
+ |{type:'CHOOSE_EVENT_OPTION';eventId:string;optionId:string}
+ |{type:'EQUIP_TECHNIQUE';componentId:string;slot:number}
+ |{type:'EQUIP_ARTIFACT';componentId:string;slot:number}
+ |{type:'USE_ITEM';itemId:string}
+ |{type:'TRAVEL';regionId:string}
+ |{type:'JOIN_FACTION';factionId:string}
+ |{type:'LEAVE_FACTION';factionId:string}
+ |{type:'START_BREAKTHROUGH';targetRealmId:string}
+ |{type:'CHOOSE_BREAKTHROUGH_OPTION';sessionId:string;optionId:string}
+ |{type:'RESPOND_NPC';npcId:string;intentId:string}
+ |{type:'ABANDON_RUN'}
+ |{type:'CLAIM_META_UNLOCK';unlockId:string};
+export type CommandResult={ok:boolean;commandId:string;stateVersion:number;statePatch?:unknown;domainEffects?:unknown[];narrative?:unknown;error?:{code:string;messageKey:string;retryable:boolean}};

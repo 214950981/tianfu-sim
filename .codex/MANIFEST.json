@@ -1,0 +1,122 @@
+{
+  "version": "0.1",
+  "purpose": "minimal-context Codex startup package",
+  "files": {
+    ".codex/DECISIONS.yaml": {
+      "bytes": 1044,
+      "sha256": "ac21c04492bcc03a4eeed9a4ba30f03ce39d74465d04e5fc61aa81e869ad0dfe"
+    },
+    ".codex/INDEX.yaml": {
+      "bytes": 741,
+      "sha256": "3e2aacd3ec3d3e80b5379534605136471e7d2cc7ebd8314c907218eb82360874"
+    },
+    ".codex/PROMPT.txt": {
+      "bytes": 125,
+      "sha256": "e0cc58f48238e5951a0826d080fa5ec4bb6b222ccd89b41ccd42c24f97be6080"
+    },
+    ".codex/REVIEW.txt": {
+      "bytes": 154,
+      "sha256": "6d864da601ab92c89bc25df0b64838545c5c2d5b075e3e9d33f817df54a17a93"
+    },
+    ".codex/TEST.txt": {
+      "bytes": 124,
+      "sha256": "80abb072f73bc586565a046e51c6893c42d04f10a9c92ae67245f072e07597b8"
+    },
+    ".codex/context.mjs": {
+      "bytes": 785,
+      "sha256": "a89a79349f705b937c28e0c04d9a2f67b7361977ee400a1a117d359b3ba17894"
+    },
+    ".codex/contracts/cause.ref": {
+      "bytes": 418,
+      "sha256": "dfe1d2533ba1f030e8332c9d691f02a5b0e307f1437a63751ef4318185c6839a"
+    },
+    ".codex/contracts/command.ref": {
+      "bytes": 1134,
+      "sha256": "67ae94b95aa45f39bb156a201a547a28ff77ce59473e51fb6d1e7de953023a14"
+    },
+    ".codex/contracts/event.ref": {
+      "bytes": 925,
+      "sha256": "e92678500108130337234544e5f3932e3a1e1c77851466687ed48a6f2e9a052a"
+    },
+    ".codex/contracts/platform.ref": {
+      "bytes": 410,
+      "sha256": "ea431958c1f8a3a619440c54b6923c02a9e013db1e11bf569d093f4876e771ed"
+    },
+    ".codex/contracts/qa.yaml": {
+      "bytes": 710,
+      "sha256": "104dde1dda804dcbaf8a86031edfd67088448a6ef0988e0cd0210a7d52d7e2c3"
+    },
+    ".codex/contracts/reducer.ref": {
+      "bytes": 567,
+      "sha256": "de961db81bc9c33e40b56bba43fefabd9dcff9dc5173e81b64f00b08ec5efe2c"
+    },
+    ".codex/contracts/state.ref": {
+      "bytes": 1564,
+      "sha256": "54f5e84fc238c3d44cd3dcba41c346bfc33269814bda3e9fe4a2a9096fff3f41"
+    },
+    ".codex/tasks/A01.yaml": {
+      "bytes": 926,
+      "sha256": "bfbe100c3bfc62c440221044479e3aca7b8fdfbc5d74edf614f8731008707c0f"
+    },
+    ".codex/tasks/A02.yaml": {
+      "bytes": 733,
+      "sha256": "15db1f90a2eef878a89427926bc17aa0bf80c9b89df09372f9a5651967bacbfe"
+    },
+    ".codex/tasks/A03.yaml": {
+      "bytes": 692,
+      "sha256": "c163070a98bb648e00b1e314394fd0fb106c5740bd359ecaacff624e573b023e"
+    },
+    ".codex/tasks/A04.yaml": {
+      "bytes": 782,
+      "sha256": "cd588c69cbd62cdf858e4a69452fa43eff779a1b9f142bc023cb3f6833cf07b5"
+    },
+    ".codex/tasks/A05.yaml": {
+      "bytes": 763,
+      "sha256": "d393d39cb582e7a6ad29561ac7886a8245a83175b23d9e7bf6403572dfa3490f"
+    },
+    ".codex/tasks/A06.yaml": {
+      "bytes": 667,
+      "sha256": "72c86c948ba3ca25f4c0e67db911f64d0a6c4272dd306f6c049197427983f544"
+    },
+    ".codex/tasks/A07.yaml": {
+      "bytes": 788,
+      "sha256": "c0ee6935cfa26e8e684136e5aa7be74f75f7242f739074341e3927972da73117"
+    },
+    ".codex/tasks/A08.yaml": {
+      "bytes": 870,
+      "sha256": "033d3159cf4d85961b19404efecaf99b7ce6ee32829ddb0ce0f009408d26ae7d"
+    },
+    ".codex/tasks/A09.yaml": {
+      "bytes": 894,
+      "sha256": "af2425fe8c9678d2ed33602d405b126c932dfceccb0cbd6c750a6d776508a3df"
+    },
+    ".codex/tasks/A10.yaml": {
+      "bytes": 893,
+      "sha256": "ac418c565b3c6559601cc372fee843866e9e6f341e6284f63ff3c4daacb7cbcc"
+    },
+    ".codex/tasks/A11.yaml": {
+      "bytes": 1006,
+      "sha256": "0f9960dd2f0228f97f996ab2dc0f3430ec92e69a589a8c36780361aa293f7fab"
+    },
+    ".codex/tasks/A12.yaml": {
+      "bytes": 1061,
+      "sha256": "f5014e4d3fe3c805e38025be96d228e98ae3cb793f2b88d43df59c84ff6056a5"
+    },
+    ".codex/templates/ADR.md": {
+      "bytes": 205,
+      "sha256": "b6501b8c2ec150392ed71647b3faf83805745e4adc4446c69798a354eb243d7a"
+    },
+    ".codex/templates/BUG.yaml": {
+      "bytes": 184,
+      "sha256": "5438d8a0d8610281586b9bcbde2e91efbdd83299b166d6de932fcfb92e57aea5"
+    },
+    "AGENTS.md": {
+      "bytes": 2901,
+      "sha256": "6b7a76e23ea1306c9fa3054d8649fb7318c7c9cf12934e17e1e262c2818fbb6a"
+    },
+    "START_HERE.txt": {
+      "bytes": 497,
+      "sha256": "5dc42bf31d8ee7ba24731b31ed67933c1b2cb09b72010deb984d97f24f6d664a"
+    }
+  }
+}

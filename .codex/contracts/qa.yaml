@@ -1,0 +1,18 @@
+gates:
+  G1: "same versions+seed+commands => same state hash; invariants hold"
+  G2: "server authority + idempotency + concurrency + recovery + security"
+  G3: "AI/network failure non-blocking; platform/perf stable"
+  G4: "player understands choice/cause and wants rebirth"
+technical_blockers:
+  - P0_or_P1_open
+  - nondeterministic_rule_state
+  - client_authoritative_reward_rank_or_realm
+  - replay_or_recovery_failure
+  - AI_required_for_core_flow
+ci_target:
+  fast: [lint,typecheck,schema,secret_scan,unit]
+  deterministic: [golden,invariant]
+  content: [refs,deadlinks,fallback,manifest]
+  integration: [command,db,idempotency,replay,auth]
+  simulation_pr: "1000 runs"
+  simulation_nightly: "10000+ runs"

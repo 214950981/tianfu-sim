@@ -1,0 +1,17 @@
+id: A07
+title: destiny-vertical-slice
+read: [.codex/contracts/state.ref]
+in:
+  - deterministic generation/selection of 3 destiny candidates from versioned content
+  - each candidate has advantage + real cost + world/person hook
+  - starter fixture set >=3 covering stable/high-variance/story-hook structures
+  - START_RUN accepts only offered destinyId
+  - challenge mode can pin seed+candidates and forbids reroll advantage
+out: [ads,paid reroll,12-18 full destinies,events]
+accept:
+  - same seed/metaView/content => same candidate set/order
+  - cannot select unoffered destiny
+  - no infinite free reroll API in core flow
+  - challenge candidate set unaffected by entitlements/ads
+security: [challenge_fairness]
+tests: [destiny_golden,invalid_destiny,challenge_fixed,first_run_fixture]

@@ -1,0 +1,18 @@
+id: A09
+title: cause-first-echo
+read: [.codex/DECISIONS.yaml,.codex/contracts/cause.ref,.codex/contracts/event.ref]
+blockers: [D002]
+in:
+  - implement Cause lifecycle + maturity + echoBudget + source trace
+  - selector priority: director/forced > mature high-salience cause > strong NPC > build/action > ordinary
+  - fixture: rescue NPC -> cause -> later eligible -> echo
+  - dead/unreachable NPC converts/invalidates echo per fixture, never emits impossible live event
+out: [10 cause chains,full NPC system,AI prose]
+accept:
+  - cause originCommandId valid
+  - dormant not selectable; eligible raises linked event priority
+  - same cause cannot duplicate same reward/echo beyond policy
+  - resolved/expired not treated eligible
+  - two eligible causes resolve order deterministically
+security: []
+tests: [CAUSE-001,CAUSE-002,CAUSE-003,CAUSE-004,CAUSE-005,CAUSE-006,CAUSE-007,CAUSE-008,GS-002]

@@ -1,0 +1,19 @@
+id: A01
+title: foundation
+read: []
+inspect_first: [package.json, project.config.json, existing test/build config]
+in:
+  - create packages/core, packages/content, packages/platform-contract, server, tools, tests boundaries as minimally needed
+  - add minimal TS + test runner for new 2.0 code; do not force heavy monorepo tooling
+  - add static dependency check: Core cannot import wx/tt/db/http/AI/platform
+  - add scripts for typecheck/test/lint if repo lacks them
+out: [gameplay changes, UI rewrite, data migration, RNG, State schema, AI, Douyin]
+accept:
+  - existing 1.0 behavior unchanged
+  - a trivial pure Core test passes
+  - forbidden Core import test fails on injected forbidden fixture and passes clean tree
+  - clean install/build path documented by scripts, not prose
+  - no secrets introduced
+  - diff is foundation-only
+security: [secret_scan]
+tests: [lint_or_equivalent, typecheck, core_smoke, import_boundary]

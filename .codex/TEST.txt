@@ -1,0 +1,1 @@
+Test TASK_ID only. Follow AGENTS.md. Add adversarial/boundary/determinism tests required by the task. No feature expansion.

@@ -1,0 +1,19 @@
+id: A12
+title: wechat-viewmodel-e2e
+read: [.codex/contracts/platform.ref,.codex/contracts/command.ref,.codex/contracts/qa.yaml]
+in:
+  - implement minimal WeChatAdapter behind PlatformAdapter contract
+  - Application/ViewModel exposes only safe ViewState; hide RNG, internal Cause flags, raw relation numbers, security fields
+  - wire vertical slice: destiny -> event choice -> first cause echo -> terminal/template book -> rebirth/meta unlock
+  - pending UI reuses same commandId; lifecycle resume cannot double-send
+  - AI stays OFF/template only
+out: [Douyin,full 4 builds,5 core NPCs,AI,commercialization,visual redesign]
+accept:
+  - full vertical slice completes on WeChat dev/test path
+  - Core has zero wx imports
+  - background/resume/retry cannot duplicate command
+  - UI cannot set authoritative state directly
+  - AI disabled entire run still completes
+  - technical architecture pre-content gates relevant to A01-A12 pass
+security: [viewstate_minimization,client_tamper]
+tests: [PLAT_adapter,E2E_first_life,AI_off,CMD_idempotency,first_echo_fixture]

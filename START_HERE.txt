@@ -1,0 +1,6 @@
+Unzip this package at repository root.
+Do not paste the four long design documents into every Codex task.
+For normal work, Codex needs AGENTS.md + the requested `.codex/tasks/Axx.yaml` + its listed contracts only.
+Reusable prompt: `Execute A01. Follow AGENTS.md. Run node .codex/context.mjs A01 once; use only that context unless blocked.`
+Change A01 -> A02 ... sequentially after acceptance.
+Before A02/A03/A09, resolve D003/D001/D002 in `.codex/DECISIONS.yaml` (or approve the recommendations).

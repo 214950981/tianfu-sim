@@ -1,0 +1,18 @@
+id: A11
+title: server-command-gateway
+read: [.codex/contracts/command.ref,.codex/contracts/reducer.ref,.codex/contracts/qa.yaml]
+in:
+  - trusted auth binds playerId; never trust client playerId ownership
+  - schema validate -> idempotency -> load/version check -> authorize -> reduce -> invariant -> atomic log/state -> response
+  - commandId idempotency + expectedStateVersion optimistic concurrency
+  - owner checks; size/unknown-field limits; safe logging
+  - adapt ONE non-destructive vertical-slice path first; do not migrate all 1.0 endpoints
+out: [payments,ads,leaderboard,full migration]
+accept:
+  - gold/realm/rank/finalState forgery cannot alter server state
+  - duplicate commandId settles once
+  - two concurrent commands: one wins, stale one gets STATE_CONFLICT
+  - cross-player runId denied
+  - timeout/retry with same commandId cannot double-settle
+security: [CMD-001,CMD-002,CMD-003,CMD-004,CMD-005,CMD-006,CMD-008]
+tests: [integration,idempotency,concurrency,owner_auth,failure_injection]

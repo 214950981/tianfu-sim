@@ -1,0 +1,4 @@
+export type EventDefinition={id:string;version:number;kind:'choice'|'narrative'|'combat'|'breakthrough'|'ending'|'tutorial';titleKey:string;tags:string[];requirements:ConditionExpr;weight:WeightExpr;cooldown?:unknown;choices?:ChoiceDefinition[];onEnter?:EffectSpec[];ai?:NarrativePolicy;fallback:FallbackText;telemetry?:Record<string,unknown>};
+export type ChoiceDefinition={id:string;labelKey:string;requirements?:ConditionExpr;riskHint?:'safe'|'fair'|'dangerous'|'desperate';check?:CheckSpec;outcomes:OutcomeTable;createsCause?:unknown[];relationEffects?:unknown[];buildEffects?:unknown[];next?:unknown[]};
+export type ConditionExpr=unknown; export type WeightExpr=unknown; export type EffectSpec={op:string;[k:string]:unknown}; export type NarrativePolicy=unknown; export type FallbackText=unknown; export type CheckSpec=unknown; export type OutcomeTable=unknown;
+// DSL whitelist only. No arbitrary JS/eval/new Function.

@@ -1,0 +1,1 @@
+Execute A01. Follow AGENTS.md. Use `.codex/INDEX.yaml` to load minimum context. Do not read long design docs unless blocked.

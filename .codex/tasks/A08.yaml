@@ -1,0 +1,18 @@
+id: A08
+title: event-dsl
+read: [.codex/contracts/event.ref,.codex/contracts/reducer.ref]
+in:
+  - implement ConditionExpr evaluator + whitelisted EffectSpec executor
+  - minimal EventDefinition/Choice flow + CHOOSE_EVENT_OPTION
+  - hard requirements before weighted selection; invalid choices mutate nothing
+  - 4 outcome tiers support: great/success/costly_success/fail
+  - create dev fixture event with >=2 meaningful choices
+out: [large content pack,AI narration,combat system]
+accept:
+  - hard-ineligible event never selected
+  - DSL cannot access arbitrary paths/functions beyond whitelist
+  - choice can change long-term dimension via controlled effect
+  - illegal choice consumes no RNG/time
+  - content-lint catches one-choice-as-choice, dangling refs, missing fallback
+security: [DSL_injection_fuzz]
+tests: [CNT-003,CNT-004,CNT-005,CNT-007,CMD-007,event_golden]

@@ -1,0 +1,17 @@
+v: 0.1
+# status=open blocks only tasks listed in blocks.
+- id: D001
+  status: open
+  issue: "3rd core attribute semantic mismatch: Rulebook=神识(perception/control/insight checks); Architecture field `spirit` text says 灵力/realm/technique drive."
+  recommendation: "Keep Rulebook semantic as canonical; use technical field `spiritSense` (display name 神识). Do not introduce separate mana stat in MVP."
+  blocks: [A03]
+- id: D002
+  status: open
+  issue: "Cause state names differ: Architecture latent/active/echoed/resolved/expired; QA dormant/eligible/echoed/resolved/expired (+ transformed transition)."
+  recommendation: "Canonical states: dormant|eligible|echoed|resolved|expired. Treat create/transform as transitions/events, not persistent states."
+  blocks: [A09]
+- id: D003
+  status: open
+  issue: "Seed RNG algorithm not frozen; examples mention xoshiro128** or pcg32."
+  recommendation: "Use xoshiro128** with explicit algorithm id `xoshiro128ss-v1`; deterministic 32-bit implementation; lock by rulesVersion."
+  blocks: [A02]

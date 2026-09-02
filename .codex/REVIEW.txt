@@ -1,0 +1,1 @@
+Review TASK_ID only. Follow AGENTS.md. Find architecture/invariant/security/replay violations. Do not implement features. Return blocking findings first.

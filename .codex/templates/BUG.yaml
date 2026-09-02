@@ -1,0 +1,13 @@
+severity: P0|P1|P2|P3
+buildVersion:
+rulesVersion:
+contentVersion:
+platform_device:
+runId_test_only:
+seed:
+commandIndex:
+expected:
+actual:
+reproducible: yes|no
+logRef:
+regression_test:

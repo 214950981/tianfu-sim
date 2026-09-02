@@ -1,0 +1,6 @@
+// Spec-only reference; GameState/GameCommand are defined in sibling .ref contracts.
+export type RuleContext={rulesVersion:string;contentVersion:string};
+export type ReduceInput={state:GameState;command:GameCommand;context:RuleContext};
+export type ReduceOutput={state:GameState;effects:DomainEffect[];narrativeFacts:Fact[];trace:RuleTrace};
+export type DomainEffect={type:string;[k:string]:unknown}; export type Fact={type:string;[k:string]:unknown}; export type RuleTrace={rngDraws?:unknown[];[k:string]:unknown};
+export type Reducer=(i:ReduceInput)=>ReduceOutput;

@@ -1,0 +1,2 @@
+export type CauseInstance={causeId:string;templateId:string;originCommandId:string;originNodeIndex:number;age:number;actors:string[];themes:string[];salience:1|2|3|4|5;state:CauseState;maturity:unknown;echoBudget:number;facts:Record<string,unknown>;linkedEventIds:string[];resolution?:unknown};
+export type CauseState='dormant'|'eligible'|'echoed'|'resolved'|'expired'; // D002 must be resolved before implementation.
