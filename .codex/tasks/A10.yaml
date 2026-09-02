@@ -1,18 +1,18 @@
 id: A10
 title: snapshot-commandlog-replay
-read: [.codex/contracts/state.ref,.codex/contracts/command.ref,.codex/contracts/qa.yaml]
+read: [.codex/contracts/state.ref,.codex/contracts/command.ref,.codex/contracts/rng.ref,.codex/contracts/qa.yaml]
+blockers: []
 in:
-  - canonical RuleState hash excluding telemetry/AI/UI/client time
-  - append-only Command Log model + Snapshot model
+  - canonical safe-integer JSON serialization + SHA-256 RuleState hash
+  - append-only Command Log + Snapshot model
   - replay CLI from initial/snapshot + commands
-  - snapshot policy hooks: every 3-5 successful commands; force hook at terminal/breakthrough/challenge submit
-  - explicit schema/rules/content version metadata
-out: [production DB choice,leaderboard,UI]
+  - snapshot hooks every 3-5 successes; force at terminal/breakthrough/challenge-submit hook
+  - explicit schema/rules/content metadata
+out: [production_DB_choice,leaderboard,UI]
 accept:
-  - same fixture replay 100x => same checkpoints/final hash
-  - snapshot resume final hash == full replay
-  - corrupted/mismatched hash detected
-  - AI/narrative text differences do not change rule hash
-  - old incompatible schema requires explicit migration/reject
-security: [tamper_detection]
+  - same fixture replay 100x => identical checkpoints/final hash
+  - snapshot resume hash == full replay
+  - corruption/version mismatch detected
+  - AI/narrative/telemetry/client time excluded from rule hash
+  - old incompatible schema explicit migrate/reject
 tests: [DET-001,DET-002,REP-003,REP-004,PERSIST-004,PERSIST-005,PERSIST-006,GS-009]

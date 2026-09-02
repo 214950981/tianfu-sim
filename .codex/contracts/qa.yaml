@@ -1,18 +1,38 @@
+version: "0.2"
 gates:
-  G1: "same versions+seed+commands => same state hash; invariants hold"
+  G1: "same locked versions+rootSeed+commands => same canonical RuleState hash; invariants hold"
   G2: "server authority + idempotency + concurrency + recovery + security"
   G3: "AI/network failure non-blocking; platform/perf stable"
   G4: "player understands choice/cause and wants rebirth"
 technical_blockers:
-  - P0_or_P1_open
+  - P0_or_P1_open_for_current_stage
   - nondeterministic_rule_state
-  - client_authoritative_reward_rank_or_realm
+  - client_authoritative_reward_rank_realm
   - replay_or_recovery_failure
   - AI_required_for_core_flow
-ci_target:
-  fast: [lint,typecheck,schema,secret_scan,unit]
-  deterministic: [golden,invariant]
-  content: [refs,deadlinks,fallback,manifest]
-  integration: [command,db,idempotency,replay,auth]
-  simulation_pr: "1000 runs"
-  simulation_nightly: "10000+ runs"
+ci:
+  A01_A06: [lint,typecheck,schema,secret_scan,task_unit,current_micro]
+  A07_A09: [above,determinism,content_lint,micro_journey]
+  A10_plus_when_simulator_exists: [above,replay,integration,simulation_1000]
+  nightly_after_complete_run_harness: [golden_full,simulation_10000,security]
+product_timing:
+  first_choice_sec_max: 60
+  first_echo_target_sec_max: 180
+  first_echo_test_tolerance_sec_max: 210
+  build_synergy_target_sec_max: 300
+content_gates:
+  technical_slice: "3 destinies; 6-10 events; 1 Cause chain; 1 dynamic NPC fixture; 1 synergy; template ending"
+  five_player: "roughly 15-25 events; 2-3 Cause chains; enough components/characters to create real choice; no full-MVP quota"
+  alpha_20_30: "expand only after 5-player findings; target breadth, not final volume"
+  beta_mature: "60-100 base/state events; 10 Cause chains; 5 core NPCs; ~24-30 techniques; ~16-20 artifacts"
+mortality_metrics:
+  - deathCause
+  - deathAge
+  - deathRealm
+  - riskExposure
+  - injuryAtDeath
+  - activeEnemiesAtDeath
+  - causeRelatedDeath
+  - breakthroughDeath
+  - lifespanDeath
+  - remainingLifespanPressure

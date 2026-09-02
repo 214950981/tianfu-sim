@@ -1,16 +1,16 @@
 id: A04
 title: command-contract
 read: [.codex/contracts/command.ref,.codex/contracts/state.ref]
+blockers: []
 in:
-  - implement GameCommand + CommandEnvelope schemas
+  - implement GameCommand + CommandEnvelope strict schemas
   - strict unknown-field policy for authoritative commands
-  - validate command preconditions shape without executing gameplay
-  - define stable error codes: INVALID_COMMAND,INVALID_OPTION,STATE_CONFLICT,UNAUTHORIZED,CONTENT_MISMATCH
-out: [server gateway,reducer behavior,DB,UI]
+  - stable error codes in command.ref
+  - validation only; no gameplay execution
+out: [server_gateway,reducer_behavior,DB,UI]
 accept:
-  - client fields like gold/realm/rank/finalState are rejected or impossible in schema
-  - duplicate/unknown fields cannot smuggle authoritative state
-  - invalid command validation consumes no RNG/time and mutates no state
-  - command contract serializes deterministically
-security: [input_whitelist]
+  - client gold/realm/rank/finalState cannot enter authoritative command
+  - START_RUN requires offerId+destinyId
+  - invalid/unknown fields consume no RNG/time and mutate no state
+  - deterministic serialization
 tests: [CMD-001,CMD-002,CMD-007,CMD-008]

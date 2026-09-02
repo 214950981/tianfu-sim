@@ -1,16 +1,16 @@
 id: A06
 title: content-registry
-read: [.codex/contracts/event.ref]
+read: [.codex/contracts/event.ref,.codex/contracts/qa.yaml]
+blockers: []
 in:
-  - implement ContentManifest {contentVersion,rulesCompatibility,packs[],generatedAt}
-  - stable IDs + pack checksum + registry lookup
-  - runtime/build validation framework and content-lint CLI
-  - dev-fixtures content pack
-out: [60-100 events,real NPCs/builds,AI text]
+  - implement ContentManifest + stable IDs + canonical pack checksum + registry lookup
+  - runtime/build validation + content-lint CLI
+  - dev-fixtures only
+out: [large_content_pack,real_NPCs,full_builds,AI_text]
 accept:
   - duplicate IDs/references/version mismatch fail lint
-  - manifest checksum stable for unchanged canonical content
-  - old Run can request locked contentVersion
-  - content cannot execute arbitrary code
-security: [no_eval,no_new_function,whitelist_DSL]
+  - unchanged canonical content => stable checksum
+  - locked contentVersion retrievable for old Run
+  - no arbitrary code execution
+  - CI uses current-stage micro checks, not unavailable 1000-run gate
 tests: [CNT-001,CNT-002,CNT-005,CNT-010,manifest_determinism]

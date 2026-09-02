@@ -1,17 +1,18 @@
 id: A05
-title: reducer-start-run
-read: [.codex/contracts/reducer.ref,.codex/contracts/state.ref,.codex/contracts/command.ref]
+title: reducer-offered-start
+read: [.codex/contracts/reducer.ref,.codex/contracts/state.ref,.codex/contracts/command.ref,.codex/contracts/lifecycle.ref,.codex/contracts/numeric.ref]
+blockers: []
 in:
-  - implement reducer as sole Core rule entry
-  - immutable input -> new state + effects + narrativeFacts + trace
-  - implement minimal START_RUN using supplied valid destinyId fixture; A07 owns 3-choice generation
-  - stateVersion +1 only on successful command
-  - assert invariants after reduce
-out: [full destiny system,event system,cause,DB,UI]
+  - implement reducer as sole mutation entry + pure createOfferedRun fixture factory
+  - implement START_RUN from offered state using supplied valid 3-destiny fixture; A07 owns content generation
+  - implement stateVersion success semantics + invariant assertion
+  - implement reusable time/lifespan phase helpers without full event system
+out: [full_destiny,event,cause,DB,UI,combat]
 accept:
-  - same input produces byte/canonical-equivalent rule output
-  - input object not mutated
-  - failure leaves RuleState/stateVersion/RNG unchanged
-  - Core does no IO/time/platform/AI
-security: []
-tests: [CORE-INV-06,CORE-INV-08,reducer_purity,start_run_golden,property_1000]
+  - same input => canonical-equivalent output
+  - input not mutated
+  - invalid/failure leaves stateVersion/RNG/time unchanged
+  - START_RUN cannot select outside offer or reuse consumed offer
+  - age never exceeds maxAge
+  - Core no IO/platform/AI
+tests: [CORE-INV-06,CORE-INV-08,reducer_purity,start_run_golden,time_boundary,property_current_scope]

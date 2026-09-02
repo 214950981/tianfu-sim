@@ -1,0 +1,24 @@
+// NODE/TIME/MORTALITY/DIRECTOR CONTRACT v0.2
+Selector precedence (single source): 
+P0 terminal/lifespan/non-delayable rule node
+P1 first-run director required slot
+P2 eligible high-salience Cause
+P3 active pursuit / core-NPC strong event
+P4 build/world/region/action/status event
+P5 ordinary/rhythm event
+Within same tier: deterministic score then eventId tie-break; RNG only among explicitly equal weighted candidates.
+
+CHOOSE_ACTION order:
+1 validate command/state; 2 compute actionTimeCost (integer years, numeric.ref) using time stream;
+3 advance age + NPC/world/conditions by actionTimeCost; 4 if age>=maxAge => status=dying, select lifespan_end, no ordinary action event;
+5 update Cause maturity; 6 Director/selector chooses event.
+ViewState should show an estimated time range and `lifespanRisk` if the action can reach maxAge; if guaranteed, require confirm UI later.
+
+CHOOSE_EVENT_OPTION order:
+1 validate; 2 resolve check/outcome; 3 apply non-time effects; 4 apply outcomeTimeDelta and advance NPC/world/conditions by that delta;
+5 resolve lethal/end effects or maxAge; 6 update Cause maturity for next node/explicit transition.
+
+maxAge = theoretical hard lifespan ceiling. Most Runs may end earlier via telegraphed or causally traceable mortality: combat/ambush/exploration/poison/curse/breakthrough/accumulated injury/Cause/special.
+No untelegraphed lethal RNG in first 3 effective nodes. Lethal outcome must have a visible risk cue in current path OR a traceable prior condition/Cause. Death result remains deterministic from State+Seed+Command.
+
+Director: can only add/remove candidate eligibility, reserve slot, or adjust candidate weight. Never direct stat/check/reward/death. Every intervention in RuleTrace. Challenge ignores first-run rescue director unless challenge config explicitly enables it.

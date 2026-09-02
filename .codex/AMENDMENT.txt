@@ -1,0 +1,4 @@
+v0.2 is a minimal corrective layer over the four frozen v0.1 design documents.
+For audit IDs listed in AUDIT_RESOLUTION.yaml, v0.2 contracts/decisions are authoritative.
+For all other product questions use original hierarchy: PRD > Rulebook > Architecture > QA.
+Do not infer new gameplay from this amendment.

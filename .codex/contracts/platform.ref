@@ -1,1 +1,14 @@
-export interface PlatformAdapter{auth:{login():Promise<unknown>};storage:{getLocal(k:string):Promise<string|null>;setLocal(k:string,v:string):Promise<void>};ui:{toast(m:string):void;confirm(o:unknown):Promise<boolean>};share:{shareRunCard(p:unknown):Promise<void>};ads:{showRewarded(slotId:string):Promise<unknown>};payment?:{purchase(productId:string):Promise<unknown>};telemetry:{platformContext():unknown}}
+// PLATFORM/APPLICATION CONTRACT v0.2
+export interface PlatformAdapter{
+ auth:{login():Promise<PlatformIdentity>};
+ storage:{getLocal(k:string):Promise<string|null>;setLocal(k:string,v:string):Promise<void>};
+ ui:{toast(m:string):void;confirm(o:ConfirmOptions):Promise<boolean>};
+ share:{shareRunCard(p:SharePayload):Promise<void>};
+ ads:{showRewarded(slotId:string):Promise<AdReceipt>};
+ payment?:{purchase(productId:string):Promise<PurchaseReceipt>};
+ telemetry:{platformContext():PlatformContext};
+}
+export interface ApplicationTransport{sendCommand(c:CommandEnvelope<GameCommand>):Promise<CommandResult>;fetchView(runId:string):Promise<unknown>;createRunOffer():Promise<unknown>}
+
+// PlatformAdapter = wx/tt capability shell. ApplicationTransport = cloud/HTTP/application gateway.
+// Core/Content know neither. MVP: synchronous server authority + pending UI; retry same commandId; no second authoritative local Core.

@@ -1,0 +1,159 @@
+version: '0.2'
+basis:
+- PRD v0.1
+- Rulebook v0.1
+- Architecture v0.1
+- QA v0.1
+- Cross-document audit v0.1
+- post-audit mortality clarification
+precedence: For listed audit IDs, v0.2 decision/contract overrides conflicting v0.1
+  wording; otherwise original hierarchy remains PRD > Rulebook > Architecture > QA.
+items:
+- id: C01
+  verdict: resolved
+  action: D001/state.ref
+  gate: A03
+- id: C02
+  verdict: resolved
+  action: D002/cause.ref
+  gate: A09
+- id: C03
+  verdict: resolved
+  action: D007/lifecycle.ref
+  gate: A08/A09
+- id: C04
+  verdict: resolved
+  action: event.ref logical namespace
+  gate: A08
+- id: C05
+  verdict: resolved
+  action: D015/platform.ref transport split
+  gate: A11/A12
+- id: C06
+  verdict: resolved
+  action: D014/crosslayer.ref discriminated NarrativePayload
+  gate: AI stage
+- id: C07
+  verdict: resolved
+  action: 'ending.ref: up to 3 people; actual causes only; no filler'
+  gate: terminal/A12
+- id: C08
+  verdict: resolved
+  action: event.ref choice scope core|tactical
+  gate: A08/combat
+- id: C09
+  verdict: resolved
+  action: 'qa.yaml: target<=180s, tolerance<=210s'
+  gate: first-life director
+- id: G01
+  verdict: resolved
+  action: D003+D004/rng.ref/hash contract
+  gate: A02/A10
+- id: G02
+  verdict: resolved
+  action: D005/numeric.ref
+  gate: A02/A05
+- id: G03
+  verdict: resolved
+  action: D006/state+command offered-run handshake
+  gate: A05/A07
+- id: G04
+  verdict: resolved
+  action: state.ref minimum nested schemas
+  gate: A03
+- id: G05
+  verdict: resolved
+  action: event.ref DSL whitelist/outcomes/cooldown
+  gate: A08
+- id: G06
+  verdict: resolved
+  action: D010/lifecycle.ref lifespan boundary
+  gate: A05
+- id: G07
+  verdict: resolved
+  action: D010/lifecycle.ref actionTimeCost + outcomeTimeDelta
+  gate: A05/A08
+- id: G08
+  verdict: resolved
+  action: D011/lifecycle.ref director boundary+trace
+  gate: A05/A07
+- id: G09
+  verdict: resolved
+  action: cause.ref salience default echoBudget + explicit visibility
+  gate: A09
+- id: G10
+  verdict: scheduled
+  action: NPC01; freeze before NPC expansion
+  gate: post-A12 NPC stage
+- id: G11
+  verdict: partially_resolved
+  action: first-life synergy != full Build; BUILD01 freezes trigger order later
+  gate: Build stage
+- id: G12
+  verdict: resolved
+  action: D013/state.ref deterministic runName, no platform nickname
+  gate: A03/content/UI
+- id: G13
+  verdict: resolved
+  action: D008 fresh RuleState each Run; Meta only persists
+  gate: Meta/NPC
+- id: G14
+  verdict: scheduled
+  action: CHAL01 ChallengeContext before challenge implementation
+  gate: challenge stage
+- id: G15
+  verdict: resolved
+  action: crosslayer.ref Fact/PublicEffect/ViewStatePatch/NarrativePayload
+  gate: A11/A12/AI
+- id: G16
+  verdict: resolved
+  action: D012/platform.ref synchronous server authority + pending UI
+  gate: A11/A12
+- id: G17
+  verdict: scheduled_blocker
+  action: UI01 blocks A12 until ui.ref exists
+  gate: A12
+- id: G18
+  verdict: resolved
+  action: qa.yaml staged content gates
+  gate: Product Alpha
+- id: G19
+  verdict: scheduled
+  action: NARR01 before content scale
+  gate: content scale
+- id: G20
+  verdict: scheduled
+  action: COMPLY01 before Closed Beta
+  gate: Closed Beta
+- id: G21
+  verdict: resolved
+  action: qa.yaml capability-aware CI
+  gate: A01+
+- id: G22
+  verdict: deferred
+  action: technical field stays metaCurrency; display name freeze before UI
+  gate: UI naming
+- id: G23
+  verdict: scheduled
+  action: UI01; content cannot author riskHint, derive in UI contract later
+  gate: A12/event UI
+- id: G24
+  verdict: resolved
+  action: numeric.ref + state invariants clamp finite ranges
+  gate: A03+
+- id: R01
+  verdict: resolved_reframed
+  action: D009 mortality model + qa mortality metrics; no immediate lifespan nerf
+  gate: simulation/player test
+- id: R02
+  verdict: validate
+  action: keep 14-18 as envelope; first Run need not show all realms/systems
+  gate: 5-player
+- id: R03
+  verdict: mitigated_validate
+  action: early echo target retained; require varied echo forms in content test
+  gate: first-life content
+- id: R04
+  verdict: validate_defer
+  action: do not auto-load all unlocks; design pool/loadout only if dilution appears
+  gate: Meta stage

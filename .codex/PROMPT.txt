@@ -1,1 +1,1 @@
-Execute A01. Follow AGENTS.md. Use `.codex/INDEX.yaml` to load minimum context. Do not read long design docs unless blocked.
+Execute A01. Follow AGENTS.md. Run node .codex/context.mjs A01 once; use only that context unless blocked.

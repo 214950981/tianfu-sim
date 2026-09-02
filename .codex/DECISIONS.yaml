@@ -1,17 +1,104 @@
-v: 0.1
-# status=open blocks only tasks listed in blocks.
-- id: D001
-  status: open
-  issue: "3rd core attribute semantic mismatch: Rulebook=神识(perception/control/insight checks); Architecture field `spirit` text says 灵力/realm/technique drive."
-  recommendation: "Keep Rulebook semantic as canonical; use technical field `spiritSense` (display name 神识). Do not introduce separate mana stat in MVP."
-  blocks: [A03]
-- id: D002
-  status: open
-  issue: "Cause state names differ: Architecture latent/active/echoed/resolved/expired; QA dormant/eligible/echoed/resolved/expired (+ transformed transition)."
-  recommendation: "Canonical states: dormant|eligible|echoed|resolved|expired. Treat create/transform as transitions/events, not persistent states."
-  blocks: [A09]
-- id: D003
-  status: open
-  issue: "Seed RNG algorithm not frozen; examples mention xoshiro128** or pcg32."
-  recommendation: "Use xoshiro128** with explicit algorithm id `xoshiro128ss-v1`; deterministic 32-bit implementation; lock by rulesVersion."
-  blocks: [A02]
+version: "0.2"
+decisions:
+  - id: D001
+    status: resolved
+    decision: "Core attributes = insight/body/spiritSense/fortune; display 悟性/体魄/神识/福缘. No separate mana stat in MVP."
+    audit: [C01]
+  - id: D002
+    status: resolved
+    decision: "Cause states = dormant|eligible|echoed|resolved|expired. create/transform are transitions, not persistent states."
+    audit: [C02]
+  - id: D003
+    status: resolved
+    decision: "RNG = xoshiro128ss-v1; deterministic 32-bit implementation; named independent substreams; details in rng.ref."
+    audit: [G01]
+  - id: D004
+    status: resolved
+    decision: "RuleState hash = canonical safe-integer JSON + SHA-256 lowercase hex; presentation/AI/telemetry/client time excluded."
+    audit: [G01]
+  - id: D005
+    status: resolved
+    decision: "Rule numeric semantics use safe integers/fixed bps; age/maxAge/time are integer years; one explicit final rounding boundary per formula."
+    audit: [G02]
+  - id: D006
+    status: resolved
+    decision: "Run start is two-stage: server creates offered run with locked seed+3 destiny IDs; START_RUN chooses one offered destiny."
+    audit: [G03]
+  - id: D007
+    status: resolved
+    decision: "Selector precedence = terminal/lifespan > first-run director > eligible high-salience Cause > pursuit/core-NPC > build/world/action > ordinary."
+    audit: [C03]
+  - id: D008
+    status: resolved
+    decision: "MVP rebirth resets RuleState/world/NPC/Cause. Cross-run persistence is Meta unlock/discovery only; no NPC remembers a prior Run."
+    audit: [G13]
+  - id: D009
+    status: resolved
+    decision: "Lifespan is hard ceiling/opportunity budget, not primary expected death. Mortality also comes from telegraphed/cause-traceable hazards, accumulated conditions, combat, exploration, poison/curse, breakthrough and special events."
+    audit: [R01]
+  - id: D010
+    status: resolved
+    decision: "Time has two phases: actionTimeCost before event selection; outcomeTimeDelta after event resolution. NPC/world advance by actual elapsed years in each phase; lifespan checks follow each phase."
+    audit: [G06,G07]
+  - id: D011
+    status: resolved
+    decision: "Director changes only candidate slot/eligibility/weight; no direct numeric/check/death/reward effect; trace all interventions; challenge uses only challenge-configured director."
+    audit: [G08]
+  - id: D012
+    status: resolved
+    decision: "Normal MVP online path is synchronous server authority + pending UI. No second authoritative local Core."
+    audit: [G16]
+  - id: D013
+    status: resolved
+    decision: "MVP runName is deterministic seed/content generated, not platform nickname; no required gender input. Later cosmetic alias stays outside rule authority."
+    audit: [G12]
+  - id: D014
+    status: resolved
+    decision: "Narrative payloads are scene-discriminated; do not collapse dialogue, narration and ending book into one generic text contract."
+    audit: [C06]
+  - id: D015
+    status: resolved
+    decision: "Network/cloud transport is a separate ApplicationTransport contract; PlatformAdapter handles platform capabilities only."
+    audit: [C05]
+  - id: UI01
+    status: scheduled
+    blocks: [A12]
+    decision_needed: "Create short ui.ref via UI/UX Sprint: screen IA, choice cards, cause echo, pending/error, template book, progressive disclosure."
+    audit: [G17,G23]
+  - id: NPC01
+    status: scheduled
+    blocks: []
+    decision_needed: "Before dynamic-NPC expansion, freeze importance scoring and off-screen cadence."
+    audit: [G10]
+  - id: BUILD01
+    status: scheduled
+    blocks: []
+    decision_needed: "Before Build expansion, freeze trigger ordering/recursion; first-life '2 components' means synergy/倾向, not full Build."
+    audit: [G11]
+  - id: CHAL01
+    status: scheduled
+    blocks: []
+    decision_needed: "Before challenge implementation add ChallengeContext(mode,challengeId,scoringVersion,configHash)."
+    audit: [G14]
+  - id: NARR01
+    status: scheduled
+    blocks: []
+    decision_needed: "Before content scale, freeze short World/Narrative Bible."
+    audit: [G19]
+  - id: COMPLY01
+    status: scheduled
+    blocks: []
+    decision_needed: "Before Closed Beta, add platform/content-safety/privacy/free-input review gate."
+    audit: [G20]
+  - id: R02
+    status: validate
+    blocks: []
+    evidence: "5-person test: first-life system density; do not force all realms/systems into first Run."
+  - id: R03
+    status: validate
+    blocks: []
+    evidence: "First echo must vary form; test whether early echo feels authored/tutorial-like."
+  - id: R04
+    status: validate
+    blocks: []
+    evidence: "Meta unlock pool dilution; solve with later loadout/weighting only if data shows it."

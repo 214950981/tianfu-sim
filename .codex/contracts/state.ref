@@ -1,9 +1,36 @@
-// REFERENCE CONTRACT v0.1; implementation may refine syntax, not semantics without ADR.
+// STATE CONTRACT v0.2. Syntax may refine; semantics require ADR to change.
+type RunStatus='offered'|'active'|'dying'|'ended'|'abandoned';
+type ActionType='cultivate'|'travel'|'worldly'|'pursuit';
+type ConditionKind='injury'|'pillToxicity'|'curse'|'blessing'|'pursued'|'other';
+type DeathCause='lifespan'|'combat'|'ambush'|'exploration'|'poison'|'curse'|'breakthrough'|'injury'|'cause'|'special';
+
 export type GameState={schemaVersion:number;rulesVersion:string;contentVersion:string;stateVersion:number;run:RunState;metaView:MetaView};
-export type RunState={runId:string;playerId:string;seed:string;status:'active'|'dying'|'ended'|'abandoned';nodeIndex:number;age:number;maxAge:number;realm:RealmState;attributes:AttributeState;resources:ResourceState;conditions:Condition[];identity:IdentityState;actions:ActionState;events:EventRunState;causes:CauseState;npcs:NpcRunState;build:BuildState;world:WorldState;ending?:EndingState;rng:RngState;director:DirectorState};
-export type AttributeState={insight:number;body:number;spiritSense:number;fortune:number}; // D001 must be resolved before implementation.
-export type RngState={algorithm:string;seed:string;drawIndex:number;stream?:string};
+
+export type RunState={
+ runId:string;playerId:string;rootSeed:string;status:RunStatus;nodeIndex:number;age:number;maxAge:number;
+ offer?:{offerId:string;destinyIds:[string,string,string]};
+ realm:{id:string;order:number;cultivation:number};
+ attributes:{insight:number;body:number;spiritSense:number;fortune:number};
+ resources:{spiritStone:number;items:Record<string,number>};
+ conditions:Array<{id:string;kind:ConditionKind;stacks:number;sourceRef:string;remainingNodes?:number}>;
+ identity:{runName:string;destinyId?:string;rootTags:string[];factionId?:string;titles:string[]};
+ actions:{available:ActionType[];pursuitCauseIds:string[];recent:ActionType[]};
+ events:{current?:{eventId:string;kind:string;phase?:string};history:Array<{eventId:string;nodeIndex:number;resultTier?:string}>};
+ causes:{byId:Record<string,CauseInstance>};
+ npcs:{byId:Record<string,NpcInstance>};
+ build:{techniques:string[];artifacts:string[];consumables:string[];tagScores:Record<string,number>;mainPath?:string;secondaryPath?:string};
+ world:{regionId:string;knownRegionIds:string[];tags:string[];factionStanding:Record<string,number>};
+ ending?:{endingId:string;deathCause?:DeathCause;sourceRef?:string;age:number;factIds:string[]};
+ rng:RngState;
+ director:{firstRun:boolean;interventions:number;last?:{nodeIndex:number;kind:string;reason:string}};
+};
+
+export type Relation={affinity:number;trust:number;debt:number};
+export type NpcInstance={npcId:string;templateId:string;tier:'S'|'A'|'B'|'C';name:string;age:number;maxAge:number;realmId:string;regionId:string;factionId?:string;status:'active'|'missing'|'injured'|'dead'|'ascended';traits:string[];goal:string;relation:Relation;importanceScore:number;memoryRefs:string[];timelineCursor:number;tags:string[]};
+export type RngState={algorithm:'xoshiro128ss-v1';rootSeed:string;streams:Record<string,{s:[number,number,number,number];drawIndex:number}>};
 export type MetaState={playerId:string;metaCurrency:number;unlocks:string[];discoveries:string[];achievements:string[];cosmetics:string[];entitlements:string[];settings:Record<string,unknown>;stats:Record<string,number>};
-export type MetaView=Pick<MetaState,'unlocks'|'entitlements'>;
-// Remaining domain aliases are implementation-owned but must be schema-validated.
-type RealmState=unknown; type ResourceState=unknown; type Condition=unknown; type IdentityState=unknown; type ActionState=unknown; type EventRunState=unknown; type CauseState=unknown; type NpcRunState=unknown; type BuildState=unknown; type WorldState=unknown; type EndingState=unknown; type DirectorState=unknown;
+export type MetaView=Pick<MetaState,'unlocks'|'entitlements'|'discoveries'>;
+
+// Invariants: ranges in numeric.ref; run versions/rootSeed immutable after offer creation;
+// offered=>destinyId absent+offer present; active=>chosen destinyId present;
+// ended Run rule fields immutable; dead NPC cannot perform live actions.

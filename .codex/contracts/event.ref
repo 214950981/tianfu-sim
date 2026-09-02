@@ -1,4 +1,44 @@
-export type EventDefinition={id:string;version:number;kind:'choice'|'narrative'|'combat'|'breakthrough'|'ending'|'tutorial';titleKey:string;tags:string[];requirements:ConditionExpr;weight:WeightExpr;cooldown?:unknown;choices?:ChoiceDefinition[];onEnter?:EffectSpec[];ai?:NarrativePolicy;fallback:FallbackText;telemetry?:Record<string,unknown>};
-export type ChoiceDefinition={id:string;labelKey:string;requirements?:ConditionExpr;riskHint?:'safe'|'fair'|'dangerous'|'desperate';check?:CheckSpec;outcomes:OutcomeTable;createsCause?:unknown[];relationEffects?:unknown[];buildEffects?:unknown[];next?:unknown[]};
-export type ConditionExpr=unknown; export type WeightExpr=unknown; export type EffectSpec={op:string;[k:string]:unknown}; export type NarrativePolicy=unknown; export type FallbackText=unknown; export type CheckSpec=unknown; export type OutcomeTable=unknown;
-// DSL whitelist only. No arbitrary JS/eval/new Function.
+// EVENT DSL v0.2
+type LogicalPath =
+ 'run.age'|'run.maxAge'|'realm.order'|'realm.cultivation'|
+ 'attr.insight'|'attr.body'|'attr.spiritSense'|'attr.fortune'|
+ 'resource.spiritStone'|'identity.tags'|'world.tags'|'world.regionId';
+type ConditionExpr =
+ {all:ConditionExpr[]}|{any:ConditionExpr[]}|{not:ConditionExpr}|
+ {eq:[LogicalPath,string|number|boolean]}|{ne:[LogicalPath,string|number|boolean]}|
+ {gte:[LogicalPath,number]}|{lte:[LogicalPath,number]}|
+ {hasTag:['identity.tags'|'world.tags',string]}|
+ {hasItem:[string,number?]}|{buildTagGte:[string,number]}|
+ {relationGte:[string,'affinity'|'trust'|'debt',number]}|
+ {relationLte:[string,'affinity'|'trust'|'debt',number]}|
+ {causeStateIs:[string,'dormant'|'eligible'|'echoed'|'resolved'|'expired']}|
+ {npcStatusIs:[string,string]};
+type EffectSpec =
+ {op:'ADD_RESOURCE'|'REMOVE_RESOURCE';key:'spiritStone';amount:number}|
+ {op:'ADD_ITEM'|'REMOVE_ITEM';itemId:string;amount:number}|
+ {op:'ADD_CULTIVATION';amount:number}|
+ {op:'ADD_CONDITION';conditionId:string;kind:string;stacks:number}|
+ {op:'REMOVE_CONDITION';conditionId:string}|
+ {op:'ADD_IDENTITY_TAG'|'REMOVE_IDENTITY_TAG'|'ADD_WORLD_TAG'|'REMOVE_WORLD_TAG';tag:string}|
+ {op:'RELATION_DELTA';npcId:string;axis:'affinity'|'trust'|'debt';delta:number}|
+ {op:'ADD_CAUSE';templateId:string;salience:1|2|3|4|5;visibility?:'hidden'|'hint'|'journal'}|
+ {op:'RESOLVE_CAUSE'|'EXPIRE_CAUSE';causeId:string}|
+ {op:'GRANT_COMPONENT'|'REMOVE_COMPONENT';componentId:string}|
+ {op:'CREATE_NPC';templateId:string}|
+ {op:'SET_NPC_STATUS';npcId:string;status:string}|
+ {op:'SET_REGION';regionId:string}|
+ {op:'OUTCOME_TIME_DELTA';years:number}|
+ {op:'END_RUN';endingId:string;deathCause?:string};
+
+type Outcome={effects:EffectSpec[];next?:Transition[];fallbackKey?:string};
+type OutcomeTable={greatSuccess?:Outcome;success:Outcome;costlySuccess?:Outcome;failure?:Outcome};
+type Transition={eventId:string;when?:ConditionExpr;priority?:number};
+type CheckSpec={primary:'insight'|'body'|'spiritSense'|'fortune';secondary?:'insight'|'body'|'spiritSense'|'fortune';difficulty:number;randomMin:-15;randomMax:15};
+type ChoiceDefinition={id:string;scope:'core'|'tactical';labelKey:string;requirements?:ConditionExpr;check?:CheckSpec;outcomes:OutcomeTable;next?:Transition[]};
+type EventDefinition={id:string;version:number;kind:'choice'|'narrative'|'combat'|'breakthrough'|'ending'|'tutorial';titleKey:string;tags:string[];requirements?:ConditionExpr;weight:number;cooldown?:{minNodesBetween?:number;maxOccurrences?:number};choices?:ChoiceDefinition[];onEnter?:EffectSpec[];ai?:unknown;fallback:{titleKey?:string;bodyKey:string};telemetry?:Record<string,string>};
+
+// LogicalPath is a stable DSL namespace, NOT direct GameState property access.
+// core Choice must change >=1 long-term dimension unless event explicitly marked rhythm-only.
+// tactical Choice may change only combat/session-local state; it is exempt from long-term-choice lint but must be meaningful.
+// Content cannot author riskHint. UI risk language is derived later (UI01).
+// No arbitrary function/path/code. Unknown operator/effect/path => lint+runtime reject.

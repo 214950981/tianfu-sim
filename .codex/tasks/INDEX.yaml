@@ -1,0 +1,3 @@
+version: "0.2"
+sequence: [A01,A02,A03,A04,A05,A06,A07,A08,A09,A10,A11,A12]
+rule: "sequential; current task acceptance before next; A12 blocked by UI01"

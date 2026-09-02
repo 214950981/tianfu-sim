@@ -1,1 +1,1 @@
-Review TASK_ID only. Follow AGENTS.md. Find architecture/invariant/security/replay violations. Do not implement features. Return blocking findings first.
+Review current Axx diff only. Follow AGENTS.md + the same Axx context. Find contract/invariant/security/determinism violations; do not rewrite features.

@@ -1,6 +1,10 @@
-// Spec-only reference; GameState/GameCommand are defined in sibling .ref contracts.
-export type RuleContext={rulesVersion:string;contentVersion:string};
+// CORE CONTRACT v0.2
+export type RuleContext={rulesVersion:string;contentVersion:string;content:Readonly<ContentRegistry>};
 export type ReduceInput={state:GameState;command:GameCommand;context:RuleContext};
 export type ReduceOutput={state:GameState;effects:DomainEffect[];narrativeFacts:Fact[];trace:RuleTrace};
-export type DomainEffect={type:string;[k:string]:unknown}; export type Fact={type:string;[k:string]:unknown}; export type RuleTrace={rngDraws?:unknown[];[k:string]:unknown};
+export type RuleTrace={rngDraws:Array<{stream:string;index:number;u32:number}>;director?:unknown[];selector?:unknown[];time?:unknown[]};
 export type Reducer=(i:ReduceInput)=>ReduceOutput;
+
+// createOfferedRun(...) is the only pure pre-reducer factory; server supplies trusted runId/playerId/rootSeed/version/metaView.
+// Once GameState exists, all rule mutation goes through reduce.
+// Failure: identical RuleState/stateVersion/RNG; no IO anywhere in Core.

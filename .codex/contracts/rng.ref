@@ -1,0 +1,12 @@
+// RNG CONTRACT v0.2
+algorithmId = "xoshiro128ss-v1".
+uint32 ops only: >>>0, Math.imul; no floating RNG for rule semantics.
+seed bytes = UTF8(`tianfu2|rng|${rulesVersion}|${rootSeed}|${streamId}`);
+initial xoshiro state = first 16 bytes of SHA-256(seed bytes), decoded 4x uint32 little-endian; all-zero => last word=1.
+Named streams are independent. MVP stable IDs:
+offer,time,event,check,npc,npcTimeline,combat,breakthrough,director,world.
+New unrelated random use => new stream ID, never borrow another stream.
+RngState stores rootSeed + per-stream {s:[u32,u32,u32,u32],drawIndex}.
+Each draw increments only its stream drawIndex and appends trace {stream,index,u32}.
+Helpers derive int(min,max) by rejection sampling (no modulo bias); bps draws are integer.
+No Math.random/Date.now/AI randomness for rules.

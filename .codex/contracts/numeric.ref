@@ -1,0 +1,11 @@
+// NUMERIC CONTRACT v0.2
+All RuleState numbers must be finite JS safe integers unless explicitly encoded fixed-point.
+age,maxAge,actionTimeCost,outcomeTimeDelta = integer years >=0.
+attributes = integers; injury/丹毒 stacks = integers 0..3.
+relation.affinity/trust = integer -100..100; debt = integer -3..3.
+probability/multipliers = basis points (0..10000 = 0..100% or 1.0 multiplier); clamp where contract says.
+No hidden float accumulation.
+Generic roundHalfUpPositive(n,d)=floor((n + floor(d/2))/d), n>=0,d>0.
+Time formula may multiply integer baseYears by bps modifiers; round once at final years boundary; min positive action cost=1.
+Checks compare scaled integers; do not round weighted attribute terms mid-formula.
+Reject NaN/Infinity/unsafe integers before reduce.

@@ -1,18 +1,19 @@
 id: A11
 title: server-command-gateway
-read: [.codex/contracts/command.ref,.codex/contracts/reducer.ref,.codex/contracts/qa.yaml]
+read: [.codex/contracts/command.ref,.codex/contracts/reducer.ref,.codex/contracts/crosslayer.ref,.codex/contracts/platform.ref,.codex/contracts/qa.yaml]
+blockers: []
 in:
-  - trusted auth binds playerId; never trust client playerId ownership
-  - schema validate -> idempotency -> load/version check -> authorize -> reduce -> invariant -> atomic log/state -> response
-  - commandId idempotency + expectedStateVersion optimistic concurrency
-  - owner checks; size/unknown-field limits; safe logging
-  - adapt ONE non-destructive vertical-slice path first; do not migrate all 1.0 endpoints
-out: [payments,ads,leaderboard,full migration]
+  - trusted auth binds playerId; schema -> idempotency -> load/version -> authorize -> reduce -> invariant -> atomic log/state -> safe response
+  - commandId idempotency + expectedStateVersion concurrency
+  - owner checks, payload limits, safe logs
+  - implement ApplicationTransport for ONE non-destructive vertical-slice path
+  - synchronous server authority + pending-compatible response; no authoritative local Core
+out: [payments,ads,leaderboard,full_migration,UI_redesign]
 accept:
-  - gold/realm/rank/finalState forgery cannot alter server state
-  - duplicate commandId settles once
-  - two concurrent commands: one wins, stale one gets STATE_CONFLICT
-  - cross-player runId denied
-  - timeout/retry with same commandId cannot double-settle
-security: [CMD-001,CMD-002,CMD-003,CMD-004,CMD-005,CMD-006,CMD-008]
+  - forgery cannot alter authoritative fields
+  - duplicate settles once
+  - concurrent stale command gets STATE_CONFLICT
+  - cross-player denied
+  - timeout retry same commandId cannot double settle
+  - View response contains no rootSeed/RNG/internal Cause facts
 tests: [integration,idempotency,concurrency,owner_auth,failure_injection]

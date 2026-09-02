@@ -1,18 +1,19 @@
 id: A08
 title: event-dsl
-read: [.codex/contracts/event.ref,.codex/contracts/reducer.ref]
+read: [.codex/contracts/event.ref,.codex/contracts/reducer.ref,.codex/contracts/lifecycle.ref,.codex/contracts/numeric.ref]
+blockers: []
 in:
-  - implement ConditionExpr evaluator + whitelisted EffectSpec executor
-  - minimal EventDefinition/Choice flow + CHOOSE_EVENT_OPTION
-  - hard requirements before weighted selection; invalid choices mutate nothing
-  - 4 outcome tiers support: great/success/costly_success/fail
-  - create dev fixture event with >=2 meaningful choices
-out: [large content pack,AI narration,combat system]
+  - implement exact ConditionExpr/EffectSpec whitelist + logical path resolver
+  - implement EventDefinition/Choice + CHOOSE_EVENT_OPTION
+  - implement 4 outcome tiers and cooldown/maxOccurrences
+  - separate core vs tactical choice lint semantics
+  - dev fixture with >=2 meaningful core choices
+out: [large_content,AI,full_combat,UI_risk_labels]
 accept:
   - hard-ineligible event never selected
-  - DSL cannot access arbitrary paths/functions beyond whitelist
-  - choice can change long-term dimension via controlled effect
+  - DSL cannot access internal GameState paths/arbitrary funcs
+  - unknown op/path rejects
+  - core choice changes long-term dimension unless explicit rhythm-only
+  - tactical choice exemption does not bypass schema safety
   - illegal choice consumes no RNG/time
-  - content-lint catches one-choice-as-choice, dangling refs, missing fallback
-security: [DSL_injection_fuzz]
-tests: [CNT-003,CNT-004,CNT-005,CNT-007,CMD-007,event_golden]
+tests: [CNT-003,CNT-004,CNT-005,CNT-007,CMD-007,event_golden,DSL_injection_fuzz]

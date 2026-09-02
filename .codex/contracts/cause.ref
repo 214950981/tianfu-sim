@@ -1,2 +1,9 @@
-export type CauseInstance={causeId:string;templateId:string;originCommandId:string;originNodeIndex:number;age:number;actors:string[];themes:string[];salience:1|2|3|4|5;state:CauseState;maturity:unknown;echoBudget:number;facts:Record<string,unknown>;linkedEventIds:string[];resolution?:unknown};
-export type CauseState='dormant'|'eligible'|'echoed'|'resolved'|'expired'; // D002 must be resolved before implementation.
+// CAUSE CONTRACT v0.2
+export type CauseStatus='dormant'|'eligible'|'echoed'|'resolved'|'expired';
+export type CauseInstance={causeId:string;templateId:string;originCommandId:string;originNodeIndex:number;originAge:number;actors:string[];themes:string[];salience:1|2|3|4|5;visibility:'hidden'|'hint'|'journal';state:CauseStatus;maturity:{minNode?:number;minAge?:number;regionId?:string;npcAliveId?:string};echoBudget:number;echoCount:number;facts:Record<string,string|number|boolean>;linkedEventIds:string[];resolution?:Record<string,unknown>};
+
+Default echoBudget by salience: 1->0, 2->1, 3->1, 4->2, 5->3. Content override allowed only 0..3.
+Visibility is explicit; salience never automatically reveals a secret.
+created=>dormant; maturity true=>eligible; eligible echo=>echoed; echoed may return eligible if budget remains; resolve/expire terminal.
+transform = resolve old + create new Cause, never persistent "transformed" state.
+Echo selection follows lifecycle.ref precedence. Same reward/effect cannot repeat unless event explicitly defines repeat-safe effect.

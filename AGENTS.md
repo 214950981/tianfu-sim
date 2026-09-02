@@ -1,41 +1,42 @@
-# TIANFU 2.0 / CODEX RULES v0.1
+# TIANFU 2.0 / CODEX RULES v0.2
 
-Priority: task spec > contracts > this file. If conflict with product intent, STOP; do not guess.
+Authority: current task defines scope; contracts define semantics; this file defines invariants/workflow. A task may narrow a contract, never override it. Conflict => STOP, report blocker/ADR. Long v0.1 docs are provenance only.
 
 ## Global invariants
-G01 Core is pure: no wx/tt, UI, DB SDK, HTTP/fetch, AI provider, platform clock.
-G02 Rule RNG only via injected seeded RNG. No Math.random()/Date.now() for rule outcomes.
-G03 Rule entry: reduce(State, Command, Context) -> {State, Effects, NarrativeFacts, Trace}. No hidden writes.
-G04 Client sends intent only. Never trust client currency/rank/realm/reward/final-state values.
+G01 Core pure: no wx/tt/UI/DB SDK/HTTP/fetch/AI/platform clock.
+G02 Rule randomness only via `.codex/contracts/rng.ref`; no Math.random()/Date.now() for rule outcomes.
+G03 Rule mutation entry: reduce(State,Command,Context)->{State,Effects,NarrativeFacts,Trace}; creation factories must also be pure.
+G04 Client sends intent only; never trust client currency/rank/realm/reward/final-state/player ownership.
 G05 Server authoritative for rewards, ranked state, paid/meta currency, challenge results.
-G06 Run locks rulesVersion + contentVersion + seed. Same versions+seed+commands => same RuleState hash.
-G07 Content uses versioned schemas + whitelisted Condition/Effect DSL. No eval/new Function/arbitrary scripts.
-G08 AI is optional narrative only. It cannot create DomainEffect, rewards, combat/breakthrough/rank results, or mutate RuleState.
-G09 Every AI scene has deterministic fallback. AI-off must not block the run.
-G10 Platform code is Adapter-only. Core/Content never import wx/tt.
-G11 RunState != MetaState. Cross-run unlocks do not mutate an ended Run.
-G12 Cause must trace to a real choice/system cause; echo cannot reference nonexistent cause/NPC.
-G13 Challenge: no paid/ad/AI difference may change ranked result.
-G14 Prefer small changes. No whole-repo rewrite, no unrelated cleanup, no gameplay scope creep.
-G15 Rule/Core changes require deterministic tests. Random behavior requires replay evidence.
-G16 Failed/invalid command must not mutate RuleState or consume RNG/time.
-G17 commandId is idempotency key; expectedStateVersion guards concurrency.
-G18 Do not silently change frozen product assumptions. Use ADR/blocker.
+G06 Run locks rulesVersion+contentVersion+rootSeed. Same locked inputs+commands => same canonical RuleState hash.
+G07 Rule numbers are finite safe integers unless a contract explicitly defines fixed-point/bps. No implicit float semantics.
+G08 Content uses versioned schema + whitelisted DSL only. No eval/new Function/arbitrary scripts/direct DB writes.
+G09 AI optional narrative only; cannot create DomainEffect/reward/combat/breakthrough/rank result or mutate RuleState. Every AI scene has fallback.
+G10 Core/Content never import wx/tt. Transport is application infrastructure, not game rules.
+G11 RunState != MetaState. Ended Run is immutable except archival metadata.
+G12 Cause/echo must trace to real source; no impossible live-NPC echo.
+G13 Challenge: no paid/ad/AI difference may change ranked rule result.
+G14 Invalid/failed command mutates no RuleState/stateVersion and consumes no RNG/time.
+G15 commandId idempotent; expectedStateVersion guards concurrency.
+G16 maxAge is a hard lifespan ceiling, not the expected death mechanism. Earlier death may come from rule-resolved hazards/conditions/causes. Lethal results must be telegraphed or causally traceable; first 3 effective nodes forbid untelegraphed lethal RNG.
+G17 Director may change candidate eligibility/weight/slot only; never direct stats/check results/rewards/death. All intervention is deterministic+traced.
+G18 Do not silently change frozen assumptions. Use DECISIONS/ADR/blocker.
+G19 Prefer smallest diff. No whole-repo rewrite, unrelated cleanup, gameplay scope creep, AI, Douyin, or visual redesign unless task says so.
 
 ## Work protocol
-1. Read `.codex/INDEX.yaml`, then ONLY the current task's `read` files. Do not read the four long design docs by default.
-2. Inspect only code/config needed for the task. Avoid broad repo scans unless blocked.
-3. If task touches an unresolved decision in `.codex/DECISIONS.yaml`, STOP and report the decision ID.
-4. Implement only `in`. Never implement `out` “while here”.
-5. Run task `tests`. If unavailable, create the smallest missing test harness only when task allows it.
-6. Before finish: self-check G01–G18 + task acceptance.
-7. Output only: changed files; tests run/results; blockers/ADR; next task readiness. No long recap.
+1. Run `node .codex/context.mjs Axx` once. Use only printed task+contracts unless blocked.
+2. Inspect only code/config needed for task; no broad repo scan unless required.
+3. If context reports BLOCKED, stop. Do not self-resolve scheduled/validate decisions.
+4. Implement only `in`; never implement `out` while here.
+5. Run task tests. Create only the smallest harness allowed by task.
+6. Self-check G01-G19 + task acceptance.
+7. Output only: changed files; tests/results; blocker/ADR; next-task readiness.
 
-## Severity / merge
-P0/P1 => no merge. Determinism/security/fairness/data-loss/idempotency failures are >=P1; exploitable reward/rank/other-user access is P0.
+## Merge
+P0/P1 => no merge. Determinism/security/fairness/data-loss/idempotency failure >=P1; exploitable reward/rank/other-user access=P0.
 
 ## Token discipline
-- Do not reread unchanged `.codex` files in the same task.
-- Do not ingest `docs/*.docx` unless task says `escalate: true` or a contract conflict cannot be resolved locally.
-- Prefer targeted `rg`/file reads over full-repo reading.
-- Do not generate prose docs unless the task explicitly requires an ADR.
+- Do not reread unchanged `.codex` files in one task.
+- Do not ingest `docs/*.docx` or audit DOCX unless context cannot resolve a contract conflict.
+- Prefer targeted rg/file reads.
+- Do not generate prose docs unless ADR explicitly required.

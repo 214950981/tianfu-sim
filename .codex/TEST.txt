@@ -1,1 +1,1 @@
-Test TASK_ID only. Follow AGENTS.md. Add adversarial/boundary/determinism tests required by the task. No feature expansion.
+Test current Axx only. Follow AGENTS.md + same context. Add adversarial/boundary tests allowed by task; report failures, no scope expansion.

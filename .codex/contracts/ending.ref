@@ -1,0 +1,12 @@
+// ENDING/BOOK CONTRACT v0.2
+Template book may contain:
+- identity summary: runName, age, highestRealm, mainPath/title if real;
+- 3..10 actual major facts;
+- importantPeople: 0..3 actual NPCs only;
+- keyCauses: 1..4 actual echoed/decisive Causes when available;
+- unresolved: 0..3 actual visible unresolved Causes;
+- metaUnlocks actually granted;
+- primary CTA: rebirth.
+First-life product target: at least 1 clearly traceable "earlier choice -> later echo" when the run produced such a Cause.
+Never fabricate a third NPC, extra Cause, regret, mystery or unlock to satisfy layout.
+Run world resets on rebirth (D008); "后篇" means unlocked content in a new Run, not same NPC instance memory.

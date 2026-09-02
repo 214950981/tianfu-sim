@@ -1,0 +1,54 @@
+{
+  "version": "0.2",
+  "note": "bytes printed by context.mjs; A12 intentionally exits blocked until UI01",
+  "tasks": {
+    "A01": {
+      "bytes": 799,
+      "exit": 0
+    },
+    "A02": {
+      "bytes": 2396,
+      "exit": 0
+    },
+    "A03": {
+      "bytes": 5465,
+      "exit": 0
+    },
+    "A04": {
+      "bytes": 5343,
+      "exit": 0
+    },
+    "A05": {
+      "bytes": 9158,
+      "exit": 0
+    },
+    "A06": {
+      "bytes": 5489,
+      "exit": 0
+    },
+    "A07": {
+      "bytes": 8236,
+      "exit": 0
+    },
+    "A08": {
+      "bytes": 7582,
+      "exit": 0
+    },
+    "A09": {
+      "bytes": 6958,
+      "exit": 0
+    },
+    "A10": {
+      "bytes": 8083,
+      "exit": 0
+    },
+    "A11": {
+      "bytes": 7156,
+      "exit": 0
+    },
+    "A12": {
+      "bytes": 1243,
+      "exit": 3
+    }
+  }
+}

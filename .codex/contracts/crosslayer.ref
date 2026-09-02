@@ -1,0 +1,13 @@
+// CROSS-LAYER CONTRACT v0.2
+type JsonScalar=string|number|boolean|null;
+export type Fact={id:string;type:string;sourceRef:string;data:Record<string,JsonScalar>};
+export type PublicEffect={type:string;labelKey:string;data?:Record<string,JsonScalar>};
+export type ViewStatePatch={stateVersion:number;ops:Array<{op:'set'|'remove';path:string;value?:unknown}>};
+export type NarrativePayload=
+ |{kind:'dialogue';npcId:string;dialogue:string;emotion?:string;fallback:boolean}
+ |{kind:'narration';narration:string;fallback:boolean}
+ |{kind:'ending_book';sections:Array<{id:string;titleKey:string;body:string}>;fallback:boolean};
+
+// ViewState is application-owned safe projection. Never expose rootSeed/RNG state/internal Cause facts/raw auth/security fields.
+// AI can fill NarrativePayload text only after rule facts exist; payload cannot be converted into DomainEffect.
+// Ending book uses actual facts only; never invent people/Causes to meet a quota.

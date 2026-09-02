@@ -1,12 +1,14 @@
-v: 0.1
+version: "0.2"
 mode: minimal-context
-prompt: "Execute {TASK}. Follow AGENTS.md. Read only INDEX + task.read. Stop on DECISION blockers."
-source_docs:
-  S1: "Tianfu-sim_2.0_PRD_v0.1"
-  S2: "Tianfu-sim_2.0_核心玩法规则书_v0.1"
-  S3: "Tianfu-sim_2.0_技术架构与数据Schema_v0.1"
-  S4: "Tianfu-sim_2.0_测试与验收标准_v0.1"
-# Source docs are provenance only; not default context.
+prompt: "Execute {TASK}. Follow AGENTS.md. Run node .codex/context.mjs {TASK} once; use only that context unless blocked."
+authority:
+  explicit_patch: "Tianfu 2.0 audit remediation v0.2"
+  base_docs:
+    - "Tianfu-sim_2.0_PRD_v0.1"
+    - "Tianfu-sim_2.0_核心玩法规则书_v0.1"
+    - "Tianfu-sim_2.0_技术架构与数据Schema_v0.1"
+    - "Tianfu-sim_2.0_测试与验收标准_v0.1"
+note: "Base docs remain provenance; v0.2 contracts/decisions override only audited points. Do not read long docs by default."
 tasks:
   A01: .codex/tasks/A01.yaml
   A02: .codex/tasks/A02.yaml
