@@ -5,11 +5,12 @@
   "scripts": {
     "lint": "node tools/check-import-boundaries.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/core-smoke.test.mjs tests/import-boundary.test.mjs tests/rng-numeric.test.mjs tests/state.test.mjs",
+    "test": "node --test tests/core-smoke.test.mjs tests/import-boundary.test.mjs tests/rng-numeric.test.mjs tests/state.test.mjs tests/command.test.mjs",
     "test:core": "node --test tests/core-smoke.test.mjs",
     "test:boundaries": "node --test tests/import-boundary.test.mjs",
     "test:a02": "node --test tests/rng-numeric.test.mjs",
     "test:a03": "node --test tests/state.test.mjs",
+    "test:a04": "node --test tests/command.test.mjs",
     "scan:secrets": "node tools/scan-secrets.mjs"
   },
   "devDependencies": {
