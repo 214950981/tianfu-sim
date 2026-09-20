@@ -1,0 +1,16 @@
+// UI CONTRACT v1 (UI01 Final Contract v1)
+// Design language and responsibility boundaries are frozen; exact pixels are not.
+export type CausePublicLevel='explicit'|'hinted'|'hidden';
+// Cause mapping: journal=>explicit, hint=>hinted, hidden=>not sent.
+RUN_HOME is the main Home during an active Run. LIFE_ARCHIVE is its read-only side page.
+RUN_HOME presents public status and exactly four core action intents: 闭关(cultivate), 游历(travel), 入世(worldly), 追索(pursuit).
+Actions submit Command Envelope intent only; UI never computes authoritative outcomes.
+EVENT is a full-page decision model showing only public scene data, options and server-built riskPresentation. An unresolved EVENT cannot be escaped through ordinary back navigation.
+SPECIAL_NODE is a generic structured-node container. UI01 freezes page-state/submission/retry/recovery/projection boundaries, not full gameplay.
+Terminal flow is ENDING -> LIFE_BOOK -> REBIRTH_RESULT -> NEXT_LIFE. LIFE_BOOK uses actual public facts only.
+Capability-aware UI gates entries through DailyChallengeCapability, AdCapability, CommerceCapability, ShareCapability and PlatformCapability. Missing capability hides or safely degrades the entry. wx.xxx/tt.xxx never enter Core or platform-neutral ViewModel.
+Daily Challenge UI may expose 今日命局/初赴此命/再赴此命/正式榜/我的排名 and first-life fairness; second life never changes first-life official ranking. DailyChallengeCapability=false hides the entry. Challenge semantics/backend belong to CHAL01.
+Commercial fairness: no permanent power, paid breakthrough odds, ad revive, settled-choice rewrite, RNG modification, official-first-life paid/ad information advantage, or paid leaderboard advantage. dailyChallengeSecondLife is deferred to CHAL01 + AdCapability.
+Visual language: 宣纸 + 墨 + 朱砂 + 极少暗金 + 大量留白 + 克制动画. UI01 does not freeze HEX, type sizes, spacing, radius, component dimensions or high-fidelity comps; UI02 owns them.
+A12 may implement only WeChat ViewModel projection/builder, page-state plumbing, command submission states, pending/retry integration, platform-neutral contract connection and a minimal WeChat page shell.
+A12 must not implement leaderboard backend, CHAL01, full combat, UI02-UI04, new monetization, Cause reinterpretation, or server-secret transmission.

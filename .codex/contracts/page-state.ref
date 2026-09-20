@@ -1,0 +1,14 @@
+// PAGE STATE CONTRACT v1 (UI01 Final Contract v1)
+export type PageState='START'|'MODE_SELECT'|'DESTINY_OFFER'|'RUN_OPENING'|'RUN_HOME'|'EVENT'|'SPECIAL_NODE'|'LIFE_ARCHIVE'|'ENDING'|'LIFE_BOOK'|'REBIRTH_RESULT'|'NEXT_LIFE';
+export type InteractionState='idle'|'submitting'|'confirmed'|'retryableError'|'fatalError';
+Main flow: START -> MODE_SELECT -> DESTINY_OFFER -> RUN_OPENING -> RUN_HOME.
+RUN_HOME <-> LIFE_ARCHIVE is a main-page/read-only-side-page relationship.
+RUN_HOME -> EVENT or SPECIAL_NODE is server-directed. Completed interaction returns to the latest server-directed page, normally RUN_HOME; terminal results enter ENDING.
+Terminal flow: ENDING -> LIFE_BOOK -> REBIRTH_RESULT -> NEXT_LIFE.
+EVENT with an unresolved choice cannot be escaped through ordinary back navigation.
+submitting locks mutually exclusive operations until authoritative result, timeout, or classified error.
+retryableError retries the identical serialized Command Envelope with the same commandId.
+After app restart, recover the authoritative current EVENT/SPECIAL_NODE or query the original commandId result. Never redraw an event and never locally calculate fate/outcome.
+STATE_CONFLICT requires fetching latest ViewModel and explicit player reconfirmation; never silently resubmit against new state.
+fatalError blocks mutation and exposes safe recovery/exit without local rule repair.
+Page state is derived from authoritative public ViewModel. Client navigation cannot mutate RuleState or fabricate completion.

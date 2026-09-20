@@ -110,8 +110,9 @@ items:
   action: D012/platform.ref synchronous server authority + pending UI
   gate: A11/A12
 - id: G17
-  verdict: scheduled_blocker
-  action: UI01 blocks A12 until ui.ref exists
+  verdict: resolved
+  action: UI01 Final Contract v1 in ui.ref/viewmodel.ref/page-state.ref; A12 is no longer blocked
+  history: UI01曾为A12 blocker，现由 UI01 Final Contract v1 正式解除。
   gate: A12
 - id: G18
   verdict: resolved
@@ -134,8 +135,8 @@ items:
   action: technical field stays metaCurrency; display name freeze before UI
   gate: UI naming
 - id: G23
-  verdict: scheduled
-  action: UI01; content cannot author riskHint, derive in UI contract later
+  verdict: resolved
+  action: viewmodel.ref requires server-controlled riskPresentation; content/client cannot author or derive it from hidden rule data
   gate: A12/event UI
 - id: G24
   verdict: resolved

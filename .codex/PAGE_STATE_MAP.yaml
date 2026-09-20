@@ -1,0 +1,33 @@
+version: "1"
+contract: "UI01 Final Contract v1"
+page_states: [START, MODE_SELECT, DESTINY_OFFER, RUN_OPENING, RUN_HOME, EVENT, SPECIAL_NODE, LIFE_ARCHIVE, ENDING, LIFE_BOOK, REBIRTH_RESULT, NEXT_LIFE]
+main_flow:
+  - { from: START, to: MODE_SELECT }
+  - { from: MODE_SELECT, to: DESTINY_OFFER }
+  - { from: DESTINY_OFFER, to: RUN_OPENING }
+  - { from: RUN_OPENING, to: RUN_HOME }
+home_relations:
+  main: RUN_HOME
+  side_pages:
+    - { page: LIFE_ARCHIVE, return_to: RUN_HOME }
+interaction_flow:
+  - { page: EVENT, entered_from: RUN_HOME, ordinary_back_allowed_while_unresolved: false, completed_return: SERVER_DIRECTED_OR_RUN_HOME }
+  - { page: SPECIAL_NODE, entered_from: RUN_HOME, ordinary_back_allowed_while_unresolved: false, completed_return: SERVER_DIRECTED_OR_RUN_HOME }
+terminal_flow: [ENDING, LIFE_BOOK, REBIRTH_RESULT, NEXT_LIFE]
+interaction_states:
+  idle: { exclusive_actions_locked: false }
+  submitting: { exclusive_actions_locked: true }
+  confirmed: { exclusive_actions_locked: true }
+  retryableError: { retry_same_command_id: true }
+  fatalError: { mutation_blocked: true }
+recovery:
+  app_restart: RESTORE_SERVER_INTERACTION_OR_QUERY_COMMAND_RESULT
+  redraw_event: false
+  local_outcome_calculation: false
+  STATE_CONFLICT: REFRESH_VIEWMODEL_AND_REQUIRE_RECONFIRMATION
+capability_gates:
+  daily_challenge: { capability: DailyChallengeCapability, false_behavior: HIDE_ENTRY }
+  ads: { capability: AdCapability, false_behavior: HIDE_ENTRY }
+  commerce: { capability: CommerceCapability, false_behavior: HIDE_ENTRY }
+  share: { capability: ShareCapability, false_behavior: HIDE_OR_DISABLE_ENTRY }
+  platform: { capability: PlatformCapability, false_behavior: USE_PLATFORM_NEUTRAL_FALLBACK }
