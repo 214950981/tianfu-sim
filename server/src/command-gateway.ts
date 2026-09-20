@@ -77,6 +77,7 @@ export interface CommandGatewayOptions {
   resolveContext?: (envelope: CommandEnvelope) => ReplayContext;
   beforeCommit?: (envelope: CommandEnvelope) => void | Promise<void>;
   afterCommit?: (envelope: CommandEnvelope) => void | Promise<void>;
+  projectView?: (state: GameState) => unknown;
 }
 
 export class CommandGateway {
@@ -85,7 +86,13 @@ export class CommandGateway {
   readonly #resolveContext: (envelope: CommandEnvelope) => ReplayContext;
   readonly #beforeCommit?: CommandGatewayOptions["beforeCommit"];
   readonly #afterCommit?: CommandGatewayOptions["afterCommit"];
-  constructor(options: CommandGatewayOptions) { this.#store = options.store; this.#content = options.content; this.#resolveContext = options.resolveContext ?? (() => ({})); this.#beforeCommit = options.beforeCommit; this.#afterCommit = options.afterCommit; }
+  readonly #projectView?: CommandGatewayOptions["projectView"];
+  constructor(options: CommandGatewayOptions) { this.#store = options.store; this.#content = options.content; this.#resolveContext = options.resolveContext ?? (() => ({})); this.#beforeCommit = options.beforeCommit; this.#afterCommit = options.afterCommit; this.#projectView = options.projectView; }
+
+  async fetchView(auth: TrustedAuthContext, runId: string): Promise<unknown> {
+    const stored = this.#store.readRun(runId); if (stored === undefined || stored.state.run.playerId !== auth.playerId) throw new Error("UNAUTHORIZED");
+    if (this.#projectView === undefined) throw new Error("ViewModel builder is not configured"); return this.#projectView(stored.state);
+  }
 
   async sendCommand(auth: TrustedAuthContext, envelopeValue: unknown): Promise<CommandResult> {
     const untrustedCommandId = commandIdFrom(envelopeValue); let envelope: CommandEnvelope;
@@ -136,6 +143,6 @@ export class GatewayApplicationTransport implements ApplicationTransport {
   readonly auth: TrustedAuthContext;
   constructor(gateway: CommandGateway, auth: TrustedAuthContext) { this.gateway = gateway; this.auth = auth; }
   sendCommand(command: CommandEnvelope): Promise<CommandResult> { return this.gateway.sendCommand(this.auth, command); }
-  fetchView(_runId: string): Promise<unknown> { return Promise.reject(new Error("A11 transport implements sendCommand only")); }
+  fetchView(runId: string): Promise<unknown> { return this.gateway.fetchView(this.auth, runId); }
   createRunOffer(): Promise<unknown> { return Promise.reject(new Error("A11 transport implements sendCommand only")); }
 }
