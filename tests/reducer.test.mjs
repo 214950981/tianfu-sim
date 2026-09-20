@@ -24,7 +24,7 @@ function offeredInput() {
   };
 }
 
-function context() { return { rulesVersion: "2.0.0", contentVersion: "content-1", content: {} }; }
+function context() { return { rulesVersion: "2.0.0", contentVersion: "content-1", content: {}, commandId: "cmd:reducer" }; }
 
 test("reducer_purity: same input is canonical-equivalent and input is not mutated", () => {
   const factoryInput = offeredInput();

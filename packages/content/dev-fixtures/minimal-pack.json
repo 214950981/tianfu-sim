@@ -4,7 +4,7 @@
     "packId": "dev-minimal",
     "rulesVersion": "2.0.0",
     "contentVersion": "dev-0.1.0",
-    "checksum": "e8e8fe1127fe8a17266a71c5c66627f922d11f7875a9f2e2aca911d453b300b5"
+    "checksum": "277af7671aaffc468b36cd09f90ba7b201b5598aad57153e0f880d318136a9e7"
   },
   "references": {
     "items": [],
@@ -12,7 +12,7 @@
     "npcTemplates": ["dev.mysterious-mentor"],
     "regions": ["dev.start"],
     "endings": [],
-    "causes": [],
+    "causes": ["cause.rescued-stranger"],
     "conditions": []
   },
   "destinies": [
@@ -45,6 +45,17 @@
       "advantage": { "target": "insight", "amount": 2, "labelKey": "destiny.hidden-mentor.advantage" },
       "cost": { "target": "spiritStone", "amount": 10, "labelKey": "destiny.hidden-mentor.cost" },
       "hook": { "kind": "person", "refId": "dev.mysterious-mentor", "labelKey": "destiny.hidden-mentor.hook" }
+    }
+  ],
+  "causeTemplates": [
+    {
+      "id": "cause.rescued-stranger",
+      "salience": 3,
+      "maturity": { "minNodeDelta": 1 },
+      "actors": [{ "role": "rescuedNpc", "required": true }],
+      "themes": ["rescue"],
+      "linkedEventIds": ["dev.rescue-echo-a", "dev.rescue-echo-b"],
+      "onActorUnavailable": { "action": "expire" }
     }
   ],
   "events": [
@@ -86,9 +97,45 @@
             "costlySuccess": { "effects": [{ "op": "ADD_RESOURCE", "key": "spiritStone", "amount": 1 }] },
             "failure": { "effects": [] }
           }
+        },
+        {
+          "id": "rescue-stranger",
+          "scope": "core",
+          "labelKey": "dev.first-choice.rescue-stranger",
+          "outcomes": {
+            "success": {
+              "effects": [
+                {
+                  "op": "ADD_CAUSE",
+                  "templateId": "cause.rescued-stranger",
+                  "salience": 3,
+                  "visibility": "hint",
+                  "actorBindingKeys": { "rescuedNpc": "eventTarget" }
+                }
+              ]
+            }
+          }
         }
       ],
       "fallback": { "bodyKey": "dev.first-choice.body" }
+    },
+    {
+      "id": "dev.rescue-echo-a",
+      "version": 1,
+      "kind": "narrative",
+      "titleKey": "dev.rescue-echo-a.title",
+      "tags": ["dev-fixture", "echo"],
+      "weight": 1,
+      "fallback": { "bodyKey": "dev.rescue-echo-a.body" }
+    },
+    {
+      "id": "dev.rescue-echo-b",
+      "version": 1,
+      "kind": "narrative",
+      "titleKey": "dev.rescue-echo-b.title",
+      "tags": ["dev-fixture", "echo"],
+      "weight": 1,
+      "fallback": { "bodyKey": "dev.rescue-echo-b.body" }
     }
   ]
 }

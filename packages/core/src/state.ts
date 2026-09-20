@@ -10,7 +10,16 @@ export type RunStatus = typeof RUN_STATUSES[number];
 export type ActionType = typeof ACTION_TYPES[number];
 export type ConditionKind = typeof CONDITION_KINDS[number];
 export type DeathCause = typeof DEATH_CAUSES[number];
-export type CauseInstance = Readonly<Record<string, unknown>>;
+export type CauseStatus = "dormant" | "eligible" | "echoed" | "resolved" | "expired";
+export interface CauseInstance {
+  causeId: string; templateId: string; originCommandId: string; originNodeIndex: number; originAge: number;
+  actorIdsByRole: Record<string, string>; themes: string[]; salience: 1 | 2 | 3 | 4 | 5;
+  visibility: "hidden" | "hint" | "journal"; state: CauseStatus;
+  maturity: { minNode: number; minAge: number; conditions: unknown[] };
+  eligibleSinceNode?: number; eligibleAge?: number; echoBudget: number; echoCount: number;
+  facts: Record<string, string | number | boolean>; linkedEventIds: string[];
+  resolution?: Record<string, unknown>;
+}
 
 export interface Relation { affinity: number; trust: number; debt: number }
 export interface NpcInstance {
@@ -52,6 +61,7 @@ const conditionKindSet = new Set<string>(CONDITION_KINDS);
 const deathCauseSet = new Set<string>(DEATH_CAUSES);
 const npcTierSet = new Set(["S", "A", "B", "C"]);
 const npcStatusSet = new Set(["active", "missing", "injured", "dead", "ascended"]);
+const causeStatusSet = new Set(["dormant", "eligible", "echoed", "resolved", "expired"]);
 
 function invalid(path: string, message: string): never { throw new TypeError(`${path}: ${message}`); }
 function record(value: unknown, path: string): Record<string, unknown> {
@@ -130,6 +140,26 @@ function validateNpc(value: unknown, path: string): void {
   integer(relation.debt, `${path}.relation.debt`, -3, 3);
 }
 
+function validateCause(value: unknown, path: string): void {
+  const cause = record(value, path);
+  for (const key of ["causeId", "templateId", "originCommandId"] as const) stringValue(cause[key], `${path}.${key}`);
+  integer(cause.originNodeIndex, `${path}.originNodeIndex`, 0); integer(cause.originAge, `${path}.originAge`, 0);
+  const actors = record(cause.actorIdsByRole, `${path}.actorIdsByRole`);
+  for (const [role, actorId] of Object.entries(actors)) { if (role.length === 0) invalid(`${path}.actorIdsByRole`, "roles must be non-empty"); if (stringValue(actorId, `${path}.actorIdsByRole.${role}`).length === 0) invalid(`${path}.actorIdsByRole.${role}`, "must be non-empty"); }
+  strings(cause.themes, `${path}.themes`); integer(cause.salience, `${path}.salience`, 1, 5);
+  enumValue(cause.visibility, new Set(["hidden", "hint", "journal"]), `${path}.visibility`);
+  enumValue(cause.state, causeStatusSet, `${path}.state`);
+  const maturity = record(cause.maturity, `${path}.maturity`);
+  integer(maturity.minNode, `${path}.maturity.minNode`, 0); integer(maturity.minAge, `${path}.maturity.minAge`, 0);
+  array(maturity.conditions, `${path}.maturity.conditions`).forEach((entry, index) => safeRuleValue(entry, `${path}.maturity.conditions[${index}]`));
+  if (cause.eligibleSinceNode !== undefined) integer(cause.eligibleSinceNode, `${path}.eligibleSinceNode`, 0);
+  if (cause.eligibleAge !== undefined) integer(cause.eligibleAge, `${path}.eligibleAge`, 0);
+  integer(cause.echoBudget, `${path}.echoBudget`, 0, 3); integer(cause.echoCount, `${path}.echoCount`, 0);
+  const facts = record(cause.facts, `${path}.facts`); for (const [key, entry] of Object.entries(facts)) if (!["string", "number", "boolean"].includes(typeof entry)) invalid(`${path}.facts.${key}`, "must be scalar"); else if (typeof entry === "number") integer(entry, `${path}.facts.${key}`);
+  strings(cause.linkedEventIds, `${path}.linkedEventIds`);
+  if (cause.resolution !== undefined) safeRuleValue(cause.resolution, `${path}.resolution`);
+}
+
 function validateRun(value: unknown, path: string, rulesVersion: string): asserts value is RunState {
   const run = record(value, path);
   for (const key of ["runId", "playerId", "rootSeed"] as const) stringValue(run[key], `${path}.${key}`);
@@ -175,7 +205,7 @@ function validateRun(value: unknown, path: string, rulesVersion: string): assert
     stringValue(event.eventId, `${path}.events.history[${index}].eventId`); integer(event.nodeIndex, `${path}.events.history[${index}].nodeIndex`, 0); optionalString(event, "resultTier", `${path}.events.history[${index}]`);
   }
   const causes = record(record(run.causes, `${path}.causes`).byId, `${path}.causes.byId`);
-  for (const [id, cause] of Object.entries(causes)) safeRuleValue(cause, `${path}.causes.byId.${id}`);
+  for (const [id, cause] of Object.entries(causes)) { validateCause(cause, `${path}.causes.byId.${id}`); if ((cause as CauseInstance).causeId !== id) invalid(`${path}.causes.byId.${id}.causeId`, "must match map key"); }
   const npcs = record(record(run.npcs, `${path}.npcs`).byId, `${path}.npcs.byId`);
   for (const [id, npc] of Object.entries(npcs)) validateNpc(npc, `${path}.npcs.byId.${id}`);
   const build = record(run.build, `${path}.build`);

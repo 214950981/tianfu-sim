@@ -1,4 +1,5 @@
 import { CommandValidationError, validateGameCommand, type AppErrorCode, type GameCommand } from "./command.ts";
+import { advanceCauses, applyCauseEffects, selectCauseEcho, validateCauseChoice, type CauseContentAccess } from "./cause.ts";
 import { applyEventEffects, assertA08ExecutableChoice, evaluateCondition, EventRuntimeError, isEventEligible, resolveCheck, resolveOutcome, type OutcomeTier } from "./event.ts";
 import { assertNonNegativeInteger, assertSafeInteger, safeAdd } from "./numeric.ts";
 import { createRngState, type RngState, type RngTrace } from "./rng.ts";
@@ -12,7 +13,11 @@ import {
 } from "./state.ts";
 
 export type ContentRegistry = Readonly<Record<string, unknown>>;
-export interface RuleContext { rulesVersion: string; contentVersion: string; content: ContentRegistry }
+export interface RuleContext {
+  rulesVersion: string; contentVersion: string; content: ContentRegistry; commandId: string;
+  actorBindings?: Readonly<Record<string, string>>;
+  actorStatusById?: Readonly<Record<string, "available" | "unavailable">>;
+}
 export interface ReduceInput { state: GameState; command: GameCommand; context: RuleContext }
 export type DomainEffect = Readonly<Record<string, unknown>>;
 export type Fact = Readonly<Record<string, unknown>>;
@@ -152,6 +157,9 @@ function validateContext(state: GameState, context: RuleContext): void {
   if (context.rulesVersion !== state.rulesVersion || context.contentVersion !== state.contentVersion) {
     throw new ReducerError("CONTENT_MISMATCH", "content.version_mismatch");
   }
+  if (typeof context.commandId !== "string" || context.commandId.length === 0) throw new ReducerError("INVALID_COMMAND", "context.command_id_invalid");
+  if (context.actorBindings !== undefined && (typeof context.actorBindings !== "object" || context.actorBindings === null || Array.isArray(context.actorBindings))) throw new ReducerError("INVALID_COMMAND", "context.actor_bindings_invalid");
+  if (context.actorStatusById !== undefined && (typeof context.actorStatusById !== "object" || context.actorStatusById === null || Array.isArray(context.actorStatusById) || Object.values(context.actorStatusById).some((status) => status !== "available" && status !== "unavailable"))) throw new ReducerError("INVALID_COMMAND", "context.actor_status_invalid");
 }
 
 function startRun(state: GameState, command: Extract<GameCommand, { type: "START_RUN" }>): GameState {
@@ -211,6 +219,9 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
   const choiceObject = runtimeObject(choice, "choice.invalid");
   if (choiceObject.requirements !== undefined && !evaluateCondition(choiceObject.requirements, state)) throw new ReducerError("INVALID_OPTION", "event.option_ineligible");
   assertA08ExecutableChoice(choiceObject);
+  const causeContent = context.content as unknown as CauseContentAccess;
+  try { validateCauseChoice(choiceObject, state, causeContent, context.contentVersion, context); }
+  catch { throw new ReducerError("INVALID_OPTION", "cause.invalid"); }
 
   let checkedState = state; let requestedTier: OutcomeTier = "success"; let rngDraws: RngTrace[] = []; let checkFact: RuntimeObject = { logicalRequests: 0 };
   if (choiceObject.check !== undefined) {
@@ -219,7 +230,10 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
     checkFact = { logicalRequests: 1, baseScore: resolution.baseScore, rngRoll: resolution.rngRoll, finalScore: resolution.finalScore };
   }
   const resolved = resolveOutcome(choiceObject.outcomes, requestedTier);
-  const applied = applyEventEffects(checkedState, resolved.outcome.effects, current.eventId);
+  let causeApplied: GameState;
+  try { causeApplied = applyCauseEffects(checkedState, resolved.outcome.effects as readonly unknown[], causeContent, context.contentVersion, context); }
+  catch { throw new ReducerError("INVALID_OPTION", "cause.invalid"); }
+  const applied = applyEventEffects(causeApplied, resolved.outcome.effects, current.eventId);
   const timeAdvance = resolveTimeAdvance(applied.state.run.age, applied.state.run.maxAge, applied.outcomeTimeDelta);
   const nextNodeIndex = safeAdd(applied.state.run.nodeIndex, 1);
   const { current: _resolvedCurrent, ...eventsWithoutCurrent } = applied.state.run.events;
@@ -242,6 +256,12 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
     const targetId = transition.eventId as string; const target = eventFromContent(context, targetId);
     provisional = { ...provisional, run: { ...provisional.run, events: { ...provisional.run.events, current: { eventId: targetId, kind: String(target.kind) } } } };
   }
+  try { provisional = advanceCauses(provisional, causeContent, context.contentVersion, context); }
+  catch { throw new ReducerError("INVALID_OPTION", "cause.invalid"); }
+  let causeTrace: Record<string, unknown>[] = []; let causeRngDraws: RngTrace[] = [];
+  if (provisional.run.status === "active" && provisional.run.events.current === undefined) {
+    const selected = selectCauseEcho(provisional, causeContent, context.contentVersion); provisional = selected.state; causeTrace = selected.trace; causeRngDraws = selected.rngDraws;
+  }
   const next: GameState = { ...provisional, stateVersion: safeAdd(state.stateVersion, 1) };
   validateStateTransition(state, next);
   const hasSessionState = Object.keys(applied.session.flags).length > 0 || Object.keys(applied.session.counters).length > 0 || applied.session.tags.length > 0;
@@ -251,7 +271,7 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
     state: next,
     effects,
     narrativeFacts: [{ type: "EVENT_OUTCOME", eventId: current.eventId, choiceId: command.optionId, requestedTier, appliedTier: resolved.appliedTier }],
-    trace: { rngDraws, selector: [{ kind: "check", ...checkFact }], time: [{ ...timeAdvance }] }
+    trace: { rngDraws: [...rngDraws, ...causeRngDraws], selector: [{ kind: "check", ...checkFact }, ...causeTrace], time: [{ ...timeAdvance }] }
   };
 }
 

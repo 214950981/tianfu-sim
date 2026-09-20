@@ -1,9 +1,21 @@
 // CAUSE CONTRACT v0.2
 export type CauseStatus='dormant'|'eligible'|'echoed'|'resolved'|'expired';
-export type CauseInstance={causeId:string;templateId:string;originCommandId:string;originNodeIndex:number;originAge:number;actors:string[];themes:string[];salience:1|2|3|4|5;visibility:'hidden'|'hint'|'journal';state:CauseStatus;maturity:{minNode?:number;minAge?:number;regionId?:string;npcAliveId?:string};echoBudget:number;echoCount:number;facts:Record<string,string|number|boolean>;linkedEventIds:string[];resolution?:Record<string,unknown>};
+export type CauseActorRequirement={role:string;required:boolean};
+export type CauseTemplate={id:string;salience:1|2|3|4|5;maturity:{minAgeDeltaYears?:number;minNodeDelta?:number;conditions?:ConditionExpr[]};actors:CauseActorRequirement[];themes:string[];linkedEventIds:string[];onActorUnavailable:{action:'expire'}|{action:'transform';targetCauseTemplateId:string}};
+export type CauseInstance={causeId:string;templateId:string;originCommandId:string;originNodeIndex:number;originAge:number;actorIdsByRole:Record<string,string>;themes:string[];salience:1|2|3|4|5;visibility:'hidden'|'hint'|'journal';state:CauseStatus;maturity:{minNode:number;minAge:number;conditions:ConditionExpr[]};eligibleSinceNode?:number;eligibleAge?:number;echoBudget:number;echoCount:number;facts:Record<string,string|number|boolean>;linkedEventIds:string[];resolution?:Record<string,unknown>};
 
 Default echoBudget by salience: 1->0, 2->1, 3->1, 4->2, 5->3. Content override allowed only 0..3.
 Visibility is explicit; salience never automatically reveals a secret.
 created=>dormant; maturity true=>eligible; eligible echo=>echoed; echoed may return eligible if budget remains; resolve/expire terminal.
 transform = resolve old + create new Cause, never persistent "transformed" state.
 Echo selection follows lifecycle.ref precedence. Same reward/effect cannot repeat unless event explicitly defines repeat-safe effect.
+
+Cause creation uses ReduceContext.commandId verbatim as originCommandId. Core never generates commandId and uses no clock/RNG/UUID for provenance.
+ADD_CAUSE.actorBindingKeys maps CauseTemplate role to ReduceContext.actorBindings slot. Unknown roles fail. Every required role must resolve to a non-empty opaque actorId before atomic creation; optional unbound roles are omitted. Extra context slots are ignored.
+CauseInstance.actorIdsByRole stores the actual bound actor IDs and never a deferred lookup condition.
+Only a required bound actor whose ReduceContext.actorStatusById value is exactly 'unavailable' triggers onActorUnavailable. Missing/unknown/'available' never triggers.
+Expire sets the old Cause to expired and creates nothing. Transform resolves the old Cause and creates the target template as a new Cause, inheriting only same-role bindings. Target required roles must be guaranteed by same-name required source roles at content validation time; runtime never searches or invents actors.
+Template maturity deltas are safe integers >=0 and default to 0. Instance minAge/minNode are originAge/originNodeIndex plus those deltas. All listed ConditionExpr must be true. Maturity consumes no RNG or real time.
+When maturity first becomes true, record eligibleSinceNode=current nodeIndex and eligibleAge=current age. Eligible P2 Causes sort by salience DESC, eligibleSinceNode ASC, eligibleAge ASC, then causeId ASC.
+For the selected Cause, filter linkedEventIds by current event eligibility. Zero candidates => no echo/no RNG. One => direct/no RNG. Two or more => eventId ASC canonical order then exactly one logical unbiased event-stream RNG request; trace records all underlying draws.
+Each valid echo decrements echoBudget by exactly 1 and increments echoCount by 1; budget never becomes negative and zero budget cannot echo. Tier/fallback makes no extra echo RNG request.

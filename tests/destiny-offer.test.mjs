@@ -23,7 +23,7 @@ function serverInput(content = registry()) {
     }
   };
 }
-function context(content) { return { rulesVersion: "2.0.0", contentVersion: "dev-0.1.0", content }; }
+function context(content) { return { rulesVersion: "2.0.0", contentVersion: "dev-0.1.0", content, commandId: "cmd:destiny" }; }
 
 test("destiny_golden: locked inputs produce the same three candidates and order", () => {
   const content = registry(); const input = serverInput(content);

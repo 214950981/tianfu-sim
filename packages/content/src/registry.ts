@@ -23,7 +23,7 @@ export type EffectSpec =
   | { op: "REMOVE_CONDITION"; conditionId: string }
   | { op: "ADD_IDENTITY_TAG" | "REMOVE_IDENTITY_TAG" | "ADD_WORLD_TAG" | "REMOVE_WORLD_TAG"; tag: string }
   | { op: "RELATION_DELTA"; npcId: string; axis: "affinity" | "trust" | "debt"; delta: number }
-  | { op: "ADD_CAUSE"; templateId: string; salience: 1 | 2 | 3 | 4 | 5; visibility?: "hidden" | "hint" | "journal" }
+  | { op: "ADD_CAUSE"; templateId: string; salience: 1 | 2 | 3 | 4 | 5; visibility?: "hidden" | "hint" | "journal"; actorBindingKeys?: Record<string, string> }
   | { op: "RESOLVE_CAUSE" | "EXPIRE_CAUSE"; causeId: string }
   | { op: "GRANT_COMPONENT" | "REMOVE_COMPONENT"; componentId: string }
   | { op: "CREATE_NPC"; templateId: string }
@@ -44,6 +44,13 @@ export interface EventDefinition {
   titleKey: string; tags: string[]; requirements?: ConditionExpr; weight: number;
   cooldown?: { minNodesBetween?: number; maxOccurrences?: number }; choices?: ChoiceDefinition[]; onEnter?: EffectSpec[];
   ai?: unknown; fallback: { titleKey?: string; bodyKey: string }; telemetry?: Record<string, string>;
+}
+export interface CauseActorRequirement { role: string; required: boolean }
+export interface CauseTemplate {
+  id: string; salience: 1 | 2 | 3 | 4 | 5;
+  maturity: { minAgeDeltaYears?: number; minNodeDelta?: number; conditions?: ConditionExpr[] };
+  actors: CauseActorRequirement[]; themes: string[]; linkedEventIds: string[];
+  onActorUnavailable: { action: "expire" } | { action: "transform"; targetCauseTemplateId: string };
 }
 export interface DestinyDefinition {
   id: string;
@@ -72,7 +79,7 @@ export interface ContentReferences {
   causes: string[];
   conditions: string[];
 }
-export interface ContentPack { manifest: ContentManifest; references: ContentReferences; destinies: DestinyDefinition[]; events: EventDefinition[] }
+export interface ContentPack { manifest: ContentManifest; references: ContentReferences; destinies: DestinyDefinition[]; events: EventDefinition[]; causeTemplates: CauseTemplate[] }
 export type ContentPackDraft = Omit<ContentPack, "manifest"> & { manifest: Omit<ContentManifest, "checksum"> };
 
 export class ContentValidationError extends TypeError {
@@ -177,7 +184,7 @@ function validateEffect(value: unknown, refs: ReferenceSets, path: string): stri
     case "REMOVE_CONDITION": exact(effect, ["op", "conditionId"], [], path); requireReference(effect.conditionId, refs.conditions, `${path}.conditionId`); break;
     case "ADD_IDENTITY_TAG": case "REMOVE_IDENTITY_TAG": case "ADD_WORLD_TAG": case "REMOVE_WORLD_TAG": exact(effect, ["op", "tag"], [], path); stringValue(effect.tag, `${path}.tag`); break;
     case "RELATION_DELTA": exact(effect, ["op", "npcId", "axis", "delta"], [], path); stringValue(effect.npcId, `${path}.npcId`); oneOf(effect.axis, relationAxes, `${path}.axis`); integer(effect.delta, `${path}.delta`); break;
-    case "ADD_CAUSE": exact(effect, ["op", "templateId", "salience"], ["visibility"], path); requireReference(effect.templateId, refs.causes, `${path}.templateId`); integer(effect.salience, `${path}.salience`, 1, 5); if (effect.visibility !== undefined) oneOf(effect.visibility, new Set(["hidden", "hint", "journal"]), `${path}.visibility`); break;
+    case "ADD_CAUSE": exact(effect, ["op", "templateId", "salience"], ["visibility", "actorBindingKeys"], path); requireReference(effect.templateId, refs.causes, `${path}.templateId`); integer(effect.salience, `${path}.salience`, 1, 5); if (effect.visibility !== undefined) oneOf(effect.visibility, new Set(["hidden", "hint", "journal"]), `${path}.visibility`); if (effect.actorBindingKeys !== undefined) for (const [role, slot] of Object.entries(objectValue(effect.actorBindingKeys, `${path}.actorBindingKeys`))) { stringValue(role, `${path}.actorBindingKeys role`); stringValue(slot, `${path}.actorBindingKeys.${role}`); } break;
     case "RESOLVE_CAUSE": case "EXPIRE_CAUSE": exact(effect, ["op", "causeId"], [], path); stringValue(effect.causeId, `${path}.causeId`); break;
     case "GRANT_COMPONENT": case "REMOVE_COMPONENT": exact(effect, ["op", "componentId"], [], path); requireReference(effect.componentId, refs.components, `${path}.componentId`); break;
     case "CREATE_NPC": exact(effect, ["op", "templateId"], [], path); requireReference(effect.templateId, refs.npcTemplates, `${path}.templateId`); break;
@@ -263,6 +270,37 @@ function validateEvent(value: unknown, refs: ReferenceSets, eventIds: Set<string
   if (event.telemetry !== undefined) for (const [key, entry] of Object.entries(objectValue(event.telemetry, `${path}.telemetry`))) stringValue(entry, `${path}.telemetry.${key}`);
 }
 
+function validateCauseTemplate(value: unknown, refs: ReferenceSets, eventIds: Set<string>, path: string): void {
+  const template = objectValue(value, path); exact(template, ["id", "salience", "maturity", "actors", "themes", "linkedEventIds", "onActorUnavailable"], [], path);
+  requireReference(template.id, refs.causes, `${path}.id`); integer(template.salience, `${path}.salience`, 1, 5);
+  const maturity = objectValue(template.maturity, `${path}.maturity`); exact(maturity, [], ["minAgeDeltaYears", "minNodeDelta", "conditions"], `${path}.maturity`);
+  if (maturity.minAgeDeltaYears !== undefined) integer(maturity.minAgeDeltaYears, `${path}.maturity.minAgeDeltaYears`, 0);
+  if (maturity.minNodeDelta !== undefined) integer(maturity.minNodeDelta, `${path}.maturity.minNodeDelta`, 0);
+  if (maturity.conditions !== undefined) array(maturity.conditions, `${path}.maturity.conditions`).forEach((condition, index) => validateCondition(condition, `${path}.maturity.conditions[${index}]`));
+  const roles = array(template.actors, `${path}.actors`).map((entry, index) => { const actor = objectValue(entry, `${path}.actors[${index}]`); exact(actor, ["role", "required"], [], `${path}.actors[${index}]`); const role = stringValue(actor.role, `${path}.actors[${index}].role`); if (typeof actor.required !== "boolean") fail(`${path}.actors[${index}].required`, "must be a boolean"); return role; }); unique(roles, `${path}.actors`);
+  const themes = strings(template.themes, `${path}.themes`); unique(themes, `${path}.themes`);
+  const linked = strings(template.linkedEventIds, `${path}.linkedEventIds`); unique(linked, `${path}.linkedEventIds`); linked.forEach((id, index) => requireReference(id, eventIds, `${path}.linkedEventIds[${index}]`));
+  const unavailable = objectValue(template.onActorUnavailable, `${path}.onActorUnavailable`); const action = oneOf(unavailable.action, new Set(["expire", "transform"]), `${path}.onActorUnavailable.action`);
+  exact(unavailable, ["action"], action === "transform" ? ["targetCauseTemplateId"] : [], `${path}.onActorUnavailable`);
+  if (action === "transform") requireReference(unavailable.targetCauseTemplateId, refs.causes, `${path}.onActorUnavailable.targetCauseTemplateId`);
+}
+
+function effectLists(event: EventDefinition): EffectSpec[][] {
+  const lists: EffectSpec[][] = event.onEnter === undefined ? [] : [event.onEnter];
+  for (const choice of event.choices ?? []) for (const tier of [choice.outcomes.greatSuccess, choice.outcomes.success, choice.outcomes.costlySuccess, choice.outcomes.failure]) if (tier !== undefined) lists.push(tier.effects);
+  return lists;
+}
+
+function validateCauseBindings(events: EventDefinition[], templates: Map<string, CauseTemplate>): void {
+  for (const event of events) for (const effects of effectLists(event)) for (const effect of effects) if (effect.op === "ADD_CAUSE") {
+    const template = templates.get(effect.templateId); if (template === undefined) fail("effect.templateId", `unknown CauseTemplate ${effect.templateId}`);
+    if (effect.salience !== template.salience) fail("effect.salience", "must match CauseTemplate salience");
+    const roles = new Set(template.actors.map((actor) => actor.role));
+    for (const role of Object.keys(effect.actorBindingKeys ?? {})) if (!roles.has(role)) fail(`effect.actorBindingKeys.${role}`, "unknown CauseTemplate role");
+    for (const actor of template.actors) if (actor.required && (effect.actorBindingKeys?.[actor.role] === undefined || effect.actorBindingKeys[actor.role].length === 0)) fail(`effect.actorBindingKeys.${actor.role}`, "required actor binding is missing");
+  }
+}
+
 function validateDestiny(value: unknown, refs: ReferenceSets, path: string): void {
   const destiny = objectValue(value, path);
   exact(destiny, ["id", "version", "profile", "titleKey", "descriptionKey", "advantage", "cost", "hook"], ["requiredUnlocks"], path);
@@ -283,7 +321,8 @@ function normalizedDraft(pack: ContentPack | ContentPackDraft): unknown {
   const references = Object.fromEntries(Object.entries(pack.references).sort(([left], [right]) => left.localeCompare(right)).map(([key, values]) => [key, [...values].sort()]));
   const destinies = [...pack.destinies].sort((left, right) => left.id.localeCompare(right.id));
   const events = [...pack.events].sort((left, right) => left.id.localeCompare(right.id));
-  return { manifest, references, destinies, events };
+  const causeTemplates = [...pack.causeTemplates].sort((left, right) => left.id.localeCompare(right.id));
+  return { manifest, references, destinies, events, causeTemplates };
 }
 function canonicalValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalValue);
@@ -301,7 +340,7 @@ export function sealContentPack(pack: ContentPackDraft): ContentPack {
 }
 
 export function validateContentPack(value: unknown, expectedContentVersion?: string): ContentPack {
-  const pack = objectValue(value, "pack"); exact(pack, ["manifest", "references", "destinies", "events"], [], "pack");
+  const pack = objectValue(value, "pack"); exact(pack, ["manifest", "references", "destinies", "events", "causeTemplates"], [], "pack");
   const manifest = objectValue(pack.manifest, "pack.manifest"); exact(manifest, ["schemaVersion", "packId", "rulesVersion", "contentVersion", "checksum"], [], "pack.manifest");
   if (manifest.schemaVersion !== 2) fail("pack.manifest.schemaVersion", "must be 2");
   stringValue(manifest.packId, "pack.manifest.packId"); stringValue(manifest.rulesVersion, "pack.manifest.rulesVersion");
@@ -313,6 +352,16 @@ export function validateContentPack(value: unknown, expectedContentVersion?: str
   destinies.forEach((destiny, index) => validateDestiny(destiny, refs, `pack.destinies[${index}]`));
   const events = array(pack.events, "pack.events"); const eventIds = events.map((event, index) => stringValue(objectValue(event, `pack.events[${index}]`).id, `pack.events[${index}].id`)); unique(eventIds, "pack.events");
   const eventIdSet = new Set(eventIds); events.forEach((event, index) => validateEvent(event, refs, eventIdSet, `pack.events[${index}]`));
+  const templates = array(pack.causeTemplates, "pack.causeTemplates"); const templateIds = templates.map((template, index) => stringValue(objectValue(template, `pack.causeTemplates[${index}]`).id, `pack.causeTemplates[${index}].id`)); unique(templateIds, "pack.causeTemplates");
+  if (templateIds.length !== refs.causes.size || templateIds.some((id) => !refs.causes.has(id))) fail("pack.causeTemplates", "must define every Cause reference exactly once");
+  templates.forEach((template, index) => validateCauseTemplate(template, refs, eventIdSet, `pack.causeTemplates[${index}]`));
+  const templateMap = new Map((templates as CauseTemplate[]).map((template) => [template.id, template]));
+  for (const template of templateMap.values()) if (template.onActorUnavailable.action === "transform") {
+    const target = templateMap.get(template.onActorUnavailable.targetCauseTemplateId); if (target === undefined) fail(`pack.causeTemplates.${template.id}`, "transform target is undefined");
+    const sourceRequired = new Set(template.actors.filter((actor) => actor.required).map((actor) => actor.role));
+    for (const actor of target.actors) if (actor.required && !sourceRequired.has(actor.role)) fail(`pack.causeTemplates.${template.id}`, `transform cannot bind required target role ${actor.role}`);
+  }
+  validateCauseBindings(events as EventDefinition[], templateMap);
   if (computePackChecksum(value as ContentPack) !== checksum) fail("pack.manifest.checksum", "does not match canonical content");
   return value as ContentPack;
 }
@@ -341,5 +390,8 @@ export class ContentRegistry {
   }
   getDestiny(contentVersion: string, destinyId: string): DestinyDefinition {
     const destiny = this.get(contentVersion).destinies.find((candidate) => candidate.id === destinyId); if (destiny === undefined) fail("destinyId", `is not registered: ${destinyId}`); return destiny;
+  }
+  getCauseTemplate(contentVersion: string, templateId: string): CauseTemplate {
+    const template = this.get(contentVersion).causeTemplates.find((candidate) => candidate.id === templateId); if (template === undefined) fail("templateId", `is not registered: ${templateId}`); return template;
   }
 }

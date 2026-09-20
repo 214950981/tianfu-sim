@@ -1,5 +1,5 @@
 // CORE CONTRACT v0.2
-export type RuleContext={rulesVersion:string;contentVersion:string;content:Readonly<ContentRegistry>};
+export type RuleContext={rulesVersion:string;contentVersion:string;content:Readonly<ContentRegistry>;commandId:string;actorBindings?:Readonly<Record<string,string>>;actorStatusById?:Readonly<Record<string,'available'|'unavailable'>>};
 export type ReduceInput={state:GameState;command:GameCommand;context:RuleContext};
 export type ReduceOutput={state:GameState;effects:DomainEffect[];narrativeFacts:Fact[];trace:RuleTrace};
 export type RuleTrace={rngDraws:Array<{stream:string;index:number;u32:number}>;director?:unknown[];selector?:unknown[];time?:unknown[]};

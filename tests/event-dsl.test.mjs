@@ -27,7 +27,7 @@ function draft(events, contentVersion = "event-content-1") {
   return {
     manifest: { schemaVersion: 2, packId: `pack-${contentVersion}`, rulesVersion: "2.0.0", contentVersion },
     references: { items: ["item.tea"], components: [], npcTemplates: [], regions: ["region.start", "region.next"], endings: ["ending.test"], causes: [], conditions: ["condition.test"] },
-    destinies: [], events
+    destinies: [], causeTemplates: [], events
   };
 }
 function registered(events) { const registry = new ContentRegistry(); registry.register(sealContentPack(draft(events))); return registry; }
@@ -42,13 +42,13 @@ function activeState(content, eventId = "event.start", overrides = {}) {
       world: { regionId: "region.start", knownRegionIds: ["region.start"], tags: [], factionStanding: {} }
     }
   });
-  const started = reduce({ state: offered, command: { type: "START_RUN", offerId: "offer-event", destinyId: "d1" }, context: { rulesVersion: "2.0.0", contentVersion: "event-content-1", content } }).state;
+  const started = reduce({ state: offered, command: { type: "START_RUN", offerId: "offer-event", destinyId: "d1" }, context: { rulesVersion: "2.0.0", contentVersion: "event-content-1", content, commandId: "cmd:start" } }).state;
   return validateGameState({
     ...started,
     run: { ...started.run, ...overrides, events: { history: overrides.events?.history ?? [], current: { eventId, kind: "choice" } } }
   });
 }
-function context(content) { return { rulesVersion: "2.0.0", contentVersion: "event-content-1", content }; }
+function context(content) { return { rulesVersion: "2.0.0", contentVersion: "event-content-1", content, commandId: "cmd:event" }; }
 
 test("signed secondary scaling follows deterministic BPS boundaries", () => {
   assert.equal(scaleSignedByBps(7, 5_000), 4);

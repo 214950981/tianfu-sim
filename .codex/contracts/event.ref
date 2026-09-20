@@ -21,7 +21,7 @@ type EffectSpec =
  {op:'REMOVE_CONDITION';conditionId:string}|
  {op:'ADD_IDENTITY_TAG'|'REMOVE_IDENTITY_TAG'|'ADD_WORLD_TAG'|'REMOVE_WORLD_TAG';tag:string}|
  {op:'RELATION_DELTA';npcId:string;axis:'affinity'|'trust'|'debt';delta:number}|
- {op:'ADD_CAUSE';templateId:string;salience:1|2|3|4|5;visibility?:'hidden'|'hint'|'journal'}|
+ {op:'ADD_CAUSE';templateId:string;salience:1|2|3|4|5;visibility?:'hidden'|'hint'|'journal';actorBindingKeys?:Record<string,string>}|
  {op:'RESOLVE_CAUSE'|'EXPIRE_CAUSE';causeId:string}|
  {op:'GRANT_COMPONENT'|'REMOVE_COMPONENT';componentId:string}|
  {op:'CREATE_NPC';templateId:string}|
