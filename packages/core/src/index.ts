@@ -4,3 +4,4 @@ export function identity<T>(value: T): T {
 
 export * from "./numeric.ts";
 export * from "./rng.ts";
+export * from "./state.ts";

@@ -24,6 +24,14 @@ export function clampBps(value: number): number {
   return Math.min(10_000, Math.max(0, value));
 }
 
+export function clampInteger(value: number, min: number, max: number): number {
+  assertSafeInteger(value);
+  assertSafeInteger(min, "min");
+  assertSafeInteger(max, "max");
+  if (max < min) throw new RangeError("max must be >= min");
+  return Math.min(max, Math.max(min, value));
+}
+
 export function safeAdd(left: number, right: number): number {
   assertSafeInteger(left, "left");
   assertSafeInteger(right, "right");
