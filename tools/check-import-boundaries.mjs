@@ -12,7 +12,9 @@ const importPatterns = [
 const forbiddenRuntimePatterns = [
   { name: "wx", pattern: /\bwx\s*\./ },
   { name: "tt", pattern: /\btt\s*\./ },
-  { name: "fetch", pattern: /\bfetch\s*\(/ }
+  { name: "fetch", pattern: /\bfetch\s*\(/ },
+  { name: "Math.random", pattern: /\bMath\s*\.\s*random\s*\(/ },
+  { name: "Date.now", pattern: /\bDate\s*\.\s*now\s*\(/ }
 ];
 
 function requestedRoot() {
