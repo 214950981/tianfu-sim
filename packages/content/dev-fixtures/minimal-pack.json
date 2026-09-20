@@ -1,0 +1,43 @@
+{
+  "manifest": {
+    "schemaVersion": 2,
+    "packId": "dev-minimal",
+    "rulesVersion": "2.0.0",
+    "contentVersion": "dev-0.1.0",
+    "checksum": "45ad6ec6eb5e065acb307299aff8297a3040c451c158248d9830fb1723775846"
+  },
+  "references": {
+    "items": [],
+    "components": [],
+    "npcTemplates": [],
+    "regions": ["dev.start"],
+    "endings": [],
+    "causes": [],
+    "conditions": []
+  },
+  "events": [
+    {
+      "id": "dev.first-choice",
+      "version": 1,
+      "kind": "choice",
+      "titleKey": "dev.first-choice.title",
+      "tags": ["dev-fixture"],
+      "weight": 10000,
+      "choices": [
+        {
+          "id": "continue",
+          "scope": "core",
+          "labelKey": "dev.first-choice.continue",
+          "outcomes": {
+            "success": {
+              "effects": [
+                { "op": "ADD_RESOURCE", "key": "spiritStone", "amount": 1 }
+              ]
+            }
+          }
+        }
+      ],
+      "fallback": { "bodyKey": "dev.first-choice.body" }
+    }
+  ]
+}
