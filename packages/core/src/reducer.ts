@@ -1,6 +1,6 @@
 import { CommandValidationError, validateGameCommand, type AppErrorCode, type GameCommand } from "./command.ts";
 import { assertNonNegativeInteger, assertSafeInteger, safeAdd } from "./numeric.ts";
-import { createRngState, type RngTrace } from "./rng.ts";
+import { createRngState, type RngState, type RngTrace } from "./rng.ts";
 import {
   projectRuleState,
   validateGameState,
@@ -71,6 +71,7 @@ export interface CreateOfferedRunInput {
   rootSeed: string;
   metaView: MetaView;
   fixture: OfferedRunFixture;
+  initialRng?: RngState;
 }
 
 function cloneRecord(record: Readonly<Record<string, number>>): Record<string, number> {
@@ -109,7 +110,7 @@ export function createOfferedRun(input: CreateOfferedRunInput): GameState {
         tags: [...fixture.world.tags],
         factionStanding: cloneRecord(fixture.world.factionStanding)
       },
-      rng: createRngState(input.rulesVersion, input.rootSeed),
+      rng: input.initialRng ?? createRngState(input.rulesVersion, input.rootSeed),
       director: { firstRun: fixture.firstRun ?? false, interventions: 0 }
     },
     metaView: {

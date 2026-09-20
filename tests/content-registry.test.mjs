@@ -13,6 +13,7 @@ function draft(contentVersion = "content-1") {
   return {
     manifest: { schemaVersion: 2, packId: `pack-${contentVersion}`, rulesVersion: "2.0.0", contentVersion },
     references: { items: ["item.tea"], components: [], npcTemplates: [], regions: ["region.start", "region.next"], endings: [], causes: [], conditions: [] },
+    destinies: [],
     events: [{
       id: "event.start", version: 1, kind: "choice", titleKey: "event.start.title", tags: ["dev-fixture"], weight: 100,
       choices: [{
@@ -52,6 +53,7 @@ test("manifest_determinism: canonical checksum ignores object key and registry s
   const first = draft();
   const second = {
     events: structuredClone(first.events),
+    destinies: [],
     references: { conditions: [], causes: [], endings: [], regions: ["region.next", "region.start"], npcTemplates: [], components: [], items: ["item.tea"] },
     manifest: { contentVersion: "content-1", rulesVersion: "2.0.0", packId: "pack-content-1", schemaVersion: 2 }
   };

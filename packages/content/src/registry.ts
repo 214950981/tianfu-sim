@@ -42,6 +42,17 @@ export interface EventDefinition {
   cooldown?: { minNodesBetween?: number; maxOccurrences?: number }; choices?: ChoiceDefinition[]; onEnter?: EffectSpec[];
   ai?: unknown; fallback: { titleKey?: string; bodyKey: string }; telemetry?: Record<string, string>;
 }
+export interface DestinyDefinition {
+  id: string;
+  version: number;
+  profile: "stable" | "high-variance" | "story-hook";
+  titleKey: string;
+  descriptionKey: string;
+  advantage: { target: "insight" | "body" | "spiritSense" | "fortune" | "maxAge" | "spiritStone"; amount: number; labelKey: string };
+  cost: { target: "insight" | "body" | "spiritSense" | "fortune" | "maxAge" | "spiritStone"; amount: number; labelKey: string };
+  hook: { kind: "world" | "person"; refId: string; labelKey: string };
+  requiredUnlocks?: string[];
+}
 export interface ContentManifest {
   schemaVersion: 2;
   packId: string;
@@ -58,7 +69,7 @@ export interface ContentReferences {
   causes: string[];
   conditions: string[];
 }
-export interface ContentPack { manifest: ContentManifest; references: ContentReferences; events: EventDefinition[] }
+export interface ContentPack { manifest: ContentManifest; references: ContentReferences; destinies: DestinyDefinition[]; events: EventDefinition[] }
 export type ContentPackDraft = Omit<ContentPack, "manifest"> & { manifest: Omit<ContentManifest, "checksum"> };
 
 export class ContentValidationError extends TypeError {
@@ -73,6 +84,8 @@ const relationAxes = new Set(["affinity", "trust", "debt"]);
 const causeStates = new Set(["dormant", "eligible", "echoed", "resolved", "expired"]);
 const eventKinds = new Set(["choice", "narrative", "combat", "breakthrough", "ending", "tutorial"]);
 const deathCauses = new Set(["lifespan", "combat", "ambush", "exploration", "poison", "curse", "breakthrough", "injury", "cause", "special"]);
+const destinyProfiles = new Set(["stable", "high-variance", "story-hook"]);
+const destinyTargets = new Set(["insight", "body", "spiritSense", "fortune", "maxAge", "spiritStone"]);
 const longTermOps = new Set(["ADD_RESOURCE", "REMOVE_RESOURCE", "ADD_ITEM", "REMOVE_ITEM", "ADD_CULTIVATION", "ADD_CONDITION", "REMOVE_CONDITION", "ADD_IDENTITY_TAG", "REMOVE_IDENTITY_TAG", "ADD_WORLD_TAG", "REMOVE_WORLD_TAG", "RELATION_DELTA", "ADD_CAUSE", "RESOLVE_CAUSE", "EXPIRE_CAUSE", "GRANT_COMPONENT", "REMOVE_COMPONENT", "CREATE_NPC", "SET_NPC_STATUS", "SET_REGION", "OUTCOME_TIME_DELTA", "END_RUN"]);
 
 function fail(path: string, message: string): never { throw new ContentValidationError(`${path}: ${message}`); }
@@ -227,11 +240,27 @@ function validateEvent(value: unknown, refs: ReferenceSets, eventIds: Set<string
   if (event.telemetry !== undefined) for (const [key, entry] of Object.entries(objectValue(event.telemetry, `${path}.telemetry`))) stringValue(entry, `${path}.telemetry.${key}`);
 }
 
+function validateDestiny(value: unknown, refs: ReferenceSets, path: string): void {
+  const destiny = objectValue(value, path);
+  exact(destiny, ["id", "version", "profile", "titleKey", "descriptionKey", "advantage", "cost", "hook"], ["requiredUnlocks"], path);
+  stringValue(destiny.id, `${path}.id`); integer(destiny.version, `${path}.version`, 1); oneOf(destiny.profile, destinyProfiles, `${path}.profile`);
+  stringValue(destiny.titleKey, `${path}.titleKey`); stringValue(destiny.descriptionKey, `${path}.descriptionKey`);
+  for (const key of ["advantage", "cost"] as const) {
+    const modifier = objectValue(destiny[key], `${path}.${key}`); exact(modifier, ["target", "amount", "labelKey"], [], `${path}.${key}`);
+    oneOf(modifier.target, destinyTargets, `${path}.${key}.target`); integer(modifier.amount, `${path}.${key}.amount`, 1); stringValue(modifier.labelKey, `${path}.${key}.labelKey`);
+  }
+  const hook = objectValue(destiny.hook, `${path}.hook`); exact(hook, ["kind", "refId", "labelKey"], [], `${path}.hook`);
+  const kind = oneOf(hook.kind, new Set(["world", "person"]), `${path}.hook.kind`);
+  requireReference(hook.refId, kind === "world" ? refs.regions : refs.npcTemplates, `${path}.hook.refId`); stringValue(hook.labelKey, `${path}.hook.labelKey`);
+  if (destiny.requiredUnlocks !== undefined) { const unlocks = strings(destiny.requiredUnlocks, `${path}.requiredUnlocks`); unique(unlocks, `${path}.requiredUnlocks`); }
+}
+
 function normalizedDraft(pack: ContentPack | ContentPackDraft): unknown {
   const manifest = { schemaVersion: pack.manifest.schemaVersion, packId: pack.manifest.packId, rulesVersion: pack.manifest.rulesVersion, contentVersion: pack.manifest.contentVersion };
   const references = Object.fromEntries(Object.entries(pack.references).sort(([left], [right]) => left.localeCompare(right)).map(([key, values]) => [key, [...values].sort()]));
+  const destinies = [...pack.destinies].sort((left, right) => left.id.localeCompare(right.id));
   const events = [...pack.events].sort((left, right) => left.id.localeCompare(right.id));
-  return { manifest, references, events };
+  return { manifest, references, destinies, events };
 }
 function canonicalValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalValue);
@@ -249,7 +278,7 @@ export function sealContentPack(pack: ContentPackDraft): ContentPack {
 }
 
 export function validateContentPack(value: unknown, expectedContentVersion?: string): ContentPack {
-  const pack = objectValue(value, "pack"); exact(pack, ["manifest", "references", "events"], [], "pack");
+  const pack = objectValue(value, "pack"); exact(pack, ["manifest", "references", "destinies", "events"], [], "pack");
   const manifest = objectValue(pack.manifest, "pack.manifest"); exact(manifest, ["schemaVersion", "packId", "rulesVersion", "contentVersion", "checksum"], [], "pack.manifest");
   if (manifest.schemaVersion !== 2) fail("pack.manifest.schemaVersion", "must be 2");
   stringValue(manifest.packId, "pack.manifest.packId"); stringValue(manifest.rulesVersion, "pack.manifest.rulesVersion");
@@ -257,6 +286,8 @@ export function validateContentPack(value: unknown, expectedContentVersion?: str
   if (expectedContentVersion !== undefined && contentVersion !== expectedContentVersion) fail("pack.manifest.contentVersion", "does not match the locked contentVersion");
   const checksum = stringValue(manifest.checksum, "pack.manifest.checksum"); if (!/^[0-9a-f]{64}$/.test(checksum)) fail("pack.manifest.checksum", "must be lowercase SHA-256");
   const refs = referenceSets(pack.references);
+  const destinies = array(pack.destinies, "pack.destinies"); const destinyIds = destinies.map((destiny, index) => stringValue(objectValue(destiny, `pack.destinies[${index}]`).id, `pack.destinies[${index}].id`)); unique(destinyIds, "pack.destinies");
+  destinies.forEach((destiny, index) => validateDestiny(destiny, refs, `pack.destinies[${index}]`));
   const events = array(pack.events, "pack.events"); const eventIds = events.map((event, index) => stringValue(objectValue(event, `pack.events[${index}]`).id, `pack.events[${index}].id`)); unique(eventIds, "pack.events");
   const eventIdSet = new Set(eventIds); events.forEach((event, index) => validateEvent(event, refs, eventIdSet, `pack.events[${index}]`));
   if (computePackChecksum(value as ContentPack) !== checksum) fail("pack.manifest.checksum", "does not match canonical content");
@@ -284,5 +315,8 @@ export class ContentRegistry {
   }
   getEvent(contentVersion: string, eventId: string): EventDefinition {
     const event = this.get(contentVersion).events.find((candidate) => candidate.id === eventId); if (event === undefined) fail("eventId", `is not registered: ${eventId}`); return event;
+  }
+  getDestiny(contentVersion: string, destinyId: string): DestinyDefinition {
+    const destiny = this.get(contentVersion).destinies.find((candidate) => candidate.id === destinyId); if (destiny === undefined) fail("destinyId", `is not registered: ${destinyId}`); return destiny;
   }
 }

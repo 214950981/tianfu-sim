@@ -5,7 +5,7 @@
   "scripts": {
     "lint": "node tools/check-import-boundaries.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/core-smoke.test.mjs tests/import-boundary.test.mjs tests/rng-numeric.test.mjs tests/state.test.mjs tests/command.test.mjs tests/reducer.test.mjs tests/content-registry.test.mjs",
+    "test": "node --test tests/core-smoke.test.mjs tests/import-boundary.test.mjs tests/rng-numeric.test.mjs tests/state.test.mjs tests/command.test.mjs tests/reducer.test.mjs tests/content-registry.test.mjs tests/destiny-offer.test.mjs",
     "test:core": "node --test tests/core-smoke.test.mjs",
     "test:boundaries": "node --test tests/import-boundary.test.mjs",
     "test:a02": "node --test tests/rng-numeric.test.mjs",
@@ -13,6 +13,7 @@
     "test:a04": "node --test tests/command.test.mjs",
     "test:a05": "node --test tests/reducer.test.mjs",
     "test:a06": "node --test tests/content-registry.test.mjs",
+    "test:a07": "node --test tests/destiny-offer.test.mjs",
     "content:lint": "node tools/content-lint.mjs packages/content/dev-fixtures/minimal-pack.json",
     "scan:secrets": "node tools/scan-secrets.mjs"
   },

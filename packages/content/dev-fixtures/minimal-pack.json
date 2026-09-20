@@ -4,17 +4,49 @@
     "packId": "dev-minimal",
     "rulesVersion": "2.0.0",
     "contentVersion": "dev-0.1.0",
-    "checksum": "45ad6ec6eb5e065acb307299aff8297a3040c451c158248d9830fb1723775846"
+    "checksum": "da64b1c9cf9ebcdc91275cc41f5e42c793cc64aa2da7052c6843d37b222903d9"
   },
   "references": {
     "items": [],
     "components": [],
-    "npcTemplates": [],
+    "npcTemplates": ["dev.mysterious-mentor"],
     "regions": ["dev.start"],
     "endings": [],
     "causes": [],
     "conditions": []
   },
+  "destinies": [
+    {
+      "id": "destiny.steady-foundation",
+      "version": 1,
+      "profile": "stable",
+      "titleKey": "destiny.steady-foundation.title",
+      "descriptionKey": "destiny.steady-foundation.description",
+      "advantage": { "target": "body", "amount": 2, "labelKey": "destiny.steady-foundation.advantage" },
+      "cost": { "target": "fortune", "amount": 1, "labelKey": "destiny.steady-foundation.cost" },
+      "hook": { "kind": "world", "refId": "dev.start", "labelKey": "destiny.steady-foundation.hook" }
+    },
+    {
+      "id": "destiny.volatile-star",
+      "version": 1,
+      "profile": "high-variance",
+      "titleKey": "destiny.volatile-star.title",
+      "descriptionKey": "destiny.volatile-star.description",
+      "advantage": { "target": "fortune", "amount": 4, "labelKey": "destiny.volatile-star.advantage" },
+      "cost": { "target": "maxAge", "amount": 5, "labelKey": "destiny.volatile-star.cost" },
+      "hook": { "kind": "world", "refId": "dev.start", "labelKey": "destiny.volatile-star.hook" }
+    },
+    {
+      "id": "destiny.hidden-mentor",
+      "version": 1,
+      "profile": "story-hook",
+      "titleKey": "destiny.hidden-mentor.title",
+      "descriptionKey": "destiny.hidden-mentor.description",
+      "advantage": { "target": "insight", "amount": 2, "labelKey": "destiny.hidden-mentor.advantage" },
+      "cost": { "target": "spiritStone", "amount": 10, "labelKey": "destiny.hidden-mentor.cost" },
+      "hook": { "kind": "person", "refId": "dev.mysterious-mentor", "labelKey": "destiny.hidden-mentor.hook" }
+    }
+  ],
   "events": [
     {
       "id": "dev.first-choice",

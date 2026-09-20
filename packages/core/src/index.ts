@@ -7,3 +7,4 @@ export * from "./rng.ts";
 export * from "./state.ts";
 export * from "./command.ts";
 export * from "./reducer.ts";
+export * from "./destiny.ts";
