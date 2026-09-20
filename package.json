@@ -1,0 +1,16 @@
+{
+  "name": "tianfu-sim-2-foundation",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "lint": "node tools/check-import-boundaries.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/core-smoke.test.mjs tests/import-boundary.test.mjs",
+    "test:core": "node --test tests/core-smoke.test.mjs",
+    "test:boundaries": "node --test tests/import-boundary.test.mjs",
+    "scan:secrets": "node tools/scan-secrets.mjs"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  }
+}
