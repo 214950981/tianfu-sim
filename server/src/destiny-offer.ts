@@ -2,6 +2,7 @@ import { ContentRegistry, type DestinyDefinition } from "../../packages/content/
 import {
   createOfferedRun,
   createRngState,
+  selectInnateProfileOffers,
   selectDestinyCandidates,
   validateGameState,
   type GameState,
@@ -36,13 +37,18 @@ export interface DestinyOfferView {
   status: "offered";
   offerId: string;
   runName: string;
-  candidates: Array<Pick<DestinyDefinition, "id" | "profile" | "titleKey" | "descriptionKey" | "advantage" | "cost" | "hook">>;
+  candidates: Array<Pick<DestinyDefinition, "id" | "profile" | "titleKey" | "descriptionKey" | "advantage" | "cost" | "hook"> | { id: string; spiritualRoot: { id: string; displayName: string }; talent: { id: string; displayName: string }; majorDestiny: { id: string; displayName: string } }>;
   metaView: MetaView;
 }
 
 export function generateServerDestinyOffer(input: ServerDestinyOfferInput): GeneratedDestinyOffer {
   const pack = input.content.get(input.contentVersion);
   if (pack.manifest.rulesVersion !== input.rulesVersion) throw new RangeError("content rulesVersion does not match locked rulesVersion");
+  if (pack.progressionPackId !== undefined) {
+    const selection = selectInnateProfileOffers(createRngState(input.rulesVersion, input.rootSeed), input.content.getProgression(input.contentVersion));
+    const state = createOfferedRun({ schemaVersion: input.schemaVersion, rulesVersion: input.rulesVersion, contentVersion: input.contentVersion, runId: input.runId, playerId: input.playerId, rootSeed: input.rootSeed, metaView: input.metaView, fixture: { ...input.fixture, destinyIds: selection.offers.map((offer) => offer.profile.majorDestinyId) as [string, string, string], innateProfiles: selection.offers }, initialRng: selection.rng });
+    return { state, internalTrace: { rngDraws: selection.trace } };
+  }
   const unlocks = new Set(input.metaView.unlocks);
   const eligibleIds = pack.destinies
     .filter((destiny) => (destiny.requiredUnlocks ?? []).every((unlockId) => unlocks.has(unlockId)))
@@ -65,7 +71,7 @@ export function generateServerDestinyOffer(input: ServerDestinyOfferInput): Gene
 export function projectDestinyOfferView(value: unknown, content: ContentRegistry): DestinyOfferView {
   const state = validateGameState(value);
   if (state.run.status !== "offered" || state.run.offer === undefined) throw new RangeError("state must contain an active destiny offer");
-  const candidates = state.run.offer.destinyIds.map((destinyId) => {
+  const candidates = state.run.offer.innateProfiles === undefined ? state.run.offer.destinyIds.map((destinyId) => {
     const destiny = content.getDestiny(state.contentVersion, destinyId);
     return {
       id: destiny.id,
@@ -76,6 +82,9 @@ export function projectDestinyOfferView(value: unknown, content: ContentRegistry
       cost: { ...destiny.cost },
       hook: { ...destiny.hook }
     };
+  }) : state.run.offer.innateProfiles.map((offer) => {
+    const progression = content.getProgression(state.contentVersion); const root = progression.spiritualRoots.find((entry) => entry.id === offer.profile.spiritualRoot); const talent = progression.talents.find((entry) => entry.id === offer.profile.talentIds[0]); const destiny = progression.majorDestinies.find((entry) => entry.id === offer.profile.majorDestinyId); if (root === undefined || talent === undefined || destiny === undefined) throw new RangeError("invalid innate offer content");
+    return { id: offer.selectionId, spiritualRoot: { id: root.id, displayName: root.displayName }, talent: { id: talent.id, displayName: talent.displayName }, majorDestiny: { id: destiny.id, displayName: destiny.displayName } };
   });
   return {
     schemaVersion: state.schemaVersion,

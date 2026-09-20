@@ -4,8 +4,9 @@
     "packId": "dev-minimal",
     "rulesVersion": "2.0.0",
     "contentVersion": "dev-0.1.0",
-    "checksum": "ca6e88c1caa6d855d13534690ddfee09d4ced9f59b2262527082c29d316d46f1"
+    "checksum": "73d2f29bcd5d7db0245977f53ff41c5c2d7c3826cef5943151568f5a0da007fc"
   },
+  "progressionPackId": "progression.v1",
   "references": {
     "items": [],
     "components": [],

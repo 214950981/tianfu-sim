@@ -3,6 +3,7 @@ import { advanceCauses, applyCauseEffects, selectCauseEcho, validateCauseChoice,
 import { applyEventEffects, assertA08ExecutableChoice, evaluateCondition, EventRuntimeError, isEventEligible, resolveCheck, resolveOutcome, type OutcomeTier } from "./event.ts";
 import { assertNonNegativeInteger, assertSafeInteger, safeAdd } from "./numeric.ts";
 import { createRngState, drawInt, type RngState, type RngTrace } from "./rng.ts";
+import { applyBreakthroughOutcome, applyRetreatProgression, isValidInnateProfile, resolveBreakthrough, type ProgressionContentAccess } from "./progression.ts";
 import {
   projectRuleState,
   validateGameState,
@@ -50,10 +51,11 @@ export class ReducerError extends Error {
 export interface OfferedRunFixture {
   offerId: string;
   destinyIds: readonly [string, string, string];
+  innateProfiles?: readonly [import("./state.ts").InnateProfileOffer, import("./state.ts").InnateProfileOffer, import("./state.ts").InnateProfileOffer];
   age: number;
   maxAge: number;
   runName: string;
-  realm: { id: string; order: number; cultivation: number };
+  realm: { id: string; order: number; cultivation: number; cultivationBps?: number; realmFoundationBps?: number };
   attributes: { insight: number; body: number; spiritSense: number; fortune: number };
   resources: { spiritStone: number; items: Readonly<Record<string, number>> };
   rootTags?: readonly string[];
@@ -99,8 +101,8 @@ export function createOfferedRun(input: CreateOfferedRunInput): GameState {
       nodeIndex: 0,
       age: fixture.age,
       maxAge: fixture.maxAge,
-      offer: { offerId: fixture.offerId, destinyIds: [...fixture.destinyIds] },
-      realm: { ...fixture.realm },
+      offer: { offerId: fixture.offerId, destinyIds: [...fixture.destinyIds], ...(fixture.innateProfiles === undefined ? {} : { innateProfiles: structuredClone([...fixture.innateProfiles]) as [import("./state.ts").InnateProfileOffer, import("./state.ts").InnateProfileOffer, import("./state.ts").InnateProfileOffer] }) },
+      realm: { ...fixture.realm, cultivation: fixture.realm.cultivationBps ?? fixture.realm.cultivation, cultivationBps: fixture.realm.cultivationBps ?? fixture.realm.cultivation, realmFoundationBps: fixture.realm.realmFoundationBps ?? 0 },
       attributes: { ...fixture.attributes },
       resources: { spiritStone: fixture.resources.spiritStone, items: cloneRecord(fixture.resources.items) },
       conditions: [],
@@ -162,10 +164,18 @@ function validateContext(state: GameState, context: RuleContext): void {
   if (context.actorStatusById !== undefined && (typeof context.actorStatusById !== "object" || context.actorStatusById === null || Array.isArray(context.actorStatusById) || Object.values(context.actorStatusById).some((status) => status !== "available" && status !== "unavailable"))) throw new ReducerError("INVALID_COMMAND", "context.actor_status_invalid");
 }
 
-function startRun(state: GameState, command: Extract<GameCommand, { type: "START_RUN" }>): GameState {
+function startRun(state: GameState, command: Extract<GameCommand, { type: "START_RUN" }>, context: RuleContext): GameState {
   if (state.run.status !== "offered" || state.run.offer === undefined) throw new ReducerError("RUN_NOT_ACTIVE", "run.offer_consumed");
   if (command.offerId !== state.run.offer.offerId) throw new ReducerError("RUN_OFFER_MISMATCH", "run.offer_mismatch");
-  if (!state.run.offer.destinyIds.includes(command.destinyId)) throw new ReducerError("INVALID_OPTION", "run.destiny_not_offered");
+  let destinyId: string; let innateProfile: import("./state.ts").InnateProfile | undefined;
+  if (state.run.offer.innateProfiles !== undefined) {
+    if (!("selectionId" in command) || typeof command.selectionId !== "string") throw new ReducerError("INVALID_OPTION", "run.innate_selection_required");
+    const selection = state.run.offer.innateProfiles.find((candidate) => candidate.selectionId === command.selectionId); if (selection === undefined) throw new ReducerError("INVALID_OPTION", "run.innate_selection_not_offered");
+    const progression = (context.content as unknown as ProgressionContentAccess).getProgression?.(context.contentVersion); if (progression === undefined || !isValidInnateProfile(progression, selection.profile)) throw new ReducerError("CONTENT_MISMATCH", "content.innate_profile_invalid");
+    destinyId = selection.profile.majorDestinyId; innateProfile = structuredClone(selection.profile);
+  } else {
+    if (!("destinyId" in command) || typeof command.destinyId !== "string" || !state.run.offer.destinyIds.includes(command.destinyId)) throw new ReducerError("INVALID_OPTION", "run.destiny_not_offered"); destinyId = command.destinyId;
+  }
   const nextStateVersion = safeAdd(state.stateVersion, 1);
   const { offer: _consumedOffer, ...runWithoutOffer } = state.run;
   const next: GameState = {
@@ -174,7 +184,7 @@ function startRun(state: GameState, command: Extract<GameCommand, { type: "START
     run: {
       ...runWithoutOffer,
       status: "active",
-      identity: { ...state.run.identity, destinyId: command.destinyId }
+      identity: { ...state.run.identity, destinyId, ...(innateProfile === undefined ? {} : { innateProfile }) }
     }
   };
   return validateStateTransition(state, next);
@@ -268,6 +278,9 @@ function chooseAction(state: GameState, command: Extract<GameCommand, { type: "C
       } : {})
     }
   };
+  if (provisional.run.status === "active" && command.actionId === "cultivate" && provisional.run.identity.innateProfile !== undefined) {
+    const progression = (context.content as unknown as ProgressionContentAccess).getProgression?.(context.contentVersion); if (progression === undefined) throw new ReducerError("CONTENT_MISMATCH", "content.progression_required"); provisional = applyRetreatProgression(provisional, progression);
+  }
   const causeContent = context.content as unknown as CauseContentAccess;
   try { provisional = advanceCauses(provisional, causeContent, context.contentVersion, context); }
   catch { throw new ReducerError("INVALID_OPTION", "cause.invalid"); }
@@ -288,6 +301,22 @@ function chooseAction(state: GameState, command: Extract<GameCommand, { type: "C
     effects: [],
     narrativeFacts: [{ type: "ACTION", actionId: command.actionId, actionTimeCost: delta }],
     trace: { rngDraws, selector: selectorTrace, time: [{ ...timeAdvance, actionId: command.actionId }] }
+  };
+}
+
+function attemptBreakthrough(state: GameState, context: RuleContext): ReduceOutput {
+  if (state.run.status !== "active") throw new ReducerError("RUN_NOT_ACTIVE", "run.not_active");
+  if (state.run.events.current !== undefined) throw new ReducerError("INVALID_COMMAND", "breakthrough.interaction_pending");
+  if ((state.run.realm.cultivationBps ?? state.run.realm.cultivation) !== 10_000) throw new ReducerError("INVALID_OPTION", "breakthrough.cultivation_incomplete");
+  const progression = (context.content as unknown as ProgressionContentAccess).getProgression?.(context.contentVersion); if (progression === undefined) throw new ReducerError("CONTENT_MISMATCH", "content.progression_required");
+  let resolved; try { resolved = resolveBreakthrough(state, progression); } catch { throw new ReducerError("INVALID_OPTION", "breakthrough.unavailable"); }
+  let progressed; try { progressed = applyBreakthroughOutcome(resolved.state, progression, resolved.tier, context.commandId); } catch { throw new ReducerError("INVALID_OPTION", "breakthrough.unavailable"); }
+  const next = validateStateTransition(state, { ...progressed, stateVersion: safeAdd(state.stateVersion, 1) }); const advanced = next.run.realm.id !== state.run.realm.id;
+  return {
+    state: next,
+    effects: advanced ? [{ type: "REALM_ADVANCE", realmId: next.run.realm.id, outcomeTier: resolved.tier }] : [{ type: "BREAKTHROUGH_FAILED", realmId: next.run.realm.id }],
+    narrativeFacts: [{ id: `fact:${context.commandId}:breakthrough`, type: "REALM_BREAKTHROUGH", sourceRef: context.commandId, data: { fromRealmId: state.run.realm.id, toRealmId: next.run.realm.id, outcomeTier: resolved.tier } }],
+    trace: { rngDraws: resolved.rngDraws, selector: [{ kind: "breakthrough-check", effectiveDifficulty: resolved.effectiveDifficulty, effectiveScore: resolved.effectiveScore, rngRoll: resolved.rngRoll, outcomeTier: resolved.tier }] }
   };
 }
 
@@ -377,8 +406,9 @@ export function reduce(input: ReduceInput): ReduceOutput {
     }
   }
   if (command.type === "CHOOSE_ACTION") return chooseAction(state, command, input.context);
+  if (command.type === "ATTEMPT_BREAKTHROUGH") return attemptBreakthrough(state, input.context);
   if (command.type !== "START_RUN") throw new ReducerError("INVALID_COMMAND", "command.not_implemented");
-  const next = startRun(state, command);
+  const next = startRun(state, command, input.context);
   assertSafeInteger(next.stateVersion, "stateVersion");
   if (next.stateVersion !== state.stateVersion + 1) throw new ReducerError("TRANSIENT", "state.version_invariant");
   if (next.run.age > next.run.maxAge) throw new ReducerError("TRANSIENT", "state.lifespan_invariant");

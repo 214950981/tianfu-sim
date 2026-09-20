@@ -132,6 +132,12 @@ export function resolveCheck(state: GameState, value: unknown): CheckResolution 
   return { state: { ...state, run: { ...state.run, rng: draw.state } }, tier, baseScore, rngRoll: draw.value, finalScore, rngDraws: [...draw.trace] };
 }
 
+export function resolveScoreCheck(state: GameState, baseScore: number, difficulty: number): CheckResolution {
+  assertSafeInteger(baseScore, "baseScore"); assertSafeInteger(difficulty, "difficulty"); if (difficulty < 0 || difficulty > 1000) throw new RangeError("difficulty must be 0..1000");
+  const draw = drawInt(state.run.rng, "check", -10, 10); const finalScore = safeAdd(baseScore, draw.value); const tier = outcomeTierForScore(finalScore, difficulty);
+  return { state: { ...state, run: { ...state.run, rng: draw.state } }, tier, baseScore, rngRoll: draw.value, finalScore, rngDraws: [...draw.trace] };
+}
+
 export function outcomeTierForScore(finalScore: number, difficulty: number): OutcomeTier {
   assertSafeInteger(finalScore, "finalScore"); assertSafeInteger(difficulty, "difficulty");
   if (difficulty < 0 || difficulty > 1000) throw new RangeError("difficulty must be 0..1000");
@@ -187,7 +193,7 @@ export function applyEventEffects(state: GameState, effectsValue: unknown, event
         next = { ...next, run: { ...next.run, resources: { ...next.run.resources, items } } }; break;
       }
       case "ADD_CULTIVATION": {
-        exactKeys(effect, ["op", "amount"], "effect"); const cultivation = safeAdd(next.run.realm.cultivation, integer(effect.amount, "effect.amount")); if (cultivation < 0) fail("INVALID_OPTION", "cultivation cannot be negative"); next = { ...next, run: { ...next.run, realm: { ...next.run.realm, cultivation } } }; break;
+        exactKeys(effect, ["op", "amount"], "effect"); const cultivation = safeAdd(next.run.realm.cultivation, integer(effect.amount, "effect.amount")); if (cultivation < 0) fail("INVALID_OPTION", "cultivation cannot be negative"); const capped = next.run.realm.cultivationBps === undefined ? cultivation : Math.min(10_000, cultivation); next = { ...next, run: { ...next.run, realm: { ...next.run.realm, cultivation: capped, ...(next.run.realm.cultivationBps === undefined ? {} : { cultivationBps: capped }) } } }; break;
       }
       case "ADD_CONDITION": {
         exactKeys(effect, ["op", "conditionId", "kind", "stacks"], "effect"); const conditionId = stringValue(effect.conditionId, "effect.conditionId"); if (next.run.conditions.some((entry) => entry.id === conditionId)) fail("INVALID_OPTION", "condition already exists");

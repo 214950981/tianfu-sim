@@ -1,0 +1,41 @@
+// PROG01 FINAL CONTRACT v1
+// Scope: realm progression, retreat gains, active breakthrough, InnateProfile offers, progression Modifier/Hook aggregation and combo audit.
+
+export type InnateProfile={spiritualRoot:string;talentIds:string[];majorDestinyId:string};
+export type RealmDefinition={id:string;displayName:string;order:number;lifespanCap:number;retreatCultivationGain:number;retreatFoundationGain:number;breakthroughDifficulty?:number;nextRealmId?:string};
+export type ProgressionDefinition={id:string;displayName:string;category:string;tags:string[];modifiers:ProgressionModifier[];hooks:ProgressionHook[];requiresTags:string[];forbidsTags:string[];exclusiveGroups:string[];systemOwners:string[]};
+export type SpiritualRootProfile=ProgressionDefinition&{elementTags:string[]};
+export type ProgressionModifier={kind:'cultivationGainRateDeltaBps'|'foundationGainRateDeltaBps'|'breakthroughDifficultyDelta'|'breakthroughScoreDelta'|'foundationRetentionDeltaBps'|'failureCultivationLossDelta'|'failureFoundationLossDelta';value:integer;systemOwner:string};
+export type ProgressionHook={id:string;systemOwner:string;order:integer};
+
+rulesVersion 2.0.0 realms, in transition order:
+mortal/凡人: lifespanCap=80, retreatCultivationGain=3200, retreatFoundationGain=700, breakthroughDifficulty=350, next=qi-refining.
+qi-refining/炼气: 120,2800,650,450,next=foundation-establishment.
+foundation-establishment/筑基: 180,2400,600,550,next=golden-core.
+golden-core/金丹: 300,2000,550,650,next=nascent-soul.
+nascent-soul/元婴: 500,1600,500,750,next=spirit-transformation.
+spirit-transformation/化神: 800,1200,450 and no ordinary successor. Ascension is not a Realm and is outside PROG01.
+
+RuleState progression values are cultivationBps and realmFoundationBps, each integer 0..10000. Stage is derived, never stored. Legacy realm.cultivation mirrors cultivationBps while retained for A01-A12 schema compatibility.
+Retreat gain = roundHalfUpPositive(realm base gain * aggregate rate BPS,10000). Base rate is 10000. cultivationBps caps at 10000 with no overflow; foundation may continue growing to its 10000 cap.
+
+ATTEMPT_BREAKTHROUGH is legal only for active Run, no pending interaction, cultivationBps==10000, a configured InnateProfile and a Realm with nextRealmId.
+foundationScore=roundHalfUpPositive(realmFoundationBps,10).
+effectiveDifficulty=clamp(baseDifficulty+aggregate breakthroughDifficultyDelta,100,950).
+effectiveScore=foundationScore+clamp(total breakthroughScoreDelta,-120,120).
+Exactly one logical unbiasedInt(-10,10) request uses the existing check stream and A08 Outcome tier thresholds.
+greatSuccess advances, resets cultivation to 0 and retains foundation at clamp(6000+delta,1500,8000) BPS.
+success uses 4500 base retention; costlySuccess uses 3000 and adds one injury capped at 3.
+failure keeps Realm, loses max(0,2500+delta) cultivation and max(0,1000+delta) foundation, floors both at 0, and adds one injury capped at 3. PROG01 breakthrough never directly kills.
+Successful advancement sets maxAge=max(currentMaxAge,targetRealm.lifespanCap) and emits a public realm Chronicle/Life fact.
+
+The v1 progression content manifest contains 6 Realms, 8 Spiritual Roots, 48 Talents in 12 categories, and 36 core Major Destinies in 9 categories. These counts are content facts, never Core/schema limits. The four reserved Expansion destinies are excluded from the v1 pool.
+Spiritual Root modifiers are frozen in packages/content/src/progression-v1.ts exactly as product-approved: cultivation/foundation/difficulty/retention deltas for 天灵根 1800/-700/-15/-300; 双灵根 800/300/0/0; 三灵根 -200/900/10/300; 五行灵根 -1000/1500/20/800; 异灵根 1200/-500/15/-100; 混元灵根 -500/700/-25/500; 隐灵根 -700/300/-45/300; 残灵根 -1200/-200/35/1200.
+Talent and Major Destiny definitions must carry stable id/displayName/category/tags/modifiers/hooks/requiresTags/forbidsTags/exclusiveGroups/systemOwners. Effects without a completed systemOwner remain inert metadata.
+
+Aggregate definitions in stable definitionId order and modifiers in stable kind order, independent of registration order. Clamp cultivation/foundation gain rates to 5000..16000, difficulty to 100..950, score delta to -120..120 and retention to 1500..8000.
+Hooks are data-only stable IDs from a whitelist, serialized and ordered by order,id,sourceId. eval, Function, script strings and executable values are forbidden.
+
+A07 integration offers three deterministic InnateProfile selections, each with one Spiritual Root, one active Talent and one core Major Destiny. Profiles are distinct, Major Destiny IDs are distinct and at least two Spiritual Root IDs are represented. Generation uses only the existing offer stream. START_RUN accepts only a generated selectionId; clients cannot submit rootSeed, modifiers, hooks, scores or difficulty.
+
+combo-audit locally enumerates the content manifest product. For progression.v1: theoreticalProfiles=8*48*36=13824, validProfiles>=10000 and validRatio>=0.75. It validates schema/IDs/tags/modifiers/hooks/owners/constraints/clamps/ranges/serialization/determinism/canonical ordering/safe integers/no executable content without network, AI or platform services.

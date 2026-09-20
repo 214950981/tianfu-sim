@@ -29,30 +29,27 @@ test("destiny_golden: locked inputs produce the same three candidates and order"
   const content = registry(); const input = serverInput(content);
   const first = generateServerDestinyOffer(input);
   const second = generateServerDestinyOffer({ ...input, metaView: structuredClone(input.metaView), fixture: structuredClone(input.fixture), content });
-  const expected = ["destiny.hidden-mentor", "destiny.steady-foundation", "destiny.volatile-star"];
-  assert.deepEqual(first.state.run.offer.destinyIds, expected);
-  assert.deepEqual(second.state.run.offer.destinyIds, expected);
+  const expected = ["destiny.major.calamity.03", "destiny.major.fortune.02", "destiny.major.social.01"];
+  assert.deepEqual(first.state.run.offer.destinyIds, expected); assert.deepEqual(second.state.run.offer, first.state.run.offer);
   assert.equal(first.state.run.offer.destinyIds.length, 3);
-  assert.equal(first.state.run.rng.streams.offer.drawIndex, 3);
-  assert.deepEqual(first.internalTrace.rngDraws.map(({ stream, index }) => ({ stream, index })), [
-    { stream: "offer", index: 0 }, { stream: "offer", index: 1 }, { stream: "offer", index: 2 }
-  ]);
+  assert.equal(first.state.run.rng.streams.offer.drawIndex, 9); assert.equal(new Set(first.state.run.offer.innateProfiles.map((offer) => offer.profile.majorDestinyId)).size, 3); assert.ok(new Set(first.state.run.offer.innateProfiles.map((offer) => offer.profile.spiritualRoot)).size >= 2);
+  assert.deepEqual(first.internalTrace.rngDraws.map(({ stream, index }) => ({ stream, index })), Array.from({ length: 9 }, (_, index) => ({ stream: "offer", index })));
 });
 
 test("invalid_destiny: stable failure changes no state, RNG, or time", () => {
   const content = registry(); const generated = generateServerDestinyOffer(serverInput(content)); const snapshot = structuredClone(generated.state);
   assert.throws(
-    () => reduce({ state: generated.state, command: { type: "START_RUN", offerId: "offer-destiny-1", destinyId: "destiny.not-offered" }, context: context(content) }),
+    () => reduce({ state: generated.state, command: { type: "START_RUN", offerId: "offer-destiny-1", selectionId: "innate.not-offered" }, context: context(content) }),
     (error) => error instanceof ReducerError && error.code === "INVALID_OPTION"
   );
   assert.deepEqual(generated.state, snapshot);
 });
 
 test("offer_consumed: START_RUN accepts one offered destiny exactly once", () => {
-  const content = registry(); const state = generateServerDestinyOffer(serverInput(content)).state; const destinyId = state.run.offer.destinyIds[0];
-  const active = reduce({ state, command: { type: "START_RUN", offerId: state.run.offer.offerId, destinyId }, context: context(content) }).state;
-  assert.equal(active.run.identity.destinyId, destinyId); assert.equal(active.run.status, "active"); assert.equal("offer" in active.run, false);
-  assert.throws(() => reduce({ state: active, command: { type: "START_RUN", offerId: "offer-destiny-1", destinyId }, context: context(content) }), /offer_consumed/);
+  const content = registry(); const state = generateServerDestinyOffer(serverInput(content)).state; const selection = state.run.offer.innateProfiles[0];
+  const active = reduce({ state, command: { type: "START_RUN", offerId: state.run.offer.offerId, selectionId: selection.selectionId }, context: context(content) }).state;
+  assert.deepEqual(active.run.identity.innateProfile, selection.profile); assert.equal(active.run.identity.destinyId, selection.profile.majorDestinyId); assert.equal(active.run.status, "active"); assert.equal("offer" in active.run, false);
+  assert.throws(() => reduce({ state: active, command: { type: "START_RUN", offerId: "offer-destiny-1", selectionId: selection.selectionId }, context: context(content) }), /offer_consumed/);
 });
 
 test("first_run_fixture: starter destinies cover required profiles and real tradeoffs/hooks", () => {
@@ -71,11 +68,13 @@ test("client cannot set rootSeed or request a free reroll", () => {
   };
   assert.throws(() => validateCommandEnvelope(clientEnvelope));
   assert.throws(() => validateGameCommand({ type: "REROLL_DESTINY" }));
+  assert.throws(() => validateGameCommand({ type: "START_RUN", offerId: "offer", selectionId: "s", cultivationGainRateDeltaBps: 9999 }));
 });
 
 test("Offer View exposes candidates but no rootSeed or RNG internals", () => {
   const content = registry(); const state = generateServerDestinyOffer({ ...serverInput(content), platformNickname: "Ignored Nickname" }).state;
   const view = projectDestinyOfferView(state, content); const serialized = JSON.stringify(view);
   assert.equal(view.candidates.length, 3); assert.equal(view.runName, "Server Run");
+  assert.ok(view.candidates.every((candidate) => "spiritualRoot" in candidate));
   assert.equal(serialized.includes("rootSeed"), false); assert.equal(serialized.includes("\"rng\""), false); assert.equal(serialized.includes("destiny-root-1"), false);
 });

@@ -36,8 +36,8 @@ function envelope(stateVersion, commandId, command) {
 }
 
 async function journey() {
-  const value = setup(); const auth = { playerId: "player-repair" }; const destinyId = value.initialState.run.offer.destinyIds[0];
-  const start = envelope(0, "cmd:repair:start", { type: "START_RUN", offerId: "offer-repair", destinyId });
+  const value = setup(); const auth = { playerId: "player-repair" }; const selectionId = value.initialState.run.offer.innateProfiles[0].selectionId;
+  const start = envelope(0, "cmd:repair:start", { type: "START_RUN", offerId: "offer-repair", selectionId });
   assert.equal((await value.gateway.sendCommand(auth, start)).ok, true);
   const action = envelope(1, "cmd:repair:action", { type: "CHOOSE_ACTION", actionId: "cultivate" });
   const actionResult = await value.gateway.sendCommand(auth, action); assert.equal(actionResult.ok, true);

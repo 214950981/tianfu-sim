@@ -3,7 +3,9 @@ export type CommandEnvelope<T extends GameCommand>={commandId:string;playerId:st
 
 export type GameCommand=
  |{type:'START_RUN';offerId:string;destinyId:string}
+ |{type:'START_RUN';offerId:string;selectionId:string}
  |{type:'CHOOSE_ACTION';actionId:'cultivate'|'travel'|'worldly'|'pursuit';pursuitCauseId?:string}
+ |{type:'ATTEMPT_BREAKTHROUGH'}
  |{type:'CHOOSE_EVENT_OPTION';eventId:string;optionId:string}
  |{type:'EQUIP_TECHNIQUE';componentId:string;slot:number}
  |{type:'EQUIP_ARTIFACT';componentId:string;slot:number}
@@ -21,4 +23,5 @@ export type AppErrorCode='INVALID_COMMAND'|'INVALID_OPTION'|'STATE_CONFLICT'|'UN
 export type CommandResult={ok:boolean;commandId:string;stateVersion:number;statePatch?:ViewStatePatch;domainEffects?:PublicEffect[];narrative?:NarrativePayload;error?:{code:AppErrorCode;messageKey:string;retryable:boolean}};
 
 // Server creates PendingRunOffer (not client): {runId,offerId,rootSeed,rulesVersion,contentVersion,metaViewHash,destinyIds[3],stateVersion:0}.
-// START_RUN must choose exactly one offered destiny and consumes offer once.
+// Legacy START_RUN chooses one offered destiny. A PROG01 InnateProfile offer requires selectionId and rejects client-authored profile/modifier/hook fields.
+// ATTEMPT_BREAKTHROUGH is server-authoritative and accepts no client score, difficulty, modifier, RNG or outcome fields.

@@ -21,7 +21,9 @@ function envelope(command = { type: "ABANDON_RUN" }) {
 test("CMD-001: every authoritative command schema accepts its exact shape", () => {
   const commands = [
     { type: "START_RUN", offerId: "o", destinyId: "d" },
+    { type: "START_RUN", offerId: "o", selectionId: "s" },
     { type: "CHOOSE_ACTION", actionId: "pursuit", pursuitCauseId: "c" },
+    { type: "ATTEMPT_BREAKTHROUGH" },
     { type: "CHOOSE_EVENT_OPTION", eventId: "e", optionId: "o" },
     { type: "EQUIP_TECHNIQUE", componentId: "t", slot: 0 },
     { type: "EQUIP_ARTIFACT", componentId: "a", slot: 1 },
@@ -47,10 +49,12 @@ test("CMD-002: unknown and client-authoritative fields are rejected", () => {
   assert.throws(() => validateGameCommand({ type: "UNKNOWN" }), CommandValidationError);
 });
 
-test("CMD-007: START_RUN requires offerId and destinyId", () => {
+test("CMD-007: START_RUN requires offerId and exactly one offered selection field", () => {
   assert.throws(() => validateGameCommand({ type: "START_RUN", destinyId: "d" }), /offerId/);
   assert.throws(() => validateGameCommand({ type: "START_RUN", offerId: "o" }), /destinyId/);
   assert.doesNotThrow(() => validateGameCommand({ type: "START_RUN", offerId: "o", destinyId: "d" }));
+  assert.doesNotThrow(() => validateGameCommand({ type: "START_RUN", offerId: "o", selectionId: "s" }));
+  assert.throws(() => validateGameCommand({ type: "START_RUN", offerId: "o", destinyId: "d", selectionId: "s" }));
 });
 
 test("CMD-008: rejection is side-effect free and serialization deterministic", () => {

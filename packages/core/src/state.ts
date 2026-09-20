@@ -10,6 +10,8 @@ export type RunStatus = typeof RUN_STATUSES[number];
 export type ActionType = typeof ACTION_TYPES[number];
 export type ConditionKind = typeof CONDITION_KINDS[number];
 export type DeathCause = typeof DEATH_CAUSES[number];
+export interface InnateProfile { spiritualRoot: string; talentIds: string[]; majorDestinyId: string }
+export interface InnateProfileOffer { selectionId: string; profile: InnateProfile }
 export type CauseStatus = "dormant" | "eligible" | "echoed" | "resolved" | "expired";
 export interface CauseInstance {
   causeId: string; templateId: string; originCommandId: string; originNodeIndex: number; originAge: number;
@@ -34,12 +36,12 @@ export interface MetaState {
 export type MetaView = Pick<MetaState, "unlocks" | "entitlements" | "discoveries">;
 export interface RunState {
   runId: string; playerId: string; rootSeed: string; status: RunStatus; nodeIndex: number; age: number; maxAge: number;
-  offer?: { offerId: string; destinyIds: [string, string, string] };
-  realm: { id: string; order: number; cultivation: number };
+  offer?: { offerId: string; destinyIds: [string, string, string]; innateProfiles?: [InnateProfileOffer, InnateProfileOffer, InnateProfileOffer] };
+  realm: { id: string; order: number; cultivation: number; cultivationBps?: number; realmFoundationBps?: number };
   attributes: { insight: number; body: number; spiritSense: number; fortune: number };
   resources: { spiritStone: number; items: Record<string, number> };
   conditions: Array<{ id: string; kind: ConditionKind; stacks: number; sourceRef: string; remainingNodes?: number }>;
-  identity: { runName: string; destinyId?: string; rootTags: string[]; factionId?: string; titles: string[] };
+  identity: { runName: string; destinyId?: string; innateProfile?: InnateProfile; rootTags: string[]; factionId?: string; titles: string[] };
   actions: { available: ActionType[]; pursuitCauseIds: string[]; recent: ActionType[] };
   events: { current?: { eventId: string; kind: string; phase?: string }; history: Array<{ eventId: string; nodeIndex: number; resultTier?: string }> };
   causes: { byId: Record<string, CauseInstance> };
@@ -160,6 +162,10 @@ function validateCause(value: unknown, path: string): void {
   if (cause.resolution !== undefined) safeRuleValue(cause.resolution, `${path}.resolution`);
 }
 
+function validateInnateProfile(value: unknown, path: string): void {
+  const profile = record(value, path); stringValue(profile.spiritualRoot, `${path}.spiritualRoot`); strings(profile.talentIds, `${path}.talentIds`); stringValue(profile.majorDestinyId, `${path}.majorDestinyId`);
+}
+
 function validateRun(value: unknown, path: string, rulesVersion: string): asserts value is RunState {
   const run = record(value, path);
   for (const key of ["runId", "playerId", "rootSeed"] as const) stringValue(run[key], `${path}.${key}`);
@@ -172,15 +178,23 @@ function validateRun(value: unknown, path: string, rulesVersion: string): assert
     stringValue(offer.offerId, `${path}.offer.offerId`);
     const destinyIds = strings(offer.destinyIds, `${path}.offer.destinyIds`);
     if (destinyIds.length !== 3) invalid(`${path}.offer.destinyIds`, "must contain exactly three ids");
+    if (offer.innateProfiles !== undefined) {
+      const profiles = array(offer.innateProfiles, `${path}.offer.innateProfiles`); if (profiles.length !== 3) invalid(`${path}.offer.innateProfiles`, "must contain exactly three offers");
+      const selectionIds = profiles.map((entry, index) => { const item = record(entry, `${path}.offer.innateProfiles[${index}]`); const id = stringValue(item.selectionId, `${path}.offer.innateProfiles[${index}].selectionId`); validateInnateProfile(item.profile, `${path}.offer.innateProfiles[${index}].profile`); return id; });
+      if (new Set(selectionIds).size !== selectionIds.length) invalid(`${path}.offer.innateProfiles`, "selection IDs must be unique");
+    }
   }
   const identity = record(run.identity, `${path}.identity`);
   stringValue(identity.runName, `${path}.identity.runName`); optionalString(identity, "destinyId", `${path}.identity`); optionalString(identity, "factionId", `${path}.identity`);
+  if (identity.innateProfile !== undefined) validateInnateProfile(identity.innateProfile, `${path}.identity.innateProfile`);
   strings(identity.rootTags, `${path}.identity.rootTags`); strings(identity.titles, `${path}.identity.titles`);
   if (status === "offered" && (run.offer === undefined || identity.destinyId !== undefined)) invalid(path, "offered requires an offer and no chosen destinyId");
   if (status === "active" && identity.destinyId === undefined) invalid(path, "active requires a chosen destinyId");
 
   const realm = record(run.realm, `${path}.realm`);
   stringValue(realm.id, `${path}.realm.id`); integer(realm.order, `${path}.realm.order`, 0); integer(realm.cultivation, `${path}.realm.cultivation`, 0);
+  if ((realm.cultivationBps === undefined) !== (realm.realmFoundationBps === undefined)) invalid(`${path}.realm`, "progression BPS fields must be present together");
+  if (realm.cultivationBps !== undefined) { integer(realm.cultivationBps, `${path}.realm.cultivationBps`, 0, 10_000); integer(realm.realmFoundationBps, `${path}.realm.realmFoundationBps`, 0, 10_000); if (realm.cultivation !== realm.cultivationBps) invalid(`${path}.realm.cultivation`, "must mirror cultivationBps"); }
   const attributes = record(run.attributes, `${path}.attributes`);
   for (const key of ["insight", "body", "spiritSense", "fortune"] as const) integer(attributes[key], `${path}.attributes.${key}`);
   const resources = record(run.resources, `${path}.resources`);

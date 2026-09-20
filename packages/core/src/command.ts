@@ -15,8 +15,10 @@ export const APP_ERROR_CODES = [
 export type AppErrorCode = typeof APP_ERROR_CODES[number];
 export type ClientPlatform = "wechat" | "douyin" | "dev";
 export type GameCommand =
-  | { type: "START_RUN"; offerId: string; destinyId: string }
+  | { type: "START_RUN"; offerId: string; destinyId: string; selectionId?: never }
+  | { type: "START_RUN"; offerId: string; selectionId: string; destinyId?: never }
   | { type: "CHOOSE_ACTION"; actionId: ActionType; pursuitCauseId?: string }
+  | { type: "ATTEMPT_BREAKTHROUGH" }
   | { type: "CHOOSE_EVENT_OPTION"; eventId: string; optionId: string }
   | { type: "EQUIP_TECHNIQUE"; componentId: string; slot: number }
   | { type: "EQUIP_ARTIFACT"; componentId: string; slot: number }
@@ -100,7 +102,11 @@ export function validateGameCommand(value: unknown): GameCommand {
   const command = objectValue(value, "command");
   const type = stringValue(command.type, "command.type");
   switch (type) {
-    case "START_RUN": idFields(command, type, ["offerId", "destinyId"]); break;
+    case "START_RUN": {
+      const hasDestiny = Object.hasOwn(command, "destinyId"); const hasSelection = Object.hasOwn(command, "selectionId");
+      if (hasDestiny === hasSelection) fail("command", "must contain exactly one of destinyId or selectionId");
+      idFields(command, type, ["offerId", hasSelection ? "selectionId" : "destinyId"]); break;
+    }
     case "CHOOSE_ACTION": {
       exactFields(command, ["type", "actionId"], ["pursuitCauseId"]);
       const actionId = stringValue(command.actionId, "command.actionId") as ActionType;
@@ -109,6 +115,7 @@ export function validateGameCommand(value: unknown): GameCommand {
       break;
     }
     case "CHOOSE_EVENT_OPTION": idFields(command, type, ["eventId", "optionId"]); break;
+    case "ATTEMPT_BREAKTHROUGH": exactFields(command, ["type"]); break;
     case "EQUIP_TECHNIQUE":
     case "EQUIP_ARTIFACT":
       exactFields(command, ["type", "componentId", "slot"]);

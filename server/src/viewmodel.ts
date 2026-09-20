@@ -53,11 +53,11 @@ function publicRun(state: GameState): Record<string, PublicJson> {
     runName: state.run.identity.runName,
     age: state.run.age,
     maxAge: state.run.maxAge,
-    realm: { id: state.run.realm.id, order: state.run.realm.order, cultivation: state.run.realm.cultivation },
+    realm: { id: state.run.realm.id, order: state.run.realm.order, cultivation: state.run.realm.cultivation, ...(state.run.realm.cultivationBps === undefined ? {} : { cultivationBps: state.run.realm.cultivationBps, realmFoundationBps: state.run.realm.realmFoundationBps ?? 0 }) },
     attributes: { ...state.run.attributes },
     resources: { spiritStone: state.run.resources.spiritStone, items: { ...state.run.resources.items } },
     conditions: state.run.conditions.map((condition) => ({ id: condition.id, kind: condition.kind, stacks: condition.stacks, ...(condition.remainingNodes === undefined ? {} : { remainingNodes: condition.remainingNodes }) })),
-    identity: { rootTags: [...state.run.identity.rootTags], titles: [...state.run.identity.titles], ...(state.run.identity.destinyId === undefined ? {} : { destinyId: state.run.identity.destinyId }), ...(state.run.identity.factionId === undefined ? {} : { factionId: state.run.identity.factionId }) },
+    identity: { rootTags: [...state.run.identity.rootTags], titles: [...state.run.identity.titles], ...(state.run.identity.destinyId === undefined ? {} : { destinyId: state.run.identity.destinyId }), ...(state.run.identity.innateProfile === undefined ? {} : { innateProfile: { spiritualRoot: state.run.identity.innateProfile.spiritualRoot, talentIds: [...state.run.identity.innateProfile.talentIds], majorDestinyId: state.run.identity.innateProfile.majorDestinyId } }), ...(state.run.identity.factionId === undefined ? {} : { factionId: state.run.identity.factionId }) },
     actions: ["cultivate", "travel", "worldly", "pursuit"].map((actionId) => ({ actionId, enabled: state.run.actions.available.includes(actionId as GameState["run"]["actions"]["available"][number]) })),
     world: { regionId: state.run.world.regionId, knownRegionIds: [...state.run.world.knownRegionIds], tags: [...state.run.world.tags] },
     ...(state.run.ending === undefined ? {} : { ending: { endingId: state.run.ending.endingId, age: state.run.ending.age, ...(state.run.ending.deathCause === undefined ? {} : { deathCause: state.run.ending.deathCause }) } })
@@ -66,6 +66,10 @@ function publicRun(state: GameState): Record<string, PublicJson> {
 
 function offeredInteraction(state: GameState, content: ContentRegistry, interactionState: InteractionState): CurrentInteraction | undefined {
   if (state.run.offer === undefined) return undefined;
+  if (state.run.offer.innateProfiles !== undefined) {
+    const progression = content.getProgression(state.contentVersion); const candidates = state.run.offer.innateProfiles.map((offer) => ({ selectionId: offer.selectionId, spiritualRoot: progression.spiritualRoots.find((value) => value.id === offer.profile.spiritualRoot)?.displayName ?? offer.profile.spiritualRoot, talent: progression.talents.find((value) => value.id === offer.profile.talentIds[0])?.displayName ?? offer.profile.talentIds[0], majorDestiny: progression.majorDestinies.find((value) => value.id === offer.profile.majorDestinyId)?.displayName ?? offer.profile.majorDestinyId }));
+    return { interactionId: state.run.offer.offerId, kind: "destinyOffer", titleKey: "destiny.offer.title", body: { candidates }, options: candidates.map((candidate) => ({ optionId: candidate.selectionId, labelKey: "innate.offer.selection" })), interactionState };
+  }
   const candidates = state.run.offer.destinyIds.map((id) => content.getDestiny(state.contentVersion, id));
   return {
     interactionId: state.run.offer.offerId, kind: "destinyOffer", titleKey: "destiny.offer.title",

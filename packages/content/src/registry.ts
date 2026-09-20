@@ -1,6 +1,8 @@
 import { assertSafeInteger } from "../../core/src/numeric.ts";
 import { sha256Utf8 } from "../../core/src/sha256.ts";
 import { ACTION_TYPES, type ActionType } from "../../core/src/state.ts";
+import type { ProgressionPack } from "../../core/src/progression.ts";
+import { getProgressionPack, validateProgressionPack } from "./progression-v1.ts";
 
 export type LogicalPath =
   | "run.age" | "run.maxAge" | "realm.order" | "realm.cultivation"
@@ -81,7 +83,7 @@ export interface ContentReferences {
   causes: string[];
   conditions: string[];
 }
-export interface ContentPack { manifest: ContentManifest; references: ContentReferences; destinies: DestinyDefinition[]; events: EventDefinition[]; causeTemplates: CauseTemplate[] }
+export interface ContentPack { manifest: ContentManifest; references: ContentReferences; destinies: DestinyDefinition[]; events: EventDefinition[]; causeTemplates: CauseTemplate[]; progressionPackId?: string }
 export type ContentPackDraft = Omit<ContentPack, "manifest"> & { manifest: Omit<ContentManifest, "checksum"> };
 
 export class ContentValidationError extends TypeError {
@@ -326,7 +328,7 @@ function normalizedDraft(pack: ContentPack | ContentPackDraft): unknown {
   const destinies = [...pack.destinies].sort((left, right) => left.id.localeCompare(right.id));
   const events = [...pack.events].sort((left, right) => left.id.localeCompare(right.id));
   const causeTemplates = [...pack.causeTemplates].sort((left, right) => left.id.localeCompare(right.id));
-  return { manifest, references, destinies, events, causeTemplates };
+  return { manifest, references, destinies, events, causeTemplates, ...(pack.progressionPackId === undefined ? {} : { progressionPackId: pack.progressionPackId }) };
 }
 function canonicalValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalValue);
@@ -344,13 +346,14 @@ export function sealContentPack(pack: ContentPackDraft): ContentPack {
 }
 
 export function validateContentPack(value: unknown, expectedContentVersion?: string): ContentPack {
-  const pack = objectValue(value, "pack"); exact(pack, ["manifest", "references", "destinies", "events", "causeTemplates"], [], "pack");
+  const pack = objectValue(value, "pack"); exact(pack, ["manifest", "references", "destinies", "events", "causeTemplates"], ["progressionPackId"], "pack");
   const manifest = objectValue(pack.manifest, "pack.manifest"); exact(manifest, ["schemaVersion", "packId", "rulesVersion", "contentVersion", "checksum"], [], "pack.manifest");
   if (manifest.schemaVersion !== 2) fail("pack.manifest.schemaVersion", "must be 2");
   stringValue(manifest.packId, "pack.manifest.packId"); stringValue(manifest.rulesVersion, "pack.manifest.rulesVersion");
   const contentVersion = stringValue(manifest.contentVersion, "pack.manifest.contentVersion");
   if (expectedContentVersion !== undefined && contentVersion !== expectedContentVersion) fail("pack.manifest.contentVersion", "does not match the locked contentVersion");
   const checksum = stringValue(manifest.checksum, "pack.manifest.checksum"); if (!/^[0-9a-f]{64}$/.test(checksum)) fail("pack.manifest.checksum", "must be lowercase SHA-256");
+  if (pack.progressionPackId !== undefined) { const progression = validateProgressionPack(getProgressionPack(stringValue(pack.progressionPackId, "pack.progressionPackId"))); if (progression.rulesVersion !== manifest.rulesVersion) fail("pack.progressionPackId", "rulesVersion mismatch"); }
   const refs = referenceSets(pack.references);
   const destinies = array(pack.destinies, "pack.destinies"); const destinyIds = destinies.map((destiny, index) => stringValue(objectValue(destiny, `pack.destinies[${index}]`).id, `pack.destinies[${index}].id`)); unique(destinyIds, "pack.destinies");
   destinies.forEach((destiny, index) => validateDestiny(destiny, refs, `pack.destinies[${index}]`));
@@ -399,5 +402,8 @@ export class ContentRegistry {
   }
   getCauseTemplate(contentVersion: string, templateId: string): CauseTemplate {
     const template = this.get(contentVersion).causeTemplates.find((candidate) => candidate.id === templateId); if (template === undefined) fail("templateId", `is not registered: ${templateId}`); return template;
+  }
+  getProgression(contentVersion: string): ProgressionPack {
+    const id = this.get(contentVersion).progressionPackId; if (id === undefined) fail("progressionPackId", "is not configured for contentVersion"); return getProgressionPack(id);
   }
 }
