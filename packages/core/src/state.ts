@@ -121,6 +121,7 @@ function validateNpc(value: unknown, path: string): void {
   enumValue(npc.tier, npcTierSet, `${path}.tier`);
   enumValue(npc.status, npcStatusSet, `${path}.status`);
   integer(npc.age, `${path}.age`, 0); integer(npc.maxAge, `${path}.maxAge`, 0);
+  if ((npc.age as number) > (npc.maxAge as number)) invalid(`${path}.age`, "must not exceed maxAge");
   integer(npc.importanceScore, `${path}.importanceScore`); integer(npc.timelineCursor, `${path}.timelineCursor`, 0);
   strings(npc.traits, `${path}.traits`); strings(npc.memoryRefs, `${path}.memoryRefs`); strings(npc.tags, `${path}.tags`);
   const relation = record(npc.relation, `${path}.relation`);
@@ -134,6 +135,7 @@ function validateRun(value: unknown, path: string, rulesVersion: string): assert
   for (const key of ["runId", "playerId", "rootSeed"] as const) stringValue(run[key], `${path}.${key}`);
   const status = enumValue<RunStatus>(run.status, runStatusSet, `${path}.status`);
   integer(run.nodeIndex, `${path}.nodeIndex`, 0); integer(run.age, `${path}.age`, 0); integer(run.maxAge, `${path}.maxAge`, 0);
+  if ((run.age as number) > (run.maxAge as number)) invalid(`${path}.age`, "must not exceed maxAge");
 
   if (run.offer !== undefined) {
     const offer = record(run.offer, `${path}.offer`);
