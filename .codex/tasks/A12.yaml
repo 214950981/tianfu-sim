@@ -1,19 +1,37 @@
 id: A12
 title: wechat-viewmodel-e2e
-read: [.codex/contracts/platform.ref,.codex/contracts/crosslayer.ref,.codex/contracts/ending.ref,.codex/contracts/qa.yaml]
-blockers: [UI01]
+read: [.codex/contracts/ui.ref,.codex/contracts/viewmodel.ref,.codex/contracts/page-state.ref,.codex/PAGE_STATE_MAP.yaml,.codex/contracts/platform.ref,.codex/contracts/crosslayer.ref,.codex/contracts/command.ref,.codex/contracts/ending.ref,.codex/contracts/qa.yaml]
+blockers: []
 in:
-  - after UI01 is resolved, implement minimal WeChatAdapter + ui.ref ViewModel only
-  - safe ViewState projection; hide RNG/internal Cause/security data
-  - vertical slice: offered destiny -> start -> event choice -> first Cause echo -> terminal/template book -> rebirth/meta unlock
-  - pending UI reuses commandId; lifecycle resume cannot double-send
-  - AI OFF/template only
-out: [Douyin,full_4_builds,5_core_NPCs,AI,commercialization,visual_polish]
+  - WeChat ViewModel contract implementation
+  - ViewModel builder / projection
+  - Page state plumbing
+  - Command submission states
+  - Pending / retry integration
+  - Platform-neutral UI contract connection
+  - minimal WeChat page shell
+out:
+  - CHAL01
+  - leaderboard backend
+  - daily challenge backend
+  - ChallengeContext
+  - scoringProfile
+  - leaderboard storage
+  - anti-cheat
+  - UI02
+  - UI03
+  - UI04
+  - full combat system
+  - commercial SDK
+  - full Douyin implementation
+  - new monetization model
+  - reinterpret Cause
+  - send server secrets to client
 accept:
-  - full technical slice completes on WeChat dev/test
+  - ViewModel matches ui.ref/viewmodel.ref/page-state.ref and exposes public projection only
+  - page state and command submission use platform-neutral contracts
+  - retry/background/resume reuse the same commandId and cannot double-send
   - Core zero wx imports
-  - retry/background/resume no duplicate command
   - UI cannot set authoritative state
-  - AI-off whole run completes
-  - no fabricated people/Causes in template book
-tests: [PLAT_adapter,E2E_first_life,AI_off,CMD_idempotency,first_echo_fixture]
+  - minimal WeChat page shell contains no server secrets or forbidden feature implementation
+tests: [VIEWMODEL_projection,PAGE_state,COMMAND_submission,PENDING_retry,PLAT_adapter,minimal_wechat_shell]
