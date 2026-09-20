@@ -4,7 +4,7 @@
     "packId": "dev-minimal",
     "rulesVersion": "2.0.0",
     "contentVersion": "dev-0.1.0",
-    "checksum": "277af7671aaffc468b36cd09f90ba7b201b5598aad57153e0f880d318136a9e7"
+    "checksum": "ca6e88c1caa6d855d13534690ddfee09d4ced9f59b2262527082c29d316d46f1"
   },
   "references": {
     "items": [],
@@ -66,6 +66,7 @@
       "titleKey": "dev.first-choice.title",
       "tags": ["dev-fixture"],
       "weight": 10000,
+      "actionAffinity": ["cultivate", "travel", "worldly", "pursuit"],
       "choices": [
         {
           "id": "continue",
@@ -109,7 +110,7 @@
                   "op": "ADD_CAUSE",
                   "templateId": "cause.rescued-stranger",
                   "salience": 3,
-                  "visibility": "hint",
+                  "visibility": "hidden",
                   "actorBindingKeys": { "rescuedNpc": "eventTarget" }
                 }
               ]
@@ -136,6 +137,29 @@
       "tags": ["dev-fixture", "echo"],
       "weight": 1,
       "fallback": { "bodyKey": "dev.rescue-echo-b.body" }
+    },
+    {
+      "id": "dev.ordinary-fallback",
+      "version": 1,
+      "kind": "choice",
+      "titleKey": "dev.ordinary-fallback.title",
+      "tags": ["dev-fixture", "ordinary"],
+      "weight": 1,
+      "choices": [
+        {
+          "id": "continue",
+          "scope": "core",
+          "labelKey": "dev.ordinary-fallback.continue",
+          "outcomes": {
+            "success": {
+              "effects": [
+                { "op": "ADD_RESOURCE", "key": "spiritStone", "amount": 1 }
+              ]
+            }
+          }
+        }
+      ],
+      "fallback": { "bodyKey": "dev.ordinary-fallback.body" }
     }
   ]
 }

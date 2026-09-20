@@ -3,11 +3,13 @@ import test from "node:test";
 
 import {
   ReducerError,
+  actionTimeCost,
   createOfferedRun,
   projectRuleState,
   reduce,
   resolveTimeAdvance
 } from "../packages/core/src/index.ts";
+import { ContentRegistry, sealContentPack } from "../packages/content/src/index.ts";
 
 function offeredInput() {
   return {
@@ -90,4 +92,51 @@ test("property_current_scope: time helper never exceeds maxAge", () => {
       }
     }
   }
+});
+
+function actionContent(multipleAffinityCandidates = false) {
+  const registry = new ContentRegistry();
+  const actionEvents = ["event.cultivate", ...(multipleAffinityCandidates ? ["event.cultivate.b"] : [])].map((id) => ({ id, version: 1, kind: "choice", titleKey: id, tags: [], weight: 1, actionAffinity: ["cultivate"], choices: [{ id: "wait", scope: "core", rhythmOnly: true, labelKey: "wait", outcomes: { success: { effects: [] } }, next: [{ eventId: "event.fallback" }] }], fallback: { bodyKey: id } }));
+  registry.register(sealContentPack({
+    manifest: { schemaVersion: 2, packId: "actions", rulesVersion: "2.0.0", contentVersion: "content-1" },
+    references: { items: [], components: [], npcTemplates: [], regions: ["start"], endings: [], causes: [], conditions: [] },
+    destinies: [], causeTemplates: [],
+    events: [
+      ...actionEvents,
+      { id: "event.fallback", version: 1, kind: "narrative", titleKey: "fallback", tags: [], weight: 1, fallback: { bodyKey: "fallback" } }
+    ]
+  }));
+  return registry;
+}
+
+test("Phase 1 authoritative action time costs are versioned safe integers", () => {
+  assert.deepEqual(["cultivate", "travel", "worldly", "pursuit"].map((action) => actionTimeCost("2.0.0", action)), [3, 2, 1, 1]);
+  assert.throws(() => actionTimeCost("unknown", "cultivate"), ReducerError);
+});
+
+test("CHOOSE_ACTION advances authoritative time/node and selects action-affinity without RNG", () => {
+  const content = actionContent();
+  const started = reduce({ state: createOfferedRun(offeredInput()), command: { type: "START_RUN", offerId: "offer-1", destinyId: "d1" }, context: { ...context(), content, commandId: "cmd:start" } }).state;
+  const result = reduce({ state: started, command: { type: "CHOOSE_ACTION", actionId: "cultivate" }, context: { ...context(), content, commandId: "cmd:action" } });
+  assert.equal(result.state.run.age, 19); assert.equal(result.state.run.nodeIndex, 1); assert.equal(result.state.run.events.current.eventId, "event.cultivate");
+  assert.equal(result.state.run.rng.streams.event.drawIndex, started.run.rng.streams.event.drawIndex); assert.equal(result.trace.selector.at(-1).tier, "P4");
+});
+
+test("CHOOSE_ACTION canonicalizes 2+ candidates and makes one logical unbiased event request", () => {
+  const content = actionContent(true);
+  const started = reduce({ state: createOfferedRun(offeredInput()), command: { type: "START_RUN", offerId: "offer-1", destinyId: "d1" }, context: { ...context(), content, commandId: "cmd:start" } }).state;
+  const input = { state: started, command: { type: "CHOOSE_ACTION", actionId: "cultivate" }, context: { ...context(), content, commandId: "cmd:action" } };
+  const first = reduce(input); const replay = reduce(input); assert.deepEqual(first, replay);
+  assert.equal(first.trace.selector.at(-1).logicalRequests, 1); assert.equal(first.trace.rngDraws.every((draw) => draw.stream === "event"), true);
+  assert.ok(first.state.run.rng.streams.event.drawIndex > started.run.rng.streams.event.drawIndex);
+});
+
+test("CHOOSE_ACTION lifespan short-circuits selector and invalid action is atomic", () => {
+  const content = actionContent();
+  const offered = createOfferedRun({ ...offeredInput(), fixture: { ...offeredInput().fixture, age: 98, maxAge: 100 } });
+  const started = reduce({ state: offered, command: { type: "START_RUN", offerId: "offer-1", destinyId: "d1" }, context: { ...context(), content, commandId: "cmd:start" } }).state;
+  const ended = reduce({ state: started, command: { type: "CHOOSE_ACTION", actionId: "cultivate" }, context: { ...context(), content, commandId: "cmd:lifespan" } });
+  assert.equal(ended.state.run.age, 100); assert.equal(ended.state.run.nodeIndex, 1); assert.equal(ended.state.run.status, "dying"); assert.equal(ended.state.run.ending.deathCause, "lifespan");
+  assert.equal(ended.state.run.events.current, undefined); assert.deepEqual(ended.state.run.rng, started.run.rng);
+  const snapshot = structuredClone(started); assert.throws(() => reduce({ state: started, command: { type: "CHOOSE_ACTION", actionId: "worldly" }, context: { ...context(), content, commandId: "cmd:bad" } }), ReducerError); assert.deepEqual(started, snapshot);
 });

@@ -40,7 +40,7 @@ type OutcomeTable={greatSuccess?:Outcome;success:Outcome;costlySuccess?:Outcome;
 type Transition={eventId:string;when?:ConditionExpr;priority?:number};
 type CheckSpec={primary:'insight'|'body'|'spiritSense'|'fortune';secondary?:'insight'|'body'|'spiritSense'|'fortune';secondaryWeightBps?:number;difficulty:number;randomMin:-10;randomMax:10};
 type ChoiceDefinition={id:string;scope:'core'|'tactical';rhythmOnly?:boolean;labelKey:string;requirements?:ConditionExpr;check?:CheckSpec;outcomes:OutcomeTable;next?:Transition[]};
-type EventDefinition={id:string;version:number;kind:'choice'|'narrative'|'combat'|'breakthrough'|'ending'|'tutorial';titleKey:string;tags:string[];requirements?:ConditionExpr;weight:number;cooldown?:{minNodesBetween?:number;maxOccurrences?:number};choices?:ChoiceDefinition[];onEnter?:EffectSpec[];ai?:unknown;fallback:{titleKey?:string;bodyKey:string};telemetry?:Record<string,string>};
+type EventDefinition={id:string;version:number;kind:'choice'|'narrative'|'combat'|'breakthrough'|'ending'|'tutorial';titleKey:string;tags:string[];requirements?:ConditionExpr;weight:number;actionAffinity?:ActionType[];cooldown?:{minNodesBetween?:number;maxOccurrences?:number};choices?:ChoiceDefinition[];onEnter?:EffectSpec[];ai?:unknown;fallback:{titleKey?:string;bodyKey:string};telemetry?:Record<string,string>};
 
 // LogicalPath is a stable DSL namespace, NOT direct GameState property access.
 // core Choice must change >=1 long-term dimension unless event explicitly marked rhythm-only.
@@ -62,4 +62,7 @@ type EventDefinition={id:string;version:number;kind:'choice'|'narrative'|'combat
 // They mutate only EventSessionState and never RuleState or MetaState.
 // A tactical Choice is meaningful iff it has at least one valid session-local effect, a valid CheckSpec, or a valid next transition to a different eventId.
 // Content cannot author riskHint. UI risk language is derived later (UI01).
+// ActionType is the command/state ActionType; no second action enum exists. actionAffinity classifies selector candidates only.
+// Missing/empty actionAffinity means ordinary fallback unless the Event is reserved by a higher selector tier (for example a Cause-linked echo). Unknown ActionType is invalid content.
+// A playable Content Pack must contain at least one ordinary fallback Event.
 // No arbitrary function/path/code. Unknown operator/effect/path => lint+runtime reject.

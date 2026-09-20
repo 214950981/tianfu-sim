@@ -2,7 +2,7 @@ import { CommandValidationError, validateGameCommand, type AppErrorCode, type Ga
 import { advanceCauses, applyCauseEffects, selectCauseEcho, validateCauseChoice, type CauseContentAccess } from "./cause.ts";
 import { applyEventEffects, assertA08ExecutableChoice, evaluateCondition, EventRuntimeError, isEventEligible, resolveCheck, resolveOutcome, type OutcomeTier } from "./event.ts";
 import { assertNonNegativeInteger, assertSafeInteger, safeAdd } from "./numeric.ts";
-import { createRngState, type RngState, type RngTrace } from "./rng.ts";
+import { createRngState, drawInt, type RngState, type RngTrace } from "./rng.ts";
 import {
   projectRuleState,
   validateGameState,
@@ -180,6 +180,17 @@ function startRun(state: GameState, command: Extract<GameCommand, { type: "START
   return validateStateTransition(state, next);
 }
 
+const ACTION_TIME_COSTS: Readonly<Record<string, Readonly<Record<ActionType, number>>>> = {
+  "2.0.0": { cultivate: 3, travel: 2, worldly: 1, pursuit: 1 }
+};
+
+export function actionTimeCost(rulesVersion: string, action: ActionType): number {
+  const cost = ACTION_TIME_COSTS[rulesVersion]?.[action];
+  if (cost === undefined) throw new ReducerError("CONTENT_MISMATCH", "rules.action_time_unavailable");
+  assertNonNegativeInteger(cost, "actionTimeCost");
+  return cost;
+}
+
 type RuntimeObject = Record<string, unknown>;
 function runtimeObject(value: unknown, message: string): RuntimeObject {
   if (typeof value !== "object" || value === null || Array.isArray(value)) throw new ReducerError("INVALID_OPTION", message);
@@ -205,6 +216,79 @@ function selectedTransition(transitionsValue: unknown, state: GameState, context
     return rightPriority === leftPriority ? String(left.eventId).localeCompare(String(right.eventId)) : rightPriority > leftPriority ? 1 : -1;
   });
   return eligible[0] as RuntimeObject | undefined;
+}
+
+interface ActionEventContentAccess {
+  get(contentVersion: string): { events: readonly unknown[]; causeTemplates?: readonly { linkedEventIds: readonly string[] }[] };
+}
+
+function selectEventCandidate(state: GameState, action: ActionType, context: RuleContext): { state: GameState; rngDraws: RngTrace[]; trace: Record<string, unknown>[] } {
+  const source = context.content as unknown as ActionEventContentAccess;
+  if (typeof source.get !== "function") throw new ReducerError("CONTENT_MISMATCH", "content.event_registry_required");
+  const pack = source.get(context.contentVersion); const events = pack.events;
+  if (!Array.isArray(events)) throw new ReducerError("CONTENT_MISMATCH", "content.events_required");
+  const causeLinkedEventIds = new Set((pack.causeTemplates ?? []).flatMap((template) => template.linkedEventIds));
+  const eligible = events.filter((eventValue) => {
+    const event = runtimeObject(eventValue, "event.invalid");
+    return !causeLinkedEventIds.has(String(event.id)) && isEventEligible(event, state);
+  }).map((eventValue) => runtimeObject(eventValue, "event.invalid"));
+  const affinity = eligible.filter((event) => Array.isArray(event.actionAffinity) && event.actionAffinity.includes(action));
+  const ordinary = eligible.filter((event) => event.actionAffinity === undefined || (Array.isArray(event.actionAffinity) && event.actionAffinity.length === 0));
+  const tier = affinity.length > 0 ? "P4" : "P5";
+  const candidates = (affinity.length > 0 ? affinity : ordinary).sort((left, right) => String(left.id).localeCompare(String(right.id)));
+  if (candidates.length === 0) throw new ReducerError("CONTENT_MISMATCH", "content.no_event_candidate");
+  let selected = candidates[0]; let rng = state.run.rng; let rngDraws: RngTrace[] = [];
+  if (candidates.length >= 2) {
+    const draw = drawInt(rng, "event", 0, candidates.length - 1);
+    rng = draw.state; rngDraws = [...draw.trace]; selected = candidates[draw.value];
+  }
+  const eventId = String(selected.id); const kind = String(selected.kind);
+  return {
+    state: { ...state, run: { ...state.run, rng, events: { ...state.run.events, current: { eventId, kind } } } },
+    rngDraws,
+    trace: [{ tier, action, candidates: candidates.map((event) => String(event.id)), eventId, logicalRequests: candidates.length >= 2 ? 1 : 0 }]
+  };
+}
+
+function chooseAction(state: GameState, command: Extract<GameCommand, { type: "CHOOSE_ACTION" }>, context: RuleContext): ReduceOutput {
+  if (state.run.status !== "active") throw new ReducerError("RUN_NOT_ACTIVE", "run.not_active");
+  if (state.run.events.current !== undefined) throw new ReducerError("INVALID_COMMAND", "action.interaction_pending");
+  if (!state.run.actions.available.includes(command.actionId)) throw new ReducerError("INVALID_OPTION", "action.unavailable");
+  const delta = actionTimeCost(state.rulesVersion, command.actionId);
+  const timeAdvance = resolveTimeAdvance(state.run.age, state.run.maxAge, delta);
+  let provisional: GameState = {
+    ...state,
+    run: {
+      ...state.run,
+      age: timeAdvance.nextAge,
+      nodeIndex: safeAdd(state.run.nodeIndex, 1),
+      ...(timeAdvance.reachedMaxAge ? {
+        status: "dying" as const,
+        ending: { endingId: "lifespan", deathCause: "lifespan" as const, sourceRef: context.commandId, age: timeAdvance.nextAge, factIds: [] }
+      } : {})
+    }
+  };
+  const causeContent = context.content as unknown as CauseContentAccess;
+  try { provisional = advanceCauses(provisional, causeContent, context.contentVersion, context); }
+  catch { throw new ReducerError("INVALID_OPTION", "cause.invalid"); }
+  let rngDraws: RngTrace[] = []; let selectorTrace: Record<string, unknown>[] = [];
+  if (provisional.run.status === "active") {
+    const causeSelection = selectCauseEcho(provisional, causeContent, context.contentVersion);
+    provisional = causeSelection.state; rngDraws = [...causeSelection.rngDraws]; selectorTrace = [...causeSelection.trace];
+    if (provisional.run.events.current === undefined) {
+      const eventSelection = selectEventCandidate(provisional, command.actionId, context);
+      provisional = eventSelection.state; rngDraws.push(...eventSelection.rngDraws); selectorTrace.push(...eventSelection.trace);
+    }
+  } else {
+    selectorTrace.push({ tier: "P0", result: "lifespan", eventRngRequests: 0 });
+  }
+  const next = validateStateTransition(state, { ...provisional, stateVersion: safeAdd(state.stateVersion, 1) });
+  return {
+    state: next,
+    effects: [],
+    narrativeFacts: [{ type: "ACTION", actionId: command.actionId, actionTimeCost: delta }],
+    trace: { rngDraws, selector: selectorTrace, time: [{ ...timeAdvance, actionId: command.actionId }] }
+  };
 }
 
 function chooseEventOption(state: GameState, command: Extract<GameCommand, { type: "CHOOSE_EVENT_OPTION" }>, context: RuleContext): ReduceOutput {
@@ -292,6 +376,7 @@ export function reduce(input: ReduceInput): ReduceOutput {
       throw error;
     }
   }
+  if (command.type === "CHOOSE_ACTION") return chooseAction(state, command, input.context);
   if (command.type !== "START_RUN") throw new ReducerError("INVALID_COMMAND", "command.not_implemented");
   const next = startRun(state, command);
   assertSafeInteger(next.stateVersion, "stateVersion");

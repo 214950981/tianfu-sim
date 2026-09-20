@@ -6,12 +6,18 @@ P2 eligible high-salience Cause
 P3 active pursuit / core-NPC strong event
 P4 build/world/region/action/status event
 P5 ordinary/rhythm event
-Within same tier: deterministic score then eventId tie-break; RNG only among explicitly equal weighted candidates.
+Within a tier, use only its frozen deterministic priority (for example Cause lexicographic priority); Phase 1 Event candidate sets use the canonical equal-selection rule below and no scalar score.
 
 CHOOSE_ACTION order:
-1 validate command/state; 2 compute actionTimeCost (integer years, numeric.ref) using time stream;
-3 advance age + NPC/world/conditions by actionTimeCost; 4 if age>=maxAge => status=dying, select lifespan_end, no ordinary action event;
-5 update Cause maturity; 6 Director/selector chooses event.
+1 validate command/state; 2 resolve authoritative actionTimeCost (integer years, numeric.ref);
+3 calculate proposedAge; 4 handle lifespan hard ceiling; 5 advance age; 6 nodeIndex+=1;
+7 update Cause maturity on the advanced State; 8 selector; 9 create the next CurrentInteraction.
+Phase 1 actionTimeCost for rulesVersion 2.0.0: cultivate=3, travel=2, worldly=1, pursuit=1. Client input cannot override it.
+Phase 1 world advance changes only age and nodeIndex. NPC/world/Build/Director simulation is not implemented.
+If proposedAge>=maxAge, cap age at maxAge, set dying/lifespan ending state, and skip ordinary Event selection without event RNG or a required lifespan_end content Event.
+Selector uses the first priority tier with a legal candidate. Unimplemented Director/NPC/Build tiers have no candidates.
+After Cause echo, Phase 1 uses action-affinity Events, then ordinary Events. Within a tier: 0 candidates continues with no RNG; 1 selects directly with no RNG; 2+ sorts eventId ASC then makes one logical unbiased event-stream request. No scalar score or hidden weight is used.
+Cause-linked echo Events are legal only through P2 and are excluded from P4/P5 action/ordinary candidate pools.
 ViewState should show an estimated time range and `lifespanRisk` if the action can reach maxAge; if guaranteed, require confirm UI later.
 
 CHOOSE_EVENT_OPTION order:

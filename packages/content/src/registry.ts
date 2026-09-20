@@ -1,5 +1,6 @@
 import { assertSafeInteger } from "../../core/src/numeric.ts";
 import { sha256Utf8 } from "../../core/src/sha256.ts";
+import { ACTION_TYPES, type ActionType } from "../../core/src/state.ts";
 
 export type LogicalPath =
   | "run.age" | "run.maxAge" | "realm.order" | "realm.cultivation"
@@ -42,6 +43,7 @@ export interface ChoiceDefinition { id: string; scope: "core" | "tactical"; rhyt
 export interface EventDefinition {
   id: string; version: number; kind: "choice" | "narrative" | "combat" | "breakthrough" | "ending" | "tutorial";
   titleKey: string; tags: string[]; requirements?: ConditionExpr; weight: number;
+  actionAffinity?: ActionType[];
   cooldown?: { minNodesBetween?: number; maxOccurrences?: number }; choices?: ChoiceDefinition[]; onEnter?: EffectSpec[];
   ai?: unknown; fallback: { titleKey?: string; bodyKey: string }; telemetry?: Record<string, string>;
 }
@@ -97,6 +99,7 @@ const deathCauses = new Set(["lifespan", "combat", "ambush", "exploration", "poi
 const conditionKinds = new Set(["injury", "pillToxicity", "curse", "blessing", "pursued", "other"]);
 const destinyProfiles = new Set(["stable", "high-variance", "story-hook"]);
 const destinyTargets = new Set(["insight", "body", "spiritSense", "fortune", "maxAge", "spiritStone"]);
+const actionTypes = new Set<string>(ACTION_TYPES);
 const sessionOps = new Set(["setSessionFlag", "adjustSessionCounter", "addSessionTag", "removeSessionTag"]);
 const longTermOps = new Set(["ADD_RESOURCE", "REMOVE_RESOURCE", "ADD_ITEM", "REMOVE_ITEM", "ADD_CULTIVATION", "ADD_CONDITION", "REMOVE_CONDITION", "ADD_IDENTITY_TAG", "REMOVE_IDENTITY_TAG", "ADD_WORLD_TAG", "REMOVE_WORLD_TAG", "RELATION_DELTA", "ADD_CAUSE", "RESOLVE_CAUSE", "EXPIRE_CAUSE", "GRANT_COMPONENT", "REMOVE_COMPONENT", "CREATE_NPC", "SET_NPC_STATUS", "SET_REGION", "OUTCOME_TIME_DELTA", "END_RUN"]);
 
@@ -258,9 +261,10 @@ function referenceSets(value: unknown): ReferenceSets {
 
 function validateEvent(value: unknown, refs: ReferenceSets, eventIds: Set<string>, path: string): void {
   const event = objectValue(value, path);
-  exact(event, ["id", "version", "kind", "titleKey", "tags", "weight", "fallback"], ["requirements", "cooldown", "choices", "onEnter", "ai", "telemetry"], path);
+  exact(event, ["id", "version", "kind", "titleKey", "tags", "weight", "fallback"], ["requirements", "actionAffinity", "cooldown", "choices", "onEnter", "ai", "telemetry"], path);
   stringValue(event.id, `${path}.id`); integer(event.version, `${path}.version`, 1); oneOf(event.kind, eventKinds, `${path}.kind`); stringValue(event.titleKey, `${path}.titleKey`);
   const tags = strings(event.tags, `${path}.tags`); unique(tags, `${path}.tags`); integer(event.weight, `${path}.weight`, 0);
+  if (event.actionAffinity !== undefined) { const affinities = strings(event.actionAffinity, `${path}.actionAffinity`); unique(affinities, `${path}.actionAffinity`); affinities.forEach((action, index) => oneOf(action, actionTypes, `${path}.actionAffinity[${index}]`)); }
   if (event.requirements !== undefined) validateCondition(event.requirements, `${path}.requirements`);
   if (event.cooldown !== undefined) { const cooldown = objectValue(event.cooldown, `${path}.cooldown`); exact(cooldown, [], ["minNodesBetween", "maxOccurrences"], `${path}.cooldown`); if (cooldown.minNodesBetween !== undefined) integer(cooldown.minNodesBetween, `${path}.cooldown.minNodesBetween`, 0); if (cooldown.maxOccurrences !== undefined) integer(cooldown.maxOccurrences, `${path}.cooldown.maxOccurrences`, 1); }
   if (event.choices !== undefined) { const ids = array(event.choices, `${path}.choices`).map((choice, index) => validateChoice(choice, refs, eventIds, event.id as string, `${path}.choices[${index}]`)); unique(ids, `${path}.choices`); }
@@ -356,6 +360,8 @@ export function validateContentPack(value: unknown, expectedContentVersion?: str
   if (templateIds.length !== refs.causes.size || templateIds.some((id) => !refs.causes.has(id))) fail("pack.causeTemplates", "must define every Cause reference exactly once");
   templates.forEach((template, index) => validateCauseTemplate(template, refs, eventIdSet, `pack.causeTemplates[${index}]`));
   const templateMap = new Map((templates as CauseTemplate[]).map((template) => [template.id, template]));
+  const causeLinkedEventIds = new Set([...templateMap.values()].flatMap((template) => template.linkedEventIds));
+  if (!(events as EventDefinition[]).some((event) => (event.actionAffinity?.length ?? 0) === 0 && !causeLinkedEventIds.has(event.id))) fail("pack.events", "playable pack requires an ordinary fallback Event that is not Cause-linked");
   for (const template of templateMap.values()) if (template.onActorUnavailable.action === "transform") {
     const target = templateMap.get(template.onActorUnavailable.targetCauseTemplateId); if (target === undefined) fail(`pack.causeTemplates.${template.id}`, "transform target is undefined");
     const sourceRequired = new Set(template.actors.filter((actor) => actor.required).map((actor) => actor.role));

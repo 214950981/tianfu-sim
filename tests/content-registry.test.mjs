@@ -50,6 +50,15 @@ test("CNT-010: unknown DSL operations and executable values are rejected", () =>
   assert.throws(() => validateContentPack(sealContentPack(executable)), ContentValidationError);
 });
 
+test("Phase 1 actionAffinity reuses ActionType and playable packs require an ordinary fallback", () => {
+  const unknown = draft(); unknown.events[0].actionAffinity = ["unknown-action"];
+  assert.throws(() => validateContentPack(sealContentPack(unknown)), /actionAffinity/);
+  const noFallback = draft(); noFallback.events[0].actionAffinity = ["cultivate"];
+  assert.throws(() => validateContentPack(sealContentPack(noFallback)), /ordinary fallback/);
+  const valid = draft(); valid.events[0].actionAffinity = [];
+  assert.doesNotThrow(() => validateContentPack(sealContentPack(valid)));
+});
+
 test("manifest_determinism: canonical checksum ignores object key and registry set ordering", () => {
   const first = draft();
   const second = {

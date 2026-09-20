@@ -27,7 +27,7 @@ export type RunState={
 
 export type Relation={affinity:number;trust:number;debt:number};
 export type NpcInstance={npcId:string;templateId:string;tier:'S'|'A'|'B'|'C';name:string;age:number;maxAge:number;realmId:string;regionId:string;factionId?:string;status:'active'|'missing'|'injured'|'dead'|'ascended';traits:string[];goal:string;relation:Relation;importanceScore:number;memoryRefs:string[];timelineCursor:number;tags:string[]};
-export type RngState={algorithm:'xoshiro128ss-v1';rootSeed:string;streams:Record<string,{s:[number,number,number,number];drawIndex:number}>};
+export type RngState={algorithmId:'xoshiro128ss-v1';rootSeed:string;streams:Record<string,{s:[number,number,number,number];drawIndex:number}>};
 export type MetaState={playerId:string;metaCurrency:number;unlocks:string[];discoveries:string[];achievements:string[];cosmetics:string[];entitlements:string[];settings:Record<string,unknown>;stats:Record<string,number>};
 export type MetaView=Pick<MetaState,'unlocks'|'entitlements'|'discoveries'>;
 
