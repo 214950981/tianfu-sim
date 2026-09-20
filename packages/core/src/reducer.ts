@@ -1,4 +1,5 @@
 import { CommandValidationError, validateGameCommand, type AppErrorCode, type GameCommand } from "./command.ts";
+import { applyEventEffects, assertA08ExecutableChoice, evaluateCondition, EventRuntimeError, isEventEligible, resolveCheck, resolveOutcome, type OutcomeTier } from "./event.ts";
 import { assertNonNegativeInteger, assertSafeInteger, safeAdd } from "./numeric.ts";
 import { createRngState, type RngState, type RngTrace } from "./rng.ts";
 import {
@@ -171,6 +172,89 @@ function startRun(state: GameState, command: Extract<GameCommand, { type: "START
   return validateStateTransition(state, next);
 }
 
+type RuntimeObject = Record<string, unknown>;
+function runtimeObject(value: unknown, message: string): RuntimeObject {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) throw new ReducerError("INVALID_OPTION", message);
+  return value as RuntimeObject;
+}
+function eventFromContent(context: RuleContext, eventId: string): RuntimeObject {
+  const source = context.content as { getEvent?: (contentVersion: string, id: string) => unknown };
+  if (typeof source.getEvent !== "function") throw new ReducerError("CONTENT_MISMATCH", "content.event_registry_required");
+  return runtimeObject(source.getEvent(context.contentVersion, eventId), "event.invalid");
+}
+function selectedTransition(transitionsValue: unknown, state: GameState, context: RuleContext): RuntimeObject | undefined {
+  if (transitionsValue === undefined) return undefined;
+  if (!Array.isArray(transitionsValue)) throw new ReducerError("INVALID_OPTION", "event.transitions_invalid");
+  const eligible = transitionsValue.filter((value) => {
+    const transition = runtimeObject(value, "event.transition_invalid");
+    if (typeof transition.eventId !== "string") throw new ReducerError("INVALID_OPTION", "event.transition_invalid");
+    if (transition.when !== undefined && !evaluateCondition(transition.when, state)) return false;
+    return isEventEligible(eventFromContent(context, transition.eventId), state);
+  });
+  eligible.sort((leftValue, rightValue) => {
+    const left = leftValue as RuntimeObject; const right = rightValue as RuntimeObject;
+    const leftPriority = typeof left.priority === "number" ? left.priority : 0; const rightPriority = typeof right.priority === "number" ? right.priority : 0;
+    return rightPriority === leftPriority ? String(left.eventId).localeCompare(String(right.eventId)) : rightPriority > leftPriority ? 1 : -1;
+  });
+  return eligible[0] as RuntimeObject | undefined;
+}
+
+function chooseEventOption(state: GameState, command: Extract<GameCommand, { type: "CHOOSE_EVENT_OPTION" }>, context: RuleContext): ReduceOutput {
+  if (state.run.status !== "active") throw new ReducerError("RUN_NOT_ACTIVE", "run.not_active");
+  const current = state.run.events.current;
+  if (current === undefined || current.eventId !== command.eventId) throw new ReducerError("INVALID_OPTION", "event.not_current");
+  const event = eventFromContent(context, current.eventId);
+  if (!isEventEligible(event, state)) throw new ReducerError("INVALID_OPTION", "event.ineligible");
+  if (!Array.isArray(event.choices)) throw new ReducerError("INVALID_OPTION", "event.has_no_choices");
+  const choice = event.choices.find((value) => runtimeObject(value, "choice.invalid").id === command.optionId);
+  if (choice === undefined) throw new ReducerError("INVALID_OPTION", "event.option_invalid");
+  const choiceObject = runtimeObject(choice, "choice.invalid");
+  if (choiceObject.requirements !== undefined && !evaluateCondition(choiceObject.requirements, state)) throw new ReducerError("INVALID_OPTION", "event.option_ineligible");
+  assertA08ExecutableChoice(choiceObject);
+
+  let checkedState = state; let requestedTier: OutcomeTier = "success"; let rngDraws: RngTrace[] = []; let checkFact: RuntimeObject = { logicalRequests: 0 };
+  if (choiceObject.check !== undefined) {
+    const resolution = resolveCheck(state, choiceObject.check);
+    checkedState = resolution.state; requestedTier = resolution.tier; rngDraws = resolution.rngDraws;
+    checkFact = { logicalRequests: 1, baseScore: resolution.baseScore, rngRoll: resolution.rngRoll, finalScore: resolution.finalScore };
+  }
+  const resolved = resolveOutcome(choiceObject.outcomes, requestedTier);
+  const applied = applyEventEffects(checkedState, resolved.outcome.effects, current.eventId);
+  const timeAdvance = resolveTimeAdvance(applied.state.run.age, applied.state.run.maxAge, applied.outcomeTimeDelta);
+  const nextNodeIndex = safeAdd(applied.state.run.nodeIndex, 1);
+  const { current: _resolvedCurrent, ...eventsWithoutCurrent } = applied.state.run.events;
+  let provisional: GameState = {
+    ...applied.state,
+    run: {
+      ...applied.state.run,
+      nodeIndex: nextNodeIndex,
+      age: timeAdvance.nextAge,
+      status: applied.state.run.status === "ended" ? "ended" : timeAdvance.reachedMaxAge ? "dying" : applied.state.run.status,
+      events: {
+        ...eventsWithoutCurrent,
+        history: [...applied.state.run.events.history, { eventId: current.eventId, nodeIndex: state.run.nodeIndex, resultTier: requestedTier }]
+      }
+    }
+  };
+  const outcomeNext = resolved.outcome.next;
+  const transition = provisional.run.status === "ended" ? undefined : selectedTransition(outcomeNext ?? choiceObject.next, provisional, context);
+  if (transition !== undefined) {
+    const targetId = transition.eventId as string; const target = eventFromContent(context, targetId);
+    provisional = { ...provisional, run: { ...provisional.run, events: { ...provisional.run.events, current: { eventId: targetId, kind: String(target.kind) } } } };
+  }
+  const next: GameState = { ...provisional, stateVersion: safeAdd(state.stateVersion, 1) };
+  validateStateTransition(state, next);
+  const hasSessionState = Object.keys(applied.session.flags).length > 0 || Object.keys(applied.session.counters).length > 0 || applied.session.tags.length > 0;
+  const effects: DomainEffect[] = [...applied.publicEffects];
+  if (hasSessionState) effects.push({ type: "EVENT_SESSION", eventId: current.eventId, session: applied.session });
+  return {
+    state: next,
+    effects,
+    narrativeFacts: [{ type: "EVENT_OUTCOME", eventId: current.eventId, choiceId: command.optionId, requestedTier, appliedTier: resolved.appliedTier }],
+    trace: { rngDraws, selector: [{ kind: "check", ...checkFact }], time: [{ ...timeAdvance }] }
+  };
+}
+
 export function reduce(input: ReduceInput): ReduceOutput {
   const state = validateGameState(input.state);
   validateContext(state, input.context);
@@ -179,6 +263,14 @@ export function reduce(input: ReduceInput): ReduceOutput {
   catch (error) {
     if (error instanceof CommandValidationError) throw new ReducerError("INVALID_COMMAND", "command.invalid");
     throw error;
+  }
+  if (command.type === "CHOOSE_EVENT_OPTION") {
+    try { return chooseEventOption(state, command, input.context); }
+    catch (error) {
+      if (error instanceof ReducerError) throw error;
+      if (error instanceof EventRuntimeError) throw new ReducerError(error.kind === "INVALID_OPTION" ? "INVALID_OPTION" : "INVALID_COMMAND", `event.${error.kind.toLowerCase()}`);
+      throw error;
+    }
   }
   if (command.type !== "START_RUN") throw new ReducerError("INVALID_COMMAND", "command.not_implemented");
   const next = startRun(state, command);

@@ -30,12 +30,15 @@ export type EffectSpec =
   | { op: "SET_NPC_STATUS"; npcId: string; status: string }
   | { op: "SET_REGION"; regionId: string }
   | { op: "OUTCOME_TIME_DELTA"; years: number }
-  | { op: "END_RUN"; endingId: string; deathCause?: string };
+  | { op: "END_RUN"; endingId: string; deathCause?: string }
+  | { op: "setSessionFlag"; key: string; value: boolean }
+  | { op: "adjustSessionCounter"; key: string; delta: number }
+  | { op: "addSessionTag" | "removeSessionTag"; tag: string };
 export interface Transition { eventId: string; when?: ConditionExpr; priority?: number }
 export interface Outcome { effects: EffectSpec[]; next?: Transition[]; fallbackKey?: string }
 export interface OutcomeTable { greatSuccess?: Outcome; success: Outcome; costlySuccess?: Outcome; failure?: Outcome }
-export interface CheckSpec { primary: "insight" | "body" | "spiritSense" | "fortune"; secondary?: "insight" | "body" | "spiritSense" | "fortune"; difficulty: number; randomMin: -15; randomMax: 15 }
-export interface ChoiceDefinition { id: string; scope: "core" | "tactical"; labelKey: string; requirements?: ConditionExpr; check?: CheckSpec; outcomes: OutcomeTable; next?: Transition[] }
+export interface CheckSpec { primary: "insight" | "body" | "spiritSense" | "fortune"; secondary?: "insight" | "body" | "spiritSense" | "fortune"; secondaryWeightBps?: number; difficulty: number; randomMin: -10; randomMax: 10 }
+export interface ChoiceDefinition { id: string; scope: "core" | "tactical"; rhythmOnly?: boolean; labelKey: string; requirements?: ConditionExpr; check?: CheckSpec; outcomes: OutcomeTable; next?: Transition[] }
 export interface EventDefinition {
   id: string; version: number; kind: "choice" | "narrative" | "combat" | "breakthrough" | "ending" | "tutorial";
   titleKey: string; tags: string[]; requirements?: ConditionExpr; weight: number;
@@ -84,8 +87,10 @@ const relationAxes = new Set(["affinity", "trust", "debt"]);
 const causeStates = new Set(["dormant", "eligible", "echoed", "resolved", "expired"]);
 const eventKinds = new Set(["choice", "narrative", "combat", "breakthrough", "ending", "tutorial"]);
 const deathCauses = new Set(["lifespan", "combat", "ambush", "exploration", "poison", "curse", "breakthrough", "injury", "cause", "special"]);
+const conditionKinds = new Set(["injury", "pillToxicity", "curse", "blessing", "pursued", "other"]);
 const destinyProfiles = new Set(["stable", "high-variance", "story-hook"]);
 const destinyTargets = new Set(["insight", "body", "spiritSense", "fortune", "maxAge", "spiritStone"]);
+const sessionOps = new Set(["setSessionFlag", "adjustSessionCounter", "addSessionTag", "removeSessionTag"]);
 const longTermOps = new Set(["ADD_RESOURCE", "REMOVE_RESOURCE", "ADD_ITEM", "REMOVE_ITEM", "ADD_CULTIVATION", "ADD_CONDITION", "REMOVE_CONDITION", "ADD_IDENTITY_TAG", "REMOVE_IDENTITY_TAG", "ADD_WORLD_TAG", "REMOVE_WORLD_TAG", "RELATION_DELTA", "ADD_CAUSE", "RESOLVE_CAUSE", "EXPIRE_CAUSE", "GRANT_COMPONENT", "REMOVE_COMPONENT", "CREATE_NPC", "SET_NPC_STATUS", "SET_REGION", "OUTCOME_TIME_DELTA", "END_RUN"]);
 
 function fail(path: string, message: string): never { throw new ContentValidationError(`${path}: ${message}`); }
@@ -168,7 +173,7 @@ function validateEffect(value: unknown, refs: ReferenceSets, path: string): stri
     case "ADD_RESOURCE": case "REMOVE_RESOURCE": exact(effect, ["op", "key", "amount"], [], path); if (effect.key !== "spiritStone") fail(`${path}.key`, "must be spiritStone"); integer(effect.amount, `${path}.amount`, 0); break;
     case "ADD_ITEM": case "REMOVE_ITEM": exact(effect, ["op", "itemId", "amount"], [], path); requireReference(effect.itemId, refs.items, `${path}.itemId`); integer(effect.amount, `${path}.amount`, 1); break;
     case "ADD_CULTIVATION": exact(effect, ["op", "amount"], [], path); integer(effect.amount, `${path}.amount`); break;
-    case "ADD_CONDITION": exact(effect, ["op", "conditionId", "kind", "stacks"], [], path); requireReference(effect.conditionId, refs.conditions, `${path}.conditionId`); stringValue(effect.kind, `${path}.kind`); integer(effect.stacks, `${path}.stacks`, 0, 3); break;
+    case "ADD_CONDITION": exact(effect, ["op", "conditionId", "kind", "stacks"], [], path); requireReference(effect.conditionId, refs.conditions, `${path}.conditionId`); oneOf(effect.kind, conditionKinds, `${path}.kind`); integer(effect.stacks, `${path}.stacks`, 0, 3); break;
     case "REMOVE_CONDITION": exact(effect, ["op", "conditionId"], [], path); requireReference(effect.conditionId, refs.conditions, `${path}.conditionId`); break;
     case "ADD_IDENTITY_TAG": case "REMOVE_IDENTITY_TAG": case "ADD_WORLD_TAG": case "REMOVE_WORLD_TAG": exact(effect, ["op", "tag"], [], path); stringValue(effect.tag, `${path}.tag`); break;
     case "RELATION_DELTA": exact(effect, ["op", "npcId", "axis", "delta"], [], path); stringValue(effect.npcId, `${path}.npcId`); oneOf(effect.axis, relationAxes, `${path}.axis`); integer(effect.delta, `${path}.delta`); break;
@@ -180,6 +185,9 @@ function validateEffect(value: unknown, refs: ReferenceSets, path: string): stri
     case "SET_REGION": exact(effect, ["op", "regionId"], [], path); requireReference(effect.regionId, refs.regions, `${path}.regionId`); break;
     case "OUTCOME_TIME_DELTA": exact(effect, ["op", "years"], [], path); integer(effect.years, `${path}.years`, 0); break;
     case "END_RUN": exact(effect, ["op", "endingId"], ["deathCause"], path); requireReference(effect.endingId, refs.endings, `${path}.endingId`); if (effect.deathCause !== undefined) oneOf(effect.deathCause, deathCauses, `${path}.deathCause`); break;
+    case "setSessionFlag": exact(effect, ["op", "key", "value"], [], path); stringValue(effect.key, `${path}.key`); if (typeof effect.value !== "boolean") fail(`${path}.value`, "must be a boolean"); break;
+    case "adjustSessionCounter": exact(effect, ["op", "key", "delta"], [], path); stringValue(effect.key, `${path}.key`); integer(effect.delta, `${path}.delta`); break;
+    case "addSessionTag": case "removeSessionTag": exact(effect, ["op", "tag"], [], path); stringValue(effect.tag, `${path}.tag`); break;
     default: fail(`${path}.op`, `unknown effect ${op}`);
   }
   return op;
@@ -200,20 +208,35 @@ function validateOutcome(value: unknown, refs: ReferenceSets, eventIds: Set<stri
   return ops;
 }
 
-function validateChoice(value: unknown, refs: ReferenceSets, eventIds: Set<string>, rhythmOnly: boolean, path: string): string {
-  const choice = objectValue(value, path); exact(choice, ["id", "scope", "labelKey", "outcomes"], ["requirements", "check", "next"], path);
+function validateChoice(value: unknown, refs: ReferenceSets, eventIds: Set<string>, currentEventId: string, path: string): string {
+  const choice = objectValue(value, path); exact(choice, ["id", "scope", "labelKey", "outcomes"], ["rhythmOnly", "requirements", "check", "next"], path);
   const id = stringValue(choice.id, `${path}.id`); const scope = oneOf(choice.scope, new Set(["core", "tactical"]), `${path}.scope`);
+  if (choice.rhythmOnly !== undefined && typeof choice.rhythmOnly !== "boolean") fail(`${path}.rhythmOnly`, "must be a boolean");
+  const rhythmOnly = choice.rhythmOnly === true;
+  if (scope === "tactical" && rhythmOnly) fail(`${path}.rhythmOnly`, "is allowed only for core choices");
   stringValue(choice.labelKey, `${path}.labelKey`); if (choice.requirements !== undefined) validateCondition(choice.requirements, `${path}.requirements`);
   if (choice.check !== undefined) {
-    const check = objectValue(choice.check, `${path}.check`); exact(check, ["primary", "difficulty", "randomMin", "randomMax"], ["secondary"], `${path}.check`);
+    const check = objectValue(choice.check, `${path}.check`); exact(check, ["primary", "difficulty", "randomMin", "randomMax"], ["secondary", "secondaryWeightBps"], `${path}.check`);
     oneOf(check.primary, attributes, `${path}.check.primary`); if (check.secondary !== undefined) oneOf(check.secondary, attributes, `${path}.check.secondary`);
-    integer(check.difficulty, `${path}.check.difficulty`); if (check.randomMin !== -15 || check.randomMax !== 15) fail(`${path}.check`, "random range must be -15..15");
+    integer(check.difficulty, `${path}.check.difficulty`, 0, 1000);
+    if (check.secondaryWeightBps !== undefined) integer(check.secondaryWeightBps, `${path}.check.secondaryWeightBps`, 0, 10_000);
+    if (check.randomMin !== -10 || check.randomMax !== 10) fail(`${path}.check`, "random range must be -10..10");
   }
   const outcomes = objectValue(choice.outcomes, `${path}.outcomes`); exact(outcomes, ["success"], ["greatSuccess", "costlySuccess", "failure"], `${path}.outcomes`);
   const ops = new Set<string>();
   for (const key of ["greatSuccess", "success", "costlySuccess", "failure"] as const) if (outcomes[key] !== undefined) for (const op of validateOutcome(outcomes[key], refs, eventIds, `${path}.outcomes.${key}`)) ops.add(op);
   if (scope === "core" && !rhythmOnly && ![...ops].some((op) => longTermOps.has(op))) fail(path, "core choice must change a long-term dimension");
-  if (choice.next !== undefined) array(choice.next, `${path}.next`).forEach((entry, index) => validateTransition(entry, eventIds, `${path}.next[${index}]`));
+  const choiceNext = choice.next === undefined ? [] : array(choice.next, `${path}.next`);
+  choiceNext.forEach((entry, index) => validateTransition(entry, eventIds, `${path}.next[${index}]`));
+  const hasDifferentNext = choiceNext.some((entry) => objectValue(entry, `${path}.next`).eventId !== currentEventId);
+  if (scope === "core") {
+    if ([...ops].some((op) => sessionOps.has(op))) fail(path, "core choice cannot use tactical session-local effects");
+    if (rhythmOnly && !hasDifferentNext) fail(path, "rhythm-only core choice requires a next transition to a different event");
+  } else {
+    if ([...ops].some((op) => !sessionOps.has(op))) fail(path, "tactical choice can use only session-local effects");
+    const meaningful = [...ops].some((op) => sessionOps.has(op)) || choice.check !== undefined || hasDifferentNext;
+    if (!meaningful) fail(path, "tactical choice must be meaningful");
+  }
   return id;
 }
 
@@ -233,7 +256,7 @@ function validateEvent(value: unknown, refs: ReferenceSets, eventIds: Set<string
   const tags = strings(event.tags, `${path}.tags`); unique(tags, `${path}.tags`); integer(event.weight, `${path}.weight`, 0);
   if (event.requirements !== undefined) validateCondition(event.requirements, `${path}.requirements`);
   if (event.cooldown !== undefined) { const cooldown = objectValue(event.cooldown, `${path}.cooldown`); exact(cooldown, [], ["minNodesBetween", "maxOccurrences"], `${path}.cooldown`); if (cooldown.minNodesBetween !== undefined) integer(cooldown.minNodesBetween, `${path}.cooldown.minNodesBetween`, 0); if (cooldown.maxOccurrences !== undefined) integer(cooldown.maxOccurrences, `${path}.cooldown.maxOccurrences`, 1); }
-  if (event.choices !== undefined) { const ids = array(event.choices, `${path}.choices`).map((choice, index) => validateChoice(choice, refs, eventIds, tags.includes("rhythm-only"), `${path}.choices[${index}]`)); unique(ids, `${path}.choices`); }
+  if (event.choices !== undefined) { const ids = array(event.choices, `${path}.choices`).map((choice, index) => validateChoice(choice, refs, eventIds, event.id as string, `${path}.choices[${index}]`)); unique(ids, `${path}.choices`); }
   if (event.onEnter !== undefined) array(event.onEnter, `${path}.onEnter`).forEach((effect, index) => validateEffect(effect, refs, `${path}.onEnter[${index}]`));
   if (event.ai !== undefined) jsonValue(event.ai, `${path}.ai`);
   const fallback = objectValue(event.fallback, `${path}.fallback`); exact(fallback, ["bodyKey"], ["titleKey"], `${path}.fallback`); stringValue(fallback.bodyKey, `${path}.fallback.bodyKey`); if (fallback.titleKey !== undefined) stringValue(fallback.titleKey, `${path}.fallback.titleKey`);

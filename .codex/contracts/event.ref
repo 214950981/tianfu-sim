@@ -28,17 +28,38 @@ type EffectSpec =
  {op:'SET_NPC_STATUS';npcId:string;status:string}|
  {op:'SET_REGION';regionId:string}|
  {op:'OUTCOME_TIME_DELTA';years:number}|
- {op:'END_RUN';endingId:string;deathCause?:string};
+ {op:'END_RUN';endingId:string;deathCause?:string}|
+ {op:'setSessionFlag';key:string;value:boolean}|
+ {op:'adjustSessionCounter';key:string;delta:number}|
+ {op:'addSessionTag'|'removeSessionTag';tag:string};
+
+type EventSessionState={flags:Record<string,boolean>;counters:Record<string,number>;tags:string[]};
 
 type Outcome={effects:EffectSpec[];next?:Transition[];fallbackKey?:string};
 type OutcomeTable={greatSuccess?:Outcome;success:Outcome;costlySuccess?:Outcome;failure?:Outcome};
 type Transition={eventId:string;when?:ConditionExpr;priority?:number};
-type CheckSpec={primary:'insight'|'body'|'spiritSense'|'fortune';secondary?:'insight'|'body'|'spiritSense'|'fortune';difficulty:number;randomMin:-15;randomMax:15};
-type ChoiceDefinition={id:string;scope:'core'|'tactical';labelKey:string;requirements?:ConditionExpr;check?:CheckSpec;outcomes:OutcomeTable;next?:Transition[]};
+type CheckSpec={primary:'insight'|'body'|'spiritSense'|'fortune';secondary?:'insight'|'body'|'spiritSense'|'fortune';secondaryWeightBps?:number;difficulty:number;randomMin:-10;randomMax:10};
+type ChoiceDefinition={id:string;scope:'core'|'tactical';rhythmOnly?:boolean;labelKey:string;requirements?:ConditionExpr;check?:CheckSpec;outcomes:OutcomeTable;next?:Transition[]};
 type EventDefinition={id:string;version:number;kind:'choice'|'narrative'|'combat'|'breakthrough'|'ending'|'tutorial';titleKey:string;tags:string[];requirements?:ConditionExpr;weight:number;cooldown?:{minNodesBetween?:number;maxOccurrences?:number};choices?:ChoiceDefinition[];onEnter?:EffectSpec[];ai?:unknown;fallback:{titleKey?:string;bodyKey:string};telemetry?:Record<string,string>};
 
 // LogicalPath is a stable DSL namespace, NOT direct GameState property access.
 // core Choice must change >=1 long-term dimension unless event explicitly marked rhythm-only.
 // tactical Choice may change only combat/session-local state; it is exempt from long-term-choice lint but must be meaningful.
+// CheckSpec.difficulty is an integer target in 0..1000, not a probability percentage.
+// secondaryWeightBps is an integer in 0..10000 and defaults to 5000.
+// scaledSecondary = 0 when secondary=0; otherwise sign(secondary)*roundHalfUpPositive(abs(secondary)*secondaryWeightBps,10000).
+// baseScore = primary + scaledSecondary. primary and secondary may be positive, zero, or negative; all intermediates must be safe integers.
+// Each Check makes exactly one logical RNG request: unbiasedInt(-10,10) on the check stream.
+// The request uses the existing deterministic rejection-sampling helper and may consume one or rarely multiple underlying uint32 draws.
+// Every underlying draw stays on the check stream, advances the actual drawIndex, and appears in trace in reproducible order.
+// Outcome tier resolution and optional-tier fallback make no additional RNG request; fallback consumes zero RNG.
+// finalScore = baseScore + rngRoll. Resolve in order: greatSuccess when finalScore>=difficulty+10; success when >=difficulty;
+// costlySuccess when finalScore>=difficulty-10; otherwise failure.
+// Missing greatSuccess or costlySuccess falls back to success. Missing failure falls back to costlySuccess, then success.
+// Tier fallback consumes no additional RNG.
+// rhythmOnly defaults false and is allowed only for core Choice. A rhythm-only Choice must have a valid next transition to a different eventId.
+// Tactical session-local effects are exactly setSessionFlag, adjustSessionCounter, addSessionTag, removeSessionTag.
+// They mutate only EventSessionState and never RuleState or MetaState.
+// A tactical Choice is meaningful iff it has at least one valid session-local effect, a valid CheckSpec, or a valid next transition to a different eventId.
 // Content cannot author riskHint. UI risk language is derived later (UI01).
 // No arbitrary function/path/code. Unknown operator/effect/path => lint+runtime reject.

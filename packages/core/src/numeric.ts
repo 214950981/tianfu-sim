@@ -61,6 +61,14 @@ export function applyBps(value: number, bps: number): number {
   return roundHalfUpPositive(safeMultiply(value, bps), 10_000);
 }
 
+export function scaleSignedByBps(value: number, bps: number): number {
+  assertSafeInteger(value);
+  assertBps(bps);
+  if (value === 0 || bps === 0) return 0;
+  const magnitude = roundHalfUpPositive(safeMultiply(Math.abs(value), bps), 10_000);
+  return value < 0 ? -magnitude : magnitude;
+}
+
 export function isSafeRuleInteger(value: unknown): value is number {
   return typeof value === "number" && Number.isSafeInteger(value) && Math.abs(value) <= MAX_SAFE_INTEGER;
 }

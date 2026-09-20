@@ -4,7 +4,7 @@
     "packId": "dev-minimal",
     "rulesVersion": "2.0.0",
     "contentVersion": "dev-0.1.0",
-    "checksum": "da64b1c9cf9ebcdc91275cc41f5e42c793cc64aa2da7052c6843d37b222903d9"
+    "checksum": "e8e8fe1127fe8a17266a71c5c66627f922d11f7875a9f2e2aca911d453b300b5"
   },
   "references": {
     "items": [],
@@ -66,6 +66,25 @@
                 { "op": "ADD_RESOURCE", "key": "spiritStone", "amount": 1 }
               ]
             }
+          }
+        },
+        {
+          "id": "test-fortune",
+          "scope": "core",
+          "labelKey": "dev.first-choice.test-fortune",
+          "check": {
+            "primary": "insight",
+            "secondary": "fortune",
+            "secondaryWeightBps": 5000,
+            "difficulty": 5,
+            "randomMin": -10,
+            "randomMax": 10
+          },
+          "outcomes": {
+            "greatSuccess": { "effects": [{ "op": "ADD_RESOURCE", "key": "spiritStone", "amount": 4 }] },
+            "success": { "effects": [{ "op": "ADD_RESOURCE", "key": "spiritStone", "amount": 2 }] },
+            "costlySuccess": { "effects": [{ "op": "ADD_RESOURCE", "key": "spiritStone", "amount": 1 }] },
+            "failure": { "effects": [] }
           }
         }
       ],
