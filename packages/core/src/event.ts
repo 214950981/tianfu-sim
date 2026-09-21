@@ -28,7 +28,7 @@ const attributes = new Set(["insight", "body", "spiritSense", "fortune"]);
 const relationAxes = new Set(["affinity", "trust", "debt"]);
 const causeStates = new Set(["dormant", "eligible", "echoed", "resolved", "expired"]);
 const sessionOps = new Set(["setSessionFlag", "adjustSessionCounter", "addSessionTag", "removeSessionTag"]);
-const deferredOps = new Set(["RELATION_DELTA", "GRANT_COMPONENT", "REMOVE_COMPONENT", "CREATE_NPC", "SET_NPC_STATUS"]);
+const deferredOps = new Set(["RELATION_DELTA", "GRANT_COMPONENT", "REMOVE_COMPONENT", "CREATE_NPC"]);
 
 function fail(kind: EventRuntimeError["kind"], message: string): never { throw new EventRuntimeError(kind, message); }
 function objectValue(value: unknown, path: string): ObjectValue {
@@ -108,7 +108,7 @@ export function evaluateCondition(value: unknown, state: GameState, depth = 0): 
       const pair = tuple(operand, 2, 2, op); const cause = state.run.causes.byId[stringValue(pair[0], "causeStateIs[0]")]; const expected = stringValue(pair[1], "causeStateIs[1]");
       if (!causeStates.has(expected)) fail("INVALID_EVENT", `unknown cause state: ${expected}`); return cause?.state === expected;
     }
-    case "npcStatusIs": { const pair = tuple(operand, 2, 2, op); return state.run.npcs.byId[stringValue(pair[0], "npcStatusIs[0]")]?.status === stringValue(pair[1], "npcStatusIs[1]"); }
+    case "npcStatusIs": { const pair = tuple(operand, 2, 2, op); return state.run.npcs.byId[stringValue(pair[0], "npcStatusIs[0]")]?.actualStatus === stringValue(pair[1], "npcStatusIs[1]"); }
     default: return fail("INVALID_EVENT", `unknown condition operator: ${op}`);
   }
 }
@@ -222,7 +222,8 @@ export function applyEventEffects(state: GameState, effectsValue: unknown, event
       }
       case "SET_REGION": { exactKeys(effect, ["op", "regionId"], "effect"); next = { ...next, run: { ...next.run, world: { ...next.run.world, regionId: stringValue(effect.regionId, "effect.regionId") } } }; break; }
       case "OUTCOME_TIME_DELTA": { exactKeys(effect, ["op", "years"], "effect"); const years = integer(effect.years, "effect.years"); if (years < 0) fail("INVALID_EVENT", "time delta must be nonnegative"); outcomeTimeDelta = safeAdd(outcomeTimeDelta, years); break; }
-      case "ADD_CAUSE": case "RESOLVE_CAUSE": case "EXPIRE_CAUSE": case "ADD_BUILD_EVIDENCE": break;
+      case "ADD_CAUSE": case "RESOLVE_CAUSE": case "EXPIRE_CAUSE": case "ADD_BUILD_EVIDENCE":
+      case "ADJUST_NPC_RELATION": case "ADD_NPC_SIGNIFICANCE": case "REVEAL_NPC_FACT": case "REVEAL_NPC_TRAIT": case "REVEAL_NPC_STATUS": case "SET_NPC_STATUS": case "ADD_NPC_MILESTONE": break;
       case "setSessionFlag": { exactKeys(effect, ["op", "key", "value"], "effect"); const key = stringValue(effect.key, "effect.key"); if (typeof effect.value !== "boolean") fail("INVALID_EVENT", "session flag must be boolean"); session.flags[key] = effect.value; break; }
       case "adjustSessionCounter": { exactKeys(effect, ["op", "key", "delta"], "effect"); const key = stringValue(effect.key, "effect.key"); session.counters[key] = safeAdd(session.counters[key] ?? 0, integer(effect.delta, "effect.delta")); break; }
       case "addSessionTag": { exactKeys(effect, ["op", "tag"], "effect"); const tag = stringValue(effect.tag, "effect.tag"); if (!session.tags.includes(tag)) session.tags.push(tag); break; }

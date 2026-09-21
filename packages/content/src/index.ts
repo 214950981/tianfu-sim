@@ -7,3 +7,5 @@ export * from "./risk-v1.ts";
 export * from "./risk-audit.ts";
 export * from "./build-v1.ts";
 export * from "./build-audit.ts";
+export * from "./npc-v1.ts";
+export * from "./npc-audit.ts";

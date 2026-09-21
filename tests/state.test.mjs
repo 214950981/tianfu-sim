@@ -21,7 +21,7 @@ function validState(status = "offered") {
     attributes: { insight: 1, body: 1, spiritSense: 1, fortune: 1 },
     resources: { spiritStone: 0, items: {} }, conditions: [], identity,
     actions: { available: ["cultivate"], pursuitCauseIds: [], recent: [] },
-    events: { history: [] }, causes: { byId: {} }, npcs: { byId: {} },
+    events: { history: [] }, causes: { byId: {} }, npcs: { nextNpcSequence: 1, byId: {} },
     build: { techniques: [], artifacts: [], consumables: [], tagScores: {} },
     world: { regionId: "start", knownRegionIds: ["start"], tags: [], factionStanding: {} },
     rng: createRngState("2.0.0", rootSeed), director: { firstRun: true, interventions: 0 }
@@ -78,7 +78,7 @@ test("state_ranges: invalid enums and numeric values are rejected", () => {
     (state) => { state.run.maxAge = Infinity; },
     (state) => { state.run.nodeIndex = Number.MAX_SAFE_INTEGER + 1; },
     (state) => { state.run.conditions.push({ id: "c", kind: "injury", stacks: 4, sourceRef: "test" }); },
-    (state) => { state.run.npcs.byId.n1 = { npcId: "n1", templateId: "t", tier: "A", name: "N", age: 1, maxAge: 2, realmId: "r", regionId: "x", status: "active", traits: [], goal: "g", relation: { affinity: 101, trust: 0, debt: 0 }, importanceScore: 0, memoryRefs: [], timelineCursor: 0, tags: [] }; }
+    (state) => { state.run.npcs.byId.n1 = { npcId: "n1", archetypeId: "a", originKind: "generated", displayName: "N", traitTags: [], factIds: [], tags: [], roleTags: [], actualStatus: "active", relation: { affinity: 101, trust: 0, debt: 0, encounterCount: 1 }, significance: 0, promotedToA: false, knowledge: { met: true, knownFactIds: [], knownTraitTags: [], knownStatus: "active", lastKnownAge: 1, lastKnownNodeIndex: 0 }, createdAge: 1, createdNodeIndex: 0, lastEncounterAge: 1, lastEncounterNodeIndex: 0, encounterCount: 1, milestoneFacts: [] }; }
   ];
   for (const mutate of mutations) { const state = validState(); mutate(state); assert.throws(() => validateGameState(state)); }
   assert.equal(clampConditionStacks(9), 3);

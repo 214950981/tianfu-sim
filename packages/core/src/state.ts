@@ -32,11 +32,19 @@ export interface CauseInstance {
   resolution?: Record<string, unknown>;
 }
 
-export interface Relation { affinity: number; trust: number; debt: number }
+export type NpcActualStatus = "active" | "missing" | "dead" | "departed";
+export interface NpcRelationState { affinity: number; trust: number; debt: number; encounterCount: number }
+export interface NpcKnowledgeState {
+  met: boolean; knownFactIds: string[]; knownTraitTags: string[]; knownStatus?: NpcActualStatus;
+  lastKnownAge?: number; lastKnownNodeIndex?: number;
+}
+export interface NpcMilestoneFact { type: string; age: number; nodeIndex: number; sourceRef: string; reasonTag: string }
 export interface NpcInstance {
-  npcId: string; templateId: string; tier: "S" | "A" | "B" | "C"; name: string; age: number; maxAge: number;
-  realmId: string; regionId: string; factionId?: string; status: "active" | "missing" | "injured" | "dead" | "ascended";
-  traits: string[]; goal: string; relation: Relation; importanceScore: number; memoryRefs: string[]; timelineCursor: number; tags: string[];
+  npcId: string; definitionId?: string; archetypeId?: string; originKind: "core" | "generated"; displayName: string;
+  traitTags: string[]; factIds: string[]; tags: string[]; roleTags: string[]; actualStatus: NpcActualStatus;
+  relation: NpcRelationState; significance: number; promotedToA: boolean; knowledge: NpcKnowledgeState;
+  createdAge: number; createdNodeIndex: number; lastEncounterAge: number; lastEncounterNodeIndex: number;
+  encounterCount: number; milestoneFacts: NpcMilestoneFact[];
 }
 export interface BuildAffinity { buildId: string; affinityBps: number; lifetimeEvidence: number; lastEvidenceNodeIndex: number }
 interface BuildFactBase { id: string; buildId: string; source: string; sourceCommandId: string; age: number; nodeIndex: number; reasonTag: string }
@@ -59,7 +67,7 @@ export interface RunState {
   actions: { available: ActionType[]; pursuitCauseIds: string[]; recent: ActionType[] };
   events: { current?: { eventId: string; kind: string; phase?: string }; history: Array<{ eventId: string; nodeIndex: number; resultTier?: string }> };
   causes: { byId: Record<string, CauseInstance> };
-  npcs: { byId: Record<string, NpcInstance> };
+  npcs: { nextNpcSequence: number; byId: Record<string, NpcInstance> };
   build: { techniques: string[]; artifacts: string[]; consumables: string[]; tagScores: Record<string, number>; mainPath?: string; secondaryPath?: string; affinities?: Record<string, BuildAffinity>; dominantBuildId?: string; evidenceFacts?: BuildEvidenceFact[]; transitionFacts?: BuildTransitionFact[]; unlockedBuildIds?: string[] };
   world: { regionId: string; knownRegionIds: string[]; tags: string[]; factionStanding: Record<string, number> };
   ending?: { endingId: string; deathCause?: DeathCause; sourceRef?: string; age: number; factIds: string[] };
@@ -75,8 +83,8 @@ export type RuleState = Pick<GameState, "schemaVersion" | "rulesVersion" | "cont
 const runStatusSet = new Set<string>(RUN_STATUSES);
 const actionTypeSet = new Set<string>(ACTION_TYPES);
 const conditionKindSet = new Set<string>(CONDITION_KINDS);
-const npcTierSet = new Set(["S", "A", "B", "C"]);
-const npcStatusSet = new Set(["active", "missing", "injured", "dead", "ascended"]);
+const npcOriginSet = new Set(["core", "generated"]);
+const npcStatusSet = new Set(["active", "missing", "dead", "departed"]);
 const causeStatusSet = new Set(["dormant", "eligible", "echoed", "resolved", "expired"]);
 
 function invalid(path: string, message: string): never { throw new TypeError(`${path}: ${message}`); }
@@ -142,18 +150,29 @@ function validateRng(value: unknown, path: string, rulesVersion: string, rootSee
 
 function validateNpc(value: unknown, path: string): void {
   const npc = record(value, path);
-  for (const key of ["npcId", "templateId", "name", "realmId", "regionId", "goal"] as const) stringValue(npc[key], `${path}.${key}`);
-  optionalString(npc, "factionId", path);
-  enumValue(npc.tier, npcTierSet, `${path}.tier`);
-  enumValue(npc.status, npcStatusSet, `${path}.status`);
-  integer(npc.age, `${path}.age`, 0); integer(npc.maxAge, `${path}.maxAge`, 0);
-  if ((npc.age as number) > (npc.maxAge as number)) invalid(`${path}.age`, "must not exceed maxAge");
-  integer(npc.importanceScore, `${path}.importanceScore`); integer(npc.timelineCursor, `${path}.timelineCursor`, 0);
-  strings(npc.traits, `${path}.traits`); strings(npc.memoryRefs, `${path}.memoryRefs`); strings(npc.tags, `${path}.tags`);
+  for (const key of ["npcId", "displayName"] as const) stringValue(npc[key], `${path}.${key}`);
+  optionalString(npc, "definitionId", path); optionalString(npc, "archetypeId", path);
+  const originKind = enumValue<"core" | "generated">(npc.originKind, npcOriginSet, `${path}.originKind`);
+  if (originKind === "core" ? npc.definitionId === undefined || npc.archetypeId !== undefined : npc.archetypeId === undefined || npc.definitionId !== undefined) invalid(path, "originKind must match exactly one definition source");
+  enumValue(npc.actualStatus, npcStatusSet, `${path}.actualStatus`);
+  for (const key of ["traitTags", "factIds", "tags", "roleTags"] as const) { const values = strings(npc[key], `${path}.${key}`); if (new Set(values).size !== values.length) invalid(`${path}.${key}`, "must be unique"); }
   const relation = record(npc.relation, `${path}.relation`);
   integer(relation.affinity, `${path}.relation.affinity`, -100, 100);
   integer(relation.trust, `${path}.relation.trust`, -100, 100);
   integer(relation.debt, `${path}.relation.debt`, -3, 3);
+  integer(relation.encounterCount, `${path}.relation.encounterCount`, 0);
+  integer(npc.significance, `${path}.significance`, 0, 10_000); booleanValue(npc.promotedToA, `${path}.promotedToA`);
+  if (originKind === "core" && npc.promotedToA === true) invalid(`${path}.promotedToA`, "core NPC cannot be promoted to A");
+  const knowledge = record(npc.knowledge, `${path}.knowledge`); booleanValue(knowledge.met, `${path}.knowledge.met`);
+  const knownFacts = strings(knowledge.knownFactIds, `${path}.knowledge.knownFactIds`); const knownTraits = strings(knowledge.knownTraitTags, `${path}.knowledge.knownTraitTags`);
+  if (knownFacts.some((id) => !(npc.factIds as string[]).includes(id))) invalid(`${path}.knowledge.knownFactIds`, "must be a subset of NPC facts");
+  if (knownTraits.some((id) => !(npc.traitTags as string[]).includes(id))) invalid(`${path}.knowledge.knownTraitTags`, "must be a subset of NPC traits");
+  if (knowledge.knownStatus !== undefined) enumValue(knowledge.knownStatus, npcStatusSet, `${path}.knowledge.knownStatus`);
+  if ((knowledge.lastKnownAge === undefined) !== (knowledge.lastKnownNodeIndex === undefined)) invalid(`${path}.knowledge`, "last known age and node must be present together");
+  if (knowledge.lastKnownAge !== undefined) { integer(knowledge.lastKnownAge, `${path}.knowledge.lastKnownAge`, 0); integer(knowledge.lastKnownNodeIndex, `${path}.knowledge.lastKnownNodeIndex`, 0); }
+  for (const key of ["createdAge", "createdNodeIndex", "lastEncounterAge", "lastEncounterNodeIndex", "encounterCount"] as const) integer(npc[key], `${path}.${key}`, 0);
+  if (npc.encounterCount !== relation.encounterCount) invalid(`${path}.encounterCount`, "must match relation.encounterCount");
+  for (const [index, raw] of array(npc.milestoneFacts, `${path}.milestoneFacts`).entries()) { const fact = record(raw, `${path}.milestoneFacts[${index}]`); for (const key of ["type", "sourceRef", "reasonTag"] as const) stringValue(fact[key], `${path}.milestoneFacts[${index}].${key}`); integer(fact.age, `${path}.milestoneFacts[${index}].age`, 0); integer(fact.nodeIndex, `${path}.milestoneFacts[${index}].nodeIndex`, 0); }
 }
 
 function validateCause(value: unknown, path: string): void {
@@ -245,8 +264,9 @@ function validateRun(value: unknown, path: string, rulesVersion: string): assert
   }
   const causes = record(record(run.causes, `${path}.causes`).byId, `${path}.causes.byId`);
   for (const [id, cause] of Object.entries(causes)) { validateCause(cause, `${path}.causes.byId.${id}`); if ((cause as CauseInstance).causeId !== id) invalid(`${path}.causes.byId.${id}.causeId`, "must match map key"); }
-  const npcs = record(record(run.npcs, `${path}.npcs`).byId, `${path}.npcs.byId`);
-  for (const [id, npc] of Object.entries(npcs)) validateNpc(npc, `${path}.npcs.byId.${id}`);
+  const npcState = record(run.npcs, `${path}.npcs`); integer(npcState.nextNpcSequence, `${path}.npcs.nextNpcSequence`, 1);
+  const npcs = record(npcState.byId, `${path}.npcs.byId`);
+  for (const [id, npc] of Object.entries(npcs)) { validateNpc(npc, `${path}.npcs.byId.${id}`); if ((npc as NpcInstance).npcId !== id) invalid(`${path}.npcs.byId.${id}.npcId`, "must match map key"); }
   const build = record(run.build, `${path}.build`);
   strings(build.techniques, `${path}.build.techniques`); strings(build.artifacts, `${path}.build.artifacts`); strings(build.consumables, `${path}.build.consumables`);
   integerRecord(build.tagScores, `${path}.build.tagScores`); optionalString(build, "mainPath", `${path}.build`); optionalString(build, "secondaryPath", `${path}.build`);
@@ -316,6 +336,8 @@ export function validateStateTransition(previousValue: unknown, nextValue: unkno
     invalid("state", "schema/rules/content versions and rootSeed are immutable once offered");
   }
   if (previous.run.status === "ended" && !structurallyEqual(previous.run, next.run)) invalid("state.run", "ended Run rule fields are immutable");
+  if (next.run.npcs.nextNpcSequence < previous.run.npcs.nextNpcSequence) invalid("state.run.npcs.nextNpcSequence", "must be monotonic");
+  for (const [npcId, npc] of Object.entries(previous.run.npcs.byId)) { const nextNpc = next.run.npcs.byId[npcId]; if (nextNpc === undefined) invalid(`state.run.npcs.byId.${npcId}`, "persistent NPC cannot be removed"); if (nextNpc.significance < npc.significance) invalid(`state.run.npcs.byId.${npcId}.significance`, "must be monotonic"); if (npc.promotedToA && !nextNpc.promotedToA) invalid(`state.run.npcs.byId.${npcId}.promotedToA`, "cannot be demoted"); }
   for (const [buildId, affinity] of Object.entries(previous.run.build.affinities ?? {})) { const nextAffinity = next.run.build.affinities?.[buildId]; if (nextAffinity === undefined || nextAffinity.lifetimeEvidence < affinity.lifetimeEvidence) invalid(`state.run.build.affinities.${buildId}.lifetimeEvidence`, "must be monotonic"); }
   return next;
 }

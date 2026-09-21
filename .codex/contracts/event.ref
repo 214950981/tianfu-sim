@@ -20,12 +20,16 @@ type EffectSpec =
  {op:'ADD_CONDITION';conditionId:string;kind:string;stacks:number}|
  {op:'REMOVE_CONDITION';conditionId:string}|
  {op:'ADD_IDENTITY_TAG'|'REMOVE_IDENTITY_TAG'|'ADD_WORLD_TAG'|'REMOVE_WORLD_TAG';tag:string}|
- {op:'RELATION_DELTA';npcId:string;axis:'affinity'|'trust'|'debt';delta:number}|
+ {op:'ADJUST_NPC_RELATION';npcId?:string;actorBindingKey?:string;affinityDelta?:number;trustDelta?:number;debtDelta?:number;reasonTag:string}|
+ {op:'ADD_NPC_SIGNIFICANCE';npcId?:string;actorBindingKey?:string;amount:number;reasonTag:string}|
+ {op:'REVEAL_NPC_FACT';npcId?:string;actorBindingKey?:string;factId:string;reasonTag:string}|
+ {op:'REVEAL_NPC_TRAIT';npcId?:string;actorBindingKey?:string;traitTag:string;reasonTag:string}|
+ {op:'REVEAL_NPC_STATUS';npcId?:string;actorBindingKey?:string;reasonTag:string}|
+ {op:'SET_NPC_STATUS';npcId?:string;actorBindingKey?:string;targetStatus:'active'|'missing'|'dead'|'departed';revealToPlayer:boolean;reasonTag:string}|
+ {op:'ADD_NPC_MILESTONE';npcId?:string;actorBindingKey?:string;type:string;sourceRef:string;reasonTag:string}|
  {op:'ADD_CAUSE';templateId:string;salience:1|2|3|4|5;visibility?:'hidden'|'hint'|'journal';actorBindingKeys?:Record<string,string>}|
  {op:'RESOLVE_CAUSE'|'EXPIRE_CAUSE';causeId:string}|
  {op:'GRANT_COMPONENT'|'REMOVE_COMPONENT';componentId:string}|
- {op:'CREATE_NPC';templateId:string}|
- {op:'SET_NPC_STATUS';npcId:string;status:string}|
  {op:'SET_REGION';regionId:string}|
  {op:'OUTCOME_TIME_DELTA';years:number}|
  {op:'ADD_BUILD_EVIDENCE';buildId:string;amount:number;reasonTag:string}|
@@ -64,6 +68,7 @@ type EventDefinition={id:string;version:number;kind:'choice'|'narrative'|'combat
 // A tactical Choice is meaningful iff it has at least one valid session-local effect, a valid CheckSpec, or a valid next transition to a different eventId.
 // Content cannot author riskHint. UI risk language is derived later (UI01).
 // ADD_BUILD_EVIDENCE is authoritative semantic evidence only; amount/buildId/reasonTag are content-authored and validated against the locked BuildPack.
+// NPC effects target exactly one authoritative npcId or actorBindingKey and are validated against the locked NpcPack. Full NpcInstance replacement is forbidden.
 // A risk Choice references one registered threatId and uses that ThreatDefinition CheckSpec; it cannot declare a second CheckSpec.
 // END_RUN, killPlayer, setDead, forceDeath and equivalent direct-death effects are forbidden. Only lifespan handling or RISK01 RiskResolver may enter death/dying.
 // ActionType is the command/state ActionType; no second action enum exists. actionAffinity classifies selector candidates only.

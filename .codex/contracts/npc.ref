@@ -1,0 +1,20 @@
+// NPC CONTRACT v1 (NPC01)
+type NpcActualStatus='active'|'missing'|'dead'|'departed';
+type NpcRelationState={affinity:number;trust:number;debt:number;encounterCount:number};
+type NpcKnowledgeState={met:boolean;knownFactIds:string[];knownTraitTags:string[];knownStatus?:NpcActualStatus;lastKnownAge?:number;lastKnownNodeIndex?:number};
+type NpcMilestoneFact={type:string;age:number;nodeIndex:number;sourceRef:string;reasonTag:string};
+type NpcInstance={npcId:string;definitionId?:string;archetypeId?:string;originKind:'core'|'generated';displayName:string;traitTags:string[];factIds:string[];tags:string[];roleTags:string[];actualStatus:NpcActualStatus;relation:NpcRelationState;significance:number;promotedToA:boolean;knowledge:NpcKnowledgeState;createdAge:number;createdNodeIndex:number;lastEncounterAge:number;lastEncounterNodeIndex:number;encounterCount:number;milestoneFacts:NpcMilestoneFact[]};
+
+NpcDefinition, NpcArchetypeDefinition, NpcNamePoolDefinition, NpcTraitDefinition and NpcFactDefinition use stable IDs and a versioned NpcPack locked by contentVersion.
+core origin derives effective tier S. generated derives B below promotionThreshold and A at/above it; promotedToA is monotonic. C is ephemeral and never enters persistent NpcState.
+NpcState stores nextNpcSequence and byId. Generated IDs use the deterministic sequence and consume no UUID/random draw.
+Archetype, name and trait candidates are stable-ID sorted. Zero candidates fails; one consumes no RNG; two or more use unbiased selection on the existing npc stream. Traits are unique.
+actualStatus is authoritative. active maps to Cause available; missing/dead/departed map to unavailable. Player knowledge is independent and does not update unless explicitly revealed.
+Relation bounds are affinity/trust -100..100 and debt -3..3. Positive debt means NPC owes player; negative means player owes NPC. Public projection uses versioned semantic thresholds, never raw affinity/trust.
+significance is 0..10000 and monotonic. v1 promotionThreshold is 3000. Promotion is deterministic and consumes no RNG.
+Only structured milestone facts are retained; ordinary conversation text is not persistent state.
+NPC Event effects are whitelist-only: ADJUST_NPC_RELATION, ADD_NPC_SIGNIFICANCE, REVEAL_NPC_FACT, REVEAL_NPC_TRAIT, REVEAL_NPC_STATUS, SET_NPC_STATUS and ADD_NPC_MILESTONE.
+SET_NPC_STATUS requires targetStatus, revealToPlayer and reasonTag. Hidden status changes never update player knowledge.
+NPC spawning is a pure authoritative interface. NPC01 does not decide when/which story needs an NPC and performs no all-NPC node/year tick.
+Definitions, generation, relation, status, knowledge, promotion and milestones are snapshot/hash/replay state. No AI/network/platform clock/dynamic code may determine them.
+Current content counts are manifest facts, never Core limits.

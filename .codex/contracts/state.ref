@@ -25,7 +25,7 @@ export type RunState={
  actions:{available:ActionType[];pursuitCauseIds:string[];recent:ActionType[]};
  events:{current?:{eventId:string;kind:string;phase?:string};history:Array<{eventId:string;nodeIndex:number;resultTier?:string}>};
  causes:{byId:Record<string,CauseInstance>};
- npcs:{byId:Record<string,NpcInstance>};
+ npcs:{nextNpcSequence:number;byId:Record<string,NpcInstance>};
  build:{techniques:string[];artifacts:string[];consumables:string[];tagScores:Record<string,number>;mainPath?:string;secondaryPath?:string;affinities?:Record<string,BuildAffinity>;dominantBuildId?:string;evidenceFacts?:BuildEvidenceFact[];transitionFacts?:BuildTransitionFact[];unlockedBuildIds?:string[]};
  world:{regionId:string;knownRegionIds:string[];tags:string[];factionStanding:Record<string,number>};
  ending?:{endingId:string;deathCause?:DeathCause;sourceRef?:string;age:number;factIds:string[]};
@@ -34,12 +34,15 @@ export type RunState={
  director:{firstRun:boolean;interventions:number;last?:{nodeIndex:number;kind:string;reason:string}};
 };
 
-export type Relation={affinity:number;trust:number;debt:number};
-export type NpcInstance={npcId:string;templateId:string;tier:'S'|'A'|'B'|'C';name:string;age:number;maxAge:number;realmId:string;regionId:string;factionId?:string;status:'active'|'missing'|'injured'|'dead'|'ascended';traits:string[];goal:string;relation:Relation;importanceScore:number;memoryRefs:string[];timelineCursor:number;tags:string[]};
+export type NpcActualStatus='active'|'missing'|'dead'|'departed';
+export type NpcRelationState={affinity:number;trust:number;debt:number;encounterCount:number};
+export type NpcKnowledgeState={met:boolean;knownFactIds:string[];knownTraitTags:string[];knownStatus?:NpcActualStatus;lastKnownAge?:number;lastKnownNodeIndex?:number};
+export type NpcMilestoneFact={type:string;age:number;nodeIndex:number;sourceRef:string;reasonTag:string};
+export type NpcInstance={npcId:string;definitionId?:string;archetypeId?:string;originKind:'core'|'generated';displayName:string;traitTags:string[];factIds:string[];tags:string[];roleTags:string[];actualStatus:NpcActualStatus;relation:NpcRelationState;significance:number;promotedToA:boolean;knowledge:NpcKnowledgeState;createdAge:number;createdNodeIndex:number;lastEncounterAge:number;lastEncounterNodeIndex:number;encounterCount:number;milestoneFacts:NpcMilestoneFact[]};
 export type RngState={algorithmId:'xoshiro128ss-v1';rootSeed:string;streams:Record<string,{s:[number,number,number,number];drawIndex:number}>};
 export type MetaState={playerId:string;metaCurrency:number;unlocks:string[];discoveries:string[];achievements:string[];cosmetics:string[];entitlements:string[];settings:Record<string,unknown>;stats:Record<string,number>};
 export type MetaView=Pick<MetaState,'unlocks'|'entitlements'|'discoveries'>;
 
 // Invariants: ranges in numeric.ref; run versions/rootSeed immutable after offer creation;
 // offered=>destinyId absent+offer present; active=>chosen destinyId present;
-// ended Run rule fields immutable; dead NPC cannot perform live actions.
+// ended Run rule fields immutable; persistent NPCs cannot be removed; nextNpcSequence/significance/promotion are monotonic.

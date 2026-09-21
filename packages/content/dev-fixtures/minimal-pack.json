@@ -4,11 +4,12 @@
     "packId": "dev-minimal",
     "rulesVersion": "2.0.0",
     "contentVersion": "dev-0.1.0",
-    "checksum": "20a932b6910d1008fa378fbdd88ec48d12fc74d2df76513ab7b29aa0100736fe"
+    "checksum": "9cff8a2ed4d79555dc472da9968dc917a7d5c801ac6625456cca80ac28a3adbc"
   },
   "progressionPackId": "progression.v1",
   "riskPackId": "risk.v1",
   "buildPackId": "build.v1",
+  "npcPackId": "npc.v1",
   "references": {
     "items": [],
     "components": [],

@@ -5,7 +5,7 @@
   "scripts": {
     "lint": "node tools/check-import-boundaries.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/core-smoke.test.mjs tests/import-boundary.test.mjs tests/rng-numeric.test.mjs tests/state.test.mjs tests/command.test.mjs tests/reducer.test.mjs tests/content-registry.test.mjs tests/destiny-offer.test.mjs tests/event-dsl.test.mjs tests/cause.test.mjs tests/replay.test.mjs tests/server-gateway.test.mjs tests/viewmodel-ui.test.mjs tests/phase1-repair-e2e.test.mjs tests/progression.test.mjs tests/risk.test.mjs tests/build.test.mjs",
+    "test": "node --test tests/core-smoke.test.mjs tests/import-boundary.test.mjs tests/rng-numeric.test.mjs tests/state.test.mjs tests/command.test.mjs tests/reducer.test.mjs tests/content-registry.test.mjs tests/destiny-offer.test.mjs tests/event-dsl.test.mjs tests/cause.test.mjs tests/replay.test.mjs tests/server-gateway.test.mjs tests/viewmodel-ui.test.mjs tests/phase1-repair-e2e.test.mjs tests/progression.test.mjs tests/risk.test.mjs tests/build.test.mjs tests/npc.test.mjs",
     "test:core": "node --test tests/core-smoke.test.mjs",
     "test:boundaries": "node --test tests/import-boundary.test.mjs",
     "test:a02": "node --test tests/rng-numeric.test.mjs",
@@ -26,6 +26,8 @@
     "risk-audit": "node tools/risk-audit.mjs",
     "test:build01": "node --test tests/build.test.mjs",
     "build-audit": "node tools/build-audit.mjs",
+    "test:npc01": "node --test tests/npc.test.mjs",
+    "npc-audit": "node tools/npc-audit.mjs",
     "replay": "node tools/replay.mjs",
     "content:lint": "node tools/content-lint.mjs packages/content/dev-fixtures/minimal-pack.json",
     "scan:secrets": "node tools/scan-secrets.mjs"

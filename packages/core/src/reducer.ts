@@ -6,6 +6,7 @@ import { createRngState, drawInt, type RngState, type RngTrace } from "./rng.ts"
 import { applyBreakthroughOutcome, applyRetreatProgression, isValidInnateProfile, resolveBreakthrough, type ProgressionContentAccess } from "./progression.ts";
 import { buildRiskPresentation, injuryLevel, resolveThreat, threatDefinition, type RiskContentAccess } from "./risk.ts";
 import { activeBuildProgressionSources, activeBuildRiskSources, applyBuildEffects, type BuildContentAccess, type BuildPack } from "./build.ts";
+import { applyNpcEffects, causeActorAvailability, type NpcContentAccess, type NpcPack } from "./npc.ts";
 import {
   projectRuleState,
   validateGameState,
@@ -113,7 +114,7 @@ export function createOfferedRun(input: CreateOfferedRunInput): GameState {
       actions: { available: [...fixture.availableActions], pursuitCauseIds: [], recent: [] },
       events: { history: [] },
       causes: { byId: {} },
-      npcs: { byId: {} },
+      npcs: { nextNpcSequence: 1, byId: {} },
       build: { techniques: [], artifacts: [], consumables: [], tagScores: {}, affinities: {}, evidenceFacts: [], transitionFacts: [], unlockedBuildIds: [] },
       world: {
         regionId: fixture.world.regionId,
@@ -236,6 +237,8 @@ interface ActionEventContentAccess {
 }
 
 function buildPackFromContext(context: RuleContext): BuildPack | undefined { const source = context.content as unknown as ActionEventContentAccess & Partial<BuildContentAccess>; const locked = source.get(context.contentVersion); return locked.buildPackId === undefined ? undefined : source.getBuild?.(context.contentVersion); }
+function npcPackFromContext(context: RuleContext): NpcPack | undefined { const source = context.content as unknown as ActionEventContentAccess & Partial<NpcContentAccess>; const locked = source.get(context.contentVersion) as { npcPackId?: string }; return locked.npcPackId === undefined ? undefined : source.getNpc?.(context.contentVersion); }
+function causeContextWithNpcState(state: GameState, context: RuleContext): RuleContext { return { ...context, actorStatusById: { ...(context.actorStatusById ?? {}), ...causeActorAvailability(state) } }; }
 
 function selectEventCandidate(state: GameState, action: ActionType, context: RuleContext): { state: GameState; rngDraws: RngTrace[]; trace: Record<string, unknown>[] } {
   const source = context.content as unknown as ActionEventContentAccess;
@@ -288,7 +291,7 @@ function chooseAction(state: GameState, command: Extract<GameCommand, { type: "C
     const progression = (context.content as unknown as ProgressionContentAccess).getProgression?.(context.contentVersion); if (progression === undefined) throw new ReducerError("CONTENT_MISMATCH", "content.progression_required"); const buildPack = buildPackFromContext(context); provisional = applyRetreatProgression(provisional, progression, buildPack === undefined ? [] : activeBuildProgressionSources(provisional, buildPack));
   }
   const causeContent = context.content as unknown as CauseContentAccess;
-  try { provisional = advanceCauses(provisional, causeContent, context.contentVersion, context); }
+  try { provisional = advanceCauses(provisional, causeContent, context.contentVersion, causeContextWithNpcState(provisional, context)); }
   catch { throw new ReducerError("INVALID_OPTION", "cause.invalid"); }
   let rngDraws: RngTrace[] = []; let selectorTrace: Record<string, unknown>[] = [];
   if (provisional.run.status === "active") {
@@ -349,7 +352,7 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
   if (choiceObject.requirements !== undefined && !evaluateCondition(choiceObject.requirements, state)) throw new ReducerError("INVALID_OPTION", "event.option_ineligible");
   assertA08ExecutableChoice(choiceObject);
   const causeContent = context.content as unknown as CauseContentAccess;
-  try { validateCauseChoice(choiceObject, state, causeContent, context.contentVersion, context); }
+  try { validateCauseChoice(choiceObject, state, causeContent, context.contentVersion, causeContextWithNpcState(state, context)); }
   catch { throw new ReducerError("INVALID_OPTION", "cause.invalid"); }
 
   let checkedState = state; let requestedTier: OutcomeTier = "success"; let rngDraws: RngTrace[] = []; let checkFact: RuntimeObject = { logicalRequests: 0 };
@@ -365,10 +368,13 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
   }
   const resolved = resolveOutcome(choiceObject.outcomes, requestedTier);
   let causeApplied: GameState;
-  try { causeApplied = applyCauseEffects(checkedState, resolved.outcome.effects as readonly unknown[], causeContent, context.contentVersion, context); }
+  try { causeApplied = applyCauseEffects(checkedState, resolved.outcome.effects as readonly unknown[], causeContent, context.contentVersion, causeContextWithNpcState(checkedState, context)); }
   catch { throw new ReducerError("INVALID_OPTION", "cause.invalid"); }
-  let buildApplied = causeApplied; let buildFacts: Fact[] = []; const buildPack = buildPackFromContext(context);
-  if (buildPack !== undefined) { try { const result = applyBuildEffects(causeApplied, resolved.outcome.effects as readonly unknown[], buildPack, { commandId: context.commandId, sourceRef: current.eventId }); buildApplied = result.state; buildFacts = result.facts.map((fact) => ({ ...fact })); } catch { throw new ReducerError("INVALID_OPTION", "build.invalid"); } }
+  let npcApplied = causeApplied; let npcFacts: Fact[] = []; const npcPack = npcPackFromContext(context); const hasNpcEffects = (resolved.outcome.effects as readonly unknown[]).some((value) => typeof value === "object" && value !== null && !Array.isArray(value) && ["ADJUST_NPC_RELATION", "ADD_NPC_SIGNIFICANCE", "REVEAL_NPC_FACT", "REVEAL_NPC_TRAIT", "REVEAL_NPC_STATUS", "SET_NPC_STATUS", "ADD_NPC_MILESTONE"].includes(String((value as RuntimeObject).op)));
+  if (hasNpcEffects && npcPack === undefined) throw new ReducerError("CONTENT_MISMATCH", "content.npc_required");
+  if (npcPack !== undefined) { try { const result = applyNpcEffects(causeApplied, resolved.outcome.effects, npcPack, { commandId: context.commandId, sourceRef: current.eventId, actorBindings: context.actorBindings }); npcApplied = result.state; npcFacts = result.facts.map((fact) => ({ ...fact })); } catch { throw new ReducerError("INVALID_OPTION", "npc.invalid"); } }
+  let buildApplied = npcApplied; let buildFacts: Fact[] = []; const buildPack = buildPackFromContext(context);
+  if (buildPack !== undefined) { try { const result = applyBuildEffects(npcApplied, resolved.outcome.effects as readonly unknown[], buildPack, { commandId: context.commandId, sourceRef: current.eventId }); buildApplied = result.state; buildFacts = result.facts.map((fact) => ({ ...fact })); } catch { throw new ReducerError("INVALID_OPTION", "build.invalid"); } }
   const applied = applyEventEffects(buildApplied, resolved.outcome.effects, current.eventId);
   const timeAdvance = resolveTimeAdvance(applied.state.run.age, applied.state.run.maxAge, applied.outcomeTimeDelta);
   const nextNodeIndex = safeAdd(applied.state.run.nodeIndex, 1);
@@ -393,7 +399,7 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
     provisional = { ...provisional, run: { ...provisional.run, events: { ...provisional.run.events, current: { eventId: targetId, kind: String(target.kind) } } } };
   }
   if (provisional.run.status === "active") {
-    try { provisional = advanceCauses(provisional, causeContent, context.contentVersion, context); }
+    try { provisional = advanceCauses(provisional, causeContent, context.contentVersion, causeContextWithNpcState(provisional, context)); }
     catch { throw new ReducerError("INVALID_OPTION", "cause.invalid"); }
   }
   let causeTrace: Record<string, unknown>[] = []; let causeRngDraws: RngTrace[] = [];
@@ -408,7 +414,7 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
   return {
     state: next,
     effects,
-    narrativeFacts: [{ type: "EVENT_OUTCOME", eventId: current.eventId, choiceId: command.optionId, requestedTier, appliedTier: resolved.appliedTier }, ...buildFacts],
+    narrativeFacts: [{ type: "EVENT_OUTCOME", eventId: current.eventId, choiceId: command.optionId, requestedTier, appliedTier: resolved.appliedTier }, ...npcFacts, ...buildFacts],
     trace: { rngDraws: [...rngDraws, ...causeRngDraws], selector: [{ kind: "check", ...checkFact }, ...causeTrace], time: [{ ...timeAdvance }] }
   };
 }

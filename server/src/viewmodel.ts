@@ -1,5 +1,5 @@
 import type { ChoiceDefinition, ContentRegistry, EventDefinition } from "../../packages/content/src/index.ts";
-import { buildRiskPresentation, buildStage, evaluateCondition, injuryLevel, threatDefinition, validateGameState, type GameState } from "../../packages/core/src/index.ts";
+import { affinitySemantic, buildRiskPresentation, buildStage, debtSemantic, evaluateCondition, injuryLevel, threatDefinition, trustSemantic, validateGameState, type GameState } from "../../packages/core/src/index.ts";
 import type {
   CapabilitySet,
   CurrentInteraction,
@@ -52,6 +52,7 @@ function publicCauses(state: GameState): PublicCause[] {
 function publicRun(state: GameState, content: ContentRegistry): Record<string, PublicJson> {
   const death = state.run.deathRecord; const knownCause = death?.sourceCauseId === undefined ? undefined : state.run.causes.byId[death.sourceCauseId]; const causeRelatedDeath = knownCause !== undefined && knownCause.visibility !== "hidden";
   const locked = content.get(state.contentVersion); const buildPack = locked.buildPackId === undefined ? undefined : content.getBuild(state.contentVersion); const publicBuilds: PublicJson[] = buildPack === undefined ? [] : Object.values(state.run.build.affinities ?? {}).sort((left, right) => left.buildId.localeCompare(right.buildId)).map((affinity): PublicJson => { const definition = buildPack.definitions.find((candidate) => candidate.id === affinity.buildId); if (definition === undefined) return { buildId: affinity.buildId, stage: "latent", labelKey: "build.unknown" }; const stage = buildStage(buildPack.rules, affinity.affinityBps); return { buildId: affinity.buildId, displayName: definition.displayName, stage, labelKey: definition.stages.find((candidate) => candidate.stage === stage)?.labelKey ?? `build.${affinity.buildId}.${stage}`, dominant: state.run.build.dominantBuildId === affinity.buildId }; });
+  const npcPack = locked.npcPackId === undefined ? undefined : content.getNpc(state.contentVersion); const publicMilestones = new Set(["firstEncounter", "majorRelationChange", "debtCreated", "debtResolved", "promotedToA", "statusRevealed", "causeLinked", "importantPromise", "majorConflict", "majorAid"]); const people: PublicJson[] = npcPack === undefined ? [] : Object.values(state.run.npcs.byId).filter((npc) => npc.knowledge.met).sort((left, right) => left.npcId.localeCompare(right.npcId)).map((npc): PublicJson => ({ npcId: npc.npcId, publicRef: npc.npcId, displayName: npc.displayName, knownRoles: [...npc.roleTags], knownFactIds: [...npc.knowledge.knownFactIds], knownTraitTags: [...npc.knowledge.knownTraitTags], affinity: affinitySemantic(npc.relation.affinity, npcPack.rules), trust: trustSemantic(npc.relation.trust, npcPack.rules), debt: debtSemantic(npc.relation.debt), knownStatus: npc.knowledge.knownStatus ?? "unknown", ...(npc.knowledge.lastKnownAge === undefined ? {} : { lastKnownAge: npc.knowledge.lastKnownAge, lastKnownNodeIndex: npc.knowledge.lastKnownNodeIndex ?? 0 }), milestones: npc.milestoneFacts.filter((fact) => publicMilestones.has(fact.type)).map((fact): PublicJson => ({ type: fact.type === "promotedToA" ? "becameImportant" : fact.type, age: fact.age, nodeIndex: fact.nodeIndex, reasonTag: fact.reasonTag })) }));
   return {
     runName: state.run.identity.runName,
     age: state.run.age,
@@ -64,6 +65,7 @@ function publicRun(state: GameState, content: ContentRegistry): Record<string, P
     riskExposure: state.run.risk?.exposureCount ?? 0,
     identity: { rootTags: [...state.run.identity.rootTags], titles: [...state.run.identity.titles], ...(state.run.identity.destinyId === undefined ? {} : { destinyId: state.run.identity.destinyId }), ...(state.run.identity.innateProfile === undefined ? {} : { innateProfile: { spiritualRoot: state.run.identity.innateProfile.spiritualRoot, talentIds: [...state.run.identity.innateProfile.talentIds], majorDestinyId: state.run.identity.innateProfile.majorDestinyId } }), ...(state.run.identity.factionId === undefined ? {} : { factionId: state.run.identity.factionId }) },
     builds: publicBuilds,
+    people,
     ...(state.run.build.dominantBuildId === undefined ? {} : { dominantBuildId: state.run.build.dominantBuildId }),
     actions: ["cultivate", "travel", "worldly", "pursuit"].map((actionId) => ({ actionId, enabled: state.run.actions.available.includes(actionId as GameState["run"]["actions"]["available"][number]) })),
     world: { regionId: state.run.world.regionId, knownRegionIds: [...state.run.world.knownRegionIds], tags: [...state.run.world.tags] },
