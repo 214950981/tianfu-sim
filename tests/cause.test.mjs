@@ -37,7 +37,7 @@ test("CAUSE-001/002/006 and GS-002: real Cause reaches first echo with determini
   assert.equal(causes[0].actorIdsByRole.rescuedNpc, "npc:test:rescued-001");
   assert.equal(causes[0].state, "echoed"); assert.equal(causes[0].echoBudget, 0); assert.equal(causes[0].echoCount, 1);
   assert.match(first.state.run.events.current.eventId, /^dev\.rescue-echo-[ab]$/);
-  assert.equal(first.trace.selector.at(-1).tier, "P2"); assert.equal(first.trace.selector.at(-1).logicalRequests, 1);
+  assert.equal(first.trace.selector.at(-1).tier, "P3"); assert.equal(first.trace.selector.at(-1).logicalRequests, 1);
   assert.equal(first.trace.rngDraws.every((draw) => draw.stream === "event"), true);
 });
 

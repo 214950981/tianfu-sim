@@ -99,6 +99,7 @@ function actionContent(multipleAffinityCandidates = false) {
   const actionEvents = ["event.cultivate", ...(multipleAffinityCandidates ? ["event.cultivate.b"] : [])].map((id) => ({ id, version: 1, kind: "choice", titleKey: id, tags: [], weight: 1, actionAffinity: ["cultivate"], choices: [{ id: "wait", scope: "core", rhythmOnly: true, labelKey: "wait", outcomes: { success: { effects: [] } }, next: [{ eventId: "event.fallback" }] }], fallback: { bodyKey: id } }));
   registry.register(sealContentPack({
     manifest: { schemaVersion: 2, packId: "actions", rulesVersion: "2.0.0", contentVersion: "content-1" },
+    directorPackId: "director.v1", directorTags: [],
     references: { items: [], components: [], npcTemplates: [], regions: ["start"], endings: [], causes: [], conditions: [] },
     destinies: [], causeTemplates: [],
     events: [
@@ -119,7 +120,7 @@ test("CHOOSE_ACTION advances authoritative time/node and selects action-affinity
   const started = reduce({ state: createOfferedRun(offeredInput()), command: { type: "START_RUN", offerId: "offer-1", destinyId: "d1" }, context: { ...context(), content, commandId: "cmd:start" } }).state;
   const result = reduce({ state: started, command: { type: "CHOOSE_ACTION", actionId: "cultivate" }, context: { ...context(), content, commandId: "cmd:action" } });
   assert.equal(result.state.run.age, 19); assert.equal(result.state.run.nodeIndex, 1); assert.equal(result.state.run.events.current.eventId, "event.cultivate");
-  assert.equal(result.state.run.rng.streams.event.drawIndex, started.run.rng.streams.event.drawIndex); assert.equal(result.trace.selector.at(-1).tier, "P4");
+  assert.equal(result.state.run.rng.streams.director.drawIndex, started.run.rng.streams.director.drawIndex); assert.equal(result.trace.selector.at(-1).selectedPrecedenceLevel, "P5");
 });
 
 test("CHOOSE_ACTION canonicalizes 2+ candidates and makes one logical unbiased event request", () => {
@@ -127,8 +128,8 @@ test("CHOOSE_ACTION canonicalizes 2+ candidates and makes one logical unbiased e
   const started = reduce({ state: createOfferedRun(offeredInput()), command: { type: "START_RUN", offerId: "offer-1", destinyId: "d1" }, context: { ...context(), content, commandId: "cmd:start" } }).state;
   const input = { state: started, command: { type: "CHOOSE_ACTION", actionId: "cultivate" }, context: { ...context(), content, commandId: "cmd:action" } };
   const first = reduce(input); const replay = reduce(input); assert.deepEqual(first, replay);
-  assert.equal(first.trace.selector.at(-1).logicalRequests, 1); assert.equal(first.trace.rngDraws.every((draw) => draw.stream === "event"), true);
-  assert.ok(first.state.run.rng.streams.event.drawIndex > started.run.rng.streams.event.drawIndex);
+  assert.equal(first.trace.selector.at(-1).logicalRngRequests, 1); assert.equal(first.trace.rngDraws.every((draw) => draw.stream === "director"), true);
+  assert.ok(first.state.run.rng.streams.director.drawIndex > started.run.rng.streams.director.drawIndex);
 });
 
 test("CHOOSE_ACTION lifespan short-circuits selector and invalid action is atomic", () => {

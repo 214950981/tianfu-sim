@@ -30,6 +30,7 @@ function contentPack() {
   });
   return sealContentPack({
     manifest: { schemaVersion: 2, packId: "replay-pack", rulesVersion: "2.0.0", contentVersion: "replay-1" },
+    directorPackId: "director.v1", directorTags: [],
     references: { items: [], components: [], npcTemplates: [], regions: ["region.start"], endings: [], causes: [], conditions: [] }, destinies: [], causeTemplates: [],
     events: [
       { id: "event.one", version: 1, kind: "choice", titleKey: "one", tags: [], weight: 1, choices: [choice("one", "event.two")], fallback: { bodyKey: "one" } },

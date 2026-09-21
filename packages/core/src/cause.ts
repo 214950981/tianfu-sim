@@ -120,11 +120,11 @@ export function selectCauseEcho(state: GameState, content: CauseContentAccess, c
     right.salience - left.salience || (left.eligibleSinceNode ?? 0) - (right.eligibleSinceNode ?? 0) || (left.eligibleAge ?? 0) - (right.eligibleAge ?? 0) || left.causeId.localeCompare(right.causeId));
   const selected = candidates[0]; if (selected === undefined) return { state, rngDraws: [], trace: [] };
   const eventIds = [...selected.linkedEventIds].sort().filter((eventId) => isEventEligible(content.getEvent(contentVersion, eventId), state));
-  if (eventIds.length === 0) return { state, rngDraws: [], trace: [{ tier: "P2", causeId: selected.causeId, result: "no-linked-event" }] };
+  if (eventIds.length === 0) return { state, rngDraws: [], trace: [{ tier: "P3", causeId: selected.causeId, result: "no-linked-event" }] };
   let eventId = eventIds[0]; let rng = state.run.rng; let rngDraws: RngTrace[] = [];
   if (eventIds.length >= 2) { const draw = drawInt(rng, "event", 0, eventIds.length - 1); rng = draw.state; eventId = eventIds[draw.value]; rngDraws = [...draw.trace]; }
   const echoed: CauseInstance = { ...selected, state: "echoed", echoBudget: selected.echoBudget - 1, echoCount: selected.echoCount + 1 };
   const event = content.getEvent(contentVersion, eventId) as Record<string, unknown>;
   const next: GameState = { ...state, run: { ...state.run, rng, causes: { byId: { ...state.run.causes.byId, [selected.causeId]: echoed } }, events: { ...state.run.events, current: { eventId, kind: String(event.kind) } } } };
-  return { state: next, rngDraws, trace: [{ tier: "P2", causeId: selected.causeId, priority: [selected.salience, selected.eligibleSinceNode, selected.eligibleAge, selected.causeId], candidates: eventIds, eventId, logicalRequests: eventIds.length >= 2 ? 1 : 0 }] };
+  return { state: next, rngDraws, trace: [{ tier: "P3", causeId: selected.causeId, priority: [selected.salience, selected.eligibleSinceNode, selected.eligibleAge, selected.causeId], candidates: eventIds, eventId, logicalRequests: eventIds.length >= 2 ? 1 : 0 }] };
 }

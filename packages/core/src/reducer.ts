@@ -1,8 +1,9 @@
 import { CommandValidationError, validateGameCommand, type AppErrorCode, type GameCommand } from "./command.ts";
 import { advanceCauses, applyCauseEffects, selectCauseEcho, validateCauseChoice, type CauseContentAccess } from "./cause.ts";
+import { recordDirectorScene, selectDirectorEvent, type DirectorContentAccess } from "./director.ts";
 import { applyEventEffects, assertA08ExecutableChoice, evaluateCondition, EventRuntimeError, isEventEligible, resolveCheck, resolveOutcome, type OutcomeTier } from "./event.ts";
 import { assertNonNegativeInteger, assertSafeInteger, safeAdd } from "./numeric.ts";
-import { createRngState, drawInt, type RngState, type RngTrace } from "./rng.ts";
+import { createRngState, type RngState, type RngTrace } from "./rng.ts";
 import { applyBreakthroughOutcome, applyRetreatProgression, isValidInnateProfile, resolveBreakthrough, type ProgressionContentAccess } from "./progression.ts";
 import { buildRiskPresentation, injuryLevel, resolveThreat, threatDefinition, type RiskContentAccess } from "./risk.ts";
 import { activeBuildProgressionSources, activeBuildRiskSources, applyBuildEffects, type BuildContentAccess, type BuildPack } from "./build.ts";
@@ -114,7 +115,7 @@ export function createOfferedRun(input: CreateOfferedRunInput): GameState {
       actions: { available: [...fixture.availableActions], pursuitCauseIds: [], recent: [] },
       events: { history: [] },
       causes: { byId: {} },
-      npcs: { nextNpcSequence: 1, byId: {} },
+      npcs: { nextNpcSequence: 1, byId: {}, roleIndex: {} },
       build: { techniques: [], artifacts: [], consumables: [], tagScores: {}, affinities: {}, evidenceFacts: [], transitionFacts: [], unlockedBuildIds: [] },
       world: {
         regionId: fixture.world.regionId,
@@ -123,7 +124,7 @@ export function createOfferedRun(input: CreateOfferedRunInput): GameState {
         factionStanding: cloneRecord(fixture.world.factionStanding)
       },
       rng: input.initialRng ?? createRngState(input.rulesVersion, input.rootSeed),
-      director: { firstRun: fixture.firstRun ?? false, interventions: 0 }
+      director: { profileId: fixture.firstRun === true ? "first_run" : "standard", recentScenes: [] }
     },
     metaView: {
       unlocks: [...input.metaView.unlocks],
@@ -233,40 +234,12 @@ function selectedTransition(transitionsValue: unknown, state: GameState, context
 }
 
 interface ActionEventContentAccess {
-  get(contentVersion: string): { events: readonly unknown[]; causeTemplates?: readonly { linkedEventIds: readonly string[] }[]; buildPackId?: string };
+  get(contentVersion: string): { buildPackId?: string; npcPackId?: string; directorPackId?: string };
 }
 
 function buildPackFromContext(context: RuleContext): BuildPack | undefined { const source = context.content as unknown as ActionEventContentAccess & Partial<BuildContentAccess>; const locked = source.get(context.contentVersion); return locked.buildPackId === undefined ? undefined : source.getBuild?.(context.contentVersion); }
 function npcPackFromContext(context: RuleContext): NpcPack | undefined { const source = context.content as unknown as ActionEventContentAccess & Partial<NpcContentAccess>; const locked = source.get(context.contentVersion) as { npcPackId?: string }; return locked.npcPackId === undefined ? undefined : source.getNpc?.(context.contentVersion); }
 function causeContextWithNpcState(state: GameState, context: RuleContext): RuleContext { return { ...context, actorStatusById: { ...(context.actorStatusById ?? {}), ...causeActorAvailability(state) } }; }
-
-function selectEventCandidate(state: GameState, action: ActionType, context: RuleContext): { state: GameState; rngDraws: RngTrace[]; trace: Record<string, unknown>[] } {
-  const source = context.content as unknown as ActionEventContentAccess;
-  if (typeof source.get !== "function") throw new ReducerError("CONTENT_MISMATCH", "content.event_registry_required");
-  const pack = source.get(context.contentVersion); const events = pack.events;
-  if (!Array.isArray(events)) throw new ReducerError("CONTENT_MISMATCH", "content.events_required");
-  const causeLinkedEventIds = new Set((pack.causeTemplates ?? []).flatMap((template) => template.linkedEventIds));
-  const eligible = events.filter((eventValue) => {
-    const event = runtimeObject(eventValue, "event.invalid");
-    return !causeLinkedEventIds.has(String(event.id)) && isEventEligible(event, state);
-  }).map((eventValue) => runtimeObject(eventValue, "event.invalid"));
-  const affinity = eligible.filter((event) => Array.isArray(event.actionAffinity) && event.actionAffinity.includes(action));
-  const ordinary = eligible.filter((event) => event.actionAffinity === undefined || (Array.isArray(event.actionAffinity) && event.actionAffinity.length === 0));
-  const tier = affinity.length > 0 ? "P4" : "P5";
-  const candidates = (affinity.length > 0 ? affinity : ordinary).sort((left, right) => String(left.id).localeCompare(String(right.id)));
-  if (candidates.length === 0) throw new ReducerError("CONTENT_MISMATCH", "content.no_event_candidate");
-  let selected = candidates[0]; let rng = state.run.rng; let rngDraws: RngTrace[] = [];
-  if (candidates.length >= 2) {
-    const draw = drawInt(rng, "event", 0, candidates.length - 1);
-    rng = draw.state; rngDraws = [...draw.trace]; selected = candidates[draw.value];
-  }
-  const eventId = String(selected.id); const kind = String(selected.kind);
-  return {
-    state: { ...state, run: { ...state.run, rng, events: { ...state.run.events, current: { eventId, kind } } } },
-    rngDraws,
-    trace: [{ tier, action, candidates: candidates.map((event) => String(event.id)), eventId, logicalRequests: candidates.length >= 2 ? 1 : 0 }]
-  };
-}
 
 function chooseAction(state: GameState, command: Extract<GameCommand, { type: "CHOOSE_ACTION" }>, context: RuleContext): ReduceOutput {
   if (state.run.status !== "active") throw new ReducerError("RUN_NOT_ACTIVE", "run.not_active");
@@ -295,11 +268,19 @@ function chooseAction(state: GameState, command: Extract<GameCommand, { type: "C
   catch { throw new ReducerError("INVALID_OPTION", "cause.invalid"); }
   let rngDraws: RngTrace[] = []; let selectorTrace: Record<string, unknown>[] = [];
   if (provisional.run.status === "active") {
-    const causeSelection = selectCauseEcho(provisional, causeContent, context.contentVersion);
-    provisional = causeSelection.state; rngDraws = [...causeSelection.rngDraws]; selectorTrace = [...causeSelection.trace];
+    const directorContent = context.content as unknown as DirectorContentAccess;
+    const firstRunSelection = selectDirectorEvent(provisional, command.actionId, directorContent, ["P2"]);
+    provisional = firstRunSelection.state; rngDraws.push(...firstRunSelection.rngDraws); selectorTrace.push(firstRunSelection.trace as unknown as Record<string, unknown>);
     if (provisional.run.events.current === undefined) {
-      const eventSelection = selectEventCandidate(provisional, command.actionId, context);
-      provisional = eventSelection.state; rngDraws.push(...eventSelection.rngDraws); selectorTrace.push(...eventSelection.trace);
+      const causeSelection = selectCauseEcho(provisional, causeContent, context.contentVersion);
+      provisional = causeSelection.state; rngDraws.push(...causeSelection.rngDraws); selectorTrace.push(...causeSelection.trace);
+      const causeTrace = causeSelection.trace[0];
+      if (provisional.run.events.current !== undefined) provisional = recordDirectorScene(provisional, provisional.run.events.current.eventId, directorContent, "P3", { causeId: typeof causeTrace?.causeId === "string" ? causeTrace.causeId : undefined });
+    }
+    if (provisional.run.events.current === undefined) {
+      const directorSelection = selectDirectorEvent(provisional, command.actionId, directorContent, ["P4", "P5", "P6"]);
+      provisional = directorSelection.state; rngDraws.push(...directorSelection.rngDraws); selectorTrace.push(directorSelection.trace as unknown as Record<string, unknown>);
+      if (provisional.run.events.current === undefined) throw new ReducerError("CONTENT_MISMATCH", "content.no_event_candidate");
     }
   } else {
     selectorTrace.push({ tier: "P0", result: "lifespan", eventRngRequests: 0 });
@@ -397,6 +378,7 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
   if (transition !== undefined) {
     const targetId = transition.eventId as string; const target = eventFromContent(context, targetId);
     provisional = { ...provisional, run: { ...provisional.run, events: { ...provisional.run.events, current: { eventId: targetId, kind: String(target.kind) } } } };
+    provisional = recordDirectorScene(provisional, targetId, context.content as unknown as DirectorContentAccess, "CONTINUATION");
   }
   if (provisional.run.status === "active") {
     try { provisional = advanceCauses(provisional, causeContent, context.contentVersion, causeContextWithNpcState(provisional, context)); }
@@ -405,6 +387,8 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
   let causeTrace: Record<string, unknown>[] = []; let causeRngDraws: RngTrace[] = [];
   if (provisional.run.status === "active" && provisional.run.events.current === undefined) {
     const selected = selectCauseEcho(provisional, causeContent, context.contentVersion); provisional = selected.state; causeTrace = selected.trace; causeRngDraws = selected.rngDraws;
+    const selectedTrace = selected.trace[0];
+    if (provisional.run.events.current !== undefined) provisional = recordDirectorScene(provisional, provisional.run.events.current.eventId, context.content as unknown as DirectorContentAccess, "P3", { causeId: typeof selectedTrace?.causeId === "string" ? selectedTrace.causeId : undefined });
   }
   const next: GameState = { ...provisional, stateVersion: safeAdd(state.stateVersion, 1) };
   validateStateTransition(state, next);

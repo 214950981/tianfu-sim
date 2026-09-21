@@ -1,0 +1,23 @@
+// LIFE DIRECTOR CONTRACT v1 (DIRECTOR01)
+type DirectorSlot='P2'|'P3'|'P4'|'P5'|'P6'|'CONTINUATION';
+type DirectorHints={salience:1|2|3|4|5;baseWeight?:number;topicTags:string[];continuityTags:string[];buildAffinityTags:string[];npcRoleAffinityTags:string[];worldAffinityTags:string[];onboardingEligible?:boolean};
+type DirectorSceneRecord={eventId:string;nodeIndex:number;slot:DirectorSlot;salience:1|2|3|4|5;topicTags:string[];continuityTags:string[];actorIds:string[];buildIds:string[];causeId?:string;riskTier?:'low'|'caution'|'dangerous'|'lethal'};
+type DirectorState={profileId:'standard'|'first_run'|string;recentScenes:DirectorSceneRecord[]};
+
+Selector precedence is strict: P1 terminal/lifespan; P2 first-run Director; P3 eligible Cause echo; P4 met+active core NPC; P5 action/Build/world/generated-NPC context; P6 ordinary fallback.
+The first level with eligible candidates wins. Unimplemented systems provide zero candidates. Authored continuation stays CONTINUATION and is not reselected.
+P2 is available only for profileId first_run, onboardingEligible content, and nodeIndex<=3. It may guide but cannot force complete system coverage.
+P3 remains Cause-owned: Cause priority/budget/linked-event selection is unchanged and random pacing must not suppress a valid echo.
+P4 requires an indexed role binding to a met, active core NPC. P5 uses indexed actionAffinity/build/world/met-active-generated-NPC signals. Unknown NPC state is never inferred.
+
+Director metadata is versioned Content: stable IDs, declared tags, safe-integer values, no executable hooks/scripts/functions.
+Default/baseWeight range is 100 / 1..1000. Score deltas: action +80; Build emerging +25, formed +50, refined +75; world +40; recent NPC +50; continuity +30 each capped +60; novel topic +20; recent exact event -80; consecutive topic -30 each capped -60.
+Scoring and candidate order are canonical and insertion-order independent. Content IDs are not hardcoded in Core.
+At a selected priority: 0 candidates => next priority/no RNG; 1 => direct/no RNG; 2+ => eventId ASC canonical input then one logical unbiased weighted request on the director stream. Rejection sampling may consume multiple underlying draws and all are traced.
+
+Random P5/P6 major scenes (salience>=4) require a 2-node gap. Random dangerous/lethal scenes require a 1-node gap. Authored Cause/continuation flow is exempt.
+DirectorState stores only a bounded recent ring (v1 size 8) of compact references/tags; never full event bodies, dialogue, candidate lists, weights, or hidden future plans.
+Trace records selected precedence/slot/event, candidate and eligible counts, selected weight, exclusion reason counts, director draw indexes, continuity reasons, logical request count, and index-query stats.
+Director may choose eligible content only. It cannot mutate stats/resources/Build/NPC/Cause, decide Check/Outcome/death/rewards, roll outcome RNG, or call AI/platform/network/time services.
+ContentRegistry must maintain eventId and Director tag indexes. Hot-path selection must not scan the full Event library or all NPC instances.
+Short lives may omit systems; long lives use pacing rather than quotas. New Event/Build/NPC/World content extends through Definitions/Tags/Registry without Core algorithms changing.

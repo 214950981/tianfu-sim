@@ -46,6 +46,13 @@ export interface NpcInstance {
   createdAge: number; createdNodeIndex: number; lastEncounterAge: number; lastEncounterNodeIndex: number;
   encounterCount: number; milestoneFacts: NpcMilestoneFact[];
 }
+export type DirectorSlot = "P2" | "P3" | "P4" | "P5" | "P6" | "CONTINUATION";
+export interface DirectorSceneRecord {
+  eventId: string; nodeIndex: number; slot: DirectorSlot; salience: 1 | 2 | 3 | 4 | 5;
+  topicTags: string[]; continuityTags: string[]; actorIds: string[]; buildIds: string[];
+  causeId?: string; riskTier?: "low" | "caution" | "dangerous" | "lethal";
+}
+export interface DirectorState { profileId: "standard" | "first_run" | string; recentScenes: DirectorSceneRecord[] }
 export interface BuildAffinity { buildId: string; affinityBps: number; lifetimeEvidence: number; lastEvidenceNodeIndex: number }
 interface BuildFactBase { id: string; buildId: string; source: string; sourceCommandId: string; age: number; nodeIndex: number; reasonTag: string }
 export interface BuildEvidenceFact extends BuildFactBase { type: "BUILD_FIRST_EVIDENCE" | "BUILD_EVIDENCE"; amount: number; affinityBefore: number; affinityAfter: number }
@@ -67,13 +74,13 @@ export interface RunState {
   actions: { available: ActionType[]; pursuitCauseIds: string[]; recent: ActionType[] };
   events: { current?: { eventId: string; kind: string; phase?: string }; history: Array<{ eventId: string; nodeIndex: number; resultTier?: string }> };
   causes: { byId: Record<string, CauseInstance> };
-  npcs: { nextNpcSequence: number; byId: Record<string, NpcInstance> };
+  npcs: { nextNpcSequence: number; byId: Record<string, NpcInstance>; roleIndex: Record<string, string[]> };
   build: { techniques: string[]; artifacts: string[]; consumables: string[]; tagScores: Record<string, number>; mainPath?: string; secondaryPath?: string; affinities?: Record<string, BuildAffinity>; dominantBuildId?: string; evidenceFacts?: BuildEvidenceFact[]; transitionFacts?: BuildTransitionFact[]; unlockedBuildIds?: string[] };
   world: { regionId: string; knownRegionIds: string[]; tags: string[]; factionStanding: Record<string, number> };
   ending?: { endingId: string; deathCause?: DeathCause; sourceRef?: string; age: number; factIds: string[] };
   deathRecord?: DeathRecord;
   rng: RngState;
-  director: { firstRun: boolean; interventions: number; last?: { nodeIndex: number; kind: string; reason: string } };
+  director: DirectorState;
 }
 export interface GameState {
   schemaVersion: number; rulesVersion: string; contentVersion: string; stateVersion: number; run: RunState; metaView: MetaView;
@@ -267,6 +274,8 @@ function validateRun(value: unknown, path: string, rulesVersion: string): assert
   const npcState = record(run.npcs, `${path}.npcs`); integer(npcState.nextNpcSequence, `${path}.npcs.nextNpcSequence`, 1);
   const npcs = record(npcState.byId, `${path}.npcs.byId`);
   for (const [id, npc] of Object.entries(npcs)) { validateNpc(npc, `${path}.npcs.byId.${id}`); if ((npc as NpcInstance).npcId !== id) invalid(`${path}.npcs.byId.${id}.npcId`, "must match map key"); }
+  const roleIndex = record(npcState.roleIndex, `${path}.npcs.roleIndex`); for (const [role, rawIds] of Object.entries(roleIndex)) { if (role.length === 0) invalid(`${path}.npcs.roleIndex`, "role must be non-empty"); const ids = strings(rawIds, `${path}.npcs.roleIndex.${role}`); if (new Set(ids).size !== ids.length || ids.some((id) => !(id in npcs) || !(npcs[id] as NpcInstance).roleTags.includes(role))) invalid(`${path}.npcs.roleIndex.${role}`, "must contain unique matching NPC IDs"); }
+  for (const npc of Object.values(npcs) as NpcInstance[]) for (const role of npc.roleTags) if (!(roleIndex[role] as string[] | undefined)?.includes(npc.npcId)) invalid(`${path}.npcs.roleIndex.${role}`, "must index every persistent NPC role");
   const build = record(run.build, `${path}.build`);
   strings(build.techniques, `${path}.build.techniques`); strings(build.artifacts, `${path}.build.artifacts`); strings(build.consumables, `${path}.build.consumables`);
   integerRecord(build.tagScores, `${path}.build.tagScores`); optionalString(build, "mainPath", `${path}.build`); optionalString(build, "secondaryPath", `${path}.build`);
@@ -291,12 +300,8 @@ function validateRun(value: unknown, path: string, rulesVersion: string): assert
   }
   if (status === "ended" && run.ending === undefined) invalid(`${path}.ending`, "is required when status is ended");
   validateRng(run.rng, `${path}.rng`, rulesVersion, stringValue(run.rootSeed, `${path}.rootSeed`));
-  const director = record(run.director, `${path}.director`);
-  booleanValue(director.firstRun, `${path}.director.firstRun`); integer(director.interventions, `${path}.director.interventions`, 0);
-  if (director.last !== undefined) {
-    const last = record(director.last, `${path}.director.last`);
-    integer(last.nodeIndex, `${path}.director.last.nodeIndex`, 0); stringValue(last.kind, `${path}.director.last.kind`); stringValue(last.reason, `${path}.director.last.reason`);
-  }
+  const director = record(run.director, `${path}.director`); stringValue(director.profileId, `${path}.director.profileId`);
+  for (const [index, raw] of array(director.recentScenes, `${path}.director.recentScenes`).entries()) { const scene = record(raw, `${path}.director.recentScenes[${index}]`); stringValue(scene.eventId, `${path}.director.recentScenes[${index}].eventId`); integer(scene.nodeIndex, `${path}.director.recentScenes[${index}].nodeIndex`, 0, run.nodeIndex as number); enumValue(scene.slot, new Set(["P2", "P3", "P4", "P5", "P6", "CONTINUATION"]), `${path}.director.recentScenes[${index}].slot`); integer(scene.salience, `${path}.director.recentScenes[${index}].salience`, 1, 5); for (const key of ["topicTags", "continuityTags", "actorIds", "buildIds"] as const) { const values = strings(scene[key], `${path}.director.recentScenes[${index}].${key}`); if (new Set(values).size !== values.length) invalid(`${path}.director.recentScenes[${index}].${key}`, "must be unique"); } optionalString(scene, "causeId", `${path}.director.recentScenes[${index}]`); if (scene.riskTier !== undefined) enumValue(scene.riskTier, new Set(["low", "caution", "dangerous", "lethal"]), `${path}.director.recentScenes[${index}].riskTier`); }
 }
 
 function validateMetaView(value: unknown, path: string): asserts value is MetaView {

@@ -15,3 +15,4 @@ export * from "./progression.ts";
 export * from "./risk.ts";
 export * from "./build.ts";
 export * from "./npc.ts";
+export * from "./director.ts";

@@ -5,6 +5,9 @@ export type ReduceOutput={state:GameState;effects:DomainEffect[];narrativeFacts:
 export type RuleTrace={rngDraws:Array<{stream:string;index:number;u32:number}>;director?:unknown[];selector?:unknown[];time?:unknown[]};
 export type Reducer=(i:ReduceInput)=>ReduceOutput;
 
+// CHOOSE_ACTION selection uses director.ref precedence P1>P2>P3>P4>P5>P6 after deterministic time/world/Cause maturity handling.
+// Director selection may set only the next interaction, director RNG state and bounded DirectorState trace memory.
+
 // createOfferedRun(...) is the only pure pre-reducer factory; server supplies trusted runId/playerId/rootSeed/version/metaView.
 // Once GameState exists, all rule mutation goes through reduce.
 // Failure: identical RuleState/stateVersion/RNG; no IO anywhere in Core.

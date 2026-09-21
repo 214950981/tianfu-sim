@@ -9,6 +9,8 @@ import type { BuildPack } from "../../core/src/build.ts";
 import { getBuildPack, validateBuildPack } from "./build-v1.ts";
 import type { NpcPack } from "../../core/src/npc.ts";
 import { getNpcPack, validateNpcPack } from "./npc-v1.ts";
+import type { DirectorHints, DirectorIndexQuery, DirectorIndexQueryResult, DirectorPack } from "../../core/src/director.ts";
+import { getDirectorPack, validateDirectorPack } from "./director-v1.ts";
 
 export type LogicalPath =
   | "run.age" | "run.maxAge" | "realm.order" | "realm.cultivation"
@@ -56,6 +58,7 @@ export interface EventDefinition {
   id: string; version: number; kind: "choice" | "narrative" | "combat" | "breakthrough" | "ending" | "tutorial";
   titleKey: string; tags: string[]; requirements?: ConditionExpr; weight: number;
   actionAffinity?: ActionType[];
+  directorHints?: DirectorHints;
   cooldown?: { minNodesBetween?: number; maxOccurrences?: number }; choices?: ChoiceDefinition[]; onEnter?: EffectSpec[];
   ai?: unknown; fallback: { titleKey?: string; bodyKey: string }; telemetry?: Record<string, string>;
 }
@@ -93,7 +96,7 @@ export interface ContentReferences {
   causes: string[];
   conditions: string[];
 }
-export interface ContentPack { manifest: ContentManifest; references: ContentReferences; destinies: DestinyDefinition[]; events: EventDefinition[]; causeTemplates: CauseTemplate[]; progressionPackId?: string; riskPackId?: string; buildPackId?: string; npcPackId?: string }
+export interface ContentPack { manifest: ContentManifest; references: ContentReferences; destinies: DestinyDefinition[]; events: EventDefinition[]; causeTemplates: CauseTemplate[]; progressionPackId?: string; riskPackId?: string; buildPackId?: string; npcPackId?: string; directorPackId?: string; directorTags?: string[] }
 export type ContentPackDraft = Omit<ContentPack, "manifest"> & { manifest: Omit<ContentManifest, "checksum"> };
 
 export class ContentValidationError extends TypeError {
@@ -279,12 +282,15 @@ function referenceSets(value: unknown): ReferenceSets {
   return result;
 }
 
-function validateEvent(value: unknown, refs: ReferenceSets, eventIds: Set<string>, threatIds: Set<string>, buildPack: BuildPack | undefined, npcPack: NpcPack | undefined, path: string): void {
+function validateDirectorHints(value: unknown, directorPack: DirectorPack | undefined, directorTags: Set<string>, path: string): void { if (directorPack === undefined) fail(path, "requires a locked Director pack"); const hints = objectValue(value, path); exact(hints, ["salience", "topicTags", "continuityTags", "buildAffinityTags", "npcRoleAffinityTags", "worldAffinityTags"], ["baseWeight", "onboardingEligible"], path); integer(hints.salience, `${path}.salience`, 1, 5); if (hints.baseWeight !== undefined) integer(hints.baseWeight, `${path}.baseWeight`, directorPack.rules.baseWeightMin, directorPack.rules.baseWeightMax); for (const key of ["topicTags", "continuityTags", "buildAffinityTags", "npcRoleAffinityTags", "worldAffinityTags"] as const) { const values = strings(hints[key], `${path}.${key}`); unique(values, `${path}.${key}`); values.forEach((tag, index) => { if (!directorTags.has(tag)) fail(`${path}.${key}[${index}]`, `unknown Director tag ${tag}`); }); } if (hints.onboardingEligible !== undefined && typeof hints.onboardingEligible !== "boolean") fail(`${path}.onboardingEligible`, "must be boolean"); }
+
+function validateEvent(value: unknown, refs: ReferenceSets, eventIds: Set<string>, threatIds: Set<string>, buildPack: BuildPack | undefined, npcPack: NpcPack | undefined, directorPack: DirectorPack | undefined, directorTags: Set<string>, path: string): void {
   const event = objectValue(value, path);
-  exact(event, ["id", "version", "kind", "titleKey", "tags", "weight", "fallback"], ["requirements", "actionAffinity", "cooldown", "choices", "onEnter", "ai", "telemetry"], path);
+  exact(event, ["id", "version", "kind", "titleKey", "tags", "weight", "fallback"], ["requirements", "actionAffinity", "directorHints", "cooldown", "choices", "onEnter", "ai", "telemetry"], path);
   stringValue(event.id, `${path}.id`); integer(event.version, `${path}.version`, 1); oneOf(event.kind, eventKinds, `${path}.kind`); stringValue(event.titleKey, `${path}.titleKey`);
   const tags = strings(event.tags, `${path}.tags`); unique(tags, `${path}.tags`); integer(event.weight, `${path}.weight`, 0);
   if (event.actionAffinity !== undefined) { const affinities = strings(event.actionAffinity, `${path}.actionAffinity`); unique(affinities, `${path}.actionAffinity`); affinities.forEach((action, index) => oneOf(action, actionTypes, `${path}.actionAffinity[${index}]`)); }
+  if (event.directorHints !== undefined) validateDirectorHints(event.directorHints, directorPack, directorTags, `${path}.directorHints`);
   if (event.requirements !== undefined) validateCondition(event.requirements, `${path}.requirements`);
   if (event.cooldown !== undefined) { const cooldown = objectValue(event.cooldown, `${path}.cooldown`); exact(cooldown, [], ["minNodesBetween", "maxOccurrences"], `${path}.cooldown`); if (cooldown.minNodesBetween !== undefined) integer(cooldown.minNodesBetween, `${path}.cooldown.minNodesBetween`, 0); if (cooldown.maxOccurrences !== undefined) integer(cooldown.maxOccurrences, `${path}.cooldown.maxOccurrences`, 1); }
   if (event.choices !== undefined) { const ids = array(event.choices, `${path}.choices`).map((choice, index) => validateChoice(choice, refs, eventIds, threatIds, buildPack, npcPack, event.id as string, `${path}.choices[${index}]`)); unique(ids, `${path}.choices`); }
@@ -346,7 +352,7 @@ function normalizedDraft(pack: ContentPack | ContentPackDraft): unknown {
   const destinies = [...pack.destinies].sort((left, right) => left.id.localeCompare(right.id));
   const events = [...pack.events].sort((left, right) => left.id.localeCompare(right.id));
   const causeTemplates = [...pack.causeTemplates].sort((left, right) => left.id.localeCompare(right.id));
-  return { manifest, references, destinies, events, causeTemplates, ...(pack.progressionPackId === undefined ? {} : { progressionPackId: pack.progressionPackId }), ...(pack.riskPackId === undefined ? {} : { riskPackId: pack.riskPackId }), ...(pack.buildPackId === undefined ? {} : { buildPackId: pack.buildPackId }), ...(pack.npcPackId === undefined ? {} : { npcPackId: pack.npcPackId }) };
+  return { manifest, references, destinies, events, causeTemplates, ...(pack.progressionPackId === undefined ? {} : { progressionPackId: pack.progressionPackId }), ...(pack.riskPackId === undefined ? {} : { riskPackId: pack.riskPackId }), ...(pack.buildPackId === undefined ? {} : { buildPackId: pack.buildPackId }), ...(pack.npcPackId === undefined ? {} : { npcPackId: pack.npcPackId }), ...(pack.directorPackId === undefined ? {} : { directorPackId: pack.directorPackId }), ...(pack.directorTags === undefined ? {} : { directorTags: [...pack.directorTags].sort() }) };
 }
 function canonicalValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalValue);
@@ -363,8 +369,8 @@ export function sealContentPack(pack: ContentPackDraft): ContentPack {
   return { ...pack, manifest: { ...pack.manifest, checksum: computePackChecksum(pack) } };
 }
 
-export function validateContentPack(value: unknown, expectedContentVersion?: string, dependencies?: { getBuildPack?: (id: string) => BuildPack | undefined; getNpcPack?: (id: string) => NpcPack | undefined }): ContentPack {
-  const pack = objectValue(value, "pack"); exact(pack, ["manifest", "references", "destinies", "events", "causeTemplates"], ["progressionPackId", "riskPackId", "buildPackId", "npcPackId"], "pack");
+export function validateContentPack(value: unknown, expectedContentVersion?: string, dependencies?: { getBuildPack?: (id: string) => BuildPack | undefined; getNpcPack?: (id: string) => NpcPack | undefined; getDirectorPack?: (id: string) => DirectorPack | undefined }): ContentPack {
+  const pack = objectValue(value, "pack"); exact(pack, ["manifest", "references", "destinies", "events", "causeTemplates"], ["progressionPackId", "riskPackId", "buildPackId", "npcPackId", "directorPackId", "directorTags"], "pack");
   const manifest = objectValue(pack.manifest, "pack.manifest"); exact(manifest, ["schemaVersion", "packId", "rulesVersion", "contentVersion", "checksum"], [], "pack.manifest");
   if (manifest.schemaVersion !== 2) fail("pack.manifest.schemaVersion", "must be 2");
   stringValue(manifest.packId, "pack.manifest.packId"); stringValue(manifest.rulesVersion, "pack.manifest.rulesVersion");
@@ -376,12 +382,13 @@ export function validateContentPack(value: unknown, expectedContentVersion?: str
   const threatIds = new Set(riskPack?.threats.map((threat) => threat.id) ?? []);
   const buildPackId = pack.buildPackId === undefined ? undefined : stringValue(pack.buildPackId, "pack.buildPackId"); const buildPack = buildPackId === undefined ? undefined : validateBuildPack(dependencies?.getBuildPack?.(buildPackId) ?? getBuildPack(buildPackId)); if (buildPack !== undefined && buildPack.rulesVersion !== manifest.rulesVersion) fail("pack.buildPackId", "rulesVersion mismatch");
   const npcPackId = pack.npcPackId === undefined ? undefined : stringValue(pack.npcPackId, "pack.npcPackId"); const npcPack = npcPackId === undefined ? undefined : validateNpcPack(dependencies?.getNpcPack?.(npcPackId) ?? getNpcPack(npcPackId)); if (npcPack !== undefined && npcPack.rulesVersion !== manifest.rulesVersion) fail("pack.npcPackId", "rulesVersion mismatch");
+  const directorPackId = pack.directorPackId === undefined ? undefined : stringValue(pack.directorPackId, "pack.directorPackId"); const directorPack = directorPackId === undefined ? undefined : validateDirectorPack(dependencies?.getDirectorPack?.(directorPackId) ?? getDirectorPack(directorPackId)); if (directorPack !== undefined && directorPack.rulesVersion !== manifest.rulesVersion) fail("pack.directorPackId", "rulesVersion mismatch"); const directorTagValues = pack.directorTags === undefined ? [] : strings(pack.directorTags, "pack.directorTags"); unique(directorTagValues, "pack.directorTags"); const directorTags = new Set(directorTagValues);
   const refs = referenceSets(pack.references);
   if (npcPack !== undefined) for (const id of refs.npcTemplates) if (!npcPack.coreDefinitions.some((definition) => definition.id === id)) fail("pack.references.npcTemplates", `unknown NpcDefinition ${id}`);
   const destinies = array(pack.destinies, "pack.destinies"); const destinyIds = destinies.map((destiny, index) => stringValue(objectValue(destiny, `pack.destinies[${index}]`).id, `pack.destinies[${index}].id`)); unique(destinyIds, "pack.destinies");
   destinies.forEach((destiny, index) => validateDestiny(destiny, refs, `pack.destinies[${index}]`));
   const events = array(pack.events, "pack.events"); const eventIds = events.map((event, index) => stringValue(objectValue(event, `pack.events[${index}]`).id, `pack.events[${index}].id`)); unique(eventIds, "pack.events");
-  const eventIdSet = new Set(eventIds); events.forEach((event, index) => validateEvent(event, refs, eventIdSet, threatIds, buildPack, npcPack, `pack.events[${index}]`));
+  const eventIdSet = new Set(eventIds); events.forEach((event, index) => validateEvent(event, refs, eventIdSet, threatIds, buildPack, npcPack, directorPack, directorTags, `pack.events[${index}]`));
   const templates = array(pack.causeTemplates, "pack.causeTemplates"); const templateIds = templates.map((template, index) => stringValue(objectValue(template, `pack.causeTemplates[${index}]`).id, `pack.causeTemplates[${index}].id`)); unique(templateIds, "pack.causeTemplates");
   if (templateIds.length !== refs.causes.size || templateIds.some((id) => !refs.causes.has(id))) fail("pack.causeTemplates", "must define every Cause reference exactly once");
   templates.forEach((template, index) => validateCauseTemplate(template, refs, eventIdSet, `pack.causeTemplates[${index}]`));
@@ -405,24 +412,32 @@ function cloneAndFreeze<T>(value: T): T {
   return Object.freeze(result) as T;
 }
 
+interface StoredDirectorIndex { eventById: Map<string, EventDefinition>; ordinary: string[]; onboarding: string[]; action: Map<string, string[]>; buildTag: Map<string, string[]>; worldTag: Map<string, string[]>; npcRoleTag: Map<string, string[]>; totalEvents: number }
+function addIndex(map: Map<string, string[]>, key: string, eventId: string): void { const values = map.get(key) ?? []; if (!values.includes(eventId)) { values.push(eventId); values.sort(); map.set(key, values); } }
+function buildDirectorIndex(pack: ContentPack): StoredDirectorIndex { const index: StoredDirectorIndex = { eventById: new Map(pack.events.map((event) => [event.id, event])), ordinary: [], onboarding: [], action: new Map(), buildTag: new Map(), worldTag: new Map(), npcRoleTag: new Map(), totalEvents: pack.events.length }; const causeLinked = new Set(pack.causeTemplates.flatMap((template) => template.linkedEventIds)); for (const event of pack.events) { if (causeLinked.has(event.id)) continue; if ((event.actionAffinity?.length ?? 0) === 0) index.ordinary.push(event.id); for (const action of event.actionAffinity ?? []) addIndex(index.action, action, event.id); const hints = event.directorHints; if (hints?.onboardingEligible === true) index.onboarding.push(event.id); for (const tag of hints?.buildAffinityTags ?? []) addIndex(index.buildTag, tag, event.id); for (const tag of hints?.worldAffinityTags ?? []) addIndex(index.worldTag, tag, event.id); for (const tag of hints?.npcRoleAffinityTags ?? []) addIndex(index.npcRoleTag, tag, event.id); } index.ordinary.sort(); index.onboarding.sort(); return index; }
+function queryIndex(index: StoredDirectorIndex, query: DirectorIndexQuery): DirectorIndexQueryResult { const ids = new Set<string>(); let indexLookups = 0; let candidateIdsVisited = 0; const add = (values: readonly string[] | undefined) => { indexLookups += 1; if (values === undefined) return; candidateIdsVisited += values.length; values.forEach((id) => ids.add(id)); }; if (query.slot === "onboarding") add(index.onboarding); else if (query.slot === "ordinary") add(index.ordinary); else if (query.slot === "coreNpc") for (const tag of query.npcRoleTags ?? []) add(index.npcRoleTag.get(tag)); else { if (query.action !== undefined) add(index.action.get(query.action)); for (const tag of query.buildTags ?? []) add(index.buildTag.get(tag)); for (const tag of query.worldTags ?? []) add(index.worldTag.get(tag)); for (const tag of query.npcRoleTags ?? []) add(index.npcRoleTag.get(tag)); } return { eventIds: [...ids].sort(), stats: { indexLookups, candidateIdsVisited, totalEvents: index.totalEvents } }; }
+
 export class ContentRegistry {
   readonly #byVersion = new Map<string, ContentPack>();
   readonly #buildPacks = new Map<string, BuildPack>([["build.v1", getBuildPack("build.v1")]]);
   readonly #npcPacks = new Map<string, NpcPack>([["npc.v1", getNpcPack("npc.v1")]]);
+  readonly #directorPacks = new Map<string, DirectorPack>([["director.v1", getDirectorPack("director.v1")]]);
+  readonly #directorIndexes = new Map<string, StoredDirectorIndex>();
   registerBuildPack(value: unknown): BuildPack { const validated = validateBuildPack(value); const stored = cloneAndFreeze(validated); const existing = this.#buildPacks.get(stored.id); if (existing !== undefined && JSON.stringify(canonicalValue(existing)) !== JSON.stringify(canonicalValue(stored))) fail("buildPack.id", "is already registered with different content"); if (existing === undefined) this.#buildPacks.set(stored.id, stored); return existing ?? stored; }
   registerNpcPack(value: unknown): NpcPack { const validated = validateNpcPack(value); const stored = cloneAndFreeze(validated); const existing = this.#npcPacks.get(stored.id); if (existing !== undefined && JSON.stringify(canonicalValue(existing)) !== JSON.stringify(canonicalValue(stored))) fail("npcPack.id", "is already registered with different content"); if (existing === undefined) this.#npcPacks.set(stored.id, stored); return existing ?? stored; }
+  registerDirectorPack(value: unknown): DirectorPack { const validated = validateDirectorPack(value); const stored = cloneAndFreeze(validated); const existing = this.#directorPacks.get(stored.id); if (existing !== undefined && JSON.stringify(canonicalValue(existing)) !== JSON.stringify(canonicalValue(stored))) fail("directorPack.id", "is already registered with different content"); if (existing === undefined) this.#directorPacks.set(stored.id, stored); return existing ?? stored; }
   register(value: unknown): ContentPack {
-    const validated = validateContentPack(value, undefined, { getBuildPack: (id) => this.#buildPacks.get(id), getNpcPack: (id) => this.#npcPacks.get(id) }); const stored = cloneAndFreeze(validated);
+    const validated = validateContentPack(value, undefined, { getBuildPack: (id) => this.#buildPacks.get(id), getNpcPack: (id) => this.#npcPacks.get(id), getDirectorPack: (id) => this.#directorPacks.get(id) }); const stored = cloneAndFreeze(validated);
     const existing = this.#byVersion.get(stored.manifest.contentVersion);
     if (existing !== undefined && existing.manifest.checksum !== stored.manifest.checksum) fail("pack.manifest.contentVersion", "is already registered with different content");
-    if (existing === undefined) this.#byVersion.set(stored.manifest.contentVersion, stored);
+    if (existing === undefined) { this.#byVersion.set(stored.manifest.contentVersion, stored); this.#directorIndexes.set(stored.manifest.contentVersion, buildDirectorIndex(stored)); }
     return existing ?? stored;
   }
   get(contentVersion: string): ContentPack {
     const pack = this.#byVersion.get(contentVersion); if (pack === undefined) fail("contentVersion", `is not registered: ${contentVersion}`); return pack;
   }
   getEvent(contentVersion: string, eventId: string): EventDefinition {
-    const event = this.get(contentVersion).events.find((candidate) => candidate.id === eventId); if (event === undefined) fail("eventId", `is not registered: ${eventId}`); return event;
+    const event = this.#directorIndexes.get(contentVersion)?.eventById.get(eventId); if (event === undefined) fail("eventId", `is not registered: ${eventId}`); return event;
   }
   getDestiny(contentVersion: string, destinyId: string): DestinyDefinition {
     const destiny = this.get(contentVersion).destinies.find((candidate) => candidate.id === destinyId); if (destiny === undefined) fail("destinyId", `is not registered: ${destinyId}`); return destiny;
@@ -442,4 +457,6 @@ export class ContentRegistry {
   getNpc(contentVersion: string): NpcPack {
     const id = this.get(contentVersion).npcPackId; if (id === undefined) fail("npcPackId", "is not configured for contentVersion"); const pack = this.#npcPacks.get(id); if (pack === undefined) fail("npcPackId", `is not registered: ${id}`); return pack;
   }
+  getDirector(contentVersion: string): DirectorPack { const id = this.get(contentVersion).directorPackId; if (id === undefined) fail("directorPackId", "is not configured for contentVersion"); const pack = this.#directorPacks.get(id); if (pack === undefined) fail("directorPackId", `is not registered: ${id}`); return pack; }
+  queryDirectorCandidates(contentVersion: string, query: DirectorIndexQuery): DirectorIndexQueryResult { this.get(contentVersion); const index = this.#directorIndexes.get(contentVersion); if (index === undefined) fail("contentVersion", `has no Director index: ${contentVersion}`); return queryIndex(index, query); }
 }

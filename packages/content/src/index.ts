@@ -9,3 +9,5 @@ export * from "./build-v1.ts";
 export * from "./build-audit.ts";
 export * from "./npc-v1.ts";
 export * from "./npc-audit.ts";
+export * from "./director-v1.ts";
+export * from "./director-audit.ts";

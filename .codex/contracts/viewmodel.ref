@@ -7,7 +7,7 @@ export type CurrentInteraction={interactionId:string;kind:'destinyOffer'|'event'
 export type PublicHistory={entries:Array<{entryId:string;kind:string;titleKey:string;summaryKey:string;data?:Record<string,PublicJson>}>};
 export type ShareViewModel={title:string;summary:string;imageKey?:string;facts:Array<{label:string;value:string}>};
 The client receives only a public projection the player is entitled to know.
-Never send in client business ViewModel: rootSeed; RNG internal state; drawIndex; hidden Causes; Cause salience; echoBudget; Cause eligibility; selector weights; futureEventIds; NPC hidden state; undisclosed NPC death/missing status; complete CheckSpec; difficulty; EffectSpec; internal trace; anti-cheat/security fields.
+Never send in client business ViewModel: rootSeed; RNG internal state; drawIndex; hidden Causes; Cause salience; echoBudget; Cause eligibility; selector/Director weights; Director candidates/exclusion reasons/continuity trace/future plans; futureEventIds; NPC hidden state; undisclosed NPC death/missing status; complete CheckSpec; difficulty; EffectSpec; internal trace; anti-cheat/security fields.
 Hidden Causes are omitted, not represented by placeholders, counts or inferable metadata.
 commandId is not a server secret. Application/Transport may create, hold, persist and reuse it for idempotent retry. It is not shown to the player.
 riskPresentation is produced by a server-controlled ViewModel Builder. Client renders it and never derives risk from difficulty, RNG, hidden state or CheckSpec.

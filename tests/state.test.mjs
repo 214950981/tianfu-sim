@@ -21,10 +21,10 @@ function validState(status = "offered") {
     attributes: { insight: 1, body: 1, spiritSense: 1, fortune: 1 },
     resources: { spiritStone: 0, items: {} }, conditions: [], identity,
     actions: { available: ["cultivate"], pursuitCauseIds: [], recent: [] },
-    events: { history: [] }, causes: { byId: {} }, npcs: { nextNpcSequence: 1, byId: {} },
+    events: { history: [] }, causes: { byId: {} }, npcs: { nextNpcSequence: 1, byId: {}, roleIndex: {} },
     build: { techniques: [], artifacts: [], consumables: [], tagScores: {} },
     world: { regionId: "start", knownRegionIds: ["start"], tags: [], factionStanding: {} },
-    rng: createRngState("2.0.0", rootSeed), director: { firstRun: true, interventions: 0 }
+    rng: createRngState("2.0.0", rootSeed), director: { profileId: "first_run", recentScenes: [] }
   };
   if (status === "offered") run.offer = { offerId: "offer-1", destinyIds: ["d1", "d2", "d3"] };
   if (status === "ended") run.ending = { endingId: "ending-1", age: 16, factIds: [] };

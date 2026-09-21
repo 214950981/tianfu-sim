@@ -81,7 +81,8 @@ function initialNpc(state: GameState, input: Pick<NpcInstance, "npcId" | "defini
 }
 function addNpc(state: GameState, npc: NpcInstance, nextNpcSequence = state.run.npcs.nextNpcSequence): GameState {
   if (state.run.npcs.byId[npc.npcId] !== undefined) fail(`NPC ID already exists: ${npc.npcId}`);
-  return { ...state, run: { ...state.run, npcs: { nextNpcSequence, byId: { ...state.run.npcs.byId, [npc.npcId]: npc } } } };
+  const roleIndex = { ...state.run.npcs.roleIndex }; for (const role of npc.roleTags) roleIndex[role] = canonicalUnique([...(roleIndex[role] ?? []), npc.npcId]);
+  return { ...state, run: { ...state.run, npcs: { nextNpcSequence, byId: { ...state.run.npcs.byId, [npc.npcId]: npc }, roleIndex } } };
 }
 
 export function instantiateCoreNpc(state: GameState, pack: NpcPack, definitionId: string, sourceRef: string): NpcSpawnResult {

@@ -43,9 +43,9 @@ async function journey() {
   const actionResult = await value.gateway.sendCommand(auth, action); assert.equal(actionResult.ok, true);
   const afterAction = value.store.readRun("run-repair");
   assert.equal(afterAction.state.run.age, 23); assert.equal(afterAction.state.run.nodeIndex, 1); assert.equal(afterAction.state.run.events.current.eventId, "dev.first-choice");
-  const eventDrawIndex = afterAction.state.run.rng.streams.event.drawIndex;
+  const directorDrawIndex = afterAction.state.run.rng.streams.director.drawIndex;
   assert.deepEqual(await value.gateway.sendCommand(auth, action), actionResult);
-  assert.equal(value.store.readRun("run-repair").state.run.rng.streams.event.drawIndex, eventDrawIndex);
+  assert.equal(value.store.readRun("run-repair").state.run.rng.streams.director.drawIndex, directorDrawIndex);
   const choice = envelope(2, "cmd:repair:choice", { type: "CHOOSE_EVENT_OPTION", eventId: "dev.first-choice", optionId: "rescue-stranger" });
   assert.equal((await value.gateway.sendCommand(auth, choice)).ok, true);
   const stored = value.store.readRun("run-repair"); const cause = Object.values(stored.state.run.causes.byId)[0];

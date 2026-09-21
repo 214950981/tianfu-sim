@@ -4,12 +4,14 @@
     "packId": "dev-minimal",
     "rulesVersion": "2.0.0",
     "contentVersion": "dev-0.1.0",
-    "checksum": "9cff8a2ed4d79555dc472da9968dc917a7d5c801ac6625456cca80ac28a3adbc"
+    "checksum": "002c38b0e25d99860edcb8d0bb701521583404ba471b2f792d13f7a1cc722e8a"
   },
   "progressionPackId": "progression.v1",
   "riskPackId": "risk.v1",
   "buildPackId": "build.v1",
   "npcPackId": "npc.v1",
+  "directorPackId": "director.v1",
+  "directorTags": ["choice", "life", "cause", "rescue", "ordinary", "sword", "mentor", "wanderer", "merchant", "dev.start"],
   "references": {
     "items": [],
     "components": [],
@@ -71,6 +73,7 @@
       "tags": ["dev-fixture"],
       "weight": 10000,
       "actionAffinity": ["cultivate", "travel", "worldly", "pursuit"],
+      "directorHints": { "salience": 2, "baseWeight": 100, "topicTags": ["choice"], "continuityTags": ["life"], "buildAffinityTags": ["sword"], "npcRoleAffinityTags": [], "worldAffinityTags": [], "onboardingEligible": true },
       "choices": [
         {
           "id": "continue",
@@ -152,6 +155,7 @@
       "titleKey": "dev.rescue-echo-a.title",
       "tags": ["dev-fixture", "echo"],
       "weight": 1,
+      "directorHints": { "salience": 3, "baseWeight": 100, "topicTags": ["cause"], "continuityTags": ["rescue"], "buildAffinityTags": [], "npcRoleAffinityTags": [], "worldAffinityTags": [] },
       "fallback": { "bodyKey": "dev.rescue-echo-a.body" }
     },
     {
@@ -161,6 +165,7 @@
       "titleKey": "dev.rescue-echo-b.title",
       "tags": ["dev-fixture", "echo"],
       "weight": 1,
+      "directorHints": { "salience": 3, "baseWeight": 100, "topicTags": ["cause"], "continuityTags": ["rescue"], "buildAffinityTags": [], "npcRoleAffinityTags": [], "worldAffinityTags": [] },
       "fallback": { "bodyKey": "dev.rescue-echo-b.body" }
     },
     {
@@ -170,6 +175,7 @@
       "titleKey": "dev.ordinary-fallback.title",
       "tags": ["dev-fixture", "ordinary"],
       "weight": 1,
+      "directorHints": { "salience": 1, "baseWeight": 100, "topicTags": ["ordinary"], "continuityTags": [], "buildAffinityTags": [], "npcRoleAffinityTags": [], "worldAffinityTags": [] },
       "choices": [
         {
           "id": "continue",

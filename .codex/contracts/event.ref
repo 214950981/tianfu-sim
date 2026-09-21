@@ -45,7 +45,8 @@ type OutcomeTable={greatSuccess?:Outcome;success:Outcome;costlySuccess?:Outcome;
 type Transition={eventId:string;when?:ConditionExpr;priority?:number};
 type CheckSpec={primary:'insight'|'body'|'spiritSense'|'fortune';secondary?:'insight'|'body'|'spiritSense'|'fortune';secondaryWeightBps?:number;difficulty:number;randomMin:-10;randomMax:10};
 type ChoiceDefinition={id:string;scope:'core'|'tactical';rhythmOnly?:boolean;labelKey:string;requirements?:ConditionExpr;check?:CheckSpec;threatId?:string;outcomes:OutcomeTable;next?:Transition[]};
-type EventDefinition={id:string;version:number;kind:'choice'|'narrative'|'combat'|'breakthrough'|'ending'|'tutorial';titleKey:string;tags:string[];requirements?:ConditionExpr;weight:number;actionAffinity?:ActionType[];cooldown?:{minNodesBetween?:number;maxOccurrences?:number};choices?:ChoiceDefinition[];onEnter?:EffectSpec[];ai?:unknown;fallback:{titleKey?:string;bodyKey:string};telemetry?:Record<string,string>};
+type DirectorHints={salience:1|2|3|4|5;baseWeight?:number;topicTags:string[];continuityTags:string[];buildAffinityTags:string[];npcRoleAffinityTags:string[];worldAffinityTags:string[];onboardingEligible?:boolean};
+type EventDefinition={id:string;version:number;kind:'choice'|'narrative'|'combat'|'breakthrough'|'ending'|'tutorial';titleKey:string;tags:string[];requirements?:ConditionExpr;weight:number;actionAffinity?:ActionType[];directorHints?:DirectorHints;cooldown?:{minNodesBetween?:number;maxOccurrences?:number};choices?:ChoiceDefinition[];onEnter?:EffectSpec[];ai?:unknown;fallback:{titleKey?:string;bodyKey:string};telemetry?:Record<string,string>};
 
 // LogicalPath is a stable DSL namespace, NOT direct GameState property access.
 // core Choice must change >=1 long-term dimension unless event explicitly marked rhythm-only.
@@ -73,5 +74,6 @@ type EventDefinition={id:string;version:number;kind:'choice'|'narrative'|'combat
 // END_RUN, killPlayer, setDead, forceDeath and equivalent direct-death effects are forbidden. Only lifespan handling or RISK01 RiskResolver may enter death/dying.
 // ActionType is the command/state ActionType; no second action enum exists. actionAffinity classifies selector candidates only.
 // Missing/empty actionAffinity means ordinary fallback unless the Event is reserved by a higher selector tier (for example a Cause-linked echo). Unknown ActionType is invalid content.
+// directorHints is declarative selector metadata governed by director.ref; every hint tag must be declared by the locked Content Pack.
 // A playable Content Pack must contain at least one ordinary fallback Event.
 // No arbitrary function/path/code. Unknown operator/effect/path => lint+runtime reject.
