@@ -1,0 +1,15 @@
+// BUILD01 Final Contract v1
+// Build is an emergent, versioned, registry-driven life path. Current v1 counts are manifest facts, never Core limits.
+type BuildAffinity={buildId:string;affinityBps:number;lifetimeEvidence:number;lastEvidenceNodeIndex:number};
+type BuildStage='latent'|'emerging'|'formed'|'refined';
+type BuildDefinition={id:string;displayName:string;familyTags:string[];tags:string[];stages:BuildStageDefinition[];modifiers:BuildModifier[];hooks:BuildHook[];requiresTags:string[];forbidsTags:string[];compatibleWith:string[];conflictsWith:string[];parentBuildIds:string[];unlockConditions?:BuildConditionExpr[];focusPressureBpsByBuildId?:Record<string,number>;systemOwners:string[]};
+BuildRules v1 stage ranges are latent 0..1999, emerging 2000..4499, formed 4500..7499, refined 7500..10000.
+ADD_BUILD_EVIDENCE is the only BUILD01 Event effect. amount is authoritative safe integer 200..3000 and requires buildId, reasonTag and source trace. Action names and node count never create Evidence.
+affinityBps is 0..10000 and may rise or fall. lifetimeEvidence is safe-integer monotonic. Stage is derived and never stored separately.
+Positive Evidence X applies versioned focus pressure to other existing affinities: roundHalfUpPositive(X*pairOrDefaultPressureBps,10000), floored at zero. v1 default is 2000 bps.
+The first formed Build may become dominant. A challenger switches dominance only at current affinity + versioned margin; v1 margin is 500. Ties use stable buildId ordering and no RNG.
+Branch/hybrid unlock uses parentBuildIds plus whitelist BuildConditionExpr. No eval, Function, script strings or arbitrary state paths.
+Definition modifiers feed existing PROG01/RISK01 canonical aggregators. Core never switches on sword/body/alchemy/fortune IDs. Fortune has no BUILD01 RNG, Check or Outcome modifier.
+Structured facts cover first evidence, stage transition, dominant formed/changed, refined and branch/hybrid unlock with source, command, age, nodeIndex and reasonTag.
+Director receives a read-only stage/tag/recent-fact projection. BUILD01 never controls candidate weights, cadence or story generation and never calls AI/network.
+Build state is authoritative Snapshot/Replay/hash data locked by rulesVersion+contentVersion. Definitions use stable IDs, tags, registries and whitelist hooks; new Build counts do not require Core changes.

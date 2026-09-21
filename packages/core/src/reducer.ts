@@ -5,6 +5,7 @@ import { assertNonNegativeInteger, assertSafeInteger, safeAdd } from "./numeric.
 import { createRngState, drawInt, type RngState, type RngTrace } from "./rng.ts";
 import { applyBreakthroughOutcome, applyRetreatProgression, isValidInnateProfile, resolveBreakthrough, type ProgressionContentAccess } from "./progression.ts";
 import { buildRiskPresentation, injuryLevel, resolveThreat, threatDefinition, type RiskContentAccess } from "./risk.ts";
+import { activeBuildProgressionSources, activeBuildRiskSources, applyBuildEffects, type BuildContentAccess, type BuildPack } from "./build.ts";
 import {
   projectRuleState,
   validateGameState,
@@ -113,7 +114,7 @@ export function createOfferedRun(input: CreateOfferedRunInput): GameState {
       events: { history: [] },
       causes: { byId: {} },
       npcs: { byId: {} },
-      build: { techniques: [], artifacts: [], consumables: [], tagScores: {} },
+      build: { techniques: [], artifacts: [], consumables: [], tagScores: {}, affinities: {}, evidenceFacts: [], transitionFacts: [], unlockedBuildIds: [] },
       world: {
         regionId: fixture.world.regionId,
         knownRegionIds: [...fixture.world.knownRegionIds],
@@ -231,8 +232,10 @@ function selectedTransition(transitionsValue: unknown, state: GameState, context
 }
 
 interface ActionEventContentAccess {
-  get(contentVersion: string): { events: readonly unknown[]; causeTemplates?: readonly { linkedEventIds: readonly string[] }[] };
+  get(contentVersion: string): { events: readonly unknown[]; causeTemplates?: readonly { linkedEventIds: readonly string[] }[]; buildPackId?: string };
 }
+
+function buildPackFromContext(context: RuleContext): BuildPack | undefined { const source = context.content as unknown as ActionEventContentAccess & Partial<BuildContentAccess>; const locked = source.get(context.contentVersion); return locked.buildPackId === undefined ? undefined : source.getBuild?.(context.contentVersion); }
 
 function selectEventCandidate(state: GameState, action: ActionType, context: RuleContext): { state: GameState; rngDraws: RngTrace[]; trace: Record<string, unknown>[] } {
   const source = context.content as unknown as ActionEventContentAccess;
@@ -282,7 +285,7 @@ function chooseAction(state: GameState, command: Extract<GameCommand, { type: "C
     }
   };
   if (provisional.run.status === "active" && command.actionId === "cultivate" && provisional.run.identity.innateProfile !== undefined) {
-    const progression = (context.content as unknown as ProgressionContentAccess).getProgression?.(context.contentVersion); if (progression === undefined) throw new ReducerError("CONTENT_MISMATCH", "content.progression_required"); provisional = applyRetreatProgression(provisional, progression);
+    const progression = (context.content as unknown as ProgressionContentAccess).getProgression?.(context.contentVersion); if (progression === undefined) throw new ReducerError("CONTENT_MISMATCH", "content.progression_required"); const buildPack = buildPackFromContext(context); provisional = applyRetreatProgression(provisional, progression, buildPack === undefined ? [] : activeBuildProgressionSources(provisional, buildPack));
   }
   const causeContent = context.content as unknown as CauseContentAccess;
   try { provisional = advanceCauses(provisional, causeContent, context.contentVersion, context); }
@@ -312,14 +315,15 @@ function attemptBreakthrough(state: GameState, context: RuleContext): ReduceOutp
   if (state.run.events.current !== undefined) throw new ReducerError("INVALID_COMMAND", "breakthrough.interaction_pending");
   if ((state.run.realm.cultivationBps ?? state.run.realm.cultivation) !== 10_000) throw new ReducerError("INVALID_OPTION", "breakthrough.cultivation_incomplete");
   const progression = (context.content as unknown as ProgressionContentAccess).getProgression?.(context.contentVersion); if (progression === undefined) throw new ReducerError("CONTENT_MISMATCH", "content.progression_required");
-  let resolved; try { resolved = resolveBreakthrough(state, progression); } catch { throw new ReducerError("INVALID_OPTION", "breakthrough.unavailable"); }
-  let progressed; try { progressed = applyBreakthroughOutcome(resolved.state, progression, resolved.tier, context.commandId); } catch { throw new ReducerError("INVALID_OPTION", "breakthrough.unavailable"); }
+  const buildPack = buildPackFromContext(context); const buildSources = buildPack === undefined ? [] : activeBuildProgressionSources(state, buildPack);
+  let resolved; try { resolved = resolveBreakthrough(state, progression, buildSources); } catch { throw new ReducerError("INVALID_OPTION", "breakthrough.unavailable"); }
+  let progressed; try { progressed = applyBreakthroughOutcome(resolved.state, progression, resolved.tier, context.commandId, buildSources); } catch { throw new ReducerError("INVALID_OPTION", "breakthrough.unavailable"); }
   let backlashDraws: RngTrace[] = []; let backlashTrace: Record<string, unknown> | undefined;
   if (resolved.tier === "failure" && injuryLevel(progressed) === 3) {
     const riskPack = (context.content as unknown as RiskContentAccess).getRisk?.(context.contentVersion);
     if (riskPack !== undefined) {
       const definition = threatDefinition(riskPack, "threat.breakthrough-backlash"); const presentation = buildRiskPresentation(progressed, definition);
-      const backlash = resolveThreat(progressed, riskPack, { definitionId: definition.id }, { commandId: context.commandId, presentedRisk: presentation, acceptedPublicWarning: false });
+      const backlash = resolveThreat(progressed, riskPack, { definitionId: definition.id }, { commandId: context.commandId, presentedRisk: presentation, acceptedPublicWarning: false, modifierSources: buildPack === undefined ? [] : activeBuildRiskSources(progressed, buildPack) });
       progressed = backlash.state; backlashDraws = backlash.rngDraws; backlashTrace = { ...backlash.trace };
     }
   }
@@ -352,7 +356,7 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
   if (choiceObject.threatId !== undefined) {
     const riskPack = (context.content as unknown as RiskContentAccess).getRisk?.(context.contentVersion); if (riskPack === undefined) throw new ReducerError("CONTENT_MISMATCH", "content.risk_required");
     const threatId = String(choiceObject.threatId); const definition = threatDefinition(riskPack, threatId); const presentation = buildRiskPresentation(state, definition);
-    const risk = resolveThreat(state, riskPack, { definitionId: threatId }, { commandId: context.commandId, sourceEventId: current.eventId, presentedRisk: presentation, acceptedPublicWarning: presentation.canBeFatal });
+    const buildPack = buildPackFromContext(context); const risk = resolveThreat(state, riskPack, { definitionId: threatId }, { commandId: context.commandId, sourceEventId: current.eventId, presentedRisk: presentation, acceptedPublicWarning: presentation.canBeFatal, modifierSources: buildPack === undefined ? [] : activeBuildRiskSources(state, buildPack) });
     checkedState = risk.state; requestedTier = risk.tier; rngDraws = risk.rngDraws; checkFact = { logicalRequests: 1, risk: risk.trace };
   } else if (choiceObject.check !== undefined) {
     const resolution = resolveCheck(state, choiceObject.check);
@@ -363,7 +367,9 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
   let causeApplied: GameState;
   try { causeApplied = applyCauseEffects(checkedState, resolved.outcome.effects as readonly unknown[], causeContent, context.contentVersion, context); }
   catch { throw new ReducerError("INVALID_OPTION", "cause.invalid"); }
-  const applied = applyEventEffects(causeApplied, resolved.outcome.effects, current.eventId);
+  let buildApplied = causeApplied; let buildFacts: Fact[] = []; const buildPack = buildPackFromContext(context);
+  if (buildPack !== undefined) { try { const result = applyBuildEffects(causeApplied, resolved.outcome.effects as readonly unknown[], buildPack, { commandId: context.commandId, sourceRef: current.eventId }); buildApplied = result.state; buildFacts = result.facts.map((fact) => ({ ...fact })); } catch { throw new ReducerError("INVALID_OPTION", "build.invalid"); } }
+  const applied = applyEventEffects(buildApplied, resolved.outcome.effects, current.eventId);
   const timeAdvance = resolveTimeAdvance(applied.state.run.age, applied.state.run.maxAge, applied.outcomeTimeDelta);
   const nextNodeIndex = safeAdd(applied.state.run.nodeIndex, 1);
   const { current: _resolvedCurrent, ...eventsWithoutCurrent } = applied.state.run.events;
@@ -402,7 +408,7 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
   return {
     state: next,
     effects,
-    narrativeFacts: [{ type: "EVENT_OUTCOME", eventId: current.eventId, choiceId: command.optionId, requestedTier, appliedTier: resolved.appliedTier }],
+    narrativeFacts: [{ type: "EVENT_OUTCOME", eventId: current.eventId, choiceId: command.optionId, requestedTier, appliedTier: resolved.appliedTier }, ...buildFacts],
     trace: { rngDraws: [...rngDraws, ...causeRngDraws], selector: [{ kind: "check", ...checkFact }, ...causeTrace], time: [{ ...timeAdvance }] }
   };
 }

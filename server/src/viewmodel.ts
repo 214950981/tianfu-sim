@@ -1,5 +1,5 @@
 import type { ChoiceDefinition, ContentRegistry, EventDefinition } from "../../packages/content/src/index.ts";
-import { buildRiskPresentation, evaluateCondition, injuryLevel, threatDefinition, validateGameState, type GameState } from "../../packages/core/src/index.ts";
+import { buildRiskPresentation, buildStage, evaluateCondition, injuryLevel, threatDefinition, validateGameState, type GameState } from "../../packages/core/src/index.ts";
 import type {
   CapabilitySet,
   CurrentInteraction,
@@ -49,8 +49,9 @@ function publicCauses(state: GameState): PublicCause[] {
       : { publicId: cause.causeId, level: "hinted", summaryKey: "cause.hinted.summary" });
 }
 
-function publicRun(state: GameState): Record<string, PublicJson> {
+function publicRun(state: GameState, content: ContentRegistry): Record<string, PublicJson> {
   const death = state.run.deathRecord; const knownCause = death?.sourceCauseId === undefined ? undefined : state.run.causes.byId[death.sourceCauseId]; const causeRelatedDeath = knownCause !== undefined && knownCause.visibility !== "hidden";
+  const locked = content.get(state.contentVersion); const buildPack = locked.buildPackId === undefined ? undefined : content.getBuild(state.contentVersion); const publicBuilds: PublicJson[] = buildPack === undefined ? [] : Object.values(state.run.build.affinities ?? {}).sort((left, right) => left.buildId.localeCompare(right.buildId)).map((affinity): PublicJson => { const definition = buildPack.definitions.find((candidate) => candidate.id === affinity.buildId); if (definition === undefined) return { buildId: affinity.buildId, stage: "latent", labelKey: "build.unknown" }; const stage = buildStage(buildPack.rules, affinity.affinityBps); return { buildId: affinity.buildId, displayName: definition.displayName, stage, labelKey: definition.stages.find((candidate) => candidate.stage === stage)?.labelKey ?? `build.${affinity.buildId}.${stage}`, dominant: state.run.build.dominantBuildId === affinity.buildId }; });
   return {
     runName: state.run.identity.runName,
     age: state.run.age,
@@ -62,6 +63,8 @@ function publicRun(state: GameState): Record<string, PublicJson> {
     riskConditions: (state.run.risk?.conditions ?? []).filter((condition) => condition.visibility !== "hidden").map((condition): PublicJson => condition.visibility === "explicit" ? { id: condition.id, definitionId: condition.definitionId, severity: condition.severity, visibility: condition.visibility, tags: [...condition.tags] } : { id: condition.id, severity: condition.severity, visibility: condition.visibility }),
     riskExposure: state.run.risk?.exposureCount ?? 0,
     identity: { rootTags: [...state.run.identity.rootTags], titles: [...state.run.identity.titles], ...(state.run.identity.destinyId === undefined ? {} : { destinyId: state.run.identity.destinyId }), ...(state.run.identity.innateProfile === undefined ? {} : { innateProfile: { spiritualRoot: state.run.identity.innateProfile.spiritualRoot, talentIds: [...state.run.identity.innateProfile.talentIds], majorDestinyId: state.run.identity.innateProfile.majorDestinyId } }), ...(state.run.identity.factionId === undefined ? {} : { factionId: state.run.identity.factionId }) },
+    builds: publicBuilds,
+    ...(state.run.build.dominantBuildId === undefined ? {} : { dominantBuildId: state.run.build.dominantBuildId }),
     actions: ["cultivate", "travel", "worldly", "pursuit"].map((actionId) => ({ actionId, enabled: state.run.actions.available.includes(actionId as GameState["run"]["actions"]["available"][number]) })),
     world: { regionId: state.run.world.regionId, knownRegionIds: [...state.run.world.knownRegionIds], tags: [...state.run.world.tags] },
     ...(state.run.ending === undefined ? {} : { ending: { endingId: state.run.ending.endingId, age: state.run.ending.age, ...(state.run.ending.deathCause === undefined ? {} : { deathCause: state.run.ending.deathCause }) } }),
@@ -100,7 +103,9 @@ function eventInteraction(state: GameState, content: ContentRegistry, interactio
 }
 
 function history(state: GameState): PublicHistory {
-  return { entries: state.run.events.history.map((entry, index) => ({ entryId: `event:${index}`, kind: "event", titleKey: `${entry.eventId}.title`, summaryKey: `${entry.eventId}.history`, data: { eventId: entry.eventId, nodeIndex: entry.nodeIndex, ...(entry.resultTier === undefined ? {} : { resultTier: entry.resultTier }) } })) };
+  const events = state.run.events.history.map((entry, index) => ({ entryId: `event:${index}`, kind: "event", titleKey: `${entry.eventId}.title`, summaryKey: `${entry.eventId}.history`, data: { eventId: entry.eventId, nodeIndex: entry.nodeIndex, ...(entry.resultTier === undefined ? {} : { resultTier: entry.resultTier }) } }));
+  const builds = (state.run.build.transitionFacts ?? []).map((fact) => ({ entryId: fact.id, kind: "build", titleKey: `build.fact.${fact.type}.title`, summaryKey: `build.fact.${fact.type}.summary`, data: { buildId: fact.buildId, age: fact.age, nodeIndex: fact.nodeIndex, reasonTag: fact.reasonTag, ...(fact.fromStage === undefined ? {} : { fromStage: fact.fromStage }), ...(fact.toStage === undefined ? {} : { toStage: fact.toStage }), ...(fact.fromBuildId === undefined ? {} : { fromBuildId: fact.fromBuildId }), ...(fact.toBuildId === undefined ? {} : { toBuildId: fact.toBuildId }) } }));
+  return { entries: [...events, ...builds] };
 }
 function share(state: GameState): ShareViewModel { return { title: state.run.identity.runName, summary: `realm:${state.run.realm.id};age:${state.run.age}`, facts: [{ label: "realm", value: state.run.realm.id }, { label: "age", value: String(state.run.age) }] }; }
 
@@ -111,7 +116,7 @@ export class ServerViewModelBuilder {
   constructor(content: ContentRegistry, options: ServerViewModelBuilderOptions = {}) { this.content = content; this.#capabilities = capabilities(options.capabilities); this.#riskPolicy = options.riskPolicy ?? (({ state, choice }) => { if (choice.threatId === undefined) return { tier: "low", canBeFatal: false, reasons: [] }; const riskPack = content.getRisk(state.contentVersion); const projected = buildRiskPresentation(state, threatDefinition(riskPack, choice.threatId)); const level = projected.tier === "low" ? "safe" : projected.tier === "caution" ? "guarded" : "dangerous"; return { ...projected, level, labelKey: `risk.${projected.tier}` }; }); }
   build(value: unknown, interactionState: InteractionState = "idle"): PublicViewModel {
     const state = validateGameState(value); const pageState = derivePageState(state);
-    const publicState: PublicState = { schemaVersion: state.schemaVersion, rulesVersion: state.rulesVersion, contentVersion: state.contentVersion, stateVersion: state.stateVersion, runId: state.run.runId, pageState, runStatus: state.run.status, publicRun: publicRun(state), capabilities: { ...this.#capabilities }, publicCauses: publicCauses(state) };
+    const publicState: PublicState = { schemaVersion: state.schemaVersion, rulesVersion: state.rulesVersion, contentVersion: state.contentVersion, stateVersion: state.stateVersion, runId: state.run.runId, pageState, runStatus: state.run.status, publicRun: publicRun(state, this.content), capabilities: { ...this.#capabilities }, publicCauses: publicCauses(state) };
     const currentInteraction = pageState === "DESTINY_OFFER" ? offeredInteraction(state, this.content, interactionState) : pageState === "EVENT" || pageState === "SPECIAL_NODE" || pageState === "ENDING" ? eventInteraction(state, this.content, interactionState, this.#riskPolicy) : undefined;
     return { state: publicState, ...(currentInteraction === undefined ? {} : { currentInteraction }), history: history(state), share: share(state) };
   }

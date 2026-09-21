@@ -5,6 +5,9 @@ type ConditionKind='injury'|'pillToxicity'|'curse'|'blessing'|'pursued'|'other';
 type DeathCause=string; // stable DeathCauseDefinition ID/category; current v1 values are not a Core enum limit
 type RiskConditionInstance={id:string;definitionId:string;severity:1|2|3;sourceRefs:string[];createdAge:number;createdNodeIndex:number;visibility:'explicit'|'hinted'|'hidden';tags:string[]};
 type DeathRecord={deathCauseId:string;category:string;age:number;realmId:string;immediateSource:string;contributingSourceRefs:string[];warningFacts:string[];sourceCommandId?:string;sourceEventId?:string;sourceCauseId?:string;sourceActorId?:string;trace:Record<string,unknown>};
+type BuildAffinity={buildId:string;affinityBps:number;lifetimeEvidence:number;lastEvidenceNodeIndex:number};
+type BuildEvidenceFact={id:string;type:'BUILD_FIRST_EVIDENCE'|'BUILD_EVIDENCE';buildId:string;amount:number;affinityBefore:number;affinityAfter:number;source:string;sourceCommandId:string;age:number;nodeIndex:number;reasonTag:string};
+type BuildTransitionFact={id:string;type:'BUILD_STAGE_TRANSITION'|'BUILD_DOMINANT_FORMED'|'BUILD_DOMINANT_CHANGED'|'BUILD_REFINED'|'BUILD_BRANCH_UNLOCKED';buildId:string;source:string;sourceCommandId:string;age:number;nodeIndex:number;reasonTag:string;fromStage?:string;toStage?:string;fromBuildId?:string;toBuildId?:string};
 
 export type InnateProfile={spiritualRoot:string;talentIds:string[];majorDestinyId:string};
 export type InnateProfileOffer={selectionId:string;profile:InnateProfile};
@@ -23,7 +26,7 @@ export type RunState={
  events:{current?:{eventId:string;kind:string;phase?:string};history:Array<{eventId:string;nodeIndex:number;resultTier?:string}>};
  causes:{byId:Record<string,CauseInstance>};
  npcs:{byId:Record<string,NpcInstance>};
- build:{techniques:string[];artifacts:string[];consumables:string[];tagScores:Record<string,number>;mainPath?:string;secondaryPath?:string};
+ build:{techniques:string[];artifacts:string[];consumables:string[];tagScores:Record<string,number>;mainPath?:string;secondaryPath?:string;affinities?:Record<string,BuildAffinity>;dominantBuildId?:string;evidenceFacts?:BuildEvidenceFact[];transitionFacts?:BuildTransitionFact[];unlockedBuildIds?:string[]};
  world:{regionId:string;knownRegionIds:string[];tags:string[];factionStanding:Record<string,number>};
  ending?:{endingId:string;deathCause?:DeathCause;sourceRef?:string;age:number;factIds:string[]};
  deathRecord?:DeathRecord;

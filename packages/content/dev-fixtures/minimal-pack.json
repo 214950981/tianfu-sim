@@ -4,10 +4,11 @@
     "packId": "dev-minimal",
     "rulesVersion": "2.0.0",
     "contentVersion": "dev-0.1.0",
-    "checksum": "23184511dce68e943c60e301b392ee0658a1f4b3fdc8f805f77d799ebc942502"
+    "checksum": "20a932b6910d1008fa378fbdd88ec48d12fc74d2df76513ab7b29aa0100736fe"
   },
   "progressionPackId": "progression.v1",
   "riskPackId": "risk.v1",
+  "buildPackId": "build.v1",
   "references": {
     "items": [],
     "components": [],
@@ -126,6 +127,18 @@
           "threatId": "threat.combat",
           "outcomes": {
             "success": { "effects": [] }
+          }
+        },
+        {
+          "id": "study-sword",
+          "scope": "core",
+          "labelKey": "dev.first-choice.study-sword",
+          "outcomes": {
+            "success": {
+              "effects": [
+                { "op": "ADD_BUILD_EVIDENCE", "buildId": "build.sword", "amount": 2500, "reasonTag": "choice.study-sword" }
+              ]
+            }
           }
         }
       ],

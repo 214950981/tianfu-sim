@@ -7,6 +7,7 @@ import { injuryLevel } from "./risk.ts";
 export const PROGRESSION_MODIFIER_KEYS = ["cultivationGainRateDeltaBps", "foundationGainRateDeltaBps", "breakthroughDifficultyDelta", "breakthroughScoreDelta", "foundationRetentionDeltaBps", "failureCultivationLossDelta", "failureFoundationLossDelta"] as const;
 export type ProgressionModifierKey = typeof PROGRESSION_MODIFIER_KEYS[number];
 export interface ProgressionModifier { kind: ProgressionModifierKey; value: number; systemOwner: string }
+export interface ProgressionModifierSource { id: string; modifiers: ProgressionModifier[] }
 export interface ProgressionHook { id: string; systemOwner: string; order: number }
 export interface ProgressionDefinition { id: string; displayName: string; category: string; tags: string[]; modifiers: ProgressionModifier[]; hooks: ProgressionHook[]; requiresTags: string[]; forbidsTags: string[]; exclusiveGroups: string[]; systemOwners: string[] }
 export interface SpiritualRootProfile extends ProgressionDefinition { elementTags: string[] }
@@ -36,10 +37,11 @@ export function isValidInnateProfile(pack: ProgressionPack, profile: InnateProfi
   return true;
 }
 
-export function aggregateProgressionModifiers(pack: ProgressionPack, profile: InnateProfile): ProgressionAggregate {
+export function aggregateProgressionModifiers(pack: ProgressionPack, profile: InnateProfile, extraSources: readonly ProgressionModifierSource[] = []): ProgressionAggregate {
   const definitions = profileDefinitions(pack, profile).sort((left, right) => left.id.localeCompare(right.id));
   const totals: Record<ProgressionModifierKey, number> = Object.fromEntries(PROGRESSION_MODIFIER_KEYS.map((key) => [key, 0])) as Record<ProgressionModifierKey, number>;
   for (const definition of definitions) for (const modifier of [...definition.modifiers].sort((left, right) => left.kind.localeCompare(right.kind) || left.value - right.value)) if (modifier.systemOwner === "PROG01") totals[modifier.kind] = safeAdd(totals[modifier.kind], modifier.value);
+  for (const source of [...extraSources].sort((left, right) => left.id.localeCompare(right.id))) for (const modifier of [...source.modifiers].sort((left, right) => left.kind.localeCompare(right.kind) || left.value - right.value)) if (modifier.systemOwner === "PROG01") totals[modifier.kind] = safeAdd(totals[modifier.kind], modifier.value);
   return {
     cultivationGainRateBps: clampInteger(safeAdd(10_000, totals.cultivationGainRateDeltaBps), 5_000, 16_000),
     foundationGainRateBps: clampInteger(safeAdd(10_000, totals.foundationGainRateDeltaBps), 5_000, 16_000),
@@ -48,7 +50,7 @@ export function aggregateProgressionModifiers(pack: ProgressionPack, profile: In
     foundationRetentionDeltaBps: totals.foundationRetentionDeltaBps,
     failureCultivationLossDelta: totals.failureCultivationLossDelta,
     failureFoundationLossDelta: totals.failureFoundationLossDelta,
-    sources: definitions.map((definition) => definition.id)
+    sources: [...definitions.map((definition) => definition.id), ...extraSources.map((source) => source.id)].sort()
   };
 }
 
@@ -59,9 +61,9 @@ export function orderedProgressionHooks(pack: ProgressionPack, profile: InnatePr
 export function realmDefinition(pack: ProgressionPack, realmId: string): RealmDefinition { const value = pack.realms.find((realm) => realm.id === realmId); if (value === undefined) throw new RangeError(`unknown realm ${realmId}`); return value; }
 export function cultivationStage(cultivationBps: number): "early" | "mid" | "late" | "complete" { if (cultivationBps >= 10_000) return "complete"; if (cultivationBps >= 6_667) return "late"; if (cultivationBps >= 3_334) return "mid"; return "early"; }
 
-export function applyRetreatProgression(state: GameState, pack: ProgressionPack): GameState {
+export function applyRetreatProgression(state: GameState, pack: ProgressionPack, extraSources: readonly ProgressionModifierSource[] = []): GameState {
   const profile = state.run.identity.innateProfile; if (profile === undefined) return state;
-  const realm = realmDefinition(pack, state.run.realm.id); const aggregate = aggregateProgressionModifiers(pack, profile);
+  const realm = realmDefinition(pack, state.run.realm.id); const aggregate = aggregateProgressionModifiers(pack, profile, extraSources);
   const cultivation = state.run.realm.cultivationBps ?? state.run.realm.cultivation; const foundation = state.run.realm.realmFoundationBps ?? 0;
   const cultivationGain = roundHalfUpPositive(safeMultiply(realm.retreatCultivationGain, aggregate.cultivationGainRateBps), 10_000);
   const foundationGain = roundHalfUpPositive(safeMultiply(realm.retreatFoundationGain, aggregate.foundationGainRateBps), 10_000);
@@ -75,8 +77,8 @@ function injuryPlusOne(state: GameState, sourceRef: string): GameState {
   return { ...state, run: { ...state.run, conditions } };
 }
 
-export function applyBreakthroughOutcome(state: GameState, pack: ProgressionPack, tier: OutcomeTier, commandId: string): GameState {
-  const profile = state.run.identity.innateProfile; if (profile === undefined) throw new RangeError("InnateProfile is required"); const current = realmDefinition(pack, state.run.realm.id); if (current.nextRealmId === undefined) throw new RangeError("realm has no ordinary successor"); const target = realmDefinition(pack, current.nextRealmId); const aggregate = aggregateProgressionModifiers(pack, profile);
+export function applyBreakthroughOutcome(state: GameState, pack: ProgressionPack, tier: OutcomeTier, commandId: string, extraSources: readonly ProgressionModifierSource[] = []): GameState {
+  const profile = state.run.identity.innateProfile; if (profile === undefined) throw new RangeError("InnateProfile is required"); const current = realmDefinition(pack, state.run.realm.id); if (current.nextRealmId === undefined) throw new RangeError("realm has no ordinary successor"); const target = realmDefinition(pack, current.nextRealmId); const aggregate = aggregateProgressionModifiers(pack, profile, extraSources);
   const cultivation = state.run.realm.cultivationBps ?? state.run.realm.cultivation; const foundation = state.run.realm.realmFoundationBps ?? 0;
   if (tier === "failure") {
     const cultivationLoss = Math.max(0, safeAdd(2_500, aggregate.failureCultivationLossDelta)); const foundationLoss = Math.max(0, safeAdd(1_000, aggregate.failureFoundationLossDelta));
@@ -88,8 +90,8 @@ export function applyBreakthroughOutcome(state: GameState, pack: ProgressionPack
   if (tier === "costlySuccess") advanced = injuryPlusOne(advanced, commandId); return advanced;
 }
 
-export function resolveBreakthrough(state: GameState, pack: ProgressionPack): { state: GameState; tier: OutcomeTier; effectiveDifficulty: number; effectiveScore: number; rngRoll: number; rngDraws: RngTrace[] } {
-  const profile = state.run.identity.innateProfile; if (profile === undefined) throw new RangeError("InnateProfile is required"); const realm = realmDefinition(pack, state.run.realm.id); if (realm.breakthroughDifficulty === undefined || realm.nextRealmId === undefined) throw new RangeError("realm cannot attempt an ordinary breakthrough"); const aggregate = aggregateProgressionModifiers(pack, profile);
+export function resolveBreakthrough(state: GameState, pack: ProgressionPack, extraSources: readonly ProgressionModifierSource[] = []): { state: GameState; tier: OutcomeTier; effectiveDifficulty: number; effectiveScore: number; rngRoll: number; rngDraws: RngTrace[] } {
+  const profile = state.run.identity.innateProfile; if (profile === undefined) throw new RangeError("InnateProfile is required"); const realm = realmDefinition(pack, state.run.realm.id); if (realm.breakthroughDifficulty === undefined || realm.nextRealmId === undefined) throw new RangeError("realm cannot attempt an ordinary breakthrough"); const aggregate = aggregateProgressionModifiers(pack, profile, extraSources);
   const foundation = state.run.realm.realmFoundationBps ?? 0; const foundationScore = roundHalfUpPositive(foundation, 10); const effectiveDifficulty = clampInteger(safeAdd(realm.breakthroughDifficulty, aggregate.breakthroughDifficultyDelta), 100, 950); const effectiveScore = safeAdd(foundationScore, aggregate.breakthroughScoreDelta);
   const check = resolveScoreCheck(state, effectiveScore, effectiveDifficulty); return { state: check.state, tier: check.tier, effectiveDifficulty, effectiveScore, rngRoll: check.rngRoll, rngDraws: check.rngDraws };
 }

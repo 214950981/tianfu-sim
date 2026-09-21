@@ -5,6 +5,8 @@ import type { ProgressionPack } from "../../core/src/progression.ts";
 import { getProgressionPack, validateProgressionPack } from "./progression-v1.ts";
 import type { RiskPack } from "../../core/src/risk.ts";
 import { getRiskPack, validateRiskPack } from "./risk-v1.ts";
+import type { BuildPack } from "../../core/src/build.ts";
+import { getBuildPack, validateBuildPack } from "./build-v1.ts";
 
 export type LogicalPath =
   | "run.age" | "run.maxAge" | "realm.order" | "realm.cultivation"
@@ -35,6 +37,7 @@ export type EffectSpec =
   | { op: "SET_NPC_STATUS"; npcId: string; status: string }
   | { op: "SET_REGION"; regionId: string }
   | { op: "OUTCOME_TIME_DELTA"; years: number }
+  | { op: "ADD_BUILD_EVIDENCE"; buildId: string; amount: number; reasonTag: string }
   | { op: "setSessionFlag"; key: string; value: boolean }
   | { op: "adjustSessionCounter"; key: string; delta: number }
   | { op: "addSessionTag" | "removeSessionTag"; tag: string };
@@ -84,7 +87,7 @@ export interface ContentReferences {
   causes: string[];
   conditions: string[];
 }
-export interface ContentPack { manifest: ContentManifest; references: ContentReferences; destinies: DestinyDefinition[]; events: EventDefinition[]; causeTemplates: CauseTemplate[]; progressionPackId?: string; riskPackId?: string }
+export interface ContentPack { manifest: ContentManifest; references: ContentReferences; destinies: DestinyDefinition[]; events: EventDefinition[]; causeTemplates: CauseTemplate[]; progressionPackId?: string; riskPackId?: string; buildPackId?: string }
 export type ContentPackDraft = Omit<ContentPack, "manifest"> & { manifest: Omit<ContentManifest, "checksum"> };
 
 export class ContentValidationError extends TypeError {
@@ -103,7 +106,7 @@ const destinyProfiles = new Set(["stable", "high-variance", "story-hook"]);
 const destinyTargets = new Set(["insight", "body", "spiritSense", "fortune", "maxAge", "spiritStone"]);
 const actionTypes = new Set<string>(ACTION_TYPES);
 const sessionOps = new Set(["setSessionFlag", "adjustSessionCounter", "addSessionTag", "removeSessionTag"]);
-const longTermOps = new Set(["ADD_RESOURCE", "REMOVE_RESOURCE", "ADD_ITEM", "REMOVE_ITEM", "ADD_CULTIVATION", "ADD_CONDITION", "REMOVE_CONDITION", "ADD_IDENTITY_TAG", "REMOVE_IDENTITY_TAG", "ADD_WORLD_TAG", "REMOVE_WORLD_TAG", "RELATION_DELTA", "ADD_CAUSE", "RESOLVE_CAUSE", "EXPIRE_CAUSE", "GRANT_COMPONENT", "REMOVE_COMPONENT", "CREATE_NPC", "SET_NPC_STATUS", "SET_REGION", "OUTCOME_TIME_DELTA"]);
+const longTermOps = new Set(["ADD_RESOURCE", "REMOVE_RESOURCE", "ADD_ITEM", "REMOVE_ITEM", "ADD_CULTIVATION", "ADD_CONDITION", "REMOVE_CONDITION", "ADD_IDENTITY_TAG", "REMOVE_IDENTITY_TAG", "ADD_WORLD_TAG", "REMOVE_WORLD_TAG", "RELATION_DELTA", "ADD_CAUSE", "RESOLVE_CAUSE", "EXPIRE_CAUSE", "GRANT_COMPONENT", "REMOVE_COMPONENT", "CREATE_NPC", "SET_NPC_STATUS", "SET_REGION", "OUTCOME_TIME_DELTA", "ADD_BUILD_EVIDENCE"]);
 
 function fail(path: string, message: string): never { throw new ContentValidationError(`${path}: ${message}`); }
 function objectValue(value: unknown, path: string): ObjectValue {
@@ -179,7 +182,7 @@ function requireReference(id: unknown, set: Set<string>, path: string): string {
   return result;
 }
 
-function validateEffect(value: unknown, refs: ReferenceSets, path: string): string {
+function validateEffect(value: unknown, refs: ReferenceSets, buildPack: BuildPack | undefined, path: string): string {
   const effect = objectValue(value, path); const op = stringValue(effect.op, `${path}.op`);
   switch (op) {
     case "ADD_RESOURCE": case "REMOVE_RESOURCE": exact(effect, ["op", "key", "amount"], [], path); if (effect.key !== "spiritStone") fail(`${path}.key`, "must be spiritStone"); integer(effect.amount, `${path}.amount`, 0); break;
@@ -196,6 +199,7 @@ function validateEffect(value: unknown, refs: ReferenceSets, path: string): stri
     case "SET_NPC_STATUS": exact(effect, ["op", "npcId", "status"], [], path); stringValue(effect.npcId, `${path}.npcId`); stringValue(effect.status, `${path}.status`); break;
     case "SET_REGION": exact(effect, ["op", "regionId"], [], path); requireReference(effect.regionId, refs.regions, `${path}.regionId`); break;
     case "OUTCOME_TIME_DELTA": exact(effect, ["op", "years"], [], path); integer(effect.years, `${path}.years`, 0); break;
+    case "ADD_BUILD_EVIDENCE": exact(effect, ["op", "buildId", "amount", "reasonTag"], [], path); if (buildPack === undefined || !buildPack.definitions.some((definition) => definition.id === effect.buildId)) fail(`${path}.buildId`, "unknown BuildDefinition"); integer(effect.amount, `${path}.amount`, buildPack.rules.evidence.min, buildPack.rules.evidence.max); stringValue(effect.reasonTag, `${path}.reasonTag`); break;
     case "setSessionFlag": exact(effect, ["op", "key", "value"], [], path); stringValue(effect.key, `${path}.key`); if (typeof effect.value !== "boolean") fail(`${path}.value`, "must be a boolean"); break;
     case "adjustSessionCounter": exact(effect, ["op", "key", "delta"], [], path); stringValue(effect.key, `${path}.key`); integer(effect.delta, `${path}.delta`); break;
     case "addSessionTag": case "removeSessionTag": exact(effect, ["op", "tag"], [], path); stringValue(effect.tag, `${path}.tag`); break;
@@ -211,15 +215,15 @@ function validateTransition(value: unknown, eventIds: Set<string>, path: string)
   if (transition.priority !== undefined) integer(transition.priority, `${path}.priority`);
 }
 
-function validateOutcome(value: unknown, refs: ReferenceSets, eventIds: Set<string>, path: string): Set<string> {
+function validateOutcome(value: unknown, refs: ReferenceSets, eventIds: Set<string>, buildPack: BuildPack | undefined, path: string): Set<string> {
   const outcome = objectValue(value, path); exact(outcome, ["effects"], ["next", "fallbackKey"], path);
-  const ops = new Set(array(outcome.effects, `${path}.effects`).map((effect, index) => validateEffect(effect, refs, `${path}.effects[${index}]`)));
+  const ops = new Set(array(outcome.effects, `${path}.effects`).map((effect, index) => validateEffect(effect, refs, buildPack, `${path}.effects[${index}]`)));
   if (outcome.next !== undefined) array(outcome.next, `${path}.next`).forEach((entry, index) => validateTransition(entry, eventIds, `${path}.next[${index}]`));
   if (outcome.fallbackKey !== undefined) stringValue(outcome.fallbackKey, `${path}.fallbackKey`);
   return ops;
 }
 
-function validateChoice(value: unknown, refs: ReferenceSets, eventIds: Set<string>, threatIds: Set<string>, currentEventId: string, path: string): string {
+function validateChoice(value: unknown, refs: ReferenceSets, eventIds: Set<string>, threatIds: Set<string>, buildPack: BuildPack | undefined, currentEventId: string, path: string): string {
   const choice = objectValue(value, path); exact(choice, ["id", "scope", "labelKey", "outcomes"], ["rhythmOnly", "requirements", "check", "threatId", "next"], path);
   const id = stringValue(choice.id, `${path}.id`); const scope = oneOf(choice.scope, new Set(["core", "tactical"]), `${path}.scope`);
   if (choice.rhythmOnly !== undefined && typeof choice.rhythmOnly !== "boolean") fail(`${path}.rhythmOnly`, "must be a boolean");
@@ -237,7 +241,7 @@ function validateChoice(value: unknown, refs: ReferenceSets, eventIds: Set<strin
   }
   const outcomes = objectValue(choice.outcomes, `${path}.outcomes`); exact(outcomes, ["success"], ["greatSuccess", "costlySuccess", "failure"], `${path}.outcomes`);
   const ops = new Set<string>();
-  for (const key of ["greatSuccess", "success", "costlySuccess", "failure"] as const) if (outcomes[key] !== undefined) for (const op of validateOutcome(outcomes[key], refs, eventIds, `${path}.outcomes.${key}`)) ops.add(op);
+  for (const key of ["greatSuccess", "success", "costlySuccess", "failure"] as const) if (outcomes[key] !== undefined) for (const op of validateOutcome(outcomes[key], refs, eventIds, buildPack, `${path}.outcomes.${key}`)) ops.add(op);
   if (scope === "core" && !rhythmOnly && choice.threatId === undefined && ![...ops].some((op) => longTermOps.has(op))) fail(path, "core choice must change a long-term dimension");
   const choiceNext = choice.next === undefined ? [] : array(choice.next, `${path}.next`);
   choiceNext.forEach((entry, index) => validateTransition(entry, eventIds, `${path}.next[${index}]`));
@@ -262,7 +266,7 @@ function referenceSets(value: unknown): ReferenceSets {
   return result;
 }
 
-function validateEvent(value: unknown, refs: ReferenceSets, eventIds: Set<string>, threatIds: Set<string>, path: string): void {
+function validateEvent(value: unknown, refs: ReferenceSets, eventIds: Set<string>, threatIds: Set<string>, buildPack: BuildPack | undefined, path: string): void {
   const event = objectValue(value, path);
   exact(event, ["id", "version", "kind", "titleKey", "tags", "weight", "fallback"], ["requirements", "actionAffinity", "cooldown", "choices", "onEnter", "ai", "telemetry"], path);
   stringValue(event.id, `${path}.id`); integer(event.version, `${path}.version`, 1); oneOf(event.kind, eventKinds, `${path}.kind`); stringValue(event.titleKey, `${path}.titleKey`);
@@ -270,8 +274,8 @@ function validateEvent(value: unknown, refs: ReferenceSets, eventIds: Set<string
   if (event.actionAffinity !== undefined) { const affinities = strings(event.actionAffinity, `${path}.actionAffinity`); unique(affinities, `${path}.actionAffinity`); affinities.forEach((action, index) => oneOf(action, actionTypes, `${path}.actionAffinity[${index}]`)); }
   if (event.requirements !== undefined) validateCondition(event.requirements, `${path}.requirements`);
   if (event.cooldown !== undefined) { const cooldown = objectValue(event.cooldown, `${path}.cooldown`); exact(cooldown, [], ["minNodesBetween", "maxOccurrences"], `${path}.cooldown`); if (cooldown.minNodesBetween !== undefined) integer(cooldown.minNodesBetween, `${path}.cooldown.minNodesBetween`, 0); if (cooldown.maxOccurrences !== undefined) integer(cooldown.maxOccurrences, `${path}.cooldown.maxOccurrences`, 1); }
-  if (event.choices !== undefined) { const ids = array(event.choices, `${path}.choices`).map((choice, index) => validateChoice(choice, refs, eventIds, threatIds, event.id as string, `${path}.choices[${index}]`)); unique(ids, `${path}.choices`); }
-  if (event.onEnter !== undefined) array(event.onEnter, `${path}.onEnter`).forEach((effect, index) => validateEffect(effect, refs, `${path}.onEnter[${index}]`));
+  if (event.choices !== undefined) { const ids = array(event.choices, `${path}.choices`).map((choice, index) => validateChoice(choice, refs, eventIds, threatIds, buildPack, event.id as string, `${path}.choices[${index}]`)); unique(ids, `${path}.choices`); }
+  if (event.onEnter !== undefined) array(event.onEnter, `${path}.onEnter`).forEach((effect, index) => validateEffect(effect, refs, buildPack, `${path}.onEnter[${index}]`));
   if (event.ai !== undefined) jsonValue(event.ai, `${path}.ai`);
   const fallback = objectValue(event.fallback, `${path}.fallback`); exact(fallback, ["bodyKey"], ["titleKey"], `${path}.fallback`); stringValue(fallback.bodyKey, `${path}.fallback.bodyKey`); if (fallback.titleKey !== undefined) stringValue(fallback.titleKey, `${path}.fallback.titleKey`);
   if (event.telemetry !== undefined) for (const [key, entry] of Object.entries(objectValue(event.telemetry, `${path}.telemetry`))) stringValue(entry, `${path}.telemetry.${key}`);
@@ -329,7 +333,7 @@ function normalizedDraft(pack: ContentPack | ContentPackDraft): unknown {
   const destinies = [...pack.destinies].sort((left, right) => left.id.localeCompare(right.id));
   const events = [...pack.events].sort((left, right) => left.id.localeCompare(right.id));
   const causeTemplates = [...pack.causeTemplates].sort((left, right) => left.id.localeCompare(right.id));
-  return { manifest, references, destinies, events, causeTemplates, ...(pack.progressionPackId === undefined ? {} : { progressionPackId: pack.progressionPackId }), ...(pack.riskPackId === undefined ? {} : { riskPackId: pack.riskPackId }) };
+  return { manifest, references, destinies, events, causeTemplates, ...(pack.progressionPackId === undefined ? {} : { progressionPackId: pack.progressionPackId }), ...(pack.riskPackId === undefined ? {} : { riskPackId: pack.riskPackId }), ...(pack.buildPackId === undefined ? {} : { buildPackId: pack.buildPackId }) };
 }
 function canonicalValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalValue);
@@ -346,8 +350,8 @@ export function sealContentPack(pack: ContentPackDraft): ContentPack {
   return { ...pack, manifest: { ...pack.manifest, checksum: computePackChecksum(pack) } };
 }
 
-export function validateContentPack(value: unknown, expectedContentVersion?: string): ContentPack {
-  const pack = objectValue(value, "pack"); exact(pack, ["manifest", "references", "destinies", "events", "causeTemplates"], ["progressionPackId", "riskPackId"], "pack");
+export function validateContentPack(value: unknown, expectedContentVersion?: string, dependencies?: { getBuildPack?: (id: string) => BuildPack | undefined }): ContentPack {
+  const pack = objectValue(value, "pack"); exact(pack, ["manifest", "references", "destinies", "events", "causeTemplates"], ["progressionPackId", "riskPackId", "buildPackId"], "pack");
   const manifest = objectValue(pack.manifest, "pack.manifest"); exact(manifest, ["schemaVersion", "packId", "rulesVersion", "contentVersion", "checksum"], [], "pack.manifest");
   if (manifest.schemaVersion !== 2) fail("pack.manifest.schemaVersion", "must be 2");
   stringValue(manifest.packId, "pack.manifest.packId"); stringValue(manifest.rulesVersion, "pack.manifest.rulesVersion");
@@ -357,11 +361,12 @@ export function validateContentPack(value: unknown, expectedContentVersion?: str
   if (pack.progressionPackId !== undefined) { const progression = validateProgressionPack(getProgressionPack(stringValue(pack.progressionPackId, "pack.progressionPackId"))); if (progression.rulesVersion !== manifest.rulesVersion) fail("pack.progressionPackId", "rulesVersion mismatch"); }
   const riskPack = pack.riskPackId === undefined ? undefined : validateRiskPack(getRiskPack(stringValue(pack.riskPackId, "pack.riskPackId"))); if (riskPack !== undefined && riskPack.rulesVersion !== manifest.rulesVersion) fail("pack.riskPackId", "rulesVersion mismatch");
   const threatIds = new Set(riskPack?.threats.map((threat) => threat.id) ?? []);
+  const buildPackId = pack.buildPackId === undefined ? undefined : stringValue(pack.buildPackId, "pack.buildPackId"); const buildPack = buildPackId === undefined ? undefined : validateBuildPack(dependencies?.getBuildPack?.(buildPackId) ?? getBuildPack(buildPackId)); if (buildPack !== undefined && buildPack.rulesVersion !== manifest.rulesVersion) fail("pack.buildPackId", "rulesVersion mismatch");
   const refs = referenceSets(pack.references);
   const destinies = array(pack.destinies, "pack.destinies"); const destinyIds = destinies.map((destiny, index) => stringValue(objectValue(destiny, `pack.destinies[${index}]`).id, `pack.destinies[${index}].id`)); unique(destinyIds, "pack.destinies");
   destinies.forEach((destiny, index) => validateDestiny(destiny, refs, `pack.destinies[${index}]`));
   const events = array(pack.events, "pack.events"); const eventIds = events.map((event, index) => stringValue(objectValue(event, `pack.events[${index}]`).id, `pack.events[${index}].id`)); unique(eventIds, "pack.events");
-  const eventIdSet = new Set(eventIds); events.forEach((event, index) => validateEvent(event, refs, eventIdSet, threatIds, `pack.events[${index}]`));
+  const eventIdSet = new Set(eventIds); events.forEach((event, index) => validateEvent(event, refs, eventIdSet, threatIds, buildPack, `pack.events[${index}]`));
   const templates = array(pack.causeTemplates, "pack.causeTemplates"); const templateIds = templates.map((template, index) => stringValue(objectValue(template, `pack.causeTemplates[${index}]`).id, `pack.causeTemplates[${index}].id`)); unique(templateIds, "pack.causeTemplates");
   if (templateIds.length !== refs.causes.size || templateIds.some((id) => !refs.causes.has(id))) fail("pack.causeTemplates", "must define every Cause reference exactly once");
   templates.forEach((template, index) => validateCauseTemplate(template, refs, eventIdSet, `pack.causeTemplates[${index}]`));
@@ -387,8 +392,10 @@ function cloneAndFreeze<T>(value: T): T {
 
 export class ContentRegistry {
   readonly #byVersion = new Map<string, ContentPack>();
+  readonly #buildPacks = new Map<string, BuildPack>([["build.v1", getBuildPack("build.v1")]]);
+  registerBuildPack(value: unknown): BuildPack { const validated = validateBuildPack(value); const stored = cloneAndFreeze(validated); const existing = this.#buildPacks.get(stored.id); if (existing !== undefined && JSON.stringify(canonicalValue(existing)) !== JSON.stringify(canonicalValue(stored))) fail("buildPack.id", "is already registered with different content"); if (existing === undefined) this.#buildPacks.set(stored.id, stored); return existing ?? stored; }
   register(value: unknown): ContentPack {
-    const validated = validateContentPack(value); const stored = cloneAndFreeze(validated);
+    const validated = validateContentPack(value, undefined, { getBuildPack: (id) => this.#buildPacks.get(id) }); const stored = cloneAndFreeze(validated);
     const existing = this.#byVersion.get(stored.manifest.contentVersion);
     if (existing !== undefined && existing.manifest.checksum !== stored.manifest.checksum) fail("pack.manifest.contentVersion", "is already registered with different content");
     if (existing === undefined) this.#byVersion.set(stored.manifest.contentVersion, stored);
@@ -411,5 +418,8 @@ export class ContentRegistry {
   }
   getRisk(contentVersion: string): RiskPack {
     const id = this.get(contentVersion).riskPackId; if (id === undefined) fail("riskPackId", "is not configured for contentVersion"); return getRiskPack(id);
+  }
+  getBuild(contentVersion: string): BuildPack {
+    const id = this.get(contentVersion).buildPackId; if (id === undefined) fail("buildPackId", "is not configured for contentVersion"); const pack = this.#buildPacks.get(id); if (pack === undefined) fail("buildPackId", `is not registered: ${id}`); return pack;
   }
 }

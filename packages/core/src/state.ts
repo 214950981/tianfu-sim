@@ -38,6 +38,10 @@ export interface NpcInstance {
   realmId: string; regionId: string; factionId?: string; status: "active" | "missing" | "injured" | "dead" | "ascended";
   traits: string[]; goal: string; relation: Relation; importanceScore: number; memoryRefs: string[]; timelineCursor: number; tags: string[];
 }
+export interface BuildAffinity { buildId: string; affinityBps: number; lifetimeEvidence: number; lastEvidenceNodeIndex: number }
+interface BuildFactBase { id: string; buildId: string; source: string; sourceCommandId: string; age: number; nodeIndex: number; reasonTag: string }
+export interface BuildEvidenceFact extends BuildFactBase { type: "BUILD_FIRST_EVIDENCE" | "BUILD_EVIDENCE"; amount: number; affinityBefore: number; affinityAfter: number }
+export interface BuildTransitionFact extends BuildFactBase { type: "BUILD_STAGE_TRANSITION" | "BUILD_DOMINANT_FORMED" | "BUILD_DOMINANT_CHANGED" | "BUILD_REFINED" | "BUILD_BRANCH_UNLOCKED"; fromStage?: string; toStage?: string; fromBuildId?: string; toBuildId?: string }
 export interface MetaState {
   playerId: string; metaCurrency: number; unlocks: string[]; discoveries: string[]; achievements: string[];
   cosmetics: string[]; entitlements: string[]; settings: Record<string, unknown>; stats: Record<string, number>;
@@ -56,7 +60,7 @@ export interface RunState {
   events: { current?: { eventId: string; kind: string; phase?: string }; history: Array<{ eventId: string; nodeIndex: number; resultTier?: string }> };
   causes: { byId: Record<string, CauseInstance> };
   npcs: { byId: Record<string, NpcInstance> };
-  build: { techniques: string[]; artifacts: string[]; consumables: string[]; tagScores: Record<string, number>; mainPath?: string; secondaryPath?: string };
+  build: { techniques: string[]; artifacts: string[]; consumables: string[]; tagScores: Record<string, number>; mainPath?: string; secondaryPath?: string; affinities?: Record<string, BuildAffinity>; dominantBuildId?: string; evidenceFacts?: BuildEvidenceFact[]; transitionFacts?: BuildTransitionFact[]; unlockedBuildIds?: string[] };
   world: { regionId: string; knownRegionIds: string[]; tags: string[]; factionStanding: Record<string, number> };
   ending?: { endingId: string; deathCause?: DeathCause; sourceRef?: string; age: number; factIds: string[] };
   deathRecord?: DeathRecord;
@@ -246,6 +250,10 @@ function validateRun(value: unknown, path: string, rulesVersion: string): assert
   const build = record(run.build, `${path}.build`);
   strings(build.techniques, `${path}.build.techniques`); strings(build.artifacts, `${path}.build.artifacts`); strings(build.consumables, `${path}.build.consumables`);
   integerRecord(build.tagScores, `${path}.build.tagScores`); optionalString(build, "mainPath", `${path}.build`); optionalString(build, "secondaryPath", `${path}.build`);
+  if (build.affinities !== undefined) for (const [id, entry] of Object.entries(record(build.affinities, `${path}.build.affinities`))) { const affinity = record(entry, `${path}.build.affinities.${id}`); if (stringValue(affinity.buildId, `${path}.build.affinities.${id}.buildId`) !== id) invalid(`${path}.build.affinities.${id}.buildId`, "must match map key"); integer(affinity.affinityBps, `${path}.build.affinities.${id}.affinityBps`, 0, 10_000); integer(affinity.lifetimeEvidence, `${path}.build.affinities.${id}.lifetimeEvidence`, 0); integer(affinity.lastEvidenceNodeIndex, `${path}.build.affinities.${id}.lastEvidenceNodeIndex`, 0, run.nodeIndex as number); }
+  optionalString(build, "dominantBuildId", `${path}.build`); if (build.dominantBuildId !== undefined && !(build.affinities !== undefined && Object.hasOwn(build.affinities as object, build.dominantBuildId as string))) invalid(`${path}.build.dominantBuildId`, "must reference an existing affinity");
+  if (build.unlockedBuildIds !== undefined) { const ids = strings(build.unlockedBuildIds, `${path}.build.unlockedBuildIds`); if (new Set(ids).size !== ids.length) invalid(`${path}.build.unlockedBuildIds`, "must be unique"); }
+  for (const key of ["evidenceFacts", "transitionFacts"] as const) if (build[key] !== undefined) for (const [index, value] of array(build[key], `${path}.build.${key}`).entries()) { const fact = record(value, `${path}.build.${key}[${index}]`); for (const stringKey of ["id", "type", "buildId", "source", "sourceCommandId", "reasonTag"]) stringValue(fact[stringKey], `${path}.build.${key}[${index}].${stringKey}`); integer(fact.age, `${path}.build.${key}[${index}].age`, 0); integer(fact.nodeIndex, `${path}.build.${key}[${index}].nodeIndex`, 0, run.nodeIndex as number); if (key === "evidenceFacts") { integer(fact.amount, `${path}.build.${key}[${index}].amount`, 0); integer(fact.affinityBefore, `${path}.build.${key}[${index}].affinityBefore`, 0, 10_000); integer(fact.affinityAfter, `${path}.build.${key}[${index}].affinityAfter`, 0, 10_000); } else for (const optional of ["fromStage", "toStage", "fromBuildId", "toBuildId"] as const) optionalString(fact, optional, `${path}.build.${key}[${index}]`); }
   const world = record(run.world, `${path}.world`);
   stringValue(world.regionId, `${path}.world.regionId`); strings(world.knownRegionIds, `${path}.world.knownRegionIds`); strings(world.tags, `${path}.world.tags`); integerRecord(world.factionStanding, `${path}.world.factionStanding`);
   if (run.ending !== undefined) {
@@ -308,6 +316,7 @@ export function validateStateTransition(previousValue: unknown, nextValue: unkno
     invalid("state", "schema/rules/content versions and rootSeed are immutable once offered");
   }
   if (previous.run.status === "ended" && !structurallyEqual(previous.run, next.run)) invalid("state.run", "ended Run rule fields are immutable");
+  for (const [buildId, affinity] of Object.entries(previous.run.build.affinities ?? {})) { const nextAffinity = next.run.build.affinities?.[buildId]; if (nextAffinity === undefined || nextAffinity.lifetimeEvidence < affinity.lifetimeEvidence) invalid(`state.run.build.affinities.${buildId}.lifetimeEvidence`, "must be monotonic"); }
   return next;
 }
 

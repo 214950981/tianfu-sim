@@ -14,4 +14,5 @@ riskPresentation is produced by a server-controlled ViewModel Builder. Client re
 RiskPresentation is a stable pre-submit projection. If current resolution can kill, canBeFatal must be true even when the source is hidden; outcome resolution never rewrites the warning previously shown.
 Public death projection may expose age, realm, registered direct cause, player-known contributing factors and warning history, but never DeathRecord.trace or hidden Cause/actor references.
 ViewModel may only project/filter/format/aggregate/translate authoritative results. It must not roll RNG, decide Outcome, advance time, create Cause, mutate RuleState, or decide breakthrough results.
+Build projection exposes semantic stage/display labels and dominant identity only; exact affinityBps and lifetimeEvidence remain authoritative server state.
 ShareViewModel contains public share-safe data only and cannot be converted into rule effects.

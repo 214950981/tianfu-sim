@@ -222,7 +222,7 @@ export function applyEventEffects(state: GameState, effectsValue: unknown, event
       }
       case "SET_REGION": { exactKeys(effect, ["op", "regionId"], "effect"); next = { ...next, run: { ...next.run, world: { ...next.run.world, regionId: stringValue(effect.regionId, "effect.regionId") } } }; break; }
       case "OUTCOME_TIME_DELTA": { exactKeys(effect, ["op", "years"], "effect"); const years = integer(effect.years, "effect.years"); if (years < 0) fail("INVALID_EVENT", "time delta must be nonnegative"); outcomeTimeDelta = safeAdd(outcomeTimeDelta, years); break; }
-      case "ADD_CAUSE": case "RESOLVE_CAUSE": case "EXPIRE_CAUSE": break;
+      case "ADD_CAUSE": case "RESOLVE_CAUSE": case "EXPIRE_CAUSE": case "ADD_BUILD_EVIDENCE": break;
       case "setSessionFlag": { exactKeys(effect, ["op", "key", "value"], "effect"); const key = stringValue(effect.key, "effect.key"); if (typeof effect.value !== "boolean") fail("INVALID_EVENT", "session flag must be boolean"); session.flags[key] = effect.value; break; }
       case "adjustSessionCounter": { exactKeys(effect, ["op", "key", "delta"], "effect"); const key = stringValue(effect.key, "effect.key"); session.counters[key] = safeAdd(session.counters[key] ?? 0, integer(effect.delta, "effect.delta")); break; }
       case "addSessionTag": { exactKeys(effect, ["op", "tag"], "effect"); const tag = stringValue(effect.tag, "effect.tag"); if (!session.tags.includes(tag)) session.tags.push(tag); break; }
