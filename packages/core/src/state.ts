@@ -9,7 +9,16 @@ export const DEATH_CAUSES = ["lifespan", "combat", "ambush", "exploration", "poi
 export type RunStatus = typeof RUN_STATUSES[number];
 export type ActionType = typeof ACTION_TYPES[number];
 export type ConditionKind = typeof CONDITION_KINDS[number];
-export type DeathCause = typeof DEATH_CAUSES[number];
+export type DeathCause = string;
+export interface RiskConditionInstance {
+  id: string; definitionId: string; severity: 1 | 2 | 3; sourceRefs: string[];
+  createdAge: number; createdNodeIndex: number; visibility: "explicit" | "hinted" | "hidden"; tags: string[];
+}
+export interface DeathRecord {
+  deathCauseId: string; category: string; age: number; realmId: string; immediateSource: string;
+  contributingSourceRefs: string[]; warningFacts: string[]; sourceCommandId?: string; sourceEventId?: string;
+  sourceCauseId?: string; sourceActorId?: string; trace: Record<string, unknown>;
+}
 export interface InnateProfile { spiritualRoot: string; talentIds: string[]; majorDestinyId: string }
 export interface InnateProfileOffer { selectionId: string; profile: InnateProfile }
 export type CauseStatus = "dormant" | "eligible" | "echoed" | "resolved" | "expired";
@@ -41,6 +50,7 @@ export interface RunState {
   attributes: { insight: number; body: number; spiritSense: number; fortune: number };
   resources: { spiritStone: number; items: Record<string, number> };
   conditions: Array<{ id: string; kind: ConditionKind; stacks: number; sourceRef: string; remainingNodes?: number }>;
+  risk?: { conditions: RiskConditionInstance[]; exposureCount: number };
   identity: { runName: string; destinyId?: string; innateProfile?: InnateProfile; rootTags: string[]; factionId?: string; titles: string[] };
   actions: { available: ActionType[]; pursuitCauseIds: string[]; recent: ActionType[] };
   events: { current?: { eventId: string; kind: string; phase?: string }; history: Array<{ eventId: string; nodeIndex: number; resultTier?: string }> };
@@ -49,6 +59,7 @@ export interface RunState {
   build: { techniques: string[]; artifacts: string[]; consumables: string[]; tagScores: Record<string, number>; mainPath?: string; secondaryPath?: string };
   world: { regionId: string; knownRegionIds: string[]; tags: string[]; factionStanding: Record<string, number> };
   ending?: { endingId: string; deathCause?: DeathCause; sourceRef?: string; age: number; factIds: string[] };
+  deathRecord?: DeathRecord;
   rng: RngState;
   director: { firstRun: boolean; interventions: number; last?: { nodeIndex: number; kind: string; reason: string } };
 }
@@ -60,7 +71,6 @@ export type RuleState = Pick<GameState, "schemaVersion" | "rulesVersion" | "cont
 const runStatusSet = new Set<string>(RUN_STATUSES);
 const actionTypeSet = new Set<string>(ACTION_TYPES);
 const conditionKindSet = new Set<string>(CONDITION_KINDS);
-const deathCauseSet = new Set<string>(DEATH_CAUSES);
 const npcTierSet = new Set(["S", "A", "B", "C"]);
 const npcStatusSet = new Set(["active", "missing", "injured", "dead", "ascended"]);
 const causeStatusSet = new Set(["dormant", "eligible", "echoed", "resolved", "expired"]);
@@ -206,6 +216,17 @@ function validateRun(value: unknown, path: string, rulesVersion: string): assert
     integer(condition.stacks, `${path}.conditions[${index}].stacks`, 0, 3);
     if (condition.remainingNodes !== undefined) integer(condition.remainingNodes, `${path}.conditions[${index}].remainingNodes`, 0);
   }
+  if (run.risk !== undefined) {
+    const risk = record(run.risk, `${path}.risk`); integer(risk.exposureCount, `${path}.risk.exposureCount`, 0);
+    const ids = new Set<string>();
+    for (const [index, entry] of array(risk.conditions, `${path}.risk.conditions`).entries()) {
+      const condition = record(entry, `${path}.risk.conditions[${index}]`); const id = stringValue(condition.id, `${path}.risk.conditions[${index}].id`);
+      if (ids.has(id)) invalid(`${path}.risk.conditions[${index}].id`, "must be unique"); ids.add(id);
+      stringValue(condition.definitionId, `${path}.risk.conditions[${index}].definitionId`); integer(condition.severity, `${path}.risk.conditions[${index}].severity`, 1, 3);
+      strings(condition.sourceRefs, `${path}.risk.conditions[${index}].sourceRefs`); integer(condition.createdAge, `${path}.risk.conditions[${index}].createdAge`, 0); integer(condition.createdNodeIndex, `${path}.risk.conditions[${index}].createdNodeIndex`, 0);
+      enumValue(condition.visibility, new Set(["explicit", "hinted", "hidden"]), `${path}.risk.conditions[${index}].visibility`); strings(condition.tags, `${path}.risk.conditions[${index}].tags`);
+    }
+  }
   const actions = record(run.actions, `${path}.actions`);
   for (const key of ["available", "recent"] as const) array(actions[key], `${path}.actions.${key}`).forEach((entry, index) => enumValue(entry, actionTypeSet, `${path}.actions.${key}[${index}]`));
   strings(actions.pursuitCauseIds, `${path}.actions.pursuitCauseIds`);
@@ -230,8 +251,15 @@ function validateRun(value: unknown, path: string, rulesVersion: string): assert
   if (run.ending !== undefined) {
     const ending = record(run.ending, `${path}.ending`);
     stringValue(ending.endingId, `${path}.ending.endingId`); optionalString(ending, "sourceRef", `${path}.ending`);
-    if (ending.deathCause !== undefined) enumValue(ending.deathCause, deathCauseSet, `${path}.ending.deathCause`);
+    if (ending.deathCause !== undefined) stringValue(ending.deathCause, `${path}.ending.deathCause`);
     integer(ending.age, `${path}.ending.age`, 0); strings(ending.factIds, `${path}.ending.factIds`);
+  }
+  if (run.deathRecord !== undefined) {
+    const death = record(run.deathRecord, `${path}.deathRecord`);
+    stringValue(death.deathCauseId, `${path}.deathRecord.deathCauseId`); stringValue(death.category, `${path}.deathRecord.category`); integer(death.age, `${path}.deathRecord.age`, 0);
+    stringValue(death.realmId, `${path}.deathRecord.realmId`); stringValue(death.immediateSource, `${path}.deathRecord.immediateSource`); strings(death.contributingSourceRefs, `${path}.deathRecord.contributingSourceRefs`); strings(death.warningFacts, `${path}.deathRecord.warningFacts`);
+    for (const key of ["sourceCommandId", "sourceEventId", "sourceCauseId", "sourceActorId"] as const) optionalString(death, key, `${path}.deathRecord`);
+    record(death.trace, `${path}.deathRecord.trace`);
   }
   if (status === "ended" && run.ending === undefined) invalid(`${path}.ending`, "is required when status is ended");
   validateRng(run.rng, `${path}.rng`, rulesVersion, stringValue(run.rootSeed, `${path}.rootSeed`));

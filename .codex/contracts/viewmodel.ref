@@ -1,6 +1,6 @@
 // VIEWMODEL CONTRACT v1 (UI01 Final Contract v1)
 type PublicJson=string|number|boolean|null|PublicJson[]|{[key:string]:PublicJson};
-type RiskPresentation={level:'safe'|'guarded'|'dangerous'|'unknown';labelKey:string;detailKey?:string};
+type RiskPresentation={tier:'low'|'caution'|'dangerous'|'lethal';canBeFatal:boolean;reasons:string[];level?:'safe'|'guarded'|'dangerous'|'unknown';labelKey?:string;detailKey?:string};
 type PublicCause={publicId:string;level:'explicit'|'hinted';titleKey?:string;summaryKey:string};
 export type PublicState={schemaVersion:number;rulesVersion:string;contentVersion:string;stateVersion:number;runId:string;pageState:PageState;runStatus:'offered'|'active'|'dying'|'ended'|'abandoned';publicRun:Record<string,PublicJson>;capabilities:Record<string,boolean>;publicCauses:PublicCause[]};
 export type CurrentInteraction={interactionId:string;kind:'destinyOffer'|'event'|'specialNode'|'ending'|'rebirth';titleKey:string;body:PublicJson;options:Array<{optionId:string;labelKey:string;riskPresentation?:RiskPresentation}>;interactionState:'idle'|'submitting'|'confirmed'|'retryableError'|'fatalError';retryCommandId?:string};
@@ -11,5 +11,7 @@ Never send in client business ViewModel: rootSeed; RNG internal state; drawIndex
 Hidden Causes are omitted, not represented by placeholders, counts or inferable metadata.
 commandId is not a server secret. Application/Transport may create, hold, persist and reuse it for idempotent retry. It is not shown to the player.
 riskPresentation is produced by a server-controlled ViewModel Builder. Client renders it and never derives risk from difficulty, RNG, hidden state or CheckSpec.
+RiskPresentation is a stable pre-submit projection. If current resolution can kill, canBeFatal must be true even when the source is hidden; outcome resolution never rewrites the warning previously shown.
+Public death projection may expose age, realm, registered direct cause, player-known contributing factors and warning history, but never DeathRecord.trace or hidden Cause/actor references.
 ViewModel may only project/filter/format/aggregate/translate authoritative results. It must not roll RNG, decide Outcome, advance time, create Cause, mutate RuleState, or decide breakthrough results.
 ShareViewModel contains public share-safe data only and cannot be converted into rule effects.

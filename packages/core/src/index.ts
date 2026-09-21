@@ -12,3 +12,4 @@ export * from "./event.ts";
 export * from "./cause.ts";
 export * from "./persistence.ts";
 export * from "./progression.ts";
+export * from "./risk.ts";

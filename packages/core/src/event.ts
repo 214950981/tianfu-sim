@@ -1,6 +1,6 @@
 import { assertBps, assertSafeInteger, safeAdd, scaleSignedByBps } from "./numeric.ts";
 import { drawInt, type RngTrace } from "./rng.ts";
-import type { DeathCause, GameState } from "./state.ts";
+import type { GameState } from "./state.ts";
 
 export type OutcomeTier = "greatSuccess" | "success" | "costlySuccess" | "failure";
 export interface EventSessionState { flags: Record<string, boolean>; counters: Record<string, number>; tags: string[] }
@@ -23,7 +23,7 @@ export class EventRuntimeError extends Error {
 }
 
 type ObjectValue = Record<string, unknown>;
-const logicalPaths = new Set(["run.age", "run.maxAge", "realm.order", "realm.cultivation", "attr.insight", "attr.body", "attr.spiritSense", "attr.fortune", "resource.spiritStone", "identity.tags", "world.tags", "world.regionId"]);
+const logicalPaths = new Set(["run.age", "run.maxAge", "realm.order", "realm.cultivation", "attr.insight", "attr.body", "attr.spiritSense", "attr.fortune", "resource.spiritStone", "identity.tags", "world.tags", "world.regionId", "injury.level"]);
 const attributes = new Set(["insight", "body", "spiritSense", "fortune"]);
 const relationAxes = new Set(["affinity", "trust", "debt"]);
 const causeStates = new Set(["dormant", "eligible", "echoed", "resolved", "expired"]);
@@ -67,6 +67,7 @@ export function resolveLogicalPath(state: GameState, path: string): unknown {
     case "identity.tags": return state.run.identity.rootTags;
     case "world.tags": return state.run.world.tags;
     case "world.regionId": return state.run.world.regionId;
+    case "injury.level": return Math.min(3, state.run.conditions.filter((condition) => condition.kind === "injury").reduce((maximum, condition) => Math.max(maximum, condition.stacks), 0));
     default: return fail("INVALID_EVENT", `unknown logical path: ${path}`);
   }
 }
@@ -113,6 +114,7 @@ export function evaluateCondition(value: unknown, state: GameState, depth = 0): 
 }
 
 export function resolveCheck(state: GameState, value: unknown): CheckResolution {
+  const scored = scoreCheckBase(state, value);
   const check = objectValue(value, "check");
   const allowed = new Set(["primary", "secondary", "secondaryWeightBps", "difficulty", "randomMin", "randomMax"]);
   for (const key of Object.keys(check)) if (!allowed.has(key)) fail("INVALID_EVENT", `check.${key} is not allowed`);
@@ -124,12 +126,26 @@ export function resolveCheck(state: GameState, value: unknown): CheckResolution 
   try { assertBps(weight, "secondaryWeightBps"); } catch { fail("INVALID_EVENT", "secondaryWeightBps must be 0..10000"); }
   const difficulty = integer(check.difficulty, "check.difficulty"); if (difficulty < 0 || difficulty > 1000) fail("INVALID_EVENT", "difficulty must be 0..1000");
   if (check.randomMin !== -10 || check.randomMax !== 10) fail("INVALID_EVENT", "check RNG range must be -10..10");
-  const primary = state.run.attributes[primaryKey as keyof typeof state.run.attributes];
-  const baseScore = safeAdd(primary, scaleSignedByBps(secondary, weight));
+  const baseScore = scored;
   const draw = drawInt(state.run.rng, "check", -10, 10);
   const finalScore = safeAdd(baseScore, draw.value);
   const tier = outcomeTierForScore(finalScore, difficulty);
   return { state: { ...state, run: { ...state.run, rng: draw.state } }, tier, baseScore, rngRoll: draw.value, finalScore, rngDraws: [...draw.trace] };
+}
+
+export function scoreCheckBase(state: GameState, value: unknown): number {
+  const check = objectValue(value, "check");
+  const allowed = new Set(["primary", "secondary", "secondaryWeightBps", "difficulty", "randomMin", "randomMax"]);
+  for (const key of Object.keys(check)) if (!allowed.has(key)) fail("INVALID_EVENT", `check.${key} is not allowed`);
+  for (const key of ["primary", "difficulty", "randomMin", "randomMax"]) if (!Object.hasOwn(check, key)) fail("INVALID_EVENT", `check.${key} is required`);
+  const primaryKey = stringValue(check.primary, "check.primary"); if (!attributes.has(primaryKey)) fail("INVALID_EVENT", "invalid primary attribute");
+  let secondary = 0;
+  if (check.secondary !== undefined) { const key = stringValue(check.secondary, "check.secondary"); if (!attributes.has(key)) fail("INVALID_EVENT", "invalid secondary attribute"); secondary = state.run.attributes[key as keyof typeof state.run.attributes]; }
+  const weight = check.secondaryWeightBps === undefined ? 5_000 : integer(check.secondaryWeightBps, "check.secondaryWeightBps");
+  try { assertBps(weight, "secondaryWeightBps"); } catch { fail("INVALID_EVENT", "secondaryWeightBps must be 0..10000"); }
+  const difficulty = integer(check.difficulty, "check.difficulty"); if (difficulty < 0 || difficulty > 1000) fail("INVALID_EVENT", "difficulty must be 0..1000");
+  if (check.randomMin !== -10 || check.randomMax !== 10) fail("INVALID_EVENT", "check RNG range must be -10..10");
+  return safeAdd(state.run.attributes[primaryKey as keyof typeof state.run.attributes], scaleSignedByBps(secondary, weight));
 }
 
 export function resolveScoreCheck(state: GameState, baseScore: number, difficulty: number): CheckResolution {
@@ -206,10 +222,6 @@ export function applyEventEffects(state: GameState, effectsValue: unknown, event
       }
       case "SET_REGION": { exactKeys(effect, ["op", "regionId"], "effect"); next = { ...next, run: { ...next.run, world: { ...next.run.world, regionId: stringValue(effect.regionId, "effect.regionId") } } }; break; }
       case "OUTCOME_TIME_DELTA": { exactKeys(effect, ["op", "years"], "effect"); const years = integer(effect.years, "effect.years"); if (years < 0) fail("INVALID_EVENT", "time delta must be nonnegative"); outcomeTimeDelta = safeAdd(outcomeTimeDelta, years); break; }
-      case "END_RUN": {
-        const keys = effect.deathCause === undefined ? ["op", "endingId"] : ["op", "endingId", "deathCause"]; exactKeys(effect, keys, "effect");
-        next = { ...next, run: { ...next.run, status: "ended", ending: { endingId: stringValue(effect.endingId, "effect.endingId"), ...(effect.deathCause === undefined ? {} : { deathCause: stringValue(effect.deathCause, "effect.deathCause") as DeathCause }), sourceRef: eventId, age: next.run.age, factIds: [] } } }; break;
-      }
       case "ADD_CAUSE": case "RESOLVE_CAUSE": case "EXPIRE_CAUSE": break;
       case "setSessionFlag": { exactKeys(effect, ["op", "key", "value"], "effect"); const key = stringValue(effect.key, "effect.key"); if (typeof effect.value !== "boolean") fail("INVALID_EVENT", "session flag must be boolean"); session.flags[key] = effect.value; break; }
       case "adjustSessionCounter": { exactKeys(effect, ["op", "key", "delta"], "effect"); const key = stringValue(effect.key, "effect.key"); session.counters[key] = safeAdd(session.counters[key] ?? 0, integer(effect.delta, "effect.delta")); break; }

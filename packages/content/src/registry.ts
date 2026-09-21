@@ -3,11 +3,13 @@ import { sha256Utf8 } from "../../core/src/sha256.ts";
 import { ACTION_TYPES, type ActionType } from "../../core/src/state.ts";
 import type { ProgressionPack } from "../../core/src/progression.ts";
 import { getProgressionPack, validateProgressionPack } from "./progression-v1.ts";
+import type { RiskPack } from "../../core/src/risk.ts";
+import { getRiskPack, validateRiskPack } from "./risk-v1.ts";
 
 export type LogicalPath =
   | "run.age" | "run.maxAge" | "realm.order" | "realm.cultivation"
   | "attr.insight" | "attr.body" | "attr.spiritSense" | "attr.fortune"
-  | "resource.spiritStone" | "identity.tags" | "world.tags" | "world.regionId";
+  | "resource.spiritStone" | "identity.tags" | "world.tags" | "world.regionId" | "injury.level";
 export type ConditionExpr =
   | { all: ConditionExpr[] } | { any: ConditionExpr[] } | { not: ConditionExpr }
   | { eq: [LogicalPath, string | number | boolean] } | { ne: [LogicalPath, string | number | boolean] }
@@ -33,7 +35,6 @@ export type EffectSpec =
   | { op: "SET_NPC_STATUS"; npcId: string; status: string }
   | { op: "SET_REGION"; regionId: string }
   | { op: "OUTCOME_TIME_DELTA"; years: number }
-  | { op: "END_RUN"; endingId: string; deathCause?: string }
   | { op: "setSessionFlag"; key: string; value: boolean }
   | { op: "adjustSessionCounter"; key: string; delta: number }
   | { op: "addSessionTag" | "removeSessionTag"; tag: string };
@@ -41,7 +42,7 @@ export interface Transition { eventId: string; when?: ConditionExpr; priority?: 
 export interface Outcome { effects: EffectSpec[]; next?: Transition[]; fallbackKey?: string }
 export interface OutcomeTable { greatSuccess?: Outcome; success: Outcome; costlySuccess?: Outcome; failure?: Outcome }
 export interface CheckSpec { primary: "insight" | "body" | "spiritSense" | "fortune"; secondary?: "insight" | "body" | "spiritSense" | "fortune"; secondaryWeightBps?: number; difficulty: number; randomMin: -10; randomMax: 10 }
-export interface ChoiceDefinition { id: string; scope: "core" | "tactical"; rhythmOnly?: boolean; labelKey: string; requirements?: ConditionExpr; check?: CheckSpec; outcomes: OutcomeTable; next?: Transition[] }
+export interface ChoiceDefinition { id: string; scope: "core" | "tactical"; rhythmOnly?: boolean; labelKey: string; requirements?: ConditionExpr; check?: CheckSpec; threatId?: string; outcomes: OutcomeTable; next?: Transition[] }
 export interface EventDefinition {
   id: string; version: number; kind: "choice" | "narrative" | "combat" | "breakthrough" | "ending" | "tutorial";
   titleKey: string; tags: string[]; requirements?: ConditionExpr; weight: number;
@@ -83,7 +84,7 @@ export interface ContentReferences {
   causes: string[];
   conditions: string[];
 }
-export interface ContentPack { manifest: ContentManifest; references: ContentReferences; destinies: DestinyDefinition[]; events: EventDefinition[]; causeTemplates: CauseTemplate[]; progressionPackId?: string }
+export interface ContentPack { manifest: ContentManifest; references: ContentReferences; destinies: DestinyDefinition[]; events: EventDefinition[]; causeTemplates: CauseTemplate[]; progressionPackId?: string; riskPackId?: string }
 export type ContentPackDraft = Omit<ContentPack, "manifest"> & { manifest: Omit<ContentManifest, "checksum"> };
 
 export class ContentValidationError extends TypeError {
@@ -92,18 +93,17 @@ export class ContentValidationError extends TypeError {
 
 type ObjectValue = Record<string, unknown>;
 type ReferenceSets = { [K in keyof ContentReferences]: Set<string> };
-const logicalPaths = new Set(["run.age", "run.maxAge", "realm.order", "realm.cultivation", "attr.insight", "attr.body", "attr.spiritSense", "attr.fortune", "resource.spiritStone", "identity.tags", "world.tags", "world.regionId"]);
+const logicalPaths = new Set(["run.age", "run.maxAge", "realm.order", "realm.cultivation", "attr.insight", "attr.body", "attr.spiritSense", "attr.fortune", "resource.spiritStone", "identity.tags", "world.tags", "world.regionId", "injury.level"]);
 const attributes = new Set(["insight", "body", "spiritSense", "fortune"]);
 const relationAxes = new Set(["affinity", "trust", "debt"]);
 const causeStates = new Set(["dormant", "eligible", "echoed", "resolved", "expired"]);
 const eventKinds = new Set(["choice", "narrative", "combat", "breakthrough", "ending", "tutorial"]);
-const deathCauses = new Set(["lifespan", "combat", "ambush", "exploration", "poison", "curse", "breakthrough", "injury", "cause", "special"]);
 const conditionKinds = new Set(["injury", "pillToxicity", "curse", "blessing", "pursued", "other"]);
 const destinyProfiles = new Set(["stable", "high-variance", "story-hook"]);
 const destinyTargets = new Set(["insight", "body", "spiritSense", "fortune", "maxAge", "spiritStone"]);
 const actionTypes = new Set<string>(ACTION_TYPES);
 const sessionOps = new Set(["setSessionFlag", "adjustSessionCounter", "addSessionTag", "removeSessionTag"]);
-const longTermOps = new Set(["ADD_RESOURCE", "REMOVE_RESOURCE", "ADD_ITEM", "REMOVE_ITEM", "ADD_CULTIVATION", "ADD_CONDITION", "REMOVE_CONDITION", "ADD_IDENTITY_TAG", "REMOVE_IDENTITY_TAG", "ADD_WORLD_TAG", "REMOVE_WORLD_TAG", "RELATION_DELTA", "ADD_CAUSE", "RESOLVE_CAUSE", "EXPIRE_CAUSE", "GRANT_COMPONENT", "REMOVE_COMPONENT", "CREATE_NPC", "SET_NPC_STATUS", "SET_REGION", "OUTCOME_TIME_DELTA", "END_RUN"]);
+const longTermOps = new Set(["ADD_RESOURCE", "REMOVE_RESOURCE", "ADD_ITEM", "REMOVE_ITEM", "ADD_CULTIVATION", "ADD_CONDITION", "REMOVE_CONDITION", "ADD_IDENTITY_TAG", "REMOVE_IDENTITY_TAG", "ADD_WORLD_TAG", "REMOVE_WORLD_TAG", "RELATION_DELTA", "ADD_CAUSE", "RESOLVE_CAUSE", "EXPIRE_CAUSE", "GRANT_COMPONENT", "REMOVE_COMPONENT", "CREATE_NPC", "SET_NPC_STATUS", "SET_REGION", "OUTCOME_TIME_DELTA"]);
 
 function fail(path: string, message: string): never { throw new ContentValidationError(`${path}: ${message}`); }
 function objectValue(value: unknown, path: string): ObjectValue {
@@ -196,7 +196,6 @@ function validateEffect(value: unknown, refs: ReferenceSets, path: string): stri
     case "SET_NPC_STATUS": exact(effect, ["op", "npcId", "status"], [], path); stringValue(effect.npcId, `${path}.npcId`); stringValue(effect.status, `${path}.status`); break;
     case "SET_REGION": exact(effect, ["op", "regionId"], [], path); requireReference(effect.regionId, refs.regions, `${path}.regionId`); break;
     case "OUTCOME_TIME_DELTA": exact(effect, ["op", "years"], [], path); integer(effect.years, `${path}.years`, 0); break;
-    case "END_RUN": exact(effect, ["op", "endingId"], ["deathCause"], path); requireReference(effect.endingId, refs.endings, `${path}.endingId`); if (effect.deathCause !== undefined) oneOf(effect.deathCause, deathCauses, `${path}.deathCause`); break;
     case "setSessionFlag": exact(effect, ["op", "key", "value"], [], path); stringValue(effect.key, `${path}.key`); if (typeof effect.value !== "boolean") fail(`${path}.value`, "must be a boolean"); break;
     case "adjustSessionCounter": exact(effect, ["op", "key", "delta"], [], path); stringValue(effect.key, `${path}.key`); integer(effect.delta, `${path}.delta`); break;
     case "addSessionTag": case "removeSessionTag": exact(effect, ["op", "tag"], [], path); stringValue(effect.tag, `${path}.tag`); break;
@@ -220,13 +219,15 @@ function validateOutcome(value: unknown, refs: ReferenceSets, eventIds: Set<stri
   return ops;
 }
 
-function validateChoice(value: unknown, refs: ReferenceSets, eventIds: Set<string>, currentEventId: string, path: string): string {
-  const choice = objectValue(value, path); exact(choice, ["id", "scope", "labelKey", "outcomes"], ["rhythmOnly", "requirements", "check", "next"], path);
+function validateChoice(value: unknown, refs: ReferenceSets, eventIds: Set<string>, threatIds: Set<string>, currentEventId: string, path: string): string {
+  const choice = objectValue(value, path); exact(choice, ["id", "scope", "labelKey", "outcomes"], ["rhythmOnly", "requirements", "check", "threatId", "next"], path);
   const id = stringValue(choice.id, `${path}.id`); const scope = oneOf(choice.scope, new Set(["core", "tactical"]), `${path}.scope`);
   if (choice.rhythmOnly !== undefined && typeof choice.rhythmOnly !== "boolean") fail(`${path}.rhythmOnly`, "must be a boolean");
   const rhythmOnly = choice.rhythmOnly === true;
   if (scope === "tactical" && rhythmOnly) fail(`${path}.rhythmOnly`, "is allowed only for core choices");
   stringValue(choice.labelKey, `${path}.labelKey`); if (choice.requirements !== undefined) validateCondition(choice.requirements, `${path}.requirements`);
+  if (choice.threatId !== undefined) requireReference(choice.threatId, threatIds, `${path}.threatId`);
+  if (choice.threatId !== undefined && choice.check !== undefined) fail(path, "risk choice uses its ThreatDefinition CheckSpec and cannot declare a second check");
   if (choice.check !== undefined) {
     const check = objectValue(choice.check, `${path}.check`); exact(check, ["primary", "difficulty", "randomMin", "randomMax"], ["secondary", "secondaryWeightBps"], `${path}.check`);
     oneOf(check.primary, attributes, `${path}.check.primary`); if (check.secondary !== undefined) oneOf(check.secondary, attributes, `${path}.check.secondary`);
@@ -237,7 +238,7 @@ function validateChoice(value: unknown, refs: ReferenceSets, eventIds: Set<strin
   const outcomes = objectValue(choice.outcomes, `${path}.outcomes`); exact(outcomes, ["success"], ["greatSuccess", "costlySuccess", "failure"], `${path}.outcomes`);
   const ops = new Set<string>();
   for (const key of ["greatSuccess", "success", "costlySuccess", "failure"] as const) if (outcomes[key] !== undefined) for (const op of validateOutcome(outcomes[key], refs, eventIds, `${path}.outcomes.${key}`)) ops.add(op);
-  if (scope === "core" && !rhythmOnly && ![...ops].some((op) => longTermOps.has(op))) fail(path, "core choice must change a long-term dimension");
+  if (scope === "core" && !rhythmOnly && choice.threatId === undefined && ![...ops].some((op) => longTermOps.has(op))) fail(path, "core choice must change a long-term dimension");
   const choiceNext = choice.next === undefined ? [] : array(choice.next, `${path}.next`);
   choiceNext.forEach((entry, index) => validateTransition(entry, eventIds, `${path}.next[${index}]`));
   const hasDifferentNext = choiceNext.some((entry) => objectValue(entry, `${path}.next`).eventId !== currentEventId);
@@ -246,7 +247,7 @@ function validateChoice(value: unknown, refs: ReferenceSets, eventIds: Set<strin
     if (rhythmOnly && !hasDifferentNext) fail(path, "rhythm-only core choice requires a next transition to a different event");
   } else {
     if ([...ops].some((op) => !sessionOps.has(op))) fail(path, "tactical choice can use only session-local effects");
-    const meaningful = [...ops].some((op) => sessionOps.has(op)) || choice.check !== undefined || hasDifferentNext;
+    const meaningful = [...ops].some((op) => sessionOps.has(op)) || choice.check !== undefined || choice.threatId !== undefined || hasDifferentNext;
     if (!meaningful) fail(path, "tactical choice must be meaningful");
   }
   return id;
@@ -261,7 +262,7 @@ function referenceSets(value: unknown): ReferenceSets {
   return result;
 }
 
-function validateEvent(value: unknown, refs: ReferenceSets, eventIds: Set<string>, path: string): void {
+function validateEvent(value: unknown, refs: ReferenceSets, eventIds: Set<string>, threatIds: Set<string>, path: string): void {
   const event = objectValue(value, path);
   exact(event, ["id", "version", "kind", "titleKey", "tags", "weight", "fallback"], ["requirements", "actionAffinity", "cooldown", "choices", "onEnter", "ai", "telemetry"], path);
   stringValue(event.id, `${path}.id`); integer(event.version, `${path}.version`, 1); oneOf(event.kind, eventKinds, `${path}.kind`); stringValue(event.titleKey, `${path}.titleKey`);
@@ -269,7 +270,7 @@ function validateEvent(value: unknown, refs: ReferenceSets, eventIds: Set<string
   if (event.actionAffinity !== undefined) { const affinities = strings(event.actionAffinity, `${path}.actionAffinity`); unique(affinities, `${path}.actionAffinity`); affinities.forEach((action, index) => oneOf(action, actionTypes, `${path}.actionAffinity[${index}]`)); }
   if (event.requirements !== undefined) validateCondition(event.requirements, `${path}.requirements`);
   if (event.cooldown !== undefined) { const cooldown = objectValue(event.cooldown, `${path}.cooldown`); exact(cooldown, [], ["minNodesBetween", "maxOccurrences"], `${path}.cooldown`); if (cooldown.minNodesBetween !== undefined) integer(cooldown.minNodesBetween, `${path}.cooldown.minNodesBetween`, 0); if (cooldown.maxOccurrences !== undefined) integer(cooldown.maxOccurrences, `${path}.cooldown.maxOccurrences`, 1); }
-  if (event.choices !== undefined) { const ids = array(event.choices, `${path}.choices`).map((choice, index) => validateChoice(choice, refs, eventIds, event.id as string, `${path}.choices[${index}]`)); unique(ids, `${path}.choices`); }
+  if (event.choices !== undefined) { const ids = array(event.choices, `${path}.choices`).map((choice, index) => validateChoice(choice, refs, eventIds, threatIds, event.id as string, `${path}.choices[${index}]`)); unique(ids, `${path}.choices`); }
   if (event.onEnter !== undefined) array(event.onEnter, `${path}.onEnter`).forEach((effect, index) => validateEffect(effect, refs, `${path}.onEnter[${index}]`));
   if (event.ai !== undefined) jsonValue(event.ai, `${path}.ai`);
   const fallback = objectValue(event.fallback, `${path}.fallback`); exact(fallback, ["bodyKey"], ["titleKey"], `${path}.fallback`); stringValue(fallback.bodyKey, `${path}.fallback.bodyKey`); if (fallback.titleKey !== undefined) stringValue(fallback.titleKey, `${path}.fallback.titleKey`);
@@ -328,7 +329,7 @@ function normalizedDraft(pack: ContentPack | ContentPackDraft): unknown {
   const destinies = [...pack.destinies].sort((left, right) => left.id.localeCompare(right.id));
   const events = [...pack.events].sort((left, right) => left.id.localeCompare(right.id));
   const causeTemplates = [...pack.causeTemplates].sort((left, right) => left.id.localeCompare(right.id));
-  return { manifest, references, destinies, events, causeTemplates, ...(pack.progressionPackId === undefined ? {} : { progressionPackId: pack.progressionPackId }) };
+  return { manifest, references, destinies, events, causeTemplates, ...(pack.progressionPackId === undefined ? {} : { progressionPackId: pack.progressionPackId }), ...(pack.riskPackId === undefined ? {} : { riskPackId: pack.riskPackId }) };
 }
 function canonicalValue(value: unknown): unknown {
   if (Array.isArray(value)) return value.map(canonicalValue);
@@ -346,7 +347,7 @@ export function sealContentPack(pack: ContentPackDraft): ContentPack {
 }
 
 export function validateContentPack(value: unknown, expectedContentVersion?: string): ContentPack {
-  const pack = objectValue(value, "pack"); exact(pack, ["manifest", "references", "destinies", "events", "causeTemplates"], ["progressionPackId"], "pack");
+  const pack = objectValue(value, "pack"); exact(pack, ["manifest", "references", "destinies", "events", "causeTemplates"], ["progressionPackId", "riskPackId"], "pack");
   const manifest = objectValue(pack.manifest, "pack.manifest"); exact(manifest, ["schemaVersion", "packId", "rulesVersion", "contentVersion", "checksum"], [], "pack.manifest");
   if (manifest.schemaVersion !== 2) fail("pack.manifest.schemaVersion", "must be 2");
   stringValue(manifest.packId, "pack.manifest.packId"); stringValue(manifest.rulesVersion, "pack.manifest.rulesVersion");
@@ -354,11 +355,13 @@ export function validateContentPack(value: unknown, expectedContentVersion?: str
   if (expectedContentVersion !== undefined && contentVersion !== expectedContentVersion) fail("pack.manifest.contentVersion", "does not match the locked contentVersion");
   const checksum = stringValue(manifest.checksum, "pack.manifest.checksum"); if (!/^[0-9a-f]{64}$/.test(checksum)) fail("pack.manifest.checksum", "must be lowercase SHA-256");
   if (pack.progressionPackId !== undefined) { const progression = validateProgressionPack(getProgressionPack(stringValue(pack.progressionPackId, "pack.progressionPackId"))); if (progression.rulesVersion !== manifest.rulesVersion) fail("pack.progressionPackId", "rulesVersion mismatch"); }
+  const riskPack = pack.riskPackId === undefined ? undefined : validateRiskPack(getRiskPack(stringValue(pack.riskPackId, "pack.riskPackId"))); if (riskPack !== undefined && riskPack.rulesVersion !== manifest.rulesVersion) fail("pack.riskPackId", "rulesVersion mismatch");
+  const threatIds = new Set(riskPack?.threats.map((threat) => threat.id) ?? []);
   const refs = referenceSets(pack.references);
   const destinies = array(pack.destinies, "pack.destinies"); const destinyIds = destinies.map((destiny, index) => stringValue(objectValue(destiny, `pack.destinies[${index}]`).id, `pack.destinies[${index}].id`)); unique(destinyIds, "pack.destinies");
   destinies.forEach((destiny, index) => validateDestiny(destiny, refs, `pack.destinies[${index}]`));
   const events = array(pack.events, "pack.events"); const eventIds = events.map((event, index) => stringValue(objectValue(event, `pack.events[${index}]`).id, `pack.events[${index}].id`)); unique(eventIds, "pack.events");
-  const eventIdSet = new Set(eventIds); events.forEach((event, index) => validateEvent(event, refs, eventIdSet, `pack.events[${index}]`));
+  const eventIdSet = new Set(eventIds); events.forEach((event, index) => validateEvent(event, refs, eventIdSet, threatIds, `pack.events[${index}]`));
   const templates = array(pack.causeTemplates, "pack.causeTemplates"); const templateIds = templates.map((template, index) => stringValue(objectValue(template, `pack.causeTemplates[${index}]`).id, `pack.causeTemplates[${index}].id`)); unique(templateIds, "pack.causeTemplates");
   if (templateIds.length !== refs.causes.size || templateIds.some((id) => !refs.causes.has(id))) fail("pack.causeTemplates", "must define every Cause reference exactly once");
   templates.forEach((template, index) => validateCauseTemplate(template, refs, eventIdSet, `pack.causeTemplates[${index}]`));
@@ -405,5 +408,8 @@ export class ContentRegistry {
   }
   getProgression(contentVersion: string): ProgressionPack {
     const id = this.get(contentVersion).progressionPackId; if (id === undefined) fail("progressionPackId", "is not configured for contentVersion"); return getProgressionPack(id);
+  }
+  getRisk(contentVersion: string): RiskPack {
+    const id = this.get(contentVersion).riskPackId; if (id === undefined) fail("riskPackId", "is not configured for contentVersion"); return getRiskPack(id);
   }
 }

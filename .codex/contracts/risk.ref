@@ -1,0 +1,14 @@
+// RISK01 Final Contract v1
+// Risk is versioned, registry-driven content. Current counts are manifest facts, never Core limits.
+type RiskConditionInstance={id:string;definitionId:string;severity:1|2|3;sourceRefs:string[];createdAge:number;createdNodeIndex:number;visibility:'explicit'|'hinted'|'hidden';tags:string[]};
+type ThreatDefinition={id:string;tags:string[];category:string;checkSpec:CheckSpec;outcomeTable:Record<OutcomeTier,RiskConsequence>;lethalityPolicy?:{lethalOnFailure:true;requiresPublicWarning:true;prerequisites:ConditionExpr[]};modifiers:RiskModifier[];hooks:RiskHook[];systemOwners:string[];deathCauseId?:string};
+type DeathRecord={deathCauseId:string;category:string;age:number;realmId:string;immediateSource:string;contributingSourceRefs:string[];warningFacts:string[];sourceCommandId?:string;sourceEventId?:string;sourceCauseId?:string;sourceActorId?:string;trace:Record<string,unknown>};
+type RiskPresentation={tier:'low'|'caution'|'dangerous'|'lethal';canBeFatal:boolean;reasons:string[]};
+Injury is 0..3 and never kills by itself. Versioned score deltas are 0=>0, 1=>-10, 2=>-25, 3=>-45.
+Every non-lifespan death follows Threat -> existing A08 Check/check stream -> RiskOutcome -> DeathRecord. No second RNG or Check exists.
+Only the lifespan hard ceiling and authoritative RiskResolver may enter death/dying state. Direct death EffectSpec is forbidden.
+Lethal failure requires a registered DeathCauseDefinition, satisfied whitelist prerequisites, requiresPublicWarning=true, and an accepted authoritative pre-submit canBeFatal warning.
+The first three effective nodes may resolve lethal risk only after the player actively submits a choice already marked canBeFatal=true. Unwarned lethal resolution is rejected before RNG or mutation.
+Risk modifiers aggregate canonically by stable source ID. riskScoreDelta and riskDifficultyDelta clamp to -120..120. Hooks are stable-ID whitelist data with deterministic order.
+Breakthrough failure remains nonlethal; optional breakthrough-backlash is a Threat resolved only by RiskResolver.
+DeathRecord is deterministic, serializable, snapshot/replay stable and AI-independent. Server projection never sends CheckSpec, difficulty, RNG, trace, hidden Cause/actor state or exact death probability.

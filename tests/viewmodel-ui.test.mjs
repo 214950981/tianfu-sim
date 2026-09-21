@@ -26,7 +26,7 @@ function keySet(value, result = new Set()) { if (Array.isArray(value)) value.for
 
 test("VIEWMODEL_projection: PublicState/Interaction/History are safe and risk is server-built", () => {
   const content = contentRegistry(); const state = active(content); const snapshot = structuredClone(state); let riskCalls = 0;
-  const builder = new ServerViewModelBuilder(content, { capabilities: { ShareCapability: true, PlatformCapability: true }, riskPolicy: ({ choice }) => { riskCalls += 1; return { level: choice.check ? "dangerous" : "unknown", labelKey: choice.check ? "risk.server.danger" : "risk.server.unknown", difficulty: 999, EffectSpec: "leak" }; } });
+  const builder = new ServerViewModelBuilder(content, { capabilities: { ShareCapability: true, PlatformCapability: true }, riskPolicy: ({ choice }) => { riskCalls += 1; return { tier: choice.check ? "dangerous" : "low", canBeFatal: false, reasons: ["risk.test"], level: choice.check ? "dangerous" : "unknown", labelKey: choice.check ? "risk.server.danger" : "risk.server.unknown", difficulty: 999, EffectSpec: "leak" }; } });
   const view = builder.build(state); assert.deepEqual(state, snapshot); assert.equal(view.state.pageState, "EVENT"); assert.equal(riskCalls, view.currentInteraction.options.length);
   assert.equal(view.currentInteraction.options.some((option) => option.riskPresentation?.labelKey === "risk.server.danger"), true);
   assert.equal(view.history.entries.length, 1); assert.equal(view.state.publicRun.actions.length, 4);

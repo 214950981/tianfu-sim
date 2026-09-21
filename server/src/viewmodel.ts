@@ -1,5 +1,5 @@
 import type { ChoiceDefinition, ContentRegistry, EventDefinition } from "../../packages/content/src/index.ts";
-import { evaluateCondition, validateGameState, type GameState } from "../../packages/core/src/index.ts";
+import { buildRiskPresentation, evaluateCondition, injuryLevel, threatDefinition, validateGameState, type GameState } from "../../packages/core/src/index.ts";
 import type {
   CapabilitySet,
   CurrentInteraction,
@@ -18,6 +18,7 @@ import type {
 const capabilityNames: KnownCapability[] = ["DailyChallengeCapability", "AdCapability", "RewardedAdCapability", "CommerceCapability", "ShareCapability", "AiNarrativeCapability", "PlatformCapability"];
 const specialKinds = new Set(["combat", "breakthrough"]);
 const riskLevels = new Set(["safe", "guarded", "dangerous", "unknown"]);
+const riskTiers = new Set(["low", "caution", "dangerous", "lethal"]);
 
 export interface ServerRiskPolicyInput { state: GameState; event: EventDefinition; choice: ChoiceDefinition }
 export type ServerRiskPolicy = (input: ServerRiskPolicyInput) => RiskPresentation | undefined;
@@ -27,8 +28,8 @@ function capabilities(value: ServerViewModelBuilderOptions["capabilities"]): Cap
   return Object.fromEntries(capabilityNames.map((name) => [name, value?.[name] === true])) as unknown as CapabilitySet;
 }
 function sanitizeRisk(value: RiskPresentation | undefined): RiskPresentation | undefined {
-  if (value === undefined || !riskLevels.has(value.level) || typeof value.labelKey !== "string") return undefined;
-  return { level: value.level, labelKey: value.labelKey, ...(typeof value.detailKey === "string" ? { detailKey: value.detailKey } : {}) };
+  if (value === undefined || !riskTiers.has(value.tier) || typeof value.canBeFatal !== "boolean" || !Array.isArray(value.reasons) || value.reasons.some((reason) => typeof reason !== "string")) return undefined;
+  return { tier: value.tier, canBeFatal: value.canBeFatal, reasons: [...value.reasons], ...(value.level !== undefined && riskLevels.has(value.level) ? { level: value.level } : {}), ...(typeof value.labelKey === "string" ? { labelKey: value.labelKey } : {}), ...(typeof value.detailKey === "string" ? { detailKey: value.detailKey } : {}) };
 }
 
 export function derivePageState(state: GameState): PageState {
@@ -49,6 +50,7 @@ function publicCauses(state: GameState): PublicCause[] {
 }
 
 function publicRun(state: GameState): Record<string, PublicJson> {
+  const death = state.run.deathRecord; const knownCause = death?.sourceCauseId === undefined ? undefined : state.run.causes.byId[death.sourceCauseId]; const causeRelatedDeath = knownCause !== undefined && knownCause.visibility !== "hidden";
   return {
     runName: state.run.identity.runName,
     age: state.run.age,
@@ -57,10 +59,13 @@ function publicRun(state: GameState): Record<string, PublicJson> {
     attributes: { ...state.run.attributes },
     resources: { spiritStone: state.run.resources.spiritStone, items: { ...state.run.resources.items } },
     conditions: state.run.conditions.map((condition) => ({ id: condition.id, kind: condition.kind, stacks: condition.stacks, ...(condition.remainingNodes === undefined ? {} : { remainingNodes: condition.remainingNodes }) })),
+    riskConditions: (state.run.risk?.conditions ?? []).filter((condition) => condition.visibility !== "hidden").map((condition): PublicJson => condition.visibility === "explicit" ? { id: condition.id, definitionId: condition.definitionId, severity: condition.severity, visibility: condition.visibility, tags: [...condition.tags] } : { id: condition.id, severity: condition.severity, visibility: condition.visibility }),
+    riskExposure: state.run.risk?.exposureCount ?? 0,
     identity: { rootTags: [...state.run.identity.rootTags], titles: [...state.run.identity.titles], ...(state.run.identity.destinyId === undefined ? {} : { destinyId: state.run.identity.destinyId }), ...(state.run.identity.innateProfile === undefined ? {} : { innateProfile: { spiritualRoot: state.run.identity.innateProfile.spiritualRoot, talentIds: [...state.run.identity.innateProfile.talentIds], majorDestinyId: state.run.identity.innateProfile.majorDestinyId } }), ...(state.run.identity.factionId === undefined ? {} : { factionId: state.run.identity.factionId }) },
     actions: ["cultivate", "travel", "worldly", "pursuit"].map((actionId) => ({ actionId, enabled: state.run.actions.available.includes(actionId as GameState["run"]["actions"]["available"][number]) })),
     world: { regionId: state.run.world.regionId, knownRegionIds: [...state.run.world.knownRegionIds], tags: [...state.run.world.tags] },
-    ...(state.run.ending === undefined ? {} : { ending: { endingId: state.run.ending.endingId, age: state.run.ending.age, ...(state.run.ending.deathCause === undefined ? {} : { deathCause: state.run.ending.deathCause }) } })
+    ...(state.run.ending === undefined ? {} : { ending: { endingId: state.run.ending.endingId, age: state.run.ending.age, ...(state.run.ending.deathCause === undefined ? {} : { deathCause: state.run.ending.deathCause }) } }),
+    ...(death === undefined ? {} : { death: { deathCauseId: death.deathCauseId, deathAge: death.age, deathRealm: death.realmId, directCause: death.immediateSource, contributingFactors: death.contributingSourceRefs.filter((reference) => reference !== death.sourceActorId && (reference !== death.sourceCauseId || causeRelatedDeath)), wasWarned: death.warningFacts.length > 0, warningFacts: [...death.warningFacts], causeRelatedDeath, breakthroughDeath: death.category === "breakthrough", lifespanDeath: death.category === "lifespan", injuryAtDeath: injuryLevel(state), remainingLifespanPressure: Math.max(0, state.run.maxAge - death.age) } })
   };
 }
 
@@ -85,7 +90,12 @@ function eventInteraction(state: GameState, content: ContentRegistry, interactio
   const kind: CurrentInteraction["kind"] = specialKinds.has(event.kind) ? "specialNode" : event.kind === "ending" ? "ending" : "event";
   return {
     interactionId: event.id, kind, titleKey: event.titleKey, body: { bodyKey: event.fallback.bodyKey },
-    options: choices.map((choice) => { const riskPresentation = sanitizeRisk(riskPolicy({ state, event, choice })); return { optionId: choice.id, labelKey: choice.labelKey, ...(riskPresentation === undefined ? {} : { riskPresentation }) }; }), interactionState
+    options: choices.map((choice) => {
+      const supplied = sanitizeRisk(riskPolicy({ state, event, choice }));
+      const authoritative = choice.threatId === undefined ? supplied : buildRiskPresentation(state, threatDefinition(content.getRisk(state.contentVersion), choice.threatId));
+      const riskPresentation = authoritative === undefined ? undefined : choice.threatId === undefined ? authoritative : { ...authoritative, ...(supplied?.level === undefined ? {} : { level: supplied.level }), ...(supplied?.labelKey === undefined ? {} : { labelKey: supplied.labelKey }), ...(supplied?.detailKey === undefined ? {} : { detailKey: supplied.detailKey }) };
+      return { optionId: choice.id, labelKey: choice.labelKey, ...(riskPresentation === undefined ? {} : { riskPresentation }) };
+    }), interactionState
   };
 }
 
@@ -98,7 +108,7 @@ export class ServerViewModelBuilder {
   readonly content: ContentRegistry;
   readonly #capabilities: CapabilitySet;
   readonly #riskPolicy: ServerRiskPolicy;
-  constructor(content: ContentRegistry, options: ServerViewModelBuilderOptions = {}) { this.content = content; this.#capabilities = capabilities(options.capabilities); this.#riskPolicy = options.riskPolicy ?? (() => ({ level: "unknown", labelKey: "risk.unknown" })); }
+  constructor(content: ContentRegistry, options: ServerViewModelBuilderOptions = {}) { this.content = content; this.#capabilities = capabilities(options.capabilities); this.#riskPolicy = options.riskPolicy ?? (({ state, choice }) => { if (choice.threatId === undefined) return { tier: "low", canBeFatal: false, reasons: [] }; const riskPack = content.getRisk(state.contentVersion); const projected = buildRiskPresentation(state, threatDefinition(riskPack, choice.threatId)); const level = projected.tier === "low" ? "safe" : projected.tier === "caution" ? "guarded" : "dangerous"; return { ...projected, level, labelKey: `risk.${projected.tier}` }; }); }
   build(value: unknown, interactionState: InteractionState = "idle"): PublicViewModel {
     const state = validateGameState(value); const pageState = derivePageState(state);
     const publicState: PublicState = { schemaVersion: state.schemaVersion, rulesVersion: state.rulesVersion, contentVersion: state.contentVersion, stateVersion: state.stateVersion, runId: state.run.runId, pageState, runStatus: state.run.status, publicRun: publicRun(state), capabilities: { ...this.#capabilities }, publicCauses: publicCauses(state) };

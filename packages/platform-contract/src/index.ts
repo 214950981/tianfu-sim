@@ -5,7 +5,14 @@ export const platformContractBoundary = "platform-contract" as const;
 export type PageState = "START" | "MODE_SELECT" | "DESTINY_OFFER" | "RUN_OPENING" | "RUN_HOME" | "EVENT" | "SPECIAL_NODE" | "LIFE_ARCHIVE" | "ENDING" | "LIFE_BOOK" | "REBIRTH_RESULT" | "NEXT_LIFE";
 export type InteractionState = "idle" | "submitting" | "confirmed" | "retryableError" | "fatalError";
 export type PublicJson = string | number | boolean | null | PublicJson[] | { [key: string]: PublicJson };
-export type RiskPresentation = Readonly<{ level: "safe" | "guarded" | "dangerous" | "unknown"; labelKey: string; detailKey?: string }>;
+export type RiskPresentation = Readonly<{
+  tier: "low" | "caution" | "dangerous" | "lethal";
+  canBeFatal: boolean;
+  reasons: string[];
+  level?: "safe" | "guarded" | "dangerous" | "unknown";
+  labelKey?: string;
+  detailKey?: string;
+}>;
 export type KnownCapability = "DailyChallengeCapability" | "AdCapability" | "RewardedAdCapability" | "CommerceCapability" | "ShareCapability" | "AiNarrativeCapability" | "PlatformCapability";
 export type CapabilitySet = Readonly<Record<KnownCapability, boolean>>;
 

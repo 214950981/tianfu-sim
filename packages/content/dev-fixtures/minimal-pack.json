@@ -4,9 +4,10 @@
     "packId": "dev-minimal",
     "rulesVersion": "2.0.0",
     "contentVersion": "dev-0.1.0",
-    "checksum": "73d2f29bcd5d7db0245977f53ff41c5c2d7c3826cef5943151568f5a0da007fc"
+    "checksum": "23184511dce68e943c60e301b392ee0658a1f4b3fdc8f805f77d799ebc942502"
   },
   "progressionPackId": "progression.v1",
+  "riskPackId": "risk.v1",
   "references": {
     "items": [],
     "components": [],
@@ -116,6 +117,15 @@
                 }
               ]
             }
+          }
+        },
+        {
+          "id": "face-combat-risk",
+          "scope": "core",
+          "labelKey": "dev.first-choice.face-combat-risk",
+          "threatId": "threat.combat",
+          "outcomes": {
+            "success": { "effects": [] }
           }
         }
       ],

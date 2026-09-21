@@ -2,6 +2,7 @@ import { clampInteger, roundHalfUpPositive, safeAdd, safeMultiply } from "./nume
 import { outcomeTierForScore, resolveScoreCheck, type OutcomeTier } from "./event.ts";
 import { drawInt, type RngState, type RngTrace } from "./rng.ts";
 import type { GameState, InnateProfile, InnateProfileOffer } from "./state.ts";
+import { injuryLevel } from "./risk.ts";
 
 export const PROGRESSION_MODIFIER_KEYS = ["cultivationGainRateDeltaBps", "foundationGainRateDeltaBps", "breakthroughDifficultyDelta", "breakthroughScoreDelta", "foundationRetentionDeltaBps", "failureCultivationLossDelta", "failureFoundationLossDelta"] as const;
 export type ProgressionModifierKey = typeof PROGRESSION_MODIFIER_KEYS[number];
@@ -69,8 +70,8 @@ export function applyRetreatProgression(state: GameState, pack: ProgressionPack)
 }
 
 function injuryPlusOne(state: GameState, sourceRef: string): GameState {
-  const id = "condition.progression.breakthrough-injury"; const existing = state.run.conditions.find((condition) => condition.id === id);
-  const conditions = existing === undefined ? [...state.run.conditions, { id, kind: "injury" as const, stacks: 1, sourceRef }] : state.run.conditions.map((condition) => condition.id === id ? { ...condition, stacks: Math.min(3, condition.stacks + 1), sourceRef } : condition);
+  const id = "condition.progression.breakthrough-injury"; const current = injuryLevel(state); const existing = state.run.conditions.find((condition) => condition.kind === "injury" && condition.stacks === current);
+  const conditions = existing === undefined ? [...state.run.conditions, { id, kind: "injury" as const, stacks: 1, sourceRef }] : state.run.conditions.map((condition) => condition === existing ? { ...condition, stacks: Math.min(3, current + 1), sourceRef } : condition);
   return { ...state, run: { ...state.run, conditions } };
 }
 

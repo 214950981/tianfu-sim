@@ -4,6 +4,7 @@ import { applyEventEffects, assertA08ExecutableChoice, evaluateCondition, EventR
 import { assertNonNegativeInteger, assertSafeInteger, safeAdd } from "./numeric.ts";
 import { createRngState, drawInt, type RngState, type RngTrace } from "./rng.ts";
 import { applyBreakthroughOutcome, applyRetreatProgression, isValidInnateProfile, resolveBreakthrough, type ProgressionContentAccess } from "./progression.ts";
+import { buildRiskPresentation, injuryLevel, resolveThreat, threatDefinition, type RiskContentAccess } from "./risk.ts";
 import {
   projectRuleState,
   validateGameState,
@@ -106,6 +107,7 @@ export function createOfferedRun(input: CreateOfferedRunInput): GameState {
       attributes: { ...fixture.attributes },
       resources: { spiritStone: fixture.resources.spiritStone, items: cloneRecord(fixture.resources.items) },
       conditions: [],
+      risk: { conditions: [], exposureCount: 0 },
       identity: { runName: fixture.runName, rootTags: [...(fixture.rootTags ?? [])], titles: [...(fixture.titles ?? [])] },
       actions: { available: [...fixture.availableActions], pursuitCauseIds: [], recent: [] },
       events: { history: [] },
@@ -274,7 +276,8 @@ function chooseAction(state: GameState, command: Extract<GameCommand, { type: "C
       nodeIndex: safeAdd(state.run.nodeIndex, 1),
       ...(timeAdvance.reachedMaxAge ? {
         status: "dying" as const,
-        ending: { endingId: "lifespan", deathCause: "lifespan" as const, sourceRef: context.commandId, age: timeAdvance.nextAge, factIds: [] }
+        ending: { endingId: "lifespan", deathCause: "lifespan" as const, sourceRef: context.commandId, age: timeAdvance.nextAge, factIds: [] },
+        deathRecord: { deathCauseId: "death.lifespan", category: "lifespan", age: timeAdvance.nextAge, realmId: state.run.realm.id, immediateSource: "lifespan-hard-ceiling", contributingSourceRefs: [], warningFacts: ["risk.warning.lifespan-ceiling"], sourceCommandId: context.commandId, trace: { resolver: "lifespan-hard-ceiling", actionId: command.actionId, previousAge: timeAdvance.previousAge, actionTimeCost: timeAdvance.delta, maxAge: state.run.maxAge } }
       } : {})
     }
   };
@@ -311,12 +314,21 @@ function attemptBreakthrough(state: GameState, context: RuleContext): ReduceOutp
   const progression = (context.content as unknown as ProgressionContentAccess).getProgression?.(context.contentVersion); if (progression === undefined) throw new ReducerError("CONTENT_MISMATCH", "content.progression_required");
   let resolved; try { resolved = resolveBreakthrough(state, progression); } catch { throw new ReducerError("INVALID_OPTION", "breakthrough.unavailable"); }
   let progressed; try { progressed = applyBreakthroughOutcome(resolved.state, progression, resolved.tier, context.commandId); } catch { throw new ReducerError("INVALID_OPTION", "breakthrough.unavailable"); }
+  let backlashDraws: RngTrace[] = []; let backlashTrace: Record<string, unknown> | undefined;
+  if (resolved.tier === "failure" && injuryLevel(progressed) === 3) {
+    const riskPack = (context.content as unknown as RiskContentAccess).getRisk?.(context.contentVersion);
+    if (riskPack !== undefined) {
+      const definition = threatDefinition(riskPack, "threat.breakthrough-backlash"); const presentation = buildRiskPresentation(progressed, definition);
+      const backlash = resolveThreat(progressed, riskPack, { definitionId: definition.id }, { commandId: context.commandId, presentedRisk: presentation, acceptedPublicWarning: false });
+      progressed = backlash.state; backlashDraws = backlash.rngDraws; backlashTrace = { ...backlash.trace };
+    }
+  }
   const next = validateStateTransition(state, { ...progressed, stateVersion: safeAdd(state.stateVersion, 1) }); const advanced = next.run.realm.id !== state.run.realm.id;
   return {
     state: next,
     effects: advanced ? [{ type: "REALM_ADVANCE", realmId: next.run.realm.id, outcomeTier: resolved.tier }] : [{ type: "BREAKTHROUGH_FAILED", realmId: next.run.realm.id }],
     narrativeFacts: [{ id: `fact:${context.commandId}:breakthrough`, type: "REALM_BREAKTHROUGH", sourceRef: context.commandId, data: { fromRealmId: state.run.realm.id, toRealmId: next.run.realm.id, outcomeTier: resolved.tier } }],
-    trace: { rngDraws: resolved.rngDraws, selector: [{ kind: "breakthrough-check", effectiveDifficulty: resolved.effectiveDifficulty, effectiveScore: resolved.effectiveScore, rngRoll: resolved.rngRoll, outcomeTier: resolved.tier }] }
+    trace: { rngDraws: [...resolved.rngDraws, ...backlashDraws], selector: [{ kind: "breakthrough-check", effectiveDifficulty: resolved.effectiveDifficulty, effectiveScore: resolved.effectiveScore, rngRoll: resolved.rngRoll, outcomeTier: resolved.tier }, ...(backlashTrace === undefined ? [] : [{ kind: "breakthrough-backlash", ...backlashTrace }])] }
   };
 }
 
@@ -337,7 +349,12 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
   catch { throw new ReducerError("INVALID_OPTION", "cause.invalid"); }
 
   let checkedState = state; let requestedTier: OutcomeTier = "success"; let rngDraws: RngTrace[] = []; let checkFact: RuntimeObject = { logicalRequests: 0 };
-  if (choiceObject.check !== undefined) {
+  if (choiceObject.threatId !== undefined) {
+    const riskPack = (context.content as unknown as RiskContentAccess).getRisk?.(context.contentVersion); if (riskPack === undefined) throw new ReducerError("CONTENT_MISMATCH", "content.risk_required");
+    const threatId = String(choiceObject.threatId); const definition = threatDefinition(riskPack, threatId); const presentation = buildRiskPresentation(state, definition);
+    const risk = resolveThreat(state, riskPack, { definitionId: threatId }, { commandId: context.commandId, sourceEventId: current.eventId, presentedRisk: presentation, acceptedPublicWarning: presentation.canBeFatal });
+    checkedState = risk.state; requestedTier = risk.tier; rngDraws = risk.rngDraws; checkFact = { logicalRequests: 1, risk: risk.trace };
+  } else if (choiceObject.check !== undefined) {
     const resolution = resolveCheck(state, choiceObject.check);
     checkedState = resolution.state; requestedTier = resolution.tier; rngDraws = resolution.rngDraws;
     checkFact = { logicalRequests: 1, baseScore: resolution.baseScore, rngRoll: resolution.rngRoll, finalScore: resolution.finalScore };
@@ -364,13 +381,15 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
     }
   };
   const outcomeNext = resolved.outcome.next;
-  const transition = provisional.run.status === "ended" ? undefined : selectedTransition(outcomeNext ?? choiceObject.next, provisional, context);
+  const transition = provisional.run.status !== "active" ? undefined : selectedTransition(outcomeNext ?? choiceObject.next, provisional, context);
   if (transition !== undefined) {
     const targetId = transition.eventId as string; const target = eventFromContent(context, targetId);
     provisional = { ...provisional, run: { ...provisional.run, events: { ...provisional.run.events, current: { eventId: targetId, kind: String(target.kind) } } } };
   }
-  try { provisional = advanceCauses(provisional, causeContent, context.contentVersion, context); }
-  catch { throw new ReducerError("INVALID_OPTION", "cause.invalid"); }
+  if (provisional.run.status === "active") {
+    try { provisional = advanceCauses(provisional, causeContent, context.contentVersion, context); }
+    catch { throw new ReducerError("INVALID_OPTION", "cause.invalid"); }
+  }
   let causeTrace: Record<string, unknown>[] = []; let causeRngDraws: RngTrace[] = [];
   if (provisional.run.status === "active" && provisional.run.events.current === undefined) {
     const selected = selectCauseEcho(provisional, causeContent, context.contentVersion); provisional = selected.state; causeTrace = selected.trace; causeRngDraws = selected.rngDraws;
