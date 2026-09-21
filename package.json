@@ -35,6 +35,7 @@
     "content01:lint": "node tools/content01-lint.mjs",
     "content-playability-audit": "node tools/content-playability-audit.mjs",
     "content-sim": "node tools/content-sim.mjs",
+    "test:sim02": "node --test tests/content-sim.test.mjs",
     "director-audit": "node tools/director-audit.mjs",
     "test:tool01": "node --test tests/context-loader.test.mjs",
     "context:smoke": "node .codex/context.mjs DIRECTOR01",
