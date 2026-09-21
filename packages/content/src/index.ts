@@ -12,3 +12,7 @@ export * from "./npc-audit.ts";
 export * from "./director-v1.ts";
 export * from "./director-audit.ts";
 export * from "./participant-bridge-audit.ts";
+export * from "./npc-content01-v1.ts";
+export * from "./content01-v1.ts";
+export * from "./content-playability-audit.ts";
+export * from "./content-sim.ts";
