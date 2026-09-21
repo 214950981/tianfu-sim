@@ -46,7 +46,8 @@ type Transition={eventId:string;when?:ConditionExpr;priority?:number};
 type CheckSpec={primary:'insight'|'body'|'spiritSense'|'fortune';secondary?:'insight'|'body'|'spiritSense'|'fortune';secondaryWeightBps?:number;difficulty:number;randomMin:-10;randomMax:10};
 type ChoiceDefinition={id:string;scope:'core'|'tactical';rhythmOnly?:boolean;labelKey:string;requirements?:ConditionExpr;check?:CheckSpec;threatId?:string;outcomes:OutcomeTable;next?:Transition[]};
 type DirectorHints={salience:1|2|3|4|5;baseWeight?:number;topicTags:string[];continuityTags:string[];buildAffinityTags:string[];npcRoleAffinityTags:string[];worldAffinityTags:string[];onboardingEligible?:boolean};
-type EventDefinition={id:string;version:number;kind:'choice'|'narrative'|'combat'|'breakthrough'|'ending'|'tutorial';titleKey:string;tags:string[];requirements?:ConditionExpr;weight:number;actionAffinity?:ActionType[];directorHints?:DirectorHints;cooldown?:{minNodesBetween?:number;maxOccurrences?:number};choices?:ChoiceDefinition[];onEnter?:EffectSpec[];ai?:unknown;fallback:{titleKey?:string;bodyKey:string};telemetry?:Record<string,string>};
+type EventParticipantRequirement={slot:string;source:{kind:'core';npcDefinitionId:string}|{kind:'generated';archetypeId:string}};
+type EventDefinition={id:string;version:number;kind:'choice'|'narrative'|'combat'|'breakthrough'|'ending'|'tutorial';titleKey:string;tags:string[];requirements?:ConditionExpr;weight:number;actionAffinity?:ActionType[];directorHints?:DirectorHints;participants?:EventParticipantRequirement[];cooldown?:{minNodesBetween?:number;maxOccurrences?:number};choices?:ChoiceDefinition[];onEnter?:EffectSpec[];ai?:unknown;fallback:{titleKey?:string;bodyKey:string};telemetry?:Record<string,string>};
 
 // LogicalPath is a stable DSL namespace, NOT direct GameState property access.
 // core Choice must change >=1 long-term dimension unless event explicitly marked rhythm-only.
@@ -76,4 +77,7 @@ type EventDefinition={id:string;version:number;kind:'choice'|'narrative'|'combat
 // Missing/empty actionAffinity means ordinary fallback unless the Event is reserved by a higher selector tier (for example a Cause-linked echo). Unknown ActionType is invalid content.
 // directorHints is declarative selector metadata governed by director.ref; every hint tag must be declared by the locked Content Pack.
 // A playable Content Pack must contain at least one ordinary fallback Event.
+// participants is declarative only. slot is a unique safe event-local binding key; sources reference the locked NpcPack by stable ID.
+// Content cannot provide a concrete npcId, generated traits/name/seed/state, executable materializer, or any other authoritative NPC state.
+// Director selection reads metadata only. The authoritative reducer materializes participants after selection and before ViewModel projection.
 // No arbitrary function/path/code. Unknown operator/effect/path => lint+runtime reject.

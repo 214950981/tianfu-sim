@@ -16,5 +16,6 @@ Public death projection may expose age, realm, registered direct cause, player-k
 ViewModel may only project/filter/format/aggregate/translate authoritative results. It must not roll RNG, decide Outcome, advance time, create Cause, mutate RuleState, or decide breakthrough results.
 Build projection exposes semantic stage/display labels and dominant identity only; exact affinityBps and lifetimeEvidence remain authoritative server state.
 People projection exposes only met NPC identity, known roles/facts/traits, semantic affinity/trust/debt, known status/last-known information and public milestone summaries.
+CurrentInteraction may project participant slot plus safe displayName from authoritative bindings. It never projects participantBindings, npcId association, actualStatus, significance, unrevealed facts/traits, generation inputs or NPC RNG state.
 Never send raw affinity/trust, exact significance, promotionThreshold, hidden traits/facts, unrevealed actualStatus, future NPC event references, selector weights or NPC RNG state.
 ShareViewModel contains public share-safe data only and cannot be converted into rule effects.

@@ -26,7 +26,7 @@ export type RunState={
  risk?:{conditions:RiskConditionInstance[];exposureCount:number};
  identity:{runName:string;destinyId?:string;innateProfile?:InnateProfile;rootTags:string[];factionId?:string;titles:string[]};
  actions:{available:ActionType[];pursuitCauseIds:string[];recent:ActionType[]};
- events:{current?:{eventId:string;kind:string;phase?:string};history:Array<{eventId:string;nodeIndex:number;resultTier?:string}>};
+ events:{current?:{eventId:string;kind:string;phase?:string;instanceId?:string;participantBindings?:Record<string,string>};history:Array<{eventId:string;nodeIndex:number;resultTier?:string}>};
  causes:{byId:Record<string,CauseInstance>};
  npcs:{nextNpcSequence:number;byId:Record<string,NpcInstance>;roleIndex:Record<string,string[]>};
  build:{techniques:string[];artifacts:string[];consumables:string[];tagScores:Record<string,number>;mainPath?:string;secondaryPath?:string;affinities?:Record<string,BuildAffinity>;dominantBuildId?:string;evidenceFacts?:BuildEvidenceFact[];transitionFacts?:BuildTransitionFact[];unlockedBuildIds?:string[]};
@@ -49,3 +49,5 @@ export type MetaView=Pick<MetaState,'unlocks'|'entitlements'|'discoveries'>;
 // Invariants: ranges in numeric.ref; run versions/rootSeed immutable after offer creation;
 // offered=>destinyId absent+offer present; active=>chosen destinyId present;
 // ended Run rule fields immutable; persistent NPCs cannot be removed; nextNpcSequence/significance/promotion are monotonic.
+// An authoritative active Event receives a deterministic instanceId and compact participantBindings from event-local slot to existing NpcInstance ID.
+// Bindings are persisted in RuleState/Snapshot, hashed and replayed; every bound ID must exist in run.npcs.byId. Legacy/manual states may omit them until reducer materialization.

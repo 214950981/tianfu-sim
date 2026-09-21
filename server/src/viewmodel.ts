@@ -92,9 +92,10 @@ function eventInteraction(state: GameState, content: ContentRegistry, interactio
   const current = state.run.events.current; if (current === undefined) return undefined;
   const event = content.getEvent(state.contentVersion, current.eventId);
   const choices = (event.choices ?? []).filter((choice) => choice.requirements === undefined || evaluateCondition(choice.requirements, state));
+  const participants = Object.entries(current.participantBindings ?? {}).sort(([left], [right]) => left.localeCompare(right)).map(([slot, npcId]) => { const npc = state.run.npcs.byId[npcId]; return npc === undefined ? undefined : { slot, displayName: npc.displayName }; }).filter((value): value is { slot: string; displayName: string } => value !== undefined);
   const kind: CurrentInteraction["kind"] = specialKinds.has(event.kind) ? "specialNode" : event.kind === "ending" ? "ending" : "event";
   return {
-    interactionId: event.id, kind, titleKey: event.titleKey, body: { bodyKey: event.fallback.bodyKey },
+    interactionId: current.instanceId ?? event.id, kind, titleKey: event.titleKey, body: { bodyKey: event.fallback.bodyKey, ...(participants.length === 0 ? {} : { participants }) },
     options: choices.map((choice) => {
       const supplied = sanitizeRisk(riskPolicy({ state, event, choice }));
       const authoritative = choice.threatId === undefined ? supplied : buildRiskPresentation(state, threatDefinition(content.getRisk(state.contentVersion), choice.threatId));

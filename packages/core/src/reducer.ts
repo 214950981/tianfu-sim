@@ -8,6 +8,7 @@ import { applyBreakthroughOutcome, applyRetreatProgression, isValidInnateProfile
 import { buildRiskPresentation, injuryLevel, resolveThreat, threatDefinition, type RiskContentAccess } from "./risk.ts";
 import { activeBuildProgressionSources, activeBuildRiskSources, applyBuildEffects, type BuildContentAccess, type BuildPack } from "./build.ts";
 import { applyNpcEffects, causeActorAvailability, type NpcContentAccess, type NpcPack } from "./npc.ts";
+import { currentParticipantBindings, eventInstanceId, materializeEventParticipants, type ParticipantContentAccess } from "./participants.ts";
 import {
   projectRuleState,
   validateGameState,
@@ -239,7 +240,7 @@ interface ActionEventContentAccess {
 
 function buildPackFromContext(context: RuleContext): BuildPack | undefined { const source = context.content as unknown as ActionEventContentAccess & Partial<BuildContentAccess>; const locked = source.get(context.contentVersion); return locked.buildPackId === undefined ? undefined : source.getBuild?.(context.contentVersion); }
 function npcPackFromContext(context: RuleContext): NpcPack | undefined { const source = context.content as unknown as ActionEventContentAccess & Partial<NpcContentAccess>; const locked = source.get(context.contentVersion) as { npcPackId?: string }; return locked.npcPackId === undefined ? undefined : source.getNpc?.(context.contentVersion); }
-function causeContextWithNpcState(state: GameState, context: RuleContext): RuleContext { return { ...context, actorStatusById: { ...(context.actorStatusById ?? {}), ...causeActorAvailability(state) } }; }
+function causeContextWithNpcState(state: GameState, context: RuleContext): RuleContext { return { ...context, actorBindings: currentParticipantBindings(state, context.actorBindings), actorStatusById: { ...(context.actorStatusById ?? {}), ...causeActorAvailability(state) } }; }
 
 function chooseAction(state: GameState, command: Extract<GameCommand, { type: "CHOOSE_ACTION" }>, context: RuleContext): ReduceOutput {
   if (state.run.status !== "active") throw new ReducerError("RUN_NOT_ACTIVE", "run.not_active");
@@ -266,7 +267,7 @@ function chooseAction(state: GameState, command: Extract<GameCommand, { type: "C
   const causeContent = context.content as unknown as CauseContentAccess;
   try { provisional = advanceCauses(provisional, causeContent, context.contentVersion, causeContextWithNpcState(provisional, context)); }
   catch { throw new ReducerError("INVALID_OPTION", "cause.invalid"); }
-  let rngDraws: RngTrace[] = []; let selectorTrace: Record<string, unknown>[] = [];
+  let rngDraws: RngTrace[] = []; let selectorTrace: Record<string, unknown>[] = []; let participantFacts: Fact[] = [];
   if (provisional.run.status === "active") {
     const directorContent = context.content as unknown as DirectorContentAccess;
     const firstRunSelection = selectDirectorEvent(provisional, command.actionId, directorContent, ["P2"]);
@@ -282,6 +283,10 @@ function chooseAction(state: GameState, command: Extract<GameCommand, { type: "C
       provisional = directorSelection.state; rngDraws.push(...directorSelection.rngDraws); selectorTrace.push(directorSelection.trace as unknown as Record<string, unknown>);
       if (provisional.run.events.current === undefined) throw new ReducerError("CONTENT_MISMATCH", "content.no_event_candidate");
     }
+    if (provisional.run.events.current !== undefined) {
+      try { const materialized = materializeEventParticipants(provisional, context.content as unknown as ParticipantContentAccess, provisional.run.events.current.eventId, eventInstanceId(context.commandId, provisional.run.events.current.eventId)); provisional = materialized.state; rngDraws.push(...materialized.rngDraws); participantFacts = materialized.facts.map((fact) => ({ ...fact })); }
+      catch { throw new ReducerError("CONTENT_MISMATCH", "content.event_participants_invalid"); }
+    }
   } else {
     selectorTrace.push({ tier: "P0", result: "lifespan", eventRngRequests: 0 });
   }
@@ -289,7 +294,7 @@ function chooseAction(state: GameState, command: Extract<GameCommand, { type: "C
   return {
     state: next,
     effects: [],
-    narrativeFacts: [{ type: "ACTION", actionId: command.actionId, actionTimeCost: delta }],
+    narrativeFacts: [{ type: "ACTION", actionId: command.actionId, actionTimeCost: delta }, ...participantFacts],
     trace: { rngDraws, selector: selectorTrace, time: [{ ...timeAdvance, actionId: command.actionId }] }
   };
 }
@@ -353,7 +358,7 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
   catch { throw new ReducerError("INVALID_OPTION", "cause.invalid"); }
   let npcApplied = causeApplied; let npcFacts: Fact[] = []; const npcPack = npcPackFromContext(context); const hasNpcEffects = (resolved.outcome.effects as readonly unknown[]).some((value) => typeof value === "object" && value !== null && !Array.isArray(value) && ["ADJUST_NPC_RELATION", "ADD_NPC_SIGNIFICANCE", "REVEAL_NPC_FACT", "REVEAL_NPC_TRAIT", "REVEAL_NPC_STATUS", "SET_NPC_STATUS", "ADD_NPC_MILESTONE"].includes(String((value as RuntimeObject).op)));
   if (hasNpcEffects && npcPack === undefined) throw new ReducerError("CONTENT_MISMATCH", "content.npc_required");
-  if (npcPack !== undefined) { try { const result = applyNpcEffects(causeApplied, resolved.outcome.effects, npcPack, { commandId: context.commandId, sourceRef: current.eventId, actorBindings: context.actorBindings }); npcApplied = result.state; npcFacts = result.facts.map((fact) => ({ ...fact })); } catch { throw new ReducerError("INVALID_OPTION", "npc.invalid"); } }
+  if (npcPack !== undefined) { try { const result = applyNpcEffects(causeApplied, resolved.outcome.effects, npcPack, { commandId: context.commandId, sourceRef: current.instanceId ?? current.eventId, actorBindings: currentParticipantBindings(causeApplied, context.actorBindings) }); npcApplied = result.state; npcFacts = result.facts.map((fact) => ({ ...fact })); } catch { throw new ReducerError("INVALID_OPTION", "npc.invalid"); } }
   let buildApplied = npcApplied; let buildFacts: Fact[] = []; const buildPack = buildPackFromContext(context);
   if (buildPack !== undefined) { try { const result = applyBuildEffects(npcApplied, resolved.outcome.effects as readonly unknown[], buildPack, { commandId: context.commandId, sourceRef: current.eventId }); buildApplied = result.state; buildFacts = result.facts.map((fact) => ({ ...fact })); } catch { throw new ReducerError("INVALID_OPTION", "build.invalid"); } }
   const applied = applyEventEffects(buildApplied, resolved.outcome.effects, current.eventId);
@@ -384,11 +389,15 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
     try { provisional = advanceCauses(provisional, causeContent, context.contentVersion, causeContextWithNpcState(provisional, context)); }
     catch { throw new ReducerError("INVALID_OPTION", "cause.invalid"); }
   }
-  let causeTrace: Record<string, unknown>[] = []; let causeRngDraws: RngTrace[] = [];
+  let causeTrace: Record<string, unknown>[] = []; let causeRngDraws: RngTrace[] = []; let participantFacts: Fact[] = []; let participantRngDraws: RngTrace[] = [];
   if (provisional.run.status === "active" && provisional.run.events.current === undefined) {
     const selected = selectCauseEcho(provisional, causeContent, context.contentVersion); provisional = selected.state; causeTrace = selected.trace; causeRngDraws = selected.rngDraws;
     const selectedTrace = selected.trace[0];
     if (provisional.run.events.current !== undefined) provisional = recordDirectorScene(provisional, provisional.run.events.current.eventId, context.content as unknown as DirectorContentAccess, "P3", { causeId: typeof selectedTrace?.causeId === "string" ? selectedTrace.causeId : undefined });
+  }
+  if (provisional.run.status === "active" && provisional.run.events.current !== undefined) {
+    try { const materialized = materializeEventParticipants(provisional, context.content as unknown as ParticipantContentAccess, provisional.run.events.current.eventId, eventInstanceId(context.commandId, provisional.run.events.current.eventId)); provisional = materialized.state; participantRngDraws = materialized.rngDraws; participantFacts = materialized.facts.map((fact) => ({ ...fact })); }
+    catch { throw new ReducerError("CONTENT_MISMATCH", "content.event_participants_invalid"); }
   }
   const next: GameState = { ...provisional, stateVersion: safeAdd(state.stateVersion, 1) };
   validateStateTransition(state, next);
@@ -398,8 +407,8 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
   return {
     state: next,
     effects,
-    narrativeFacts: [{ type: "EVENT_OUTCOME", eventId: current.eventId, choiceId: command.optionId, requestedTier, appliedTier: resolved.appliedTier }, ...npcFacts, ...buildFacts],
-    trace: { rngDraws: [...rngDraws, ...causeRngDraws], selector: [{ kind: "check", ...checkFact }, ...causeTrace], time: [{ ...timeAdvance }] }
+    narrativeFacts: [{ type: "EVENT_OUTCOME", eventId: current.eventId, choiceId: command.optionId, requestedTier, appliedTier: resolved.appliedTier }, ...npcFacts, ...buildFacts, ...participantFacts],
+    trace: { rngDraws: [...rngDraws, ...causeRngDraws, ...participantRngDraws], selector: [{ kind: "check", ...checkFact }, ...causeTrace], time: [{ ...timeAdvance }] }
   };
 }
 

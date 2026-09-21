@@ -7,7 +7,7 @@ import type { RiskPack } from "../../core/src/risk.ts";
 import { getRiskPack, validateRiskPack } from "./risk-v1.ts";
 import type { BuildPack } from "../../core/src/build.ts";
 import { getBuildPack, validateBuildPack } from "./build-v1.ts";
-import type { NpcPack } from "../../core/src/npc.ts";
+import type { NpcArchetypeDefinition, NpcDefinition, NpcPack } from "../../core/src/npc.ts";
 import { getNpcPack, validateNpcPack } from "./npc-v1.ts";
 import type { DirectorHints, DirectorIndexQuery, DirectorIndexQueryResult, DirectorPack } from "../../core/src/director.ts";
 import { getDirectorPack, validateDirectorPack } from "./director-v1.ts";
@@ -59,6 +59,10 @@ export interface EventDefinition {
   titleKey: string; tags: string[]; requirements?: ConditionExpr; weight: number;
   actionAffinity?: ActionType[];
   directorHints?: DirectorHints;
+  participants?: Array<
+    | { slot: string; source: { kind: "core"; npcDefinitionId: string } }
+    | { slot: string; source: { kind: "generated"; archetypeId: string } }
+  >;
   cooldown?: { minNodesBetween?: number; maxOccurrences?: number }; choices?: ChoiceDefinition[]; onEnter?: EffectSpec[];
   ai?: unknown; fallback: { titleKey?: string; bodyKey: string }; telemetry?: Record<string, string>;
 }
@@ -286,11 +290,24 @@ function validateDirectorHints(value: unknown, directorPack: DirectorPack | unde
 
 function validateEvent(value: unknown, refs: ReferenceSets, eventIds: Set<string>, threatIds: Set<string>, buildPack: BuildPack | undefined, npcPack: NpcPack | undefined, directorPack: DirectorPack | undefined, directorTags: Set<string>, path: string): void {
   const event = objectValue(value, path);
-  exact(event, ["id", "version", "kind", "titleKey", "tags", "weight", "fallback"], ["requirements", "actionAffinity", "directorHints", "cooldown", "choices", "onEnter", "ai", "telemetry"], path);
+  exact(event, ["id", "version", "kind", "titleKey", "tags", "weight", "fallback"], ["requirements", "actionAffinity", "directorHints", "participants", "cooldown", "choices", "onEnter", "ai", "telemetry"], path);
   stringValue(event.id, `${path}.id`); integer(event.version, `${path}.version`, 1); oneOf(event.kind, eventKinds, `${path}.kind`); stringValue(event.titleKey, `${path}.titleKey`);
   const tags = strings(event.tags, `${path}.tags`); unique(tags, `${path}.tags`); integer(event.weight, `${path}.weight`, 0);
   if (event.actionAffinity !== undefined) { const affinities = strings(event.actionAffinity, `${path}.actionAffinity`); unique(affinities, `${path}.actionAffinity`); affinities.forEach((action, index) => oneOf(action, actionTypes, `${path}.actionAffinity[${index}]`)); }
   if (event.directorHints !== undefined) validateDirectorHints(event.directorHints, directorPack, directorTags, `${path}.directorHints`);
+  if (event.participants !== undefined) {
+    if (npcPack === undefined) fail(`${path}.participants`, "requires a locked NPC pack");
+    const coreIds = new Set(npcPack!.coreDefinitions.map((entry) => entry.id)); const archetypeIds = new Set(npcPack!.archetypes.map((entry) => entry.id));
+    const slots = array(event.participants, `${path}.participants`).map((entry, index) => {
+      const participant = objectValue(entry, `${path}.participants[${index}]`); exact(participant, ["slot", "source"], [], `${path}.participants[${index}]`);
+      const slot = stringValue(participant.slot, `${path}.participants[${index}].slot`); if (!/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(slot)) fail(`${path}.participants[${index}].slot`, "must be a safe event-local slot");
+      const source = objectValue(participant.source, `${path}.participants[${index}].source`); const kind = oneOf(source.kind, new Set(["core", "generated"]), `${path}.participants[${index}].source.kind`);
+      if (kind === "core") { exact(source, ["kind", "npcDefinitionId"], [], `${path}.participants[${index}].source`); requireReference(source.npcDefinitionId, coreIds, `${path}.participants[${index}].source.npcDefinitionId`); }
+      else { exact(source, ["kind", "archetypeId"], [], `${path}.participants[${index}].source`); requireReference(source.archetypeId, archetypeIds, `${path}.participants[${index}].source.archetypeId`); }
+      return slot;
+    });
+    unique(slots, `${path}.participants`);
+  }
   if (event.requirements !== undefined) validateCondition(event.requirements, `${path}.requirements`);
   if (event.cooldown !== undefined) { const cooldown = objectValue(event.cooldown, `${path}.cooldown`); exact(cooldown, [], ["minNodesBetween", "maxOccurrences"], `${path}.cooldown`); if (cooldown.minNodesBetween !== undefined) integer(cooldown.minNodesBetween, `${path}.cooldown.minNodesBetween`, 0); if (cooldown.maxOccurrences !== undefined) integer(cooldown.maxOccurrences, `${path}.cooldown.maxOccurrences`, 1); }
   if (event.choices !== undefined) { const ids = array(event.choices, `${path}.choices`).map((choice, index) => validateChoice(choice, refs, eventIds, threatIds, buildPack, npcPack, event.id as string, `${path}.choices[${index}]`)); unique(ids, `${path}.choices`); }
@@ -421,10 +438,12 @@ export class ContentRegistry {
   readonly #byVersion = new Map<string, ContentPack>();
   readonly #buildPacks = new Map<string, BuildPack>([["build.v1", getBuildPack("build.v1")]]);
   readonly #npcPacks = new Map<string, NpcPack>([["npc.v1", getNpcPack("npc.v1")]]);
+  readonly #npcDefinitionIndexes = new Map<string, Map<string, NpcDefinition>>([["npc.v1", new Map(getNpcPack("npc.v1").coreDefinitions.map((entry) => [entry.id, entry]))]]);
+  readonly #npcArchetypeIndexes = new Map<string, Map<string, NpcArchetypeDefinition>>([["npc.v1", new Map(getNpcPack("npc.v1").archetypes.map((entry) => [entry.id, entry]))]]);
   readonly #directorPacks = new Map<string, DirectorPack>([["director.v1", getDirectorPack("director.v1")]]);
   readonly #directorIndexes = new Map<string, StoredDirectorIndex>();
   registerBuildPack(value: unknown): BuildPack { const validated = validateBuildPack(value); const stored = cloneAndFreeze(validated); const existing = this.#buildPacks.get(stored.id); if (existing !== undefined && JSON.stringify(canonicalValue(existing)) !== JSON.stringify(canonicalValue(stored))) fail("buildPack.id", "is already registered with different content"); if (existing === undefined) this.#buildPacks.set(stored.id, stored); return existing ?? stored; }
-  registerNpcPack(value: unknown): NpcPack { const validated = validateNpcPack(value); const stored = cloneAndFreeze(validated); const existing = this.#npcPacks.get(stored.id); if (existing !== undefined && JSON.stringify(canonicalValue(existing)) !== JSON.stringify(canonicalValue(stored))) fail("npcPack.id", "is already registered with different content"); if (existing === undefined) this.#npcPacks.set(stored.id, stored); return existing ?? stored; }
+  registerNpcPack(value: unknown): NpcPack { const validated = validateNpcPack(value); const stored = cloneAndFreeze(validated); const existing = this.#npcPacks.get(stored.id); if (existing !== undefined && JSON.stringify(canonicalValue(existing)) !== JSON.stringify(canonicalValue(stored))) fail("npcPack.id", "is already registered with different content"); if (existing === undefined) { this.#npcPacks.set(stored.id, stored); this.#npcDefinitionIndexes.set(stored.id, new Map(stored.coreDefinitions.map((entry) => [entry.id, entry]))); this.#npcArchetypeIndexes.set(stored.id, new Map(stored.archetypes.map((entry) => [entry.id, entry]))); } return existing ?? stored; }
   registerDirectorPack(value: unknown): DirectorPack { const validated = validateDirectorPack(value); const stored = cloneAndFreeze(validated); const existing = this.#directorPacks.get(stored.id); if (existing !== undefined && JSON.stringify(canonicalValue(existing)) !== JSON.stringify(canonicalValue(stored))) fail("directorPack.id", "is already registered with different content"); if (existing === undefined) this.#directorPacks.set(stored.id, stored); return existing ?? stored; }
   register(value: unknown): ContentPack {
     const validated = validateContentPack(value, undefined, { getBuildPack: (id) => this.#buildPacks.get(id), getNpcPack: (id) => this.#npcPacks.get(id), getDirectorPack: (id) => this.#directorPacks.get(id) }); const stored = cloneAndFreeze(validated);
@@ -457,6 +476,8 @@ export class ContentRegistry {
   getNpc(contentVersion: string): NpcPack {
     const id = this.get(contentVersion).npcPackId; if (id === undefined) fail("npcPackId", "is not configured for contentVersion"); const pack = this.#npcPacks.get(id); if (pack === undefined) fail("npcPackId", `is not registered: ${id}`); return pack;
   }
+  getNpcDefinition(contentVersion: string, definitionId: string): NpcDefinition { const pack = this.getNpc(contentVersion); const definition = this.#npcDefinitionIndexes.get(pack.id)?.get(definitionId); if (definition === undefined) fail("npcDefinitionId", `is not registered: ${definitionId}`); return definition; }
+  getNpcArchetype(contentVersion: string, archetypeId: string): NpcArchetypeDefinition { const pack = this.getNpc(contentVersion); const archetype = this.#npcArchetypeIndexes.get(pack.id)?.get(archetypeId); if (archetype === undefined) fail("archetypeId", `is not registered: ${archetypeId}`); return archetype; }
   getDirector(contentVersion: string): DirectorPack { const id = this.get(contentVersion).directorPackId; if (id === undefined) fail("directorPackId", "is not configured for contentVersion"); const pack = this.#directorPacks.get(id); if (pack === undefined) fail("directorPackId", `is not registered: ${id}`); return pack; }
   queryDirectorCandidates(contentVersion: string, query: DirectorIndexQuery): DirectorIndexQueryResult { this.get(contentVersion); const index = this.#directorIndexes.get(contentVersion); if (index === undefined) fail("contentVersion", `has no Director index: ${contentVersion}`); return queryIndex(index, query); }
 }

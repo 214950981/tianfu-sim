@@ -31,7 +31,11 @@ export interface NpcPack {
   coreDefinitions: NpcDefinition[]; archetypes: NpcArchetypeDefinition[]; namePools: NpcNamePoolDefinition[];
   traits: NpcTraitDefinition[]; facts: NpcFactDefinition[];
 }
-export interface NpcContentAccess { getNpc(contentVersion: string): NpcPack }
+export interface NpcContentAccess {
+  getNpc(contentVersion: string): NpcPack;
+  getNpcDefinition?(contentVersion: string, definitionId: string): NpcDefinition;
+  getNpcArchetype?(contentVersion: string, archetypeId: string): NpcArchetypeDefinition;
+}
 export interface NpcEffectContext { commandId: string; sourceRef: string; actorBindings?: Readonly<Record<string, string>> }
 export interface NpcMutationResult { state: GameState; facts: Readonly<Record<string, unknown>>[] }
 export interface NpcSpawnResult extends NpcMutationResult { npc: NpcInstance; rngDraws: RngTrace[] }
@@ -85,19 +89,22 @@ function addNpc(state: GameState, npc: NpcInstance, nextNpcSequence = state.run.
   return { ...state, run: { ...state.run, npcs: { nextNpcSequence, byId: { ...state.run.npcs.byId, [npc.npcId]: npc }, roleIndex } } };
 }
 
-export function instantiateCoreNpc(state: GameState, pack: NpcPack, definitionId: string, sourceRef: string): NpcSpawnResult {
-  const source = definition(pack, definitionId); const npcId = `npc:core:${source.id}`;
+export function instantiateCoreNpcDefinition(state: GameState, source: NpcDefinition, sourceRef: string): NpcSpawnResult {
+  const npcId = `npc:core:${source.id}`;
+  const existing = state.run.npcs.byId[npcId];
+  if (existing !== undefined) return { state, npc: existing, rngDraws: [], facts: [] };
   const npc = initialNpc(state, { npcId, definitionId: source.id, originKind: "core", displayName: source.displayName, traitTags: canonicalUnique(source.fixedTraitTags), factIds: canonicalUnique(source.factDefinitions), tags: canonicalUnique(source.tags), roleTags: canonicalUnique(source.roleTags) }, sourceRef);
   const next = addNpc(state, npc);
   return { state: next, npc, rngDraws: [], facts: [{ type: "NPC_FIRST_ENCOUNTER", npcId, sourceRef }] };
 }
 
+export function instantiateCoreNpc(state: GameState, pack: NpcPack, definitionId: string, sourceRef: string): NpcSpawnResult {
+  return instantiateCoreNpcDefinition(state, definition(pack, definitionId), sourceRef);
+}
+
 export interface SpawnNpcInput { archetypeId?: string; eligibleArchetypeIds?: readonly string[]; sourceRef: string }
-export function spawnNpcFromArchetype(state: GameState, pack: NpcPack, input: SpawnNpcInput): NpcSpawnResult {
-  const eligibleIds = input.eligibleArchetypeIds === undefined ? undefined : new Set(input.eligibleArchetypeIds);
-  const candidates = pack.archetypes.filter((entry) => (input.archetypeId === undefined || entry.id === input.archetypeId) && (eligibleIds === undefined || eligibleIds.has(entry.id)));
+export function spawnNpcFromArchetypeDefinition(state: GameState, pack: NpcPack, source: NpcArchetypeDefinition, input: Pick<SpawnNpcInput, "sourceRef">): NpcSpawnResult {
   let rng = state.run.rng; const draws: RngTrace[] = [];
-  const archetypeChoice = selectCanonical(candidates, rng); const source = archetypeChoice.value; rng = archetypeChoice.rng; draws.push(...archetypeChoice.draws);
   const pool = pack.namePools.find((entry) => entry.id === source.namePoolId); if (pool === undefined) fail(`unknown NpcNamePoolDefinition ${source.namePoolId}`);
   const nameChoice = selectCanonical(pool.names, rng); rng = nameChoice.rng; draws.push(...nameChoice.draws);
   const availableTraits = pack.traits.filter((entry) => entry.poolIds.some((poolId) => source.traitPoolIds.includes(poolId))).sort((left, right) => left.id.localeCompare(right.id));
@@ -112,6 +119,15 @@ export function spawnNpcFromArchetype(state: GameState, pack: NpcPack, input: Sp
   const withRng: GameState = { ...state, run: { ...state.run, rng } };
   const next = addNpc(withRng, npc, nextSequence);
   return { state: next, npc, rngDraws: draws, facts: [{ type: "NPC_FIRST_ENCOUNTER", npcId, archetypeId: source.id, sourceRef: input.sourceRef }] };
+}
+
+export function spawnNpcFromArchetype(state: GameState, pack: NpcPack, input: SpawnNpcInput): NpcSpawnResult {
+  const eligibleIds = input.eligibleArchetypeIds === undefined ? undefined : new Set(input.eligibleArchetypeIds);
+  const candidates = pack.archetypes.filter((entry) => (input.archetypeId === undefined || entry.id === input.archetypeId) && (eligibleIds === undefined || eligibleIds.has(entry.id)));
+  let rng = state.run.rng; const choice = selectCanonical(candidates, rng); rng = choice.rng;
+  const selectedState: GameState = { ...state, run: { ...state.run, rng } };
+  const spawned = spawnNpcFromArchetypeDefinition(selectedState, pack, choice.value, input);
+  return { ...spawned, rngDraws: [...choice.draws, ...spawned.rngDraws] };
 }
 
 function targetNpcId(effect: Record<string, unknown>, context: NpcEffectContext): string {

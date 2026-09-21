@@ -16,5 +16,8 @@ Only structured milestone facts are retained; ordinary conversation text is not 
 NPC Event effects are whitelist-only: ADJUST_NPC_RELATION, ADD_NPC_SIGNIFICANCE, REVEAL_NPC_FACT, REVEAL_NPC_TRAIT, REVEAL_NPC_STATUS, SET_NPC_STATUS and ADD_NPC_MILESTONE.
 SET_NPC_STATUS requires targetStatus, revealToPlayer and reasonTag. Hidden status changes never update player knowledge.
 NPC spawning is a pure authoritative interface. NPC01 does not decide when/which story needs an NPC and performs no all-NPC node/year tick.
+Event participant materialization is O(participants): core sources use indexed NpcDefinition lookup and stable npc:core:<definitionId> identity; an existing core instance is reused without RNG or duplicate creation.
+Generated sources use indexed NpcArchetype lookup and the existing spawnNpcFromArchetype semantics/npc stream. Each participant slot is generated exactly once for one active event instance; restoring or retrying reuses its persisted binding.
+No core NPC is preloaded merely because it exists in a pack. Participant bindings never cause a global NPC scan or NPC tick.
 Definitions, generation, relation, status, knowledge, promotion and milestones are snapshot/hash/replay state. No AI/network/platform clock/dynamic code may determine them.
 Current content counts are manifest facts, never Core limits.

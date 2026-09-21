@@ -1,0 +1,15 @@
+id: CONTENT01
+title: first-playable-vertical-slice
+phase: 2
+requiredContracts: [.codex/contracts/event.ref,.codex/contracts/npc.ref,.codex/contracts/cause.ref,.codex/contracts/director.ref,.codex/contracts/build.ref,.codex/contracts/risk.ref,.codex/contracts/progression.ref,.codex/contracts/state.ref,.codex/contracts/reducer.ref,.codex/contracts/viewmodel.ref,.codex/contracts/rng.ref,.codex/contracts/numeric.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [packages/content/src/registry.ts,packages/content/src/npc-v1.ts,packages/content/dev-fixtures/minimal-pack.json,tests/content01.test.mjs]
+allowedScope:
+  - formal versioned playable content pack with 60 or more Events
+  - five core NPCs, eight generated archetypes and six traceable Cause chains
+  - Director, Build, Risk, Cause, replay and ViewModel composition through existing contracts
+  - local content audit and deterministic headless content simulation
+forbiddenScope: [UI02,CHAL01,ITEM01,TECH01,SECT01,FACTION01,WORLD01,economy,crafting,AI-runtime,game-Core-redesign]
+accept: [content pack loads,coverage gates pass,600 observations have no runtime failure or deadlock,replay stable,full regression passes]
+tests: [content01,content-playability-audit,content-sim,full-regression,typecheck,lint,content-lint,secret-scan]

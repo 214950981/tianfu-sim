@@ -29,6 +29,8 @@
     "test:npc01": "node --test tests/npc.test.mjs",
     "npc-audit": "node tools/npc-audit.mjs",
     "test:director01": "node --test tests/director.test.mjs",
+    "test:bridge01": "node --test tests/participant-bridge.test.mjs",
+    "participant-bridge-audit": "node tools/participant-bridge-audit.mjs",
     "director-audit": "node tools/director-audit.mjs",
     "test:tool01": "node --test tests/context-loader.test.mjs",
     "context:smoke": "node .codex/context.mjs DIRECTOR01",

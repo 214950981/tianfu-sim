@@ -12,6 +12,7 @@ Echo selection follows lifecycle.ref precedence. Same reward/effect cannot repea
 
 Cause creation uses ReduceContext.commandId verbatim as originCommandId. Core never generates commandId and uses no clock/RNG/UUID for provenance.
 ADD_CAUSE.actorBindingKeys maps CauseTemplate role to ReduceContext.actorBindings slot. Unknown roles fail. Every required role must resolve to a non-empty opaque actorId before atomic creation; optional unbound roles are omitted. Extra context slots are ignored.
+For an active Event, persisted participantBindings are authoritative ReduceContext actor bindings. Thus ADD_CAUSE actorBindingKeys may name an Event participant slot and must resolve to that exact NpcInstance ID without a second lookup or NPC generation.
 CauseInstance.actorIdsByRole stores the actual bound actor IDs and never a deferred lookup condition.
 Only a required bound actor whose ReduceContext.actorStatusById value is exactly 'unavailable' triggers onActorUnavailable. Missing/unknown/'available' never triggers.
 Expire sets the old Cause to expired and creates nothing. Transform resolves the old Cause and creates the target template as a new Cause, inheriting only same-role bindings. Target required roles must be guaranteed by same-name required source roles at content validation time; runtime never searches or invents actors.

@@ -72,7 +72,7 @@ export interface RunState {
   risk?: { conditions: RiskConditionInstance[]; exposureCount: number };
   identity: { runName: string; destinyId?: string; innateProfile?: InnateProfile; rootTags: string[]; factionId?: string; titles: string[] };
   actions: { available: ActionType[]; pursuitCauseIds: string[]; recent: ActionType[] };
-  events: { current?: { eventId: string; kind: string; phase?: string }; history: Array<{ eventId: string; nodeIndex: number; resultTier?: string }> };
+  events: { current?: { eventId: string; kind: string; phase?: string; instanceId?: string; participantBindings?: Record<string, string> }; history: Array<{ eventId: string; nodeIndex: number; resultTier?: string }> };
   causes: { byId: Record<string, CauseInstance> };
   npcs: { nextNpcSequence: number; byId: Record<string, NpcInstance>; roleIndex: Record<string, string[]> };
   build: { techniques: string[]; artifacts: string[]; consumables: string[]; tagScores: Record<string, number>; mainPath?: string; secondaryPath?: string; affinities?: Record<string, BuildAffinity>; dominantBuildId?: string; evidenceFacts?: BuildEvidenceFact[]; transitionFacts?: BuildTransitionFact[]; unlockedBuildIds?: string[] };
@@ -264,6 +264,14 @@ function validateRun(value: unknown, path: string, rulesVersion: string): assert
   if (events.current !== undefined) {
     const current = record(events.current, `${path}.events.current`);
     stringValue(current.eventId, `${path}.events.current.eventId`); stringValue(current.kind, `${path}.events.current.kind`); optionalString(current, "phase", `${path}.events.current`);
+    optionalString(current, "instanceId", `${path}.events.current`);
+    if (current.participantBindings !== undefined) {
+      const bindings = record(current.participantBindings, `${path}.events.current.participantBindings`);
+      for (const [slot, npcId] of Object.entries(bindings)) {
+        if (!/^[A-Za-z][A-Za-z0-9_-]{0,63}$/.test(slot)) invalid(`${path}.events.current.participantBindings.${slot}`, "has an invalid participant slot");
+        stringValue(npcId, `${path}.events.current.participantBindings.${slot}`);
+      }
+    }
   }
   for (const [index, entry] of array(events.history, `${path}.events.history`).entries()) {
     const event = record(entry, `${path}.events.history[${index}]`);
@@ -276,6 +284,7 @@ function validateRun(value: unknown, path: string, rulesVersion: string): assert
   for (const [id, npc] of Object.entries(npcs)) { validateNpc(npc, `${path}.npcs.byId.${id}`); if ((npc as NpcInstance).npcId !== id) invalid(`${path}.npcs.byId.${id}.npcId`, "must match map key"); }
   const roleIndex = record(npcState.roleIndex, `${path}.npcs.roleIndex`); for (const [role, rawIds] of Object.entries(roleIndex)) { if (role.length === 0) invalid(`${path}.npcs.roleIndex`, "role must be non-empty"); const ids = strings(rawIds, `${path}.npcs.roleIndex.${role}`); if (new Set(ids).size !== ids.length || ids.some((id) => !(id in npcs) || !(npcs[id] as NpcInstance).roleTags.includes(role))) invalid(`${path}.npcs.roleIndex.${role}`, "must contain unique matching NPC IDs"); }
   for (const npc of Object.values(npcs) as NpcInstance[]) for (const role of npc.roleTags) if (!(roleIndex[role] as string[] | undefined)?.includes(npc.npcId)) invalid(`${path}.npcs.roleIndex.${role}`, "must index every persistent NPC role");
+  if (events.current !== undefined && (events.current as Record<string, unknown>).participantBindings !== undefined) for (const [slot, npcId] of Object.entries((events.current as { participantBindings: Record<string, string> }).participantBindings)) if (!(npcId in npcs)) invalid(`${path}.events.current.participantBindings.${slot}`, "must reference an existing NPC");
   const build = record(run.build, `${path}.build`);
   strings(build.techniques, `${path}.build.techniques`); strings(build.artifacts, `${path}.build.artifacts`); strings(build.consumables, `${path}.build.consumables`);
   integerRecord(build.tagScores, `${path}.build.tagScores`); optionalString(build, "mainPath", `${path}.build`); optionalString(build, "secondaryPath", `${path}.build`);

@@ -16,3 +16,4 @@ export * from "./risk.ts";
 export * from "./build.ts";
 export * from "./npc.ts";
 export * from "./director.ts";
+export * from "./participants.ts";

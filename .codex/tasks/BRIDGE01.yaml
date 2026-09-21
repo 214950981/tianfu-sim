@@ -1,0 +1,15 @@
+id: BRIDGE01
+title: authoritative-event-npc-participant-bridge
+phase: 2
+requiredContracts: [.codex/contracts/event.ref,.codex/contracts/npc.ref,.codex/contracts/state.ref,.codex/contracts/reducer.ref,.codex/contracts/viewmodel.ref,.codex/contracts/cause.ref,.codex/contracts/director.ref,.codex/contracts/rng.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [packages/core/src/npc.ts,packages/core/src/reducer.ts,packages/core/src/director.ts,packages/core/src/state.ts,packages/content/src/registry.ts,server/src/viewmodel.ts]
+allowedScope:
+  - declarative Event participant requirements for core and generated NPCs
+  - authoritative deterministic event-entry materialization and compact scene bindings
+  - safe participant presentation and Cause binding reuse
+  - participant bridge audit and minimal fixtures
+forbiddenScope: [CONTENT01-formal-content,UI02,ITEM01,TECH01,SECT01,WORLD01,CHAL01,Director-NPC-creation,generic-CREATE_NPC]
+accept: [lazy core materialization,generated exactly-once,retry and replay stable,knowledge safe,audit clean]
+tests: [bridge01,participant-bridge-audit,npc-event-cause-director-regression,full-regression,typecheck,lint,content-lint,secret-scan]

@@ -11,3 +11,4 @@ export * from "./npc-v1.ts";
 export * from "./npc-audit.ts";
 export * from "./director-v1.ts";
 export * from "./director-audit.ts";
+export * from "./participant-bridge-audit.ts";
