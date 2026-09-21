@@ -53,6 +53,7 @@ export interface DirectorSceneRecord {
   causeId?: string; riskTier?: "low" | "caution" | "dangerous" | "lethal";
 }
 export interface DirectorState { profileId: "standard" | "first_run" | string; recentScenes: DirectorSceneRecord[] }
+export interface EventOccurrenceState { occurrenceCount: number; lastOccurrenceNodeIndex: number }
 export interface BuildAffinity { buildId: string; affinityBps: number; lifetimeEvidence: number; lastEvidenceNodeIndex: number }
 interface BuildFactBase { id: string; buildId: string; source: string; sourceCommandId: string; age: number; nodeIndex: number; reasonTag: string }
 export interface BuildEvidenceFact extends BuildFactBase { type: "BUILD_FIRST_EVIDENCE" | "BUILD_EVIDENCE"; amount: number; affinityBefore: number; affinityAfter: number }
@@ -72,7 +73,7 @@ export interface RunState {
   risk?: { conditions: RiskConditionInstance[]; exposureCount: number };
   identity: { runName: string; destinyId?: string; innateProfile?: InnateProfile; rootTags: string[]; factionId?: string; titles: string[] };
   actions: { available: ActionType[]; pursuitCauseIds: string[]; recent: ActionType[] };
-  events: { current?: { eventId: string; kind: string; phase?: string; instanceId?: string; participantBindings?: Record<string, string> }; history: Array<{ eventId: string; nodeIndex: number; resultTier?: string }> };
+  events: { current?: { eventId: string; kind: string; phase?: string; instanceId?: string; participantBindings?: Record<string, string> }; history: Array<{ eventId: string; nodeIndex: number; resultTier?: string }>; occurrences?: Record<string, EventOccurrenceState> };
   causes: { byId: Record<string, CauseInstance> };
   npcs: { nextNpcSequence: number; byId: Record<string, NpcInstance>; roleIndex: Record<string, string[]> };
   build: { techniques: string[]; artifacts: string[]; consumables: string[]; tagScores: Record<string, number>; mainPath?: string; secondaryPath?: string; affinities?: Record<string, BuildAffinity>; dominantBuildId?: string; evidenceFacts?: BuildEvidenceFact[]; transitionFacts?: BuildTransitionFact[]; unlockedBuildIds?: string[] };
@@ -277,6 +278,13 @@ function validateRun(value: unknown, path: string, rulesVersion: string): assert
     const event = record(entry, `${path}.events.history[${index}]`);
     stringValue(event.eventId, `${path}.events.history[${index}].eventId`); integer(event.nodeIndex, `${path}.events.history[${index}].nodeIndex`, 0); optionalString(event, "resultTier", `${path}.events.history[${index}]`);
   }
+  if (events.occurrences !== undefined) for (const [eventId, raw] of Object.entries(record(events.occurrences, `${path}.events.occurrences`))) {
+    if (eventId.length === 0) invalid(`${path}.events.occurrences`, "eventId keys must be non-empty");
+    const occurrence = record(raw, `${path}.events.occurrences.${eventId}`); const keys = Object.keys(occurrence);
+    if (keys.length !== 2 || !keys.includes("occurrenceCount") || !keys.includes("lastOccurrenceNodeIndex")) invalid(`${path}.events.occurrences.${eventId}`, "has unknown or missing fields");
+    integer(occurrence.occurrenceCount, `${path}.events.occurrences.${eventId}.occurrenceCount`, 1);
+    integer(occurrence.lastOccurrenceNodeIndex, `${path}.events.occurrences.${eventId}.lastOccurrenceNodeIndex`, 0, run.nodeIndex as number);
+  }
   const causes = record(record(run.causes, `${path}.causes`).byId, `${path}.causes.byId`);
   for (const [id, cause] of Object.entries(causes)) { validateCause(cause, `${path}.causes.byId.${id}`); if ((cause as CauseInstance).causeId !== id) invalid(`${path}.causes.byId.${id}.causeId`, "must match map key"); }
   const npcState = record(run.npcs, `${path}.npcs`); integer(npcState.nextNpcSequence, `${path}.npcs.nextNpcSequence`, 1);
@@ -353,6 +361,7 @@ export function validateStateTransition(previousValue: unknown, nextValue: unkno
   if (next.run.npcs.nextNpcSequence < previous.run.npcs.nextNpcSequence) invalid("state.run.npcs.nextNpcSequence", "must be monotonic");
   for (const [npcId, npc] of Object.entries(previous.run.npcs.byId)) { const nextNpc = next.run.npcs.byId[npcId]; if (nextNpc === undefined) invalid(`state.run.npcs.byId.${npcId}`, "persistent NPC cannot be removed"); if (nextNpc.significance < npc.significance) invalid(`state.run.npcs.byId.${npcId}.significance`, "must be monotonic"); if (npc.promotedToA && !nextNpc.promotedToA) invalid(`state.run.npcs.byId.${npcId}.promotedToA`, "cannot be demoted"); }
   for (const [buildId, affinity] of Object.entries(previous.run.build.affinities ?? {})) { const nextAffinity = next.run.build.affinities?.[buildId]; if (nextAffinity === undefined || nextAffinity.lifetimeEvidence < affinity.lifetimeEvidence) invalid(`state.run.build.affinities.${buildId}.lifetimeEvidence`, "must be monotonic"); }
+  for (const [eventId, occurrence] of Object.entries(previous.run.events.occurrences ?? {})) { const nextOccurrence = next.run.events.occurrences?.[eventId]; if (nextOccurrence === undefined || nextOccurrence.occurrenceCount < occurrence.occurrenceCount || nextOccurrence.lastOccurrenceNodeIndex < occurrence.lastOccurrenceNodeIndex) invalid(`state.run.events.occurrences.${eventId}`, "must be monotonic"); }
   return next;
 }
 

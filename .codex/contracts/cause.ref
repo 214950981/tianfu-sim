@@ -8,7 +8,7 @@ Default echoBudget by salience: 1->0, 2->1, 3->1, 4->2, 5->3. Content override a
 Visibility is explicit; salience never automatically reveals a secret.
 created=>dormant; maturity true=>eligible; eligible echo=>echoed; echoed may return eligible if budget remains; resolve/expire terminal.
 transform = resolve old + create new Cause, never persistent "transformed" state.
-Echo selection follows lifecycle.ref precedence. Same reward/effect cannot repeat unless event explicitly defines repeat-safe effect.
+Echo selection follows lifecycle.ref precedence. Same reward/effect cannot repeat unless the concrete cumulative Effect declares event.ref repeatBehavior; repeatable risk resolution uses the separate Choice riskRepeatBehavior declaration. A global Event-level repeatSafe bypass is forbidden.
 
 Cause creation uses ReduceContext.commandId verbatim as originCommandId. Core never generates commandId and uses no clock/RNG/UUID for provenance.
 ADD_CAUSE.actorBindingKeys maps CauseTemplate role to ReduceContext.actorBindings slot. Unknown roles fail. Every required role must resolve to a non-empty opaque actorId before atomic creation; optional unbound roles are omitted. Extra context slots are ignored.

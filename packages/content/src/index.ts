@@ -16,3 +16,4 @@ export * from "./npc-content01-v1.ts";
 export * from "./content01-v1.ts";
 export * from "./content-playability-audit.ts";
 export * from "./content-sim.ts";
+export * from "./recurrence-audit.ts";

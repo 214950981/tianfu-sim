@@ -1,11 +1,11 @@
 // NODE/TIME/MORTALITY/DIRECTOR CONTRACT v0.2
 Selector precedence (single source): 
-P0 terminal/lifespan/non-delayable rule node
-P1 first-run director required slot
-P2 eligible high-salience Cause
-P3 active pursuit / core-NPC strong event
-P4 build/world/region/action/status event
-P5 ordinary/rhythm event
+P1 terminal/lifespan/non-delayable rule node
+P2 first-run director required slot
+P3 eligible high-salience Cause
+P4 active pursuit / core-NPC strong event
+P5 build/world/region/action/status event
+P6 ordinary/rhythm event
 Within a tier, use only its frozen deterministic priority (for example Cause lexicographic priority); Phase 1 Event candidate sets use the canonical equal-selection rule below and no scalar score.
 
 CHOOSE_ACTION order:
@@ -17,7 +17,7 @@ Phase 1 world advance changes only age and nodeIndex. NPC/world/Build/Director s
 If proposedAge>=maxAge, cap age at maxAge, set dying/lifespan ending state, and skip ordinary Event selection without event RNG or a required lifespan_end content Event.
 Selector uses the first priority tier with a legal candidate. Unimplemented Director/NPC/Build tiers have no candidates.
 After Cause echo, Phase 1 uses action-affinity Events, then ordinary Events. Within a tier: 0 candidates continues with no RNG; 1 selects directly with no RNG; 2+ sorts eventId ASC then makes one logical unbiased event-stream request. No scalar score or hidden weight is used.
-Cause-linked echo Events are legal only through P2 and are excluded from P4/P5 action/ordinary candidate pools.
+Cause-linked echo Events are legal only through P3 and are excluded from P5/P6 action/ordinary candidate pools.
 ViewState should show an estimated time range and `lifespanRisk` if the action can reach maxAge; if guaranteed, require confirm UI later.
 
 CHOOSE_EVENT_OPTION order:

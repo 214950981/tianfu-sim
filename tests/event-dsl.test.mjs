@@ -45,7 +45,7 @@ function activeState(content, eventId = "event.start", overrides = {}) {
   const started = reduce({ state: offered, command: { type: "START_RUN", offerId: "offer-event", destinyId: "d1" }, context: { rulesVersion: "2.0.0", contentVersion: "event-content-1", content, commandId: "cmd:start" } }).state;
   return validateGameState({
     ...started,
-    run: { ...started.run, ...overrides, events: { history: overrides.events?.history ?? [], current: { eventId, kind: "choice" } } }
+    run: { ...started.run, ...overrides, events: { history: overrides.events?.history ?? [], occurrences: overrides.events?.occurrences ?? started.run.events.occurrences, current: { eventId, kind: "choice" } } }
   });
 }
 function context(content) { return { rulesVersion: "2.0.0", contentVersion: "event-content-1", content, commandId: "cmd:event" }; }
@@ -93,11 +93,11 @@ test("CNT-003: hard requirements and cooldown/maxOccurrences are enforceable", (
   const blocked = event("event.blocked", [], { requirements: { gte: ["run.age", 999] } });
   const cooled = event("event.cooled", [], { cooldown: { minNodesBetween: 1, maxOccurrences: 2 } });
   const content = registered([blocked, cooled]);
-  const state = activeState(content, "event.blocked", { nodeIndex: 2, events: { history: [{ eventId: "event.cooled", nodeIndex: 1 }] } });
+  const state = activeState(content, "event.blocked", { nodeIndex: 2, events: { history: [{ eventId: "event.cooled", nodeIndex: 1 }], occurrences: { "event.cooled": { occurrenceCount: 1, lastOccurrenceNodeIndex: 1 } } } });
   assert.deepEqual(eligibleEvents([blocked, cooled], state), []);
   const later = validateGameState({ ...state, run: { ...state.run, nodeIndex: 3, events: state.run.events } });
   assert.deepEqual(eligibleEvents([blocked, cooled], later).map((value) => value.id), ["event.cooled"]);
-  const exhausted = validateGameState({ ...later, run: { ...later.run, events: { ...later.run.events, history: [...later.run.events.history, { eventId: "event.cooled", nodeIndex: 0 }] } } });
+  const exhausted = validateGameState({ ...later, run: { ...later.run, events: { ...later.run.events, occurrences: { "event.cooled": { occurrenceCount: 2, lastOccurrenceNodeIndex: 1 } } } } });
   assert.deepEqual(eligibleEvents([cooled], exhausted), []);
 });
 

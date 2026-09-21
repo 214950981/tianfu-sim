@@ -13,7 +13,8 @@ type ConditionExpr =
  {relationLte:[string,'affinity'|'trust'|'debt',number]}|
  {causeStateIs:[string,'dormant'|'eligible'|'echoed'|'resolved'|'expired']}|
  {npcStatusIs:[string,string]};
-type EffectSpec =
+type RepeatBehavior='allow-cumulative';
+type EffectSpec = (
  {op:'ADD_RESOURCE'|'REMOVE_RESOURCE';key:'spiritStone';amount:number}|
  {op:'ADD_ITEM'|'REMOVE_ITEM';itemId:string;amount:number}|
  {op:'ADD_CULTIVATION';amount:number}|
@@ -36,7 +37,7 @@ type EffectSpec =
 
  {op:'setSessionFlag';key:string;value:boolean}|
  {op:'adjustSessionCounter';key:string;delta:number}|
- {op:'addSessionTag'|'removeSessionTag';tag:string};
+ {op:'addSessionTag'|'removeSessionTag';tag:string}) & {repeatBehavior?:RepeatBehavior};
 
 type EventSessionState={flags:Record<string,boolean>;counters:Record<string,number>;tags:string[]};
 
@@ -44,10 +45,23 @@ type Outcome={effects:EffectSpec[];next?:Transition[];fallbackKey?:string};
 type OutcomeTable={greatSuccess?:Outcome;success:Outcome;costlySuccess?:Outcome;failure?:Outcome};
 type Transition={eventId:string;when?:ConditionExpr;priority?:number};
 type CheckSpec={primary:'insight'|'body'|'spiritSense'|'fortune';secondary?:'insight'|'body'|'spiritSense'|'fortune';secondaryWeightBps?:number;difficulty:number;randomMin:-10;randomMax:10};
-type ChoiceDefinition={id:string;scope:'core'|'tactical';rhythmOnly?:boolean;labelKey:string;requirements?:ConditionExpr;check?:CheckSpec;threatId?:string;outcomes:OutcomeTable;next?:Transition[]};
+type ChoiceDefinition={id:string;scope:'core'|'tactical';rhythmOnly?:boolean;labelKey:string;requirements?:ConditionExpr;check?:CheckSpec;threatId?:string;riskRepeatBehavior?:'allow-repeat-resolution';outcomes:OutcomeTable;next?:Transition[]};
 type DirectorHints={salience:1|2|3|4|5;baseWeight?:number;topicTags:string[];continuityTags:string[];buildAffinityTags:string[];npcRoleAffinityTags:string[];worldAffinityTags:string[];onboardingEligible?:boolean};
 type EventParticipantRequirement={slot:string;source:{kind:'core';npcDefinitionId:string}|{kind:'generated';archetypeId:string}};
 type EventDefinition={id:string;version:number;kind:'choice'|'narrative'|'combat'|'breakthrough'|'ending'|'tutorial';titleKey:string;tags:string[];requirements?:ConditionExpr;weight:number;actionAffinity?:ActionType[];directorHints?:DirectorHints;participants?:EventParticipantRequirement[];cooldown?:{minNodesBetween?:number;maxOccurrences?:number};choices?:ChoiceDefinition[];onEnter?:EffectSpec[];ai?:unknown;fallback:{titleKey?:string;bodyKey:string};telemetry?:Record<string,string>};
+
+// cooldown is the versioned recurrence declaration. maxOccurrences is a positive safe integer; minNodesBetween is a nonnegative safe integer.
+// Missing cooldown preserves legacy eligibility. Missing maxOccurrences means no per-Run cap; missing minNodesBetween means no node cooldown.
+// Event eligibility reads RunState.events.occurrences[eventId] in O(1). Candidate inspection never mutates occurrence state.
+// Once an Event is authoritatively selected as the current scene, the reducer records exactly one occurrence at the selection node.
+// minNodesBetween=N rejects the Event while currentNodeIndex-lastOccurrenceNodeIndex<=N and permits it at N+1.
+// A recurrence declaration with maxOccurrences=1 cannot repeat and needs no repeat-effect declaration.
+// For a recurrence declaration that can repeat, each cumulative Effect must individually declare repeatBehavior:'allow-cumulative'.
+// Cumulative Effects are resource/item deltas, cultivation gain, condition add, NPC relation/significance/milestone deltas,
+// Cause add/resolve/expire, component grant/remove, outcome time delta, and Build evidence.
+// Idempotent set/reveal/remove-tag/set-region/session-local Effects need no declaration and cannot carry repeatBehavior.
+// A repeatable risk Choice must declare riskRepeatBehavior:'allow-repeat-resolution'; this covers only authoritative Threat resolution and never other Effects.
+// These declarations authorize intentional repeated semantics; they never patch occurrence state or bypass the normal Effect validators/resolvers.
 
 // LogicalPath is a stable DSL namespace, NOT direct GameState property access.
 // core Choice must change >=1 long-term dimension unless event explicitly marked rhythm-only.

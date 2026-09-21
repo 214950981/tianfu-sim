@@ -26,7 +26,7 @@ export type ConditionExpr =
   | { relationLte: [string, "affinity" | "trust" | "debt", number] }
   | { causeStateIs: [string, "dormant" | "eligible" | "echoed" | "resolved" | "expired"] }
   | { npcStatusIs: [string, string] };
-export type EffectSpec =
+export type EffectSpec = (
   | { op: "ADD_RESOURCE" | "REMOVE_RESOURCE"; key: "spiritStone"; amount: number }
   | { op: "ADD_ITEM" | "REMOVE_ITEM"; itemId: string; amount: number }
   | { op: "ADD_CULTIVATION"; amount: number }
@@ -48,12 +48,13 @@ export type EffectSpec =
   | { op: "ADD_BUILD_EVIDENCE"; buildId: string; amount: number; reasonTag: string }
   | { op: "setSessionFlag"; key: string; value: boolean }
   | { op: "adjustSessionCounter"; key: string; delta: number }
-  | { op: "addSessionTag" | "removeSessionTag"; tag: string };
+  | { op: "addSessionTag" | "removeSessionTag"; tag: string }
+) & { repeatBehavior?: "allow-cumulative" };
 export interface Transition { eventId: string; when?: ConditionExpr; priority?: number }
 export interface Outcome { effects: EffectSpec[]; next?: Transition[]; fallbackKey?: string }
 export interface OutcomeTable { greatSuccess?: Outcome; success: Outcome; costlySuccess?: Outcome; failure?: Outcome }
 export interface CheckSpec { primary: "insight" | "body" | "spiritSense" | "fortune"; secondary?: "insight" | "body" | "spiritSense" | "fortune"; secondaryWeightBps?: number; difficulty: number; randomMin: -10; randomMax: 10 }
-export interface ChoiceDefinition { id: string; scope: "core" | "tactical"; rhythmOnly?: boolean; labelKey: string; requirements?: ConditionExpr; check?: CheckSpec; threatId?: string; outcomes: OutcomeTable; next?: Transition[] }
+export interface ChoiceDefinition { id: string; scope: "core" | "tactical"; rhythmOnly?: boolean; labelKey: string; requirements?: ConditionExpr; check?: CheckSpec; threatId?: string; riskRepeatBehavior?: "allow-repeat-resolution"; outcomes: OutcomeTable; next?: Transition[] }
 export interface EventDefinition {
   id: string; version: number; kind: "choice" | "narrative" | "combat" | "breakthrough" | "ending" | "tutorial";
   titleKey: string; tags: string[]; requirements?: ConditionExpr; weight: number;
@@ -120,6 +121,7 @@ const destinyTargets = new Set(["insight", "body", "spiritSense", "fortune", "ma
 const actionTypes = new Set<string>(ACTION_TYPES);
 const sessionOps = new Set(["setSessionFlag", "adjustSessionCounter", "addSessionTag", "removeSessionTag"]);
 const longTermOps = new Set(["ADD_RESOURCE", "REMOVE_RESOURCE", "ADD_ITEM", "REMOVE_ITEM", "ADD_CULTIVATION", "ADD_CONDITION", "REMOVE_CONDITION", "ADD_IDENTITY_TAG", "REMOVE_IDENTITY_TAG", "ADD_WORLD_TAG", "REMOVE_WORLD_TAG", "ADJUST_NPC_RELATION", "ADD_NPC_SIGNIFICANCE", "REVEAL_NPC_FACT", "REVEAL_NPC_TRAIT", "REVEAL_NPC_STATUS", "SET_NPC_STATUS", "ADD_NPC_MILESTONE", "ADD_CAUSE", "RESOLVE_CAUSE", "EXPIRE_CAUSE", "GRANT_COMPONENT", "REMOVE_COMPONENT", "SET_REGION", "OUTCOME_TIME_DELTA", "ADD_BUILD_EVIDENCE"]);
+export const REPEAT_SENSITIVE_EFFECT_OPS = new Set(["ADD_RESOURCE", "REMOVE_RESOURCE", "ADD_ITEM", "REMOVE_ITEM", "ADD_CULTIVATION", "ADD_CONDITION", "ADJUST_NPC_RELATION", "ADD_NPC_SIGNIFICANCE", "ADD_NPC_MILESTONE", "ADD_CAUSE", "RESOLVE_CAUSE", "EXPIRE_CAUSE", "GRANT_COMPONENT", "REMOVE_COMPONENT", "OUTCOME_TIME_DELTA", "ADD_BUILD_EVIDENCE"]);
 
 function fail(path: string, message: string): never { throw new ContentValidationError(`${path}: ${message}`); }
 function objectValue(value: unknown, path: string): ObjectValue {
@@ -199,7 +201,9 @@ function validateNpcTarget(effect: ObjectValue, path: string): readonly string[]
 function validateNpcReason(effect: ObjectValue, npcPack: NpcPack | undefined, path: string): void { if (npcPack === undefined) fail(path, "requires a locked NPC pack"); const reason = stringValue(effect.reasonTag, `${path}.reasonTag`); if (!npcPack.reasonTags.includes(reason)) fail(`${path}.reasonTag`, `unknown NPC reason tag ${reason}`); }
 
 function validateEffect(value: unknown, refs: ReferenceSets, buildPack: BuildPack | undefined, npcPack: NpcPack | undefined, path: string): string {
-  const effect = objectValue(value, path); const op = stringValue(effect.op, `${path}.op`);
+  const source = objectValue(value, path); const repeatBehavior = source.repeatBehavior;
+  if (repeatBehavior !== undefined && repeatBehavior !== "allow-cumulative") fail(`${path}.repeatBehavior`, "must be allow-cumulative");
+  const effect = { ...source }; delete effect.repeatBehavior; const op = stringValue(effect.op, `${path}.op`);
   switch (op) {
     case "ADD_RESOURCE": case "REMOVE_RESOURCE": exact(effect, ["op", "key", "amount"], [], path); if (effect.key !== "spiritStone") fail(`${path}.key`, "must be spiritStone"); integer(effect.amount, `${path}.amount`, 0); break;
     case "ADD_ITEM": case "REMOVE_ITEM": exact(effect, ["op", "itemId", "amount"], [], path); requireReference(effect.itemId, refs.items, `${path}.itemId`); integer(effect.amount, `${path}.amount`, 1); break;
@@ -225,6 +229,7 @@ function validateEffect(value: unknown, refs: ReferenceSets, buildPack: BuildPac
     case "addSessionTag": case "removeSessionTag": exact(effect, ["op", "tag"], [], path); stringValue(effect.tag, `${path}.tag`); break;
     default: fail(`${path}.op`, `unknown effect ${op}`);
   }
+  if (repeatBehavior !== undefined && !REPEAT_SENSITIVE_EFFECT_OPS.has(op)) fail(`${path}.repeatBehavior`, "is allowed only for repeat-sensitive effects");
   return op;
 }
 
@@ -244,13 +249,15 @@ function validateOutcome(value: unknown, refs: ReferenceSets, eventIds: Set<stri
 }
 
 function validateChoice(value: unknown, refs: ReferenceSets, eventIds: Set<string>, threatIds: Set<string>, buildPack: BuildPack | undefined, npcPack: NpcPack | undefined, currentEventId: string, path: string): string {
-  const choice = objectValue(value, path); exact(choice, ["id", "scope", "labelKey", "outcomes"], ["rhythmOnly", "requirements", "check", "threatId", "next"], path);
+  const choice = objectValue(value, path); exact(choice, ["id", "scope", "labelKey", "outcomes"], ["rhythmOnly", "requirements", "check", "threatId", "riskRepeatBehavior", "next"], path);
   const id = stringValue(choice.id, `${path}.id`); const scope = oneOf(choice.scope, new Set(["core", "tactical"]), `${path}.scope`);
   if (choice.rhythmOnly !== undefined && typeof choice.rhythmOnly !== "boolean") fail(`${path}.rhythmOnly`, "must be a boolean");
   const rhythmOnly = choice.rhythmOnly === true;
   if (scope === "tactical" && rhythmOnly) fail(`${path}.rhythmOnly`, "is allowed only for core choices");
   stringValue(choice.labelKey, `${path}.labelKey`); if (choice.requirements !== undefined) validateCondition(choice.requirements, `${path}.requirements`);
   if (choice.threatId !== undefined) requireReference(choice.threatId, threatIds, `${path}.threatId`);
+  if (choice.riskRepeatBehavior !== undefined && choice.riskRepeatBehavior !== "allow-repeat-resolution") fail(`${path}.riskRepeatBehavior`, "must be allow-repeat-resolution");
+  if (choice.riskRepeatBehavior !== undefined && choice.threatId === undefined) fail(`${path}.riskRepeatBehavior`, "requires threatId");
   if (choice.threatId !== undefined && choice.check !== undefined) fail(path, "risk choice uses its ThreatDefinition CheckSpec and cannot declare a second check");
   if (choice.check !== undefined) {
     const check = objectValue(choice.check, `${path}.check`); exact(check, ["primary", "difficulty", "randomMin", "randomMax"], ["secondary", "secondaryWeightBps"], `${path}.check`);
@@ -275,6 +282,25 @@ function validateChoice(value: unknown, refs: ReferenceSets, eventIds: Set<strin
     if (!meaningful) fail(path, "tactical choice must be meaningful");
   }
   return id;
+}
+
+function validateRepeatSafety(event: ObjectValue, path: string): void {
+  if (event.cooldown === undefined) return;
+  const cooldown = objectValue(event.cooldown, `${path}.cooldown`);
+  if (cooldown.maxOccurrences === 1) return;
+  const requireEffects = (effectsValue: unknown, effectsPath: string): void => {
+    for (const [index, raw] of array(effectsValue, effectsPath).entries()) {
+      const effect = objectValue(raw, `${effectsPath}[${index}]`); const op = stringValue(effect.op, `${effectsPath}[${index}].op`);
+      if (REPEAT_SENSITIVE_EFFECT_OPS.has(op) && effect.repeatBehavior !== "allow-cumulative") fail(`${effectsPath}[${index}].repeatBehavior`, "repeatable Event requires an explicit allow-cumulative declaration");
+    }
+  };
+  if (event.onEnter !== undefined) requireEffects(event.onEnter, `${path}.onEnter`);
+  for (const [choiceIndex, rawChoice] of array(event.choices ?? [], `${path}.choices`).entries()) {
+    const choice = objectValue(rawChoice, `${path}.choices[${choiceIndex}]`);
+    if (choice.threatId !== undefined && choice.riskRepeatBehavior !== "allow-repeat-resolution") fail(`${path}.choices[${choiceIndex}].riskRepeatBehavior`, "repeatable risk Choice requires an explicit allow-repeat-resolution declaration");
+    const outcomes = objectValue(choice.outcomes, `${path}.choices[${choiceIndex}].outcomes`);
+    for (const tier of ["greatSuccess", "success", "costlySuccess", "failure"]) if (outcomes[tier] !== undefined) requireEffects(objectValue(outcomes[tier], `${path}.choices[${choiceIndex}].outcomes.${tier}`).effects, `${path}.choices[${choiceIndex}].outcomes.${tier}.effects`);
+  }
 }
 
 function referenceSets(value: unknown): ReferenceSets {
@@ -312,6 +338,7 @@ function validateEvent(value: unknown, refs: ReferenceSets, eventIds: Set<string
   if (event.cooldown !== undefined) { const cooldown = objectValue(event.cooldown, `${path}.cooldown`); exact(cooldown, [], ["minNodesBetween", "maxOccurrences"], `${path}.cooldown`); if (cooldown.minNodesBetween !== undefined) integer(cooldown.minNodesBetween, `${path}.cooldown.minNodesBetween`, 0); if (cooldown.maxOccurrences !== undefined) integer(cooldown.maxOccurrences, `${path}.cooldown.maxOccurrences`, 1); }
   if (event.choices !== undefined) { const ids = array(event.choices, `${path}.choices`).map((choice, index) => validateChoice(choice, refs, eventIds, threatIds, buildPack, npcPack, event.id as string, `${path}.choices[${index}]`)); unique(ids, `${path}.choices`); }
   if (event.onEnter !== undefined) array(event.onEnter, `${path}.onEnter`).forEach((effect, index) => validateEffect(effect, refs, buildPack, npcPack, `${path}.onEnter[${index}]`));
+  validateRepeatSafety(event, path);
   if (event.ai !== undefined) jsonValue(event.ai, `${path}.ai`);
   const fallback = objectValue(event.fallback, `${path}.fallback`); exact(fallback, ["bodyKey"], ["titleKey"], `${path}.fallback`); stringValue(fallback.bodyKey, `${path}.fallback.bodyKey`); if (fallback.titleKey !== undefined) stringValue(fallback.titleKey, `${path}.fallback.titleKey`);
   if (event.telemetry !== undefined) for (const [key, entry] of Object.entries(objectValue(event.telemetry, `${path}.telemetry`))) stringValue(entry, `${path}.telemetry.${key}`);

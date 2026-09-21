@@ -10,6 +10,8 @@ export type Reducer=(i:ReduceInput)=>ReduceOutput;
 // After any selector/transition chooses an Event, reducer materializes its declared participants before returning authoritative state or building ViewModel.
 // Materialization is part of the same atomic transition: core NPC reuse consumes no RNG; generated participants consume only existing npc-stream draws and are persisted by event instance slot.
 // A repeated/replayed command deterministically reuses the persisted event instance and bindings; failures return no partial NPC, binding, RNG or state mutation.
+// After authoritative selection/materialization, reducer records the selected Event occurrence exactly once in RunState.events.occurrences.
+// Director/Cause selectors read recurrence eligibility but never write occurrence state. ViewModel reads, retries, and Snapshot restore do not increment it.
 
 // createOfferedRun(...) is the only pure pre-reducer factory; server supplies trusted runId/playerId/rootSeed/version/metaView.
 // Once GameState exists, all rule mutation goes through reduce.

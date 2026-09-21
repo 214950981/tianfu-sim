@@ -1,0 +1,16 @@
+id: LOOPFIX02A
+title: event-recurrence-and-repeat-safe-foundation
+phase: 2
+requiredContracts: [.codex/contracts/event.ref,.codex/contracts/cause.ref,.codex/contracts/lifecycle.ref,.codex/contracts/director.ref,.codex/contracts/state.ref,.codex/contracts/reducer.ref,.codex/contracts/command.ref,.codex/contracts/rng.ref,.codex/contracts/crosslayer.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [packages/content/src/registry.ts,packages/core/src/state.ts,packages/core/src/director.ts,packages/core/src/reducer.ts,packages/core/src/persistence.ts]
+allowedScope:
+  - declarative Event recurrence schema, validation and O(1) eligibility gates
+  - compact deterministic occurrence state with snapshot, replay and retry stability
+  - repeat-safe declaration and validation required by cause.ref
+  - lifecycle P1-P6 terminology synchronization without precedence changes
+  - recurrence audit and targeted regression fixtures
+forbiddenScope: [CONTENT01-formal-content,LOOPFIX02B,Cause-closure,NPC-weight-changes,Build-balance-changes,Risk-changes,Director-precedence-changes,P6-special-selection,UI02,ITEM01,TECH01,SECT01,WORLD01,CHAL01]
+accept: [backward-compatible recurrence,exactly-once occurrence updates,repeat-sensitive effects enforced,replay and hash stable,P1-P6 terminology aligned,audit clean]
+tests: [loopfix02a,recurrence-audit,event-cause-npc-director-regression,full-regression,typecheck,lint,content-lint,secret-scan]

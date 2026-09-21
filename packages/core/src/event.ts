@@ -175,13 +175,19 @@ export function isEventEligible(value: unknown, state: GameState): boolean {
   if (event.requirements !== undefined && !evaluateCondition(event.requirements, state)) return false;
   if (event.cooldown === undefined) return true;
   const cooldown = objectValue(event.cooldown, "event.cooldown"); const eventId = stringValue(event.id, "event.id");
-  const occurrences = state.run.events.history.filter((entry) => entry.eventId === eventId);
-  if (cooldown.maxOccurrences !== undefined && occurrences.length >= integer(cooldown.maxOccurrences, "cooldown.maxOccurrences")) return false;
-  if (cooldown.minNodesBetween !== undefined && occurrences.length > 0) {
-    const lastNode = occurrences[occurrences.length - 1].nodeIndex;
-    if (state.run.nodeIndex - lastNode <= integer(cooldown.minNodesBetween, "cooldown.minNodesBetween")) return false;
+  const occurrence = state.run.events.occurrences?.[eventId];
+  if (cooldown.maxOccurrences !== undefined && (occurrence?.occurrenceCount ?? 0) >= integer(cooldown.maxOccurrences, "cooldown.maxOccurrences")) return false;
+  if (cooldown.minNodesBetween !== undefined && occurrence !== undefined) {
+    if (state.run.nodeIndex - occurrence.lastOccurrenceNodeIndex <= integer(cooldown.minNodesBetween, "cooldown.minNodesBetween")) return false;
   }
   return true;
+}
+
+export function recordEventOccurrence(state: GameState, eventId: string): GameState {
+  if (eventId.length === 0) fail("INVALID_EVENT", "eventId must be non-empty");
+  const occurrences = state.run.events.occurrences ?? {}; const current = occurrences[eventId];
+  const occurrenceCount = safeAdd(current?.occurrenceCount ?? 0, 1);
+  return { ...state, run: { ...state.run, events: { ...state.run.events, occurrences: { ...occurrences, [eventId]: { occurrenceCount, lastOccurrenceNodeIndex: state.run.nodeIndex } } } } };
 }
 
 export function eligibleEvents(values: readonly unknown[], state: GameState): unknown[] {
