@@ -1,4 +1,5 @@
 id: A07
+phase: 1
 title: destiny-offer-vertical-slice
 read: [.codex/contracts/state.ref,.codex/contracts/command.ref,.codex/contracts/rng.ref,.codex/contracts/lifecycle.ref]
 blockers: []

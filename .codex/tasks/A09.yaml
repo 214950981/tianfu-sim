@@ -1,4 +1,5 @@
 id: A09
+phase: 1
 title: cause-first-echo
 read: [.codex/contracts/cause.ref,.codex/contracts/event.ref,.codex/contracts/lifecycle.ref]
 blockers: []

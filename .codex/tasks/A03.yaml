@@ -1,4 +1,5 @@
 id: A03
+phase: 1
 title: game-state-v0.2
 read: [.codex/contracts/state.ref,.codex/contracts/numeric.ref,.codex/contracts/rng.ref]
 blockers: []

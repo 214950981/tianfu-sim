@@ -1,0 +1,14 @@
+id: DIRECTOR01
+title: deterministic-life-director
+phase: 2
+requiredContracts: [.codex/contracts/director.ref,.codex/contracts/event.ref,.codex/contracts/state.ref,.codex/contracts/reducer.ref,.codex/contracts/viewmodel.ref,.codex/contracts/cause.ref,.codex/contracts/build.ref,.codex/contracts/npc.ref,.codex/contracts/risk.ref,.codex/contracts/rng.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [packages/core/src/director.ts,packages/content/src/director-v1.ts,packages/content/src/registry.ts,packages/core/src/reducer.ts,tests/director.test.mjs]
+allowedScope:
+  - indexed P1-P6 selector precedence and deterministic Director RNG
+  - declarative metadata, bounded continuity, pacing and audit trace
+  - read-only Cause, NPC, Build and Risk context integration
+forbiddenScope: [CONTENT01,UI02,CHAL01,rule-outcomes,rewards,death-resolution,AI-runtime,full-library-hot-path-scan]
+accept: [precedence stable,indexed selection,replay stable,ViewModel safe,director-audit clean]
+tests: [director,director-audit,typecheck,lint,content-lint,secret-scan]

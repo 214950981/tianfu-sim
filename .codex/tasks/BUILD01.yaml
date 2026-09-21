@@ -1,0 +1,14 @@
+id: BUILD01
+title: data-driven-path-builds
+phase: 2
+requiredContracts: [.codex/contracts/build.ref,.codex/contracts/event.ref,.codex/contracts/state.ref,.codex/contracts/viewmodel.ref,.codex/contracts/progression.ref,.codex/contracts/risk.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [packages/core/src/build.ts,packages/content/src/build-v1.ts,packages/core/src/state.ts,server/src/viewmodel.ts,tests/build.test.mjs]
+allowedScope:
+  - evidence-driven Build affinity, stages, dominance and branches
+  - registered Progression and Risk modifier integration
+  - deterministic Build projection, replay and build-audit
+forbiddenScope: [NPC01,DIRECTOR01,CONTENT01,UI02,CHAL01,full-combat,new-probability-system]
+accept: [registry scalable,modifiers owner-bound,replay stable,build-audit clean]
+tests: [build,build-audit,typecheck,lint,content-lint,secret-scan]

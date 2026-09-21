@@ -1,4 +1,5 @@
 id: A12
+phase: 1
 title: wechat-viewmodel-e2e
 read: [.codex/contracts/ui.ref,.codex/contracts/viewmodel.ref,.codex/contracts/page-state.ref,.codex/PAGE_STATE_MAP.yaml,.codex/contracts/platform.ref,.codex/contracts/crosslayer.ref,.codex/contracts/command.ref,.codex/contracts/ending.ref,.codex/contracts/qa.yaml]
 blockers: []

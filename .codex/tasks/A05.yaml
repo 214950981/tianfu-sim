@@ -1,4 +1,5 @@
 id: A05
+phase: 1
 title: reducer-offered-start
 read: [.codex/contracts/reducer.ref,.codex/contracts/state.ref,.codex/contracts/command.ref,.codex/contracts/lifecycle.ref,.codex/contracts/numeric.ref]
 blockers: []

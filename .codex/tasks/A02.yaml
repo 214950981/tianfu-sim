@@ -1,4 +1,5 @@
 id: A02
+phase: 1
 title: seeded-rng-numeric
 read: [.codex/contracts/rng.ref,.codex/contracts/numeric.ref]
 blockers: []

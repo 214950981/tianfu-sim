@@ -1,0 +1,14 @@
+id: NPC01
+title: deterministic-scalable-npcs
+phase: 2
+requiredContracts: [.codex/contracts/npc.ref,.codex/contracts/event.ref,.codex/contracts/state.ref,.codex/contracts/viewmodel.ref,.codex/contracts/cause.ref,.codex/contracts/rng.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [packages/core/src/npc.ts,packages/content/src/npc-v1.ts,packages/core/src/state.ts,server/src/viewmodel.ts,tests/npc.test.mjs]
+allowedScope:
+  - core and generated NPC registries with deterministic identity
+  - compact persistence, knowledge boundary, Cause actor availability
+  - deterministic replay and npc-audit
+forbiddenScope: [DIRECTOR01,CONTENT01,UI02,CHAL01,AI-dialogue,global-NPC-tick]
+accept: [knowledge boundary enforced,Cause availability authoritative,replay stable,npc-audit clean]
+tests: [npc,npc-audit,typecheck,lint,content-lint,secret-scan]

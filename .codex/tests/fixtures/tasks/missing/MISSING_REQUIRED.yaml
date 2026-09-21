@@ -1,0 +1,9 @@
+id: MISSING_REQUIRED
+title: missing-required-fixture
+phase: 2
+requiredContracts: [.codex/contracts/does-not-exist.ref]
+optionalContracts: []
+blockers: []
+allowedScope: [test]
+forbiddenScope: []
+tests: [context-missing]

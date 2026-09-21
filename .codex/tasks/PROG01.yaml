@@ -1,0 +1,14 @@
+id: PROG01
+title: progression-and-innate-profile
+phase: 2
+requiredContracts: [.codex/contracts/progression.ref,.codex/contracts/state.ref,.codex/contracts/command.ref,.codex/contracts/event.ref,.codex/contracts/reducer.ref,.codex/contracts/rng.ref,.codex/contracts/numeric.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [packages/core/src/progression.ts,packages/content/src/progression-v1.ts,packages/core/src/state.ts,packages/core/src/command.ts,tests/progression.test.mjs]
+allowedScope:
+  - data-driven Realm progression and active breakthrough
+  - InnateProfile registries, deterministic offer, Modifier and Hook aggregation
+  - combo-audit, replay and ViewModel-safe integration
+forbiddenScope: [RISK01,BUILD01,NPC01,DIRECTOR01,CONTENT01,UI02,CHAL01]
+accept: [frozen progression rules pass,offer deterministic,replay stable,combo-audit clean]
+tests: [progression,combo-audit,typecheck,lint,content-lint,secret-scan]

@@ -1,0 +1,9 @@
+id: TEST_PHASE2_EXTENSION
+title: test-only-extension
+phase: 2
+requiredContracts: [.codex/contracts/state.ref,.codex/contracts/numeric.ref]
+optionalContracts: []
+blockers: []
+allowedScope: [prove data-driven discovery]
+forbiddenScope: [production-registration]
+tests: [context-extension-smoke]

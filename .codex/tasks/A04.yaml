@@ -1,4 +1,5 @@
 id: A04
+phase: 1
 title: command-contract
 read: [.codex/contracts/command.ref,.codex/contracts/state.ref]
 blockers: []

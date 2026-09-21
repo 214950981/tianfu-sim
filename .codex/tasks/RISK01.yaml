@@ -1,0 +1,14 @@
+id: RISK01
+title: authoritative-risk-and-death
+phase: 2
+requiredContracts: [.codex/contracts/risk.ref,.codex/contracts/event.ref,.codex/contracts/state.ref,.codex/contracts/viewmodel.ref,.codex/contracts/reducer.ref,.codex/contracts/rng.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [packages/core/src/risk.ts,packages/content/src/risk-v1.ts,packages/core/src/state.ts,server/src/viewmodel.ts,tests/risk.test.mjs]
+allowedScope:
+  - Threat, RiskCondition and DeathCause registries
+  - authoritative RiskResolver, warnings, DeathRecord and risk-audit
+  - deterministic replay and public RiskPresentation projection
+forbiddenScope: [BUILD01,NPC01,DIRECTOR01,CONTENT01,UI02,CHAL01,direct-death-content,resurrection]
+accept: [death boundary enforced,warning fairness enforced,replay stable,risk-audit clean]
+tests: [risk,risk-audit,typecheck,lint,content-lint,secret-scan]

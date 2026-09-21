@@ -1,0 +1,9 @@
+id: OPTIONAL_MISSING
+title: optional-missing-fixture
+phase: 2
+requiredContracts: [.codex/contracts/state.ref]
+optionalContracts: [.codex/contracts/optional-does-not-exist.ref]
+blockers: []
+allowedScope: [test]
+forbiddenScope: []
+tests: [context-optional]

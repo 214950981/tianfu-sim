@@ -1,4 +1,5 @@
 id: A10
+phase: 1
 title: snapshot-commandlog-replay
 read: [.codex/contracts/state.ref,.codex/contracts/command.ref,.codex/contracts/rng.ref,.codex/contracts/qa.yaml]
 blockers: []

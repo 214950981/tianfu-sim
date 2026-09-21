@@ -30,6 +30,9 @@
     "npc-audit": "node tools/npc-audit.mjs",
     "test:director01": "node --test tests/director.test.mjs",
     "director-audit": "node tools/director-audit.mjs",
+    "test:tool01": "node --test tests/context-loader.test.mjs",
+    "context:smoke": "node .codex/context.mjs DIRECTOR01",
+    "phase2:drift-audit": "node tools/phase2-drift-audit.mjs",
     "replay": "node tools/replay.mjs",
     "content:lint": "node tools/content-lint.mjs packages/content/dev-fixtures/minimal-pack.json",
     "scan:secrets": "node tools/scan-secrets.mjs"

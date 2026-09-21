@@ -1,0 +1,9 @@
+id: UNSAFE_PATH
+title: unsafe-path-fixture
+phase: 2
+requiredContracts: [.codex/contracts/../DECISIONS.yaml]
+optionalContracts: []
+blockers: []
+allowedScope: [test]
+forbiddenScope: []
+tests: [context-security]

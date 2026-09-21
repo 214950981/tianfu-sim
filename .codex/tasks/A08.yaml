@@ -1,4 +1,5 @@
 id: A08
+phase: 1
 title: event-dsl
 read: [.codex/contracts/event.ref,.codex/contracts/reducer.ref,.codex/contracts/lifecycle.ref,.codex/contracts/numeric.ref]
 blockers: []

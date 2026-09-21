@@ -1,4 +1,5 @@
 id: A11
+phase: 1
 title: server-command-gateway
 read: [.codex/contracts/command.ref,.codex/contracts/reducer.ref,.codex/contracts/crosslayer.ref,.codex/contracts/platform.ref,.codex/contracts/qa.yaml]
 blockers: []
