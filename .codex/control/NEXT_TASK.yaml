@@ -1,0 +1,25 @@
+version: 1
+status: READY
+taskId: LOOPFIX02B2
+title: LOOPFIX02B2 — Cause Closure / Lifecycle
+taskDefinition: .codex/tasks/LOOPFIX02B2.yaml
+sourceBranch: dev/tianfu-2.0
+workBranch: wb-LOOPFIX02B2
+worktreeRequired: true
+basePolicy: remote-source-head-at-task-start
+execution:
+  readProtocolFirst: true
+  commitTaskResult: true
+  pushWorkBranch: true
+  updateSourceBranch: false
+  startNextTask: false
+controllerIntent:
+  mode: content-first
+  goal: authorize terminal player-facing closure for every CONTENT01 Cause echo
+  closurePolicy: engage-and-consider-resolve; leave-expires
+  requireAllChoicesTerminal: true
+  forbidZeroBudgetZombiePath: true
+notes:
+  - LOOPFIX02B2_R1 is PASS and must not be reimplemented.
+  - Cause-linked Events are reserved from ordinary Director indexes; closure choices may safely use triggeringCause:true.
+  - If Core/contracts/Director changes appear necessary, stop and return BLOCKED.

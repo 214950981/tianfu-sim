@@ -1,0 +1,17 @@
+version: 1
+taskId: null
+status: NONE
+sourceBranch: dev/tianfu-2.0
+workBranch: null
+baseCommit: null
+summary: ""
+changedFiles: []
+tests: {}
+gates: {}
+scope:
+  coreChanged: false
+  contractsChanged: false
+  directorChanged: false
+  contentChanged: false
+blockers: []
+recommendedCommitMessage: ""
