@@ -1,17 +1,88 @@
 version: 1
-taskId: null
-status: NONE
+taskId: LOOPFIX02B2
+status: BLOCKED
 sourceBranch: dev/tianfu-2.0
-workBranch: null
-baseCommit: null
-summary: ""
-changedFiles: []
-tests: {}
-gates: {}
+workBranch: wb-LOOPFIX02B2
+baseCommit: f91514cb6f1a8f9c92f2104ccd4afbc922800668
+summary: >-
+  CONTENT01 closure authoring is complete and verified green in isolation, but two
+  pre-existing CONTENT01 tests (CONTENT01-016, CONTENT01-019) fail as a direct,
+  unavoidable consequence of the authorized change. Both tests force-enter a
+  Cause-linked echo Event with NO Cause provenance and then choose a closure-bearing
+  option, so triggeringCause:true correctly fails closed with cause.invalid. This is
+  LOOPFIX02B2_R1's designed fail-closed semantics working as specified, not a defect in
+  the new content. The task's acceptance list and its forbiddenScope are mutually
+  unsatisfiable as written: accept requires every normal choice on each Cause-linked echo
+  to terminally close the triggering Cause, while forbiddenScope forbids the only repairs
+  available (Cause-Core-changes / contracts-changes / triggeringCauseId-semantics), and
+  no allowedScope item covers adapting those two test fixtures. Returned BLOCKED per
+  PROTOCOL.md stop condition "task contracts conflict".
+changedFiles:
+  - packages/content/src/content01-v1.ts
+tests:
+  typecheck: PASS
+  content01-lint: PASS
+  content-lint: PASS
+  lint: PASS
+  secret-scan: PASS
+  npm-test: PASS
+  npm-test-count: 215/215
+  targeted-suite: 136/138 PASS
+  content01: 30/32 PASS
+  loopfix02b2r1: PASS
+  loopfix02b1: PASS
+  cause: PASS
+  event-dsl: PASS
+  content-registry: PASS
+  recurrence: PASS
+  participant-bridge: PASS
+  replay: PASS
+gates:
+  closureProbeAllSeedsDeterministic: true
+  closureProbeTemplatesReached: 8
+  closureProbeTemplatesTotal: 10
+  closureProbeAmbiguous: false
+  resolvedReachable: true
+  expiredReachable: true
+  zombieChoicePath: false
+  p1P6PrecedenceUnchanged: true
+  echoBudgetUnchanged: true
+  newRng: false
+  directorCauseIdUnchanged: true
 scope:
   coreChanged: false
   contractsChanged: false
   directorChanged: false
-  contentChanged: false
-blockers: []
-recommendedCommitMessage: ""
+  contentChanged: true
+blockers:
+  - id: B2-TESTFIXTURE-CONFLICT
+    severity: P1
+    statement: >-
+      CONTENT01-016 and CONTENT01-019 reach Cause-linked echo Events through a direct
+      forced entry (the tests' local enter() helper) that carries no P3 provenance, then
+      resolve a closure-bearing choice. The new closure effects resolve the triggering
+      Cause, and with no authoritative binding present the runtime fails closed with
+      cause.invalid. The tests therefore fail by construction.
+    evidence:
+      - "not ok 16 - CONTENT01-016 every Event has a legal direct reachability fixture / cause.invalid"
+      - "not ok 19 - CONTENT01-019 every Build route can reach formed through authored evidence / cause.invalid"
+      - ".codex/contracts/event.ref lines 96-98 define exactly this fail-closed contract"
+      - "packages/core/src/cause.ts boundTriggeringCauseId() reads only state.run.events.current.triggeringCauseId"
+      - "CONTENT01-016 resolves consider on all 10 Cause-linked echoes; CONTENT01-019 resolves engage on 6 of them"
+    whyNotFixedByImplementer: >-
+      Repairing the two tests requires either (a) injecting authoritative
+      triggeringCauseId provenance into the fixture entry used by CONTENT01-016/019, or
+      (b) relaxing the closure contract so an unbound triggeringCause is a no-op rather
+      than cause.invalid. Option (b) is explicitly forbidden (triggeringCauseId-semantics
+      is in forbiddenScope) and would break LOOPFIX02B2_R1's accepted fail-closed
+      guarantees. Option (a) edits tests outside LOOPFIX02B2 allowedScope. Both exceed
+      "targeted LOOPFIX02B2 tests".
+    controllerDecisionRequired: >-
+      Choose one: (1) authorize amending CONTENT01-016/019 to enter closure-bearing
+      Cause-linked events through a real P3 echo (requires widening allowedScope to cover
+      those two test fixtures); (2) authorize CONTENT01-016/019 to re-point their choice
+      for Cause-linked events; or (3) restate the closure contract so an unbound
+      triggeringCause is legal, which reopens R1 semantics.
+    recommend: option 1
+recommendedCommitMessage: >-
+  feat: author CONTENT01 terminal Cause closure (blocked on test-fixture conflict)
