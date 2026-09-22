@@ -37,6 +37,7 @@
     "content-sim": "node tools/content-sim.mjs",
     "test:sim02": "node --test tests/content-sim.test.mjs",
     "test:loopfix02a": "node --test tests/recurrence.test.mjs",
+    "test:loopfix02b1": "node --test tests/loopfix02b1.test.mjs",
     "recurrence-audit": "node tools/recurrence-audit.mjs",
     "director-audit": "node tools/director-audit.mjs",
     "test:tool01": "node --test tests/context-loader.test.mjs",

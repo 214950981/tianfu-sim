@@ -1,0 +1,16 @@
+id: LOOPFIX02B1
+title: content01-recurrence-application
+phase: 2
+requiredContracts: [.codex/contracts/event.ref,.codex/contracts/cause.ref,.codex/contracts/lifecycle.ref,.codex/contracts/director.ref,.codex/contracts/state.ref,.codex/contracts/reducer.ref,.codex/contracts/command.ref,.codex/contracts/rng.ref,.codex/contracts/crosslayer.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [packages/content/src/content01-v1.ts,packages/content/src/registry.ts,packages/content/src/recurrence-audit.ts,packages/core/src/event.ts,packages/core/src/director.ts,packages/core/src/cause.ts]
+allowedScope:
+  - LOOPFIX02B1 task definition and INDEX registration
+  - declarative CONTENT01 Event recurrence (maxOccurrences for once-per-run Cause origins, minNodesBetween for repeatable core-NPC P4 Events and Cause echo Events)
+  - minimal true repeat-safe declarations required by the formal validator on repeatable Events
+  - recurrence-audit extension so CONTENT01 is audited alongside the dev fixture
+  - targeted LOOPFIX02B1 tests
+forbiddenScope: [Cause-closure,resolved-expired-transformed-new-logic,Cause-Core-changes,NPC-Core-changes,Director-precedence-or-selector-changes,Build-Risk-Progression-number-changes,Event-body-text,Event-weights,UI,600-run-simulation,LOOPFIX02B2,LOOPFIX02B3]
+accept: [core-npc-origin-events-capped-once-per-run,repeatable-P4-and-echo-events-spaced,repeat-safe-declarations-minimal-and-true,echoBudget-unchanged,P1-P6-precedence-unchanged,snapshot-replay-stable,content01-validator-clean,recurrence-audit-clean]
+tests: [loopfix02b1,content01,recurrence,director,recurrence-audit,typecheck,lint,content-lint,secret-scan]

@@ -1,4 +1,6 @@
 import { createOfferedRun, isEventEligible, recordEventOccurrence, reduce, ruleStateHash, selectDirectorEvent, validateGameState, type GameState } from "../../core/src/index.ts";
+import { getNpcPack } from "./npc-v1.ts";
+import { NPC_CONTENT01_V1 } from "./npc-content01-v1.ts";
 import { ContentRegistry, REPEAT_SENSITIVE_EFFECT_OPS, validateContentPack, type ContentPack, type EffectSpec } from "./registry.ts";
 
 export interface RecurrenceAuditSources { lifecycleContract: string; directorContract: string; coreSource: string }
@@ -28,7 +30,7 @@ function effectLists(event: ContentPack["events"][number]): EffectSpec[][] {
 
 export function runRecurrenceAudit(pack: ContentPack, sources: RecurrenceAuditSources): RecurrenceAuditReport {
   let invalidRecurrenceDefinitions = 0; let occurrenceCountViolations = 0; let cooldownViolations = 0; let duplicateCountOnRetry = 0; let repeatSafeViolations = 0; let directorPrecedenceDrift = 0;
-  try { validateContentPack(pack); } catch { invalidRecurrenceDefinitions += 1; }
+  try { validateContentPack(pack, undefined, { getNpcPack: (id) => id === NPC_CONTENT01_V1.id ? NPC_CONTENT01_V1 : getNpcPack(id) }); } catch { invalidRecurrenceDefinitions += 1; }
   for (const event of pack.events) if (event.cooldown !== undefined) {
     const { minNodesBetween, maxOccurrences, ...unknown } = event.cooldown as Record<string, unknown>;
     if (Object.keys(unknown).length > 0 || (minNodesBetween !== undefined && (!Number.isSafeInteger(minNodesBetween) || (minNodesBetween as number) < 0)) || (maxOccurrences !== undefined && (!Number.isSafeInteger(maxOccurrences) || (maxOccurrences as number) < 1))) invalidRecurrenceDefinitions += 1;
@@ -37,7 +39,7 @@ export function runRecurrenceAudit(pack: ContentPack, sources: RecurrenceAuditSo
       for (const choice of event.choices ?? []) if (choice.threatId !== undefined && choice.riskRepeatBehavior !== "allow-repeat-resolution") repeatSafeViolations += 1;
     }
   }
-  const content = new ContentRegistry(); content.register(pack); const state = active(content, pack); const selected = selectDirectorEvent(state, "travel", content, ["P2", "P4", "P5", "P6"]);
+  const content = new ContentRegistry(); content.registerNpcPack(NPC_CONTENT01_V1); content.register(pack); const state = active(content, pack); const selected = selectDirectorEvent(state, "travel", content, ["P2", "P4", "P5", "P6"]);
   if (selected.trace.selectedPrecedenceLevel !== "P2") directorPrecedenceDrift += 1;
   if (selected.state.run.events.occurrences !== state.run.events.occurrences) occurrenceCountViolations += 1;
   const output = reduce({ state, command: { type: "CHOOSE_ACTION", actionId: "travel" }, context: { rulesVersion: state.rulesVersion, contentVersion: state.contentVersion, content: content as unknown as Readonly<Record<string, unknown>>, commandId: "cmd:recurrence-audit:action" } });

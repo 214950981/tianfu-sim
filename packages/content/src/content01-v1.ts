@@ -1,12 +1,19 @@
 import type { ActionType } from "../../core/src/state.ts";
-import { sealContentPack, type ChoiceDefinition, type ContentPack, type EffectSpec, type EventDefinition } from "./registry.ts";
+import { sealContentPack, REPEAT_SENSITIVE_EFFECT_OPS, type ChoiceDefinition, type ContentPack, type EffectSpec, type EventDefinition } from "./registry.ts";
 
 type Participant = NonNullable<EventDefinition["participants"]>[number];
 type Spec = {
   id: string; title: string; summary: string; actions?: ActionType[]; salience: 1 | 2 | 3 | 4 | 5; topic: string;
   continuity: string[]; build?: "sword" | "body" | "alchemy" | "fortune"; npcRole?: string; onboarding?: boolean;
   participant?: Participant; risk?: string; effects?: EffectSpec[]; origins?: Array<{ templateId: string; salience: 1 | 2 | 3 | 4 | 5; label: string }>;
+  cooldown?: NonNullable<EventDefinition["cooldown"]>;
 };
+
+// LOOPFIX02B1 recurrence: once-per-run Cause origins cap repeat planting; repeatable P4 and echo Events space themselves.
+const oncePerRun: NonNullable<EventDefinition["cooldown"]> = { maxOccurrences: 1 };
+const spaced = (minNodesBetween: number): NonNullable<EventDefinition["cooldown"]> => ({ minNodesBetween });
+const repeatable = (spec: Spec): boolean => spec.cooldown !== undefined && spec.cooldown.maxOccurrences !== 1;
+const declared = (spec: Spec) => (effects: EffectSpec[]): EffectSpec[] => effects.map((effect) => repeatable(spec) && REPEAT_SENSITIVE_EFFECT_OPS.has(effect.op) ? { ...effect, repeatBehavior: "allow-cumulative" } as EffectSpec : effect);
 
 export const CONTENT01_VERSION = "content01.v1";
 export const CONTENT01_ZH_CN: Record<string, string> = {};
@@ -17,24 +24,25 @@ const core = (id: string): Participant => participant("actor", "core", `content0
 const generated = (id: string): Participant => participant("actor", "generated", `content01.archetype.${id}`);
 
 function choices(spec: Spec): ChoiceDefinition[] {
-  const safePrimary: EffectSpec[] = spec.effects ?? (spec.build === undefined ? [{ op: "ADD_RESOURCE", key: "spiritStone", amount: 2 }] : [buildEffect(spec.build)]);
+  const declare = declared(spec);
+  const safePrimary: EffectSpec[] = declare(spec.effects ?? (spec.build === undefined ? [{ op: "ADD_RESOURCE", key: "spiritStone", amount: 2 }] : [buildEffect(spec.build)]));
   if (spec.origins !== undefined) return [
     ...spec.origins.map((origin, index): ChoiceDefinition => ({
       id: `bind-${index + 1}`, scope: "core", labelKey: text(`${spec.id}.choice.bind-${index + 1}`, origin.label),
-      outcomes: { success: { effects: [{ op: "ADD_CAUSE", templateId: origin.templateId, salience: origin.salience, visibility: "hint", actorBindingKeys: { actor: "actor" } }, ...(spec.build === undefined ? [] : [buildEffect(spec.build, 700)]), { op: "ADD_NPC_SIGNIFICANCE", actorBindingKey: "actor", amount: 500, reasonTag: "npc.reason.cause" }] } }
+      outcomes: { success: { effects: declare([{ op: "ADD_CAUSE", templateId: origin.templateId, salience: origin.salience, visibility: "hint", actorBindingKeys: { actor: "actor" } }, ...(spec.build === undefined ? [] : [buildEffect(spec.build, 700)]), { op: "ADD_NPC_SIGNIFICANCE", actorBindingKey: "actor", amount: 500, reasonTag: "npc.reason.cause" }]) } }
     })),
-    { id: "decline", scope: "core", labelKey: text(`${spec.id}.choice.decline`, "留一句话离开"), outcomes: { success: { effects: [{ op: "ADD_CULTIVATION", amount: 120 }] } } }
+    { id: "decline", scope: "core", labelKey: text(`${spec.id}.choice.decline`, "留一句话离开"), outcomes: { success: { effects: declare([{ op: "ADD_CULTIVATION", amount: 120 }]) } } }
   ];
   if (spec.risk !== undefined) return [
-    { id: "take-risk", scope: "core", labelKey: text(`${spec.id}.choice.take-risk`, "承担此险"), threatId: spec.risk, outcomes: { success: { effects: safePrimary }, costlySuccess: { effects: safePrimary }, failure: { effects: [{ op: "ADD_CULTIVATION", amount: 60 }] } } },
-    { id: "read-signs", scope: "core", labelKey: text(`${spec.id}.choice.read-signs`, "先辨征兆"), outcomes: { success: { effects: [{ op: "ADD_CULTIVATION", amount: 180 }] } } },
-    { id: "turn-away", scope: "core", labelKey: text(`${spec.id}.choice.turn-away`, "及时折返"), outcomes: { success: { effects: [{ op: "ADD_RESOURCE", key: "spiritStone", amount: 1 }] } } }
+    { id: "take-risk", scope: "core", labelKey: text(`${spec.id}.choice.take-risk`, "承担此险"), threatId: spec.risk, ...(repeatable(spec) ? { riskRepeatBehavior: "allow-repeat-resolution" as const } : {}), outcomes: { success: { effects: safePrimary }, costlySuccess: { effects: safePrimary }, failure: { effects: declare([{ op: "ADD_CULTIVATION", amount: 60 }]) } } },
+    { id: "read-signs", scope: "core", labelKey: text(`${spec.id}.choice.read-signs`, "先辨征兆"), outcomes: { success: { effects: declare([{ op: "ADD_CULTIVATION", amount: 180 }]) } } },
+    { id: "turn-away", scope: "core", labelKey: text(`${spec.id}.choice.turn-away`, "及时折返"), outcomes: { success: { effects: declare([{ op: "ADD_RESOURCE", key: "spiritStone", amount: 1 }]) } } }
   ];
-  const npcEffect: EffectSpec[] = spec.participant === undefined ? [] : [{ op: "ADJUST_NPC_RELATION", actorBindingKey: "actor", affinityDelta: 6, trustDelta: 4, reasonTag: "npc.reason.event" }];
+  const npcEffect: EffectSpec[] = declare(spec.participant === undefined ? [] : [{ op: "ADJUST_NPC_RELATION", actorBindingKey: "actor", affinityDelta: 6, trustDelta: 4, reasonTag: "npc.reason.event" }]);
   return [
     { id: "engage", scope: "core", labelKey: text(`${spec.id}.choice.engage`, spec.build === undefined ? "顺势而行" : "依此磨炼"), outcomes: { success: { effects: [...safePrimary, ...npcEffect] } } },
-    { id: "consider", scope: "core", labelKey: text(`${spec.id}.choice.consider`, "停步细看"), outcomes: { success: { effects: [{ op: "ADD_CULTIVATION", amount: 150 }] } } },
-    { id: "leave", scope: "core", labelKey: text(`${spec.id}.choice.leave`, "见好便收"), outcomes: { success: { effects: [{ op: "ADD_RESOURCE", key: "spiritStone", amount: 1 }] } } }
+    { id: "consider", scope: "core", labelKey: text(`${spec.id}.choice.consider`, "停步细看"), outcomes: { success: { effects: declare([{ op: "ADD_CULTIVATION", amount: 150 }]) } } },
+    { id: "leave", scope: "core", labelKey: text(`${spec.id}.choice.leave`, "见好便收"), outcomes: { success: { effects: declare([{ op: "ADD_RESOURCE", key: "spiritStone", amount: 1 }]) } } }
   ];
 }
 
@@ -45,7 +53,7 @@ function event(spec: Spec): EventDefinition {
     tags: ["content01", ...(spec.onboarding ? ["onboarding"] : []), ...(spec.actions === undefined ? ["ordinary"] : []), ...(spec.build === undefined ? [] : [`build-${spec.build}`]), ...(spec.npcRole === undefined ? [] : [`npc-${spec.npcRole}`]), ...(spec.risk === undefined ? [] : ["risk"]), ...(spec.origins === undefined ? [] : ["cause-origin"])],
     weight: 100, ...(spec.actions === undefined ? {} : { actionAffinity: spec.actions }),
     directorHints: { salience: spec.salience, baseWeight: spec.onboarding ? 130 : 100, topicTags: [spec.topic], continuityTags: spec.continuity, buildAffinityTags: spec.build === undefined ? [] : [spec.build], npcRoleAffinityTags: spec.npcRole === undefined ? [] : [spec.npcRole], worldAffinityTags: [], ...(spec.onboarding ? { onboardingEligible: true } : {}) },
-    ...(spec.participant === undefined ? {} : { participants: [spec.participant] }), choices: choices(spec), fallback: { bodyKey }
+    ...(spec.participant === undefined ? {} : { participants: [spec.participant] }), ...(spec.cooldown === undefined ? {} : { cooldown: spec.cooldown }), choices: choices(spec), fallback: { bodyKey }
   };
 }
 
@@ -76,30 +84,30 @@ const ordinary: Spec[] = [
 ];
 
 const npcEvents: Spec[] = [
-  { id: "content01.pei.broken-blade", title: "断剑客", summary: "裴照川把断剑横在膝上，他谈的是同行，不是收徒，也没有先许下情分。", actions: ["travel", "worldly"], salience: 3, topic: "promise", continuity: ["rivalry", "sword"], build: "sword", npcRole: "sword", participant: core("pei-zhaochuan"), origins: [{ templateId: "content01.cause.broken-sword-promise", salience: 4, label: "与他定约" }, { templateId: "content01.cause.broken-sword-rivalry", salience: 3, label: "以剑相争" }] },
-  { id: "content01.pei.sparring-rain", title: "雨中试剑", summary: "雨线斜落，裴照川只问你是否还愿意拔剑，胜负之外还要看你如何收手。", actions: ["cultivate", "pursuit"], salience: 3, topic: "rivalry", continuity: ["sword", "promise"], build: "sword", npcRole: "sword", participant: core("pei-zhaochuan") },
-  { id: "content01.pei.old-wound", title: "旧伤复作", summary: "裴照川行至半坡忽然停步，旧伤让他的右手微颤，他却不肯把决定交给旁人。", actions: ["travel"], salience: 4, topic: "injury", continuity: ["sword", "trust"], build: "sword", npcRole: "sword", participant: core("pei-zhaochuan"), risk: "threat.critical-injury" },
-  { id: "content01.pei.promise-echo", title: "剑约未冷", summary: "多年后那柄断剑仍在，裴照川没有复述旧约，只把另一条路摆到你面前。", salience: 4, topic: "promise", continuity: ["sword", "rivalry"], build: "sword", npcRole: "sword", participant: core("pei-zhaochuan") },
+  { id: "content01.pei.broken-blade", title: "断剑客", summary: "裴照川把断剑横在膝上，他谈的是同行，不是收徒，也没有先许下情分。", actions: ["travel", "worldly"], salience: 3, topic: "promise", continuity: ["rivalry", "sword"], build: "sword", npcRole: "sword", participant: core("pei-zhaochuan"), origins: [{ templateId: "content01.cause.broken-sword-promise", salience: 4, label: "与他定约" }, { templateId: "content01.cause.broken-sword-rivalry", salience: 3, label: "以剑相争" }], cooldown: oncePerRun },
+  { id: "content01.pei.sparring-rain", title: "雨中试剑", summary: "雨线斜落，裴照川只问你是否还愿意拔剑，胜负之外还要看你如何收手。", actions: ["cultivate", "pursuit"], salience: 3, topic: "rivalry", continuity: ["sword", "promise"], build: "sword", npcRole: "sword", participant: core("pei-zhaochuan"), cooldown: spaced(4) },
+  { id: "content01.pei.old-wound", title: "旧伤复作", summary: "裴照川行至半坡忽然停步，旧伤让他的右手微颤，他却不肯把决定交给旁人。", actions: ["travel"], salience: 4, topic: "injury", continuity: ["sword", "trust"], build: "sword", npcRole: "sword", participant: core("pei-zhaochuan"), risk: "threat.critical-injury", cooldown: spaced(5) },
+  { id: "content01.pei.promise-echo", title: "剑约未冷", summary: "多年后那柄断剑仍在，裴照川没有复述旧约，只把另一条路摆到你面前。", salience: 4, topic: "promise", continuity: ["sword", "rivalry"], build: "sword", npcRole: "sword", participant: core("pei-zhaochuan"), cooldown: spaced(4) },
 
-  { id: "content01.jiang.herb-price", title: "药有其价", summary: "姜雪芜替人止住伤势，随后把耗去的药材与时间逐项说清，不多收，也不抹去。", actions: ["worldly"], salience: 3, topic: "medicine", continuity: ["debt", "trust"], build: "alchemy", npcRole: "healer", participant: core("jiang-xuewu"), origins: [{ templateId: "content01.cause.medicine-debt", salience: 3, label: "认下药债" }] },
-  { id: "content01.jiang.night-clinic", title: "夜诊", summary: "夜深后仍有人敲门，姜雪芜看过伤口，把最稳妥与最昂贵的办法都说在前面。", actions: ["worldly", "cultivate"], salience: 3, topic: "medicine", continuity: ["injury", "human-world"], build: "alchemy", npcRole: "healer", participant: core("jiang-xuewu") },
-  { id: "content01.jiang.bitter-decoction", title: "苦汤", summary: "一锅药汤气味辛烈，姜雪芜提醒其中一味药性相冲，省事与稳妥不能两全。", actions: ["cultivate"], salience: 3, topic: "medicine", continuity: ["danger", "alchemy"], build: "alchemy", npcRole: "healer", participant: core("jiang-xuewu"), risk: "threat.poison" },
-  { id: "content01.jiang.debt-echo", title: "旧账新页", summary: "姜雪芜翻到旧账那一页，没有催促，只问你如今是否仍认得当年的代价。", salience: 3, topic: "debt", continuity: ["medicine", "promise"], build: "alchemy", npcRole: "healer", participant: core("jiang-xuewu") },
+  { id: "content01.jiang.herb-price", title: "药有其价", summary: "姜雪芜替人止住伤势，随后把耗去的药材与时间逐项说清，不多收，也不抹去。", actions: ["worldly"], salience: 3, topic: "medicine", continuity: ["debt", "trust"], build: "alchemy", npcRole: "healer", participant: core("jiang-xuewu"), origins: [{ templateId: "content01.cause.medicine-debt", salience: 3, label: "认下药债" }], cooldown: oncePerRun },
+  { id: "content01.jiang.night-clinic", title: "夜诊", summary: "夜深后仍有人敲门，姜雪芜看过伤口，把最稳妥与最昂贵的办法都说在前面。", actions: ["worldly", "cultivate"], salience: 3, topic: "medicine", continuity: ["injury", "human-world"], build: "alchemy", npcRole: "healer", participant: core("jiang-xuewu"), cooldown: spaced(4) },
+  { id: "content01.jiang.bitter-decoction", title: "苦汤", summary: "一锅药汤气味辛烈，姜雪芜提醒其中一味药性相冲，省事与稳妥不能两全。", actions: ["cultivate"], salience: 3, topic: "medicine", continuity: ["danger", "alchemy"], build: "alchemy", npcRole: "healer", participant: core("jiang-xuewu"), risk: "threat.poison", cooldown: spaced(5) },
+  { id: "content01.jiang.debt-echo", title: "旧账新页", summary: "姜雪芜翻到旧账那一页，没有催促，只问你如今是否仍认得当年的代价。", salience: 3, topic: "debt", continuity: ["medicine", "promise"], build: "alchemy", npcRole: "healer", participant: core("jiang-xuewu"), cooldown: spaced(4) },
 
-  { id: "content01.cen.shoulder-road", title: "并肩负伤", summary: "岑不归替你挡下一击，自己也伤得不轻。他不谈恩情，只问接下来的路怎样走。", actions: ["travel", "worldly"], salience: 4, topic: "injury", continuity: ["trust", "body"], build: "body", npcRole: "body", participant: core("cen-bugui"), origins: [{ templateId: "content01.cause.shared-wound", salience: 4, label: "与他同行" }] },
-  { id: "content01.cen.stone-steps", title: "负石登阶", summary: "岑不归背石登阶，每一步都极慢。他不劝你跟上，只在山腰留了一瓢清水。", actions: ["cultivate"], salience: 2, topic: "discipline", continuity: ["body", "cultivation"], build: "body", npcRole: "body", participant: core("cen-bugui") },
-  { id: "content01.cen.shield-stranger", title: "以身护人", summary: "乱石落下时，岑不归已经站到最窄的缺口。他看向你，等一个共同承担的决定。", actions: ["travel"], salience: 4, topic: "danger", continuity: ["body", "trust"], build: "body", npcRole: "body", participant: core("cen-bugui"), risk: "threat.combat" },
-  { id: "content01.cen.shared-echo", title: "伤痕相认", summary: "旧伤在阴雨里同时发作，岑不归看见你按住肩头，便知道那一日没有被忘记。", salience: 3, topic: "injury", continuity: ["body", "memory"], build: "body", npcRole: "body", participant: core("cen-bugui") },
+  { id: "content01.cen.shoulder-road", title: "并肩负伤", summary: "岑不归替你挡下一击，自己也伤得不轻。他不谈恩情，只问接下来的路怎样走。", actions: ["travel", "worldly"], salience: 4, topic: "injury", continuity: ["trust", "body"], build: "body", npcRole: "body", participant: core("cen-bugui"), origins: [{ templateId: "content01.cause.shared-wound", salience: 4, label: "与他同行" }], cooldown: oncePerRun },
+  { id: "content01.cen.stone-steps", title: "负石登阶", summary: "岑不归背石登阶，每一步都极慢。他不劝你跟上，只在山腰留了一瓢清水。", actions: ["cultivate"], salience: 2, topic: "discipline", continuity: ["body", "cultivation"], build: "body", npcRole: "body", participant: core("cen-bugui"), cooldown: spaced(4) },
+  { id: "content01.cen.shield-stranger", title: "以身护人", summary: "乱石落下时，岑不归已经站到最窄的缺口。他看向你，等一个共同承担的决定。", actions: ["travel"], salience: 4, topic: "danger", continuity: ["body", "trust"], build: "body", npcRole: "body", participant: core("cen-bugui"), risk: "threat.combat", cooldown: spaced(5) },
+  { id: "content01.cen.shared-echo", title: "伤痕相认", summary: "旧伤在阴雨里同时发作，岑不归看见你按住肩头，便知道那一日没有被忘记。", salience: 3, topic: "injury", continuity: ["body", "memory"], build: "body", npcRole: "body", participant: core("cen-bugui"), cooldown: spaced(4) },
 
-  { id: "content01.xie.secret-map", title: "半张秘图", summary: "谢听潮摊开半张秘图，另一半仍在袖中。他愿意分路，也要求先说清如何分利。", actions: ["pursuit", "travel"], salience: 4, topic: "secret", continuity: ["trust", "fortune"], build: "fortune", npcRole: "ruin-explorer", participant: core("xie-tingchao"), origins: [{ templateId: "content01.cause.secret-map-pact", salience: 4, label: "立约同行" }, { templateId: "content01.cause.secret-map-breach", salience: 4, label: "暗留后手" }] },
-  { id: "content01.xie.cave-gamble", title: "洞口风声", summary: "洞口吹出的风带着金石气，谢听潮判断里面有路，也坦言判断可能错。", actions: ["pursuit"], salience: 4, topic: "exploration", continuity: ["secret", "danger"], build: "fortune", npcRole: "ruin-explorer", participant: core("xie-tingchao"), risk: "threat.dangerous-exploration" },
-  { id: "content01.xie.divided-spoils", title: "分利", summary: "所得不如预想，谢听潮仍按旧话分成，只把最后一件用途不明的东西留在中央。", actions: ["worldly"], salience: 3, topic: "trust", continuity: ["fortune", "promise"], build: "fortune", npcRole: "ruin-explorer", participant: core("xie-tingchao") },
-  { id: "content01.xie.map-echo", title: "图上旧折", summary: "秘图旧折痕与眼前山势重合，谢听潮没有催你，只把当初说过的话轻轻念了一遍。", salience: 4, topic: "secret", continuity: ["promise", "exploration"], build: "fortune", npcRole: "ruin-explorer", participant: core("xie-tingchao") },
+  { id: "content01.xie.secret-map", title: "半张秘图", summary: "谢听潮摊开半张秘图，另一半仍在袖中。他愿意分路，也要求先说清如何分利。", actions: ["pursuit", "travel"], salience: 4, topic: "secret", continuity: ["trust", "fortune"], build: "fortune", npcRole: "ruin-explorer", participant: core("xie-tingchao"), origins: [{ templateId: "content01.cause.secret-map-pact", salience: 4, label: "立约同行" }, { templateId: "content01.cause.secret-map-breach", salience: 4, label: "暗留后手" }], cooldown: oncePerRun },
+  { id: "content01.xie.cave-gamble", title: "洞口风声", summary: "洞口吹出的风带着金石气，谢听潮判断里面有路，也坦言判断可能错。", actions: ["pursuit"], salience: 4, topic: "exploration", continuity: ["secret", "danger"], build: "fortune", npcRole: "ruin-explorer", participant: core("xie-tingchao"), risk: "threat.dangerous-exploration", cooldown: spaced(5) },
+  { id: "content01.xie.divided-spoils", title: "分利", summary: "所得不如预想，谢听潮仍按旧话分成，只把最后一件用途不明的东西留在中央。", actions: ["worldly"], salience: 3, topic: "trust", continuity: ["fortune", "promise"], build: "fortune", npcRole: "ruin-explorer", participant: core("xie-tingchao"), cooldown: spaced(4) },
+  { id: "content01.xie.map-echo", title: "图上旧折", summary: "秘图旧折痕与眼前山势重合，谢听潮没有催你，只把当初说过的话轻轻念了一遍。", salience: 4, topic: "secret", continuity: ["promise", "exploration"], build: "fortune", npcRole: "ruin-explorer", participant: core("xie-tingchao"), cooldown: spaced(4) },
 
-  { id: "content01.xu.mortal-letter", title: "人间来信", summary: "许长安托人送来一封短笺，问的不是仙途，只是你是否还记得旧日门前那棵树。", actions: ["worldly", "pursuit"], salience: 3, topic: "human-world", continuity: ["promise", "time"], npcRole: "mortal", participant: core("xu-changan"), origins: [{ templateId: "content01.cause.mortal-promise", salience: 4, label: "答应归去" }] },
-  { id: "content01.xu.ten-year-return", title: "十年重逢", summary: "你眼中的数次闭关，已是许长安鬓边的一层霜。他仍认得你，也不假装岁月轻巧。", actions: ["worldly"], salience: 4, topic: "time", continuity: ["memory", "human-world"], npcRole: "mortal", participant: core("xu-changan") },
-  { id: "content01.xu.empty-courtyard", title: "空院", summary: "院门仍旧，檐下却积了厚灰。邻人只说许长安早已离开，没有人知道他最后去了哪里。", actions: ["pursuit"], salience: 4, topic: "loss", continuity: ["time", "promise"], npcRole: "mortal", participant: core("xu-changan"), effects: [{ op: "SET_NPC_STATUS", actorBindingKey: "actor", targetStatus: "departed", revealToPlayer: true, reasonTag: "npc.reason.status" }] },
-  { id: "content01.xu.promise-echo", title: "树下旧诺", summary: "旧树又添一圈年轮，你终于站回门前；许长安是否还在，已不再是唯一的问题。", salience: 4, topic: "promise", continuity: ["time", "memory"], npcRole: "mortal", participant: core("xu-changan") }
+  { id: "content01.xu.mortal-letter", title: "人间来信", summary: "许长安托人送来一封短笺，问的不是仙途，只是你是否还记得旧日门前那棵树。", actions: ["worldly", "pursuit"], salience: 3, topic: "human-world", continuity: ["promise", "time"], npcRole: "mortal", participant: core("xu-changan"), origins: [{ templateId: "content01.cause.mortal-promise", salience: 4, label: "答应归去" }], cooldown: oncePerRun },
+  { id: "content01.xu.ten-year-return", title: "十年重逢", summary: "你眼中的数次闭关，已是许长安鬓边的一层霜。他仍认得你，也不假装岁月轻巧。", actions: ["worldly"], salience: 4, topic: "time", continuity: ["memory", "human-world"], npcRole: "mortal", participant: core("xu-changan"), cooldown: spaced(5) },
+  { id: "content01.xu.empty-courtyard", title: "空院", summary: "院门仍旧，檐下却积了厚灰。邻人只说许长安早已离开，没有人知道他最后去了哪里。", actions: ["pursuit"], salience: 4, topic: "loss", continuity: ["time", "promise"], npcRole: "mortal", participant: core("xu-changan"), effects: [{ op: "SET_NPC_STATUS", actorBindingKey: "actor", targetStatus: "departed", revealToPlayer: true, reasonTag: "npc.reason.status" }], cooldown: spaced(4) },
+  { id: "content01.xu.promise-echo", title: "树下旧诺", summary: "旧树又添一圈年轮，你终于站回门前；许长安是否还在，已不再是唯一的问题。", salience: 4, topic: "promise", continuity: ["time", "memory"], npcRole: "mortal", participant: core("xu-changan"), cooldown: spaced(4) }
 ];
 
 const buildEvents: Spec[] = [
@@ -131,10 +139,10 @@ const riskEvents: Spec[] = [
 ];
 
 const roadCauseEvents: Spec[] = [
-  { id: "content01.road.help", title: "扶一程", summary: "同行的陌生修士在坡前力竭，他没有求救，只把行囊向身后挪了挪。", actions: ["travel", "worldly"], salience: 2, topic: "trust", continuity: ["travel"], participant: generated("wandering-cultivator"), origins: [{ templateId: "content01.cause.road-kindness", salience: 2, label: "扶他一程" }] },
-  { id: "content01.road.conflict", title: "窄路相争", summary: "狭窄山道只容一人先过，对面的修士不肯退，你也看不出他是否另有所图。", actions: ["travel"], salience: 3, topic: "rivalry", continuity: ["travel", "trust"], participant: generated("dangerous-cultivator"), origins: [{ templateId: "content01.cause.road-conflict", salience: 3, label: "记下此争" }] },
-  { id: "content01.road.kindness-echo", title: "故人递伞", summary: "多年后雨又落下，一把伞从身侧递来；那张脸比记忆成熟，旧日一程仍被记得。", salience: 3, topic: "memory", continuity: ["trust", "travel"] },
-  { id: "content01.road.conflict-echo", title: "旧路再逢", summary: "同一条窄路上，你再次看见熟悉身影；当年的争执已经长出新的分量。", salience: 3, topic: "rivalry", continuity: ["memory", "travel"] }
+  { id: "content01.road.help", title: "扶一程", summary: "同行的陌生修士在坡前力竭，他没有求救，只把行囊向身后挪了挪。", actions: ["travel", "worldly"], salience: 2, topic: "trust", continuity: ["travel"], participant: generated("wandering-cultivator"), origins: [{ templateId: "content01.cause.road-kindness", salience: 2, label: "扶他一程" }], cooldown: oncePerRun },
+  { id: "content01.road.conflict", title: "窄路相争", summary: "狭窄山道只容一人先过，对面的修士不肯退，你也看不出他是否另有所图。", actions: ["travel"], salience: 3, topic: "rivalry", continuity: ["travel", "trust"], participant: generated("dangerous-cultivator"), origins: [{ templateId: "content01.cause.road-conflict", salience: 3, label: "记下此争" }], cooldown: oncePerRun },
+  { id: "content01.road.kindness-echo", title: "故人递伞", summary: "多年后雨又落下，一把伞从身侧递来；那张脸比记忆成熟，旧日一程仍被记得。", salience: 3, topic: "memory", continuity: ["trust", "travel"], cooldown: spaced(4) },
+  { id: "content01.road.conflict-echo", title: "旧路再逢", summary: "同一条窄路上，你再次看见熟悉身影；当年的争执已经长出新的分量。", salience: 3, topic: "rivalry", continuity: ["memory", "travel"], cooldown: spaced(4) }
 ];
 
 export const CONTENT01_EVENTS: EventDefinition[] = [...onboarding, ...ordinary, ...npcEvents, ...buildEvents, ...riskEvents, ...roadCauseEvents].map(event);

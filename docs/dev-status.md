@@ -9,7 +9,7 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `4fba2824561e724f3340f43a598fa34027ff6b2a`
+- lastReviewedCommit: `d71ef1a5a8f31078cee893bccdd579c1dc71c043`
 - reviewedDate: `2026-09-22`
 
 不要修改 `main` / 1.0，除非未来任务明确要求。
@@ -50,6 +50,7 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - CONTENT01: PASS
 - SIM02: PASS
 - LOOPFIX02A: PASS
+- LOOPFIX02B1: PASS
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
 
@@ -123,6 +124,16 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - repeat-safe enforcement。
 - lifecycle P1-P6 编号已同步。
 
+### LOOPFIX02B1
+
+- CONTENT01 已正式应用 recurrence。
+- 7 个 Cause origin 使用 `maxOccurrences: 1`。
+- 17 个可重复 Event 使用 `minNodesBetween`。
+- 共 24 个 Event 带 recurrence。
+- recurrence / repeat-safe validator PASS。
+- full regression 323/323 PASS。
+- Core / Director / contracts 未修改。
+
 ## 最新可信玩法数据
 
 SIM02 默认配置：6 policies × 100 fixed seeds，`maxActions = 50`。
@@ -164,6 +175,10 @@ SIM02 默认配置：6 policies × 100 fixed seeds，`maxActions = 50`。
 
 - 普通 P6 Events 被高优先级候选长期饿死。
 - Director 当前按合同工作，不应优先重写 Director。
+- LOOPFIX02B1 后：P3/P4 同一事件的短周期重复已受到抑制，但 P6 仍为 0。
+- 根因：单个 Core NPC 拥有多个 P4 Event，轮转即可保持 P4 候选集始终非空，strict precedence 在 P4 截断。
+- 不应通过修改 Director strict precedence 解决。
+- P6 starvation 留给 LOOPFIX02B3。
 
 ### 4. Actor unavailable 自然路径不足
 
@@ -181,6 +196,7 @@ SIM02 默认配置：6 policies × 100 fixed seeds，`maxActions = 50`。
 - sword / fortune 当前偏低。
 - 数据受到 NPC / Cause 循环污染。
 - 应先修复循环，再重新模拟和判断平衡。
+- Build 平衡继续暂缓，待 LOOPFIX02B2 / B3 后再重新模拟。
 
 ## 当前 Director / Cause 证据
 
@@ -206,14 +222,18 @@ Cause：
 
 ## Next
 
-Latest completed: `LOOPFIX02A PASS`
+Latest completed: `LOOPFIX02B1 PASS`
 
-下一任务：`LOOPFIX02B`
+下一任务：`LOOPFIX02B2` — Cause Closure
 
-目标：
+范围约束：
 
-- Cause closure。
-- Cause origin/content recurrence。
+- B2 只处理 Cause closure / lifecycle。
+- 不要把 NPC / P6 pacing 合并进 B2。
+- P6 starvation 归属 LOOPFIX02B3。
+
+后续目标（B2 / B3 之后）：
+
 - NPC repeat gating。
 - 让 P6 重新获得可达窗口。
 - 补足 actor unavailable 必要路径。
