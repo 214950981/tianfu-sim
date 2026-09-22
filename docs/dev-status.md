@@ -9,7 +9,7 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `d71ef1a5a8f31078cee893bccdd579c1dc71c043`
+- lastReviewedCommit: `32dd52d`
 - reviewedDate: `2026-09-22`
 
 不要修改 `main` / 1.0，除非未来任务明确要求。
@@ -51,6 +51,7 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - SIM02: PASS
 - LOOPFIX02A: PASS
 - LOOPFIX02B1: PASS
+- LOOPFIX02B2: BLOCKED
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
 
@@ -134,6 +135,41 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - full regression 323/323 PASS。
 - Core / Director / contracts 未修改。
 
+### LOOPFIX02B2 — BLOCKED
+
+**Blocker: player-facing Cause closure 缺少 exact triggering Cause instance binding**
+
+- `RESOLVE_CAUSE` / `EXPIRE_CAUSE` 目前只能以 exact `causeId` 表达。
+- 静态 content 无法预知 runtime `causeId`：`causeId = cause:<commandId>:<ordinal>:<templateId>`，
+  其中 `commandId` 来自种因该 Cause 的命令，与后续 echo 命令的 `commandId` 不同。
+- `templateId`-only lookup 不可作为长期方案：
+  未来同一 template 可合法存在多个 actor-bound Cause instances，
+  按 templateId 全局猜测会闭合错误的 Cause，违反 G12 / G15。
+- placeholder 形式（如 `${cause:<templateId>}`）能通过 content lint，
+  但在 runtime 由 reducer 判定为 `cause.invalid`，
+  即 content validator 对该缺陷无保护能力。
+- 未使用的 `transform` 亦无 player-facing 正式表达：
+  `cause.ref` 仅定义 `onActorUnavailable` 驱动的 resolve-old + create-new，
+  不存在 `TRANSFORM_CAUSE` effect。
+
+本次 B2 未产生任何未完成运行时代码改动；工作区已恢复到 B2 开始前的可运行状态。
+
+### Next
+
+Latest completed: `LOOPFIX02B1 PASS`
+
+下一任务：`LOOPFIX02B2-R1` — Triggering Cause Binding
+
+设计方向：
+
+- P3 Cause 触发 Event 时，authoritative current Event/scene 保存 exact triggering cause instance provenance。
+- closure effect 只能引用该 triggering Cause。
+- 不按 templateId 全局猜测。
+- 不修改 Director precedence。
+- Snapshot / Replay / hash / retry 必须稳定。
+
+不要提前开始 R1。
+
 ## 最新可信玩法数据
 
 SIM02 默认配置：6 policies × 100 fixed seeds，`maxActions = 50`。
@@ -162,9 +198,12 @@ SIM02 默认配置：6 policies × 100 fixed seeds，`maxActions = 50`。
 
 ### 1. Cause 生命周期缺少主动 closure
 
-- Cause origin / content recurrence 尚未应用。
+- Cause origin recurrence 已由 LOOPFIX02B1 完成。
 - Cause echo 高频出现。
 - `resolved` / `expired` / `transformed` 当前均为 0。
+- LOOPFIX02B2 BLOCKED：缺少 exact triggering Cause instance binding，
+  player-facing closure effect 无法在静态 content 中合法引用 runtime Cause instance。
+- 解绑路径见 LOOPFIX02B2-R1。
 
 ### 2. Core NPC 高频循环
 
@@ -224,15 +263,18 @@ Cause：
 
 Latest completed: `LOOPFIX02B1 PASS`
 
-下一任务：`LOOPFIX02B2` — Cause Closure
+LOOPFIX02B2: `BLOCKED` — 见上方 "LOOPFIX02B2 — BLOCKED"。
+
+下一任务：`LOOPFIX02B2-R1` — Triggering Cause Binding
 
 范围约束：
 
+- R1 只处理 triggering Cause provenance 与 closure binding。
 - B2 只处理 Cause closure / lifecycle。
-- 不要把 NPC / P6 pacing 合并进 B2。
+- 不要把 NPC / P6 pacing 合并进 R1。
 - P6 starvation 归属 LOOPFIX02B3。
 
-后续目标（B2 / B3 之后）：
+后续目标（R1 / B2 / B3 之后）：
 
 - NPC repeat gating。
 - 让 P6 重新获得可达窗口。
