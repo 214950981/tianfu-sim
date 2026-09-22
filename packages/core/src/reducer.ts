@@ -330,7 +330,7 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
   const current = state.run.events.current;
   if (current === undefined || current.eventId !== command.eventId) throw new ReducerError("INVALID_OPTION", "event.not_current");
   const event = eventFromContent(context, current.eventId);
-  if (!isEventEligible(event, state)) throw new ReducerError("INVALID_OPTION", "event.ineligible");
+  if (!isEventEligible(event, state, { checkRecurrence: false })) throw new ReducerError("INVALID_OPTION", "event.ineligible");
   if (!Array.isArray(event.choices)) throw new ReducerError("INVALID_OPTION", "event.has_no_choices");
   const choice = event.choices.find((value) => runtimeObject(value, "choice.invalid").id === command.optionId);
   if (choice === undefined) throw new ReducerError("INVALID_OPTION", "event.option_invalid");

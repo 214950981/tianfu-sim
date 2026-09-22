@@ -54,6 +54,7 @@ type EventDefinition={id:string;version:number;kind:'choice'|'narrative'|'combat
 // Missing cooldown preserves legacy eligibility. Missing maxOccurrences means no per-Run cap; missing minNodesBetween means no node cooldown.
 // Event eligibility reads RunState.events.occurrences[eventId] in O(1). Candidate inspection never mutates occurrence state.
 // Once an Event is authoritatively selected as the current scene, the reducer records exactly one occurrence at the selection node.
+// Recurrence eligibility governs candidate selection and transition creation only. A legal choice for the already-authoritative current Event instance does not reapply its own recurrence gate; it still requires the exact current eventId and all normal choice, requirement, actor, version and state validation.
 // minNodesBetween=N rejects the Event while currentNodeIndex-lastOccurrenceNodeIndex<=N and permits it at N+1.
 // A recurrence declaration with maxOccurrences=1 cannot repeat and needs no repeat-effect declaration.
 // For a recurrence declaration that can repeat, each cumulative Effect must individually declare repeatBehavior:'allow-cumulative'.

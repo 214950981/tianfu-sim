@@ -12,6 +12,7 @@ export type Reducer=(i:ReduceInput)=>ReduceOutput;
 // A repeated/replayed command deterministically reuses the persisted event instance and bindings; failures return no partial NPC, binding, RNG or state mutation.
 // After authoritative selection/materialization, reducer records the selected Event occurrence exactly once in RunState.events.occurrences.
 // Director/Cause selectors read recurrence eligibility but never write occurrence state. ViewModel reads, retries, and Snapshot restore do not increment it.
+// CHOOSE_EVENT_OPTION validates only the already-authoritative current scene and its legal choice; it does not reapply that scene's recurrence gate after selection has recorded its occurrence.
 
 // createOfferedRun(...) is the only pure pre-reducer factory; server supplies trusted runId/playerId/rootSeed/version/metaView.
 // Once GameState exists, all rule mutation goes through reduce.

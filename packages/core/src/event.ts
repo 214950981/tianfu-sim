@@ -170,9 +170,10 @@ export function resolveOutcome(outcomesValue: unknown, requestedTier: OutcomeTie
   return { outcome: success, appliedTier: "success" };
 }
 
-export function isEventEligible(value: unknown, state: GameState): boolean {
+export function isEventEligible(value: unknown, state: GameState, options: { checkRecurrence?: boolean } = {}): boolean {
   const event = objectValue(value, "event");
   if (event.requirements !== undefined && !evaluateCondition(event.requirements, state)) return false;
+  if (options.checkRecurrence === false) return true;
   if (event.cooldown === undefined) return true;
   const cooldown = objectValue(event.cooldown, "event.cooldown"); const eventId = stringValue(event.id, "event.id");
   const occurrence = state.run.events.occurrences?.[eventId];
