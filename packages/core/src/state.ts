@@ -73,7 +73,7 @@ export interface RunState {
   risk?: { conditions: RiskConditionInstance[]; exposureCount: number };
   identity: { runName: string; destinyId?: string; innateProfile?: InnateProfile; rootTags: string[]; factionId?: string; titles: string[] };
   actions: { available: ActionType[]; pursuitCauseIds: string[]; recent: ActionType[] };
-  events: { current?: { eventId: string; kind: string; phase?: string; instanceId?: string; participantBindings?: Record<string, string> }; history: Array<{ eventId: string; nodeIndex: number; resultTier?: string }>; occurrences?: Record<string, EventOccurrenceState> };
+  events: { current?: { eventId: string; kind: string; phase?: string; instanceId?: string; participantBindings?: Record<string, string>; triggeringCauseId?: string }; history: Array<{ eventId: string; nodeIndex: number; resultTier?: string }>; occurrences?: Record<string, EventOccurrenceState> };
   causes: { byId: Record<string, CauseInstance> };
   npcs: { nextNpcSequence: number; byId: Record<string, NpcInstance>; roleIndex: Record<string, string[]> };
   build: { techniques: string[]; artifacts: string[]; consumables: string[]; tagScores: Record<string, number>; mainPath?: string; secondaryPath?: string; affinities?: Record<string, BuildAffinity>; dominantBuildId?: string; evidenceFacts?: BuildEvidenceFact[]; transitionFacts?: BuildTransitionFact[]; unlockedBuildIds?: string[] };
@@ -266,6 +266,7 @@ function validateRun(value: unknown, path: string, rulesVersion: string): assert
     const current = record(events.current, `${path}.events.current`);
     stringValue(current.eventId, `${path}.events.current.eventId`); stringValue(current.kind, `${path}.events.current.kind`); optionalString(current, "phase", `${path}.events.current`);
     optionalString(current, "instanceId", `${path}.events.current`);
+    optionalString(current, "triggeringCauseId", `${path}.events.current`);
     if (current.participantBindings !== undefined) {
       const bindings = record(current.participantBindings, `${path}.events.current.participantBindings`);
       for (const [slot, npcId] of Object.entries(bindings)) {

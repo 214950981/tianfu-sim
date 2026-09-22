@@ -1,0 +1,18 @@
+id: LOOPFIX02B2_R1
+title: LOOPFIX02B2-R1 — Triggering Cause Binding
+phase: 2
+requiredContracts: [.codex/contracts/event.ref,.codex/contracts/cause.ref,.codex/contracts/lifecycle.ref,.codex/contracts/director.ref,.codex/contracts/state.ref,.codex/contracts/reducer.ref,.codex/contracts/command.ref,.codex/contracts/rng.ref,.codex/contracts/crosslayer.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [packages/core/src/cause.ts,packages/core/src/state.ts,packages/core/src/reducer.ts,packages/core/src/participants.ts,packages/content/src/registry.ts,packages/content/dev-fixtures/minimal-pack.json]
+allowedScope:
+  - LOOPFIX02B2-R1 task definition and INDEX registration
+  - authoritative current-scene provenance for the selecting Cause instance (persisted, hashed and replayed)
+  - formal triggering-Cause reference in the event.ref RESOLVE_CAUSE/EXPIRE_CAUSE DSL as a closed selector union
+  - fail-closed validation when the triggering-Cause reference is used outside a Cause-triggered current scene
+  - reducer forwarding of the authoritative current-scene Cause binding into Cause effect resolution
+  - targeted LOOPFIX02B2_R1 tests with their own closure-capable local pack
+  - content lint requiring only that a triggeringCause Event be Cause-linked, with no reserved actor role name
+forbiddenScope: [CONTENT01-cause-closure-authoring,LOOPFIX02B2,LOOPFIX02B3,NPC-repeat-gating,P6-availability,Director-precedence-or-selector-changes,echoBudget-changes,Build-Risk-Progression-number-changes,Event-body-text,Event-weights,UI,TRANSFORM_CAUSE,templateId-only-lookup,same-template-heuristic-lookup,600-run-simulation,commit,push]
+accept: [p3-selected-cause-persisted-on-events-current,provenance-survives-participant-materialization-and-fold,exact-triggering-cause-resolves-to-the-bound-causeId,same-template-multi-instance-never-cross-resolves,non-cause-scene-fails-closed-without-rng-or-mutation,run-triggering-cause-fails-closed-when-no-trigger-exists,unbound-triggering-cause-selector-rejected-at-content-lint,legacy-exact-causeId-reference-unchanged,snapshot-validate-and-replay-hash-stable,retry-exactly-once,P1-P6-precedence-unchanged,echoBudget-unchanged,no-new-rng-stream-or-draw,director-causeId-unchanged]
+tests: [loopfix02b2r1,cause,content-registry,event-dsl,reducer,state,replay,director,recurrence,loopfix02b1,content01,typecheck,lint,content-lint,secret-scan]

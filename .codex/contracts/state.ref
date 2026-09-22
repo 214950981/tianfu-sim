@@ -27,7 +27,7 @@ export type RunState={
  risk?:{conditions:RiskConditionInstance[];exposureCount:number};
  identity:{runName:string;destinyId?:string;innateProfile?:InnateProfile;rootTags:string[];factionId?:string;titles:string[]};
  actions:{available:ActionType[];pursuitCauseIds:string[];recent:ActionType[]};
- events:{current?:{eventId:string;kind:string;phase?:string;instanceId?:string;participantBindings?:Record<string,string>};history:Array<{eventId:string;nodeIndex:number;resultTier?:string}>;occurrences?:Record<string,EventOccurrenceState>};
+ events:{current?:{eventId:string;kind:string;phase?:string;instanceId?:string;participantBindings?:Record<string,string>;triggeringCauseId?:string};history:Array<{eventId:string;nodeIndex:number;resultTier?:string}>;occurrences?:Record<string,EventOccurrenceState>};
  causes:{byId:Record<string,CauseInstance>};
  npcs:{nextNpcSequence:number;byId:Record<string,NpcInstance>;roleIndex:Record<string,string[]>};
  build:{techniques:string[];artifacts:string[];consumables:string[];tagScores:Record<string,number>;mainPath?:string;secondaryPath?:string;affinities?:Record<string,BuildAffinity>;dominantBuildId?:string;evidenceFacts?:BuildEvidenceFact[];transitionFacts?:BuildTransitionFact[];unlockedBuildIds?:string[]};
@@ -55,3 +55,8 @@ export type MetaView=Pick<MetaState,'unlocks'|'entitlements'|'discoveries'>;
 // New Runs initialize events.occurrences as an empty map. Legacy snapshots may omit it because no frozen formal content previously depended on recurrence.
 // Each map entry has a positive safe occurrenceCount and a safe lastOccurrenceNodeIndex<=run.nodeIndex; both are monotonic.
 // Content and clients cannot mutate occurrence state. Authoritative reducer scene selection is the only writer.
+// triggeringCauseId, when present, is the exact CauseInstance ID whose P3 echo materialized this authoritative scene.
+// It is the sole authority for a triggeringCause:true closure reference: resolution reads this field and never searches,
+// guesses or rebuilds a Cause by actor/template/salience. Only the authoritative P3 selector writes it; content and clients cannot.
+// It carries the same determinism guarantees as participantBindings: persisted in RuleState/Snapshot, hashed, validated and replayed.
+// A scene reached without this field fails a triggeringCause reference closed; the legacy literal {causeId} form is unaffected.

@@ -42,6 +42,7 @@ export type EffectSpec = (
   | { op: "ADD_NPC_MILESTONE"; npcId?: string; actorBindingKey?: string; type: string; sourceRef: string; reasonTag: string }
   | { op: "ADD_CAUSE"; templateId: string; salience: 1 | 2 | 3 | 4 | 5; visibility?: "hidden" | "hint" | "journal"; actorBindingKeys?: Record<string, string> }
   | { op: "RESOLVE_CAUSE" | "EXPIRE_CAUSE"; causeId: string }
+  | { op: "RESOLVE_CAUSE" | "EXPIRE_CAUSE"; triggeringCause: true }
   | { op: "GRANT_COMPONENT" | "REMOVE_COMPONENT"; componentId: string }
   | { op: "SET_REGION"; regionId: string }
   | { op: "OUTCOME_TIME_DELTA"; years: number }
@@ -219,7 +220,7 @@ function validateEffect(value: unknown, refs: ReferenceSets, buildPack: BuildPac
     case "SET_NPC_STATUS": { const target = validateNpcTarget(effect, path); exact(effect, ["op", ...target, "targetStatus", "revealToPlayer", "reasonTag"], [], path); validateNpcReason(effect, npcPack, path); oneOf(effect.targetStatus, new Set(["active", "missing", "dead", "departed"]), `${path}.targetStatus`); if (typeof effect.revealToPlayer !== "boolean") fail(`${path}.revealToPlayer`, "must be boolean"); break; }
     case "ADD_NPC_MILESTONE": { const target = validateNpcTarget(effect, path); exact(effect, ["op", ...target, "type", "sourceRef", "reasonTag"], [], path); validateNpcReason(effect, npcPack, path); const type = stringValue(effect.type, `${path}.type`); if (!npcPack!.rules.milestoneTypes.includes(type)) fail(`${path}.type`, `unknown milestone type ${type}`); stringValue(effect.sourceRef, `${path}.sourceRef`); break; }
     case "ADD_CAUSE": exact(effect, ["op", "templateId", "salience"], ["visibility", "actorBindingKeys"], path); requireReference(effect.templateId, refs.causes, `${path}.templateId`); integer(effect.salience, `${path}.salience`, 1, 5); if (effect.visibility !== undefined) oneOf(effect.visibility, new Set(["hidden", "hint", "journal"]), `${path}.visibility`); if (effect.actorBindingKeys !== undefined) for (const [role, slot] of Object.entries(objectValue(effect.actorBindingKeys, `${path}.actorBindingKeys`))) { stringValue(role, `${path}.actorBindingKeys role`); stringValue(slot, `${path}.actorBindingKeys.${role}`); } break;
-    case "RESOLVE_CAUSE": case "EXPIRE_CAUSE": exact(effect, ["op", "causeId"], [], path); stringValue(effect.causeId, `${path}.causeId`); break;
+    case "RESOLVE_CAUSE": case "EXPIRE_CAUSE": { const hasCauseId = effect.causeId !== undefined; const hasTriggering = effect.triggeringCause !== undefined; if (hasCauseId === hasTriggering) fail(path, "requires exactly one of causeId or triggeringCause"); if (hasCauseId) { exact(effect, ["op", "causeId"], [], path); stringValue(effect.causeId, `${path}.causeId`); } else { exact(effect, ["op", "triggeringCause"], [], path); if (effect.triggeringCause !== true) fail(`${path}.triggeringCause`, "must be true"); } break; }
     case "GRANT_COMPONENT": case "REMOVE_COMPONENT": exact(effect, ["op", "componentId"], [], path); requireReference(effect.componentId, refs.components, `${path}.componentId`); break;
     case "SET_REGION": exact(effect, ["op", "regionId"], [], path); requireReference(effect.regionId, refs.regions, `${path}.regionId`); break;
     case "OUTCOME_TIME_DELTA": exact(effect, ["op", "years"], [], path); integer(effect.years, `${path}.years`, 0); break;
@@ -375,6 +376,21 @@ function validateCauseBindings(events: EventDefinition[], templates: Map<string,
   }
 }
 
+// A triggeringCause:true reference is legal only where an authoritative triggering Cause can exist: the Event must
+// be a Cause-linked event, i.e. some CauseTemplate.linkedEventIds must contain it. That is the whole content-level
+// requirement, and it is deliberately stated in terms of Cause echo semantics rather than any particular actor role.
+// Cause actor roles are content meaning (rescuedNpc, master, debtor, enemy, witness, ...) and are never renamed or
+// reserved for this mechanism. Safety comes from the runtime reading the persisted events.current.triggeringCauseId,
+// never from a role name: an unbound scene fails closed at resolution regardless of how the Cause was authored.
+function validateTriggeringCauseReferences(events: EventDefinition[], templates: Map<string, CauseTemplate>): void {
+  const linked = new Set<string>();
+  for (const template of templates.values()) for (const eventId of template.linkedEventIds) linked.add(eventId);
+  for (const event of events) for (const effects of effectLists(event)) for (const effect of effects) {
+    if ((effect.op !== "RESOLVE_CAUSE" && effect.op !== "EXPIRE_CAUSE") || !("triggeringCause" in effect)) continue;
+    if (!linked.has(event.id)) fail(`pack.events.${event.id}`, "triggeringCause reference requires this Event to be linked from a CauseTemplate");
+  }
+}
+
 function validateDestiny(value: unknown, refs: ReferenceSets, path: string): void {
   const destiny = objectValue(value, path);
   exact(destiny, ["id", "version", "profile", "titleKey", "descriptionKey", "advantage", "cost", "hook"], ["requiredUnlocks"], path);
@@ -445,6 +461,7 @@ export function validateContentPack(value: unknown, expectedContentVersion?: str
     for (const actor of target.actors) if (actor.required && !sourceRequired.has(actor.role)) fail(`pack.causeTemplates.${template.id}`, `transform cannot bind required target role ${actor.role}`);
   }
   validateCauseBindings(events as EventDefinition[], templateMap);
+  validateTriggeringCauseReferences(events as EventDefinition[], templateMap);
   if (computePackChecksum(value as ContentPack) !== checksum) fail("pack.manifest.checksum", "does not match canonical content");
   return value as ContentPack;
 }

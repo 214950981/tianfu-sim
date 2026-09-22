@@ -240,6 +240,9 @@ interface ActionEventContentAccess {
 
 function buildPackFromContext(context: RuleContext): BuildPack | undefined { const source = context.content as unknown as ActionEventContentAccess & Partial<BuildContentAccess>; const locked = source.get(context.contentVersion); return locked.buildPackId === undefined ? undefined : source.getBuild?.(context.contentVersion); }
 function npcPackFromContext(context: RuleContext): NpcPack | undefined { const source = context.content as unknown as ActionEventContentAccess & Partial<NpcContentAccess>; const locked = source.get(context.contentVersion) as { npcPackId?: string }; return locked.npcPackId === undefined ? undefined : source.getNpc?.(context.contentVersion); }
+// Cause effect resolution forwards the visible actor bindings and Cause-owned actor availability. The
+// triggering Cause is deliberately NOT forwarded here: it is read from the authoritative current scene by
+// the Cause module, so a caller-supplied context can never manufacture a Cause binding.
 function causeContextWithNpcState(state: GameState, context: RuleContext): RuleContext { return { ...context, actorBindings: currentParticipantBindings(state, context.actorBindings), actorStatusById: { ...(context.actorStatusById ?? {}), ...causeActorAvailability(state) } }; }
 
 function chooseAction(state: GameState, command: Extract<GameCommand, { type: "CHOOSE_ACTION" }>, context: RuleContext): ReduceOutput {
@@ -273,7 +276,7 @@ function chooseAction(state: GameState, command: Extract<GameCommand, { type: "C
     const firstRunSelection = selectDirectorEvent(provisional, command.actionId, directorContent, ["P2"]);
     provisional = firstRunSelection.state; rngDraws.push(...firstRunSelection.rngDraws); selectorTrace.push(firstRunSelection.trace as unknown as Record<string, unknown>);
     if (provisional.run.events.current === undefined) {
-      const causeSelection = selectCauseEcho(provisional, causeContent, context.contentVersion);
+      const causeSelection = selectCauseEcho(provisional, causeContent, context.contentVersion, causeContextWithNpcState(provisional, context));
       provisional = causeSelection.state; rngDraws.push(...causeSelection.rngDraws); selectorTrace.push(...causeSelection.trace);
       const causeTrace = causeSelection.trace[0];
       if (provisional.run.events.current !== undefined) provisional = recordDirectorScene(provisional, provisional.run.events.current.eventId, directorContent, "P3", { causeId: typeof causeTrace?.causeId === "string" ? causeTrace.causeId : undefined });

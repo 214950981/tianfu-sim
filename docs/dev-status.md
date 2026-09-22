@@ -9,8 +9,9 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `32dd52d`
+- lastReviewedCommit: `4a176ee`
 - reviewedDate: `2026-09-22`
+- workingTree: LOOPFIX02B2-R1 implemented, uncommitted
 
 不要修改 `main` / 1.0，除非未来任务明确要求。
 
@@ -52,6 +53,7 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - LOOPFIX02A: PASS
 - LOOPFIX02B1: PASS
 - LOOPFIX02B2: BLOCKED
+- LOOPFIX02B2-R1: IMPLEMENTED (uncommitted)
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
 
@@ -154,21 +156,27 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 
 本次 B2 未产生任何未完成运行时代码改动；工作区已恢复到 B2 开始前的可运行状态。
 
-### Next
+### LOOPFIX02B2-R1 — IMPLEMENTED (uncommitted)
 
-Latest completed: `LOOPFIX02B1 PASS`
+**Triggering Cause Binding 已贯通。**
 
-下一任务：`LOOPFIX02B2-R1` — Triggering Cause Binding
+- P3 Cause selector 选中的 exact `CauseInstance` 现持久化为
+  `run.events.current.triggeringCauseId`，随 `instanceId` / `participantBindings` 一同进入
+  RuleState / Snapshot / canonical hash / replay。
+- `event.ref` 新增 closure selector：`{op:'RESOLVE_CAUSE'|'EXPIRE_CAUSE';triggeringCause:true}`。
+  仅从 authoritative current scene 读取 provenance，不做任何 lookup / 猜测 / rebuild。
+- 无 provenance 的场景使用该引用时 fail-closed（`cause.invalid`），不改变任何 RuleState。
+- content lint 的唯一 content 侧要求：该 Event 必须是 Cause-linked
+  （被某个 `CauseTemplate.linkedEventIds` 收录），从而该场景才可能有 authoritative triggering Cause。
+- Cause actor role 保持内容语义（`rescuedNpc` / `master` / `debtor` / `enemy` / `witness` / ...），
+  **不为本机制重命名或保留任何角色名**。安全性来自 runtime 读取 `triggeringCauseId`，不来自角色名。
+- exact `causeId` 旧形式未改变，继续有效。
+- full regression 331/331 PASS；typecheck CLEAN；import boundary / content lint / secret scan PASS；
+  全部 audit tool 0 violations。
+- Director precedence、RNG、echoBudget、Build / Risk / Progression 数值均未修改。
+- 共享 dev fixture、既有测试、participant bridge audit 均未修改。
 
-设计方向：
-
-- P3 Cause 触发 Event 时，authoritative current Event/scene 保存 exact triggering cause instance provenance。
-- closure effect 只能引用该 triggering Cause。
-- 不按 templateId 全局猜测。
-- 不修改 Director precedence。
-- Snapshot / Replay / hash / retry 必须稳定。
-
-不要提前开始 R1。
+本次 R1 尚未 commit / push。
 
 ## 最新可信玩法数据
 
@@ -203,7 +211,8 @@ SIM02 默认配置：6 policies × 100 fixed seeds，`maxActions = 50`。
 - `resolved` / `expired` / `transformed` 当前均为 0。
 - LOOPFIX02B2 BLOCKED：缺少 exact triggering Cause instance binding，
   player-facing closure effect 无法在静态 content 中合法引用 runtime Cause instance。
-- 解绑路径见 LOOPFIX02B2-R1。
+- 解绑路径 LOOPFIX02B2-R1 已实现：authoritative scene provenance + `triggeringCause:true`。
+- `resolved` / `expired` / `transformed` 仍为 0，因为 CONTENT01 尚未授权 closure 内容（属 B2 重试范围）。
 
 ### 2. Core NPC 高频循环
 
@@ -265,7 +274,11 @@ Latest completed: `LOOPFIX02B1 PASS`
 
 LOOPFIX02B2: `BLOCKED` — 见上方 "LOOPFIX02B2 — BLOCKED"。
 
-下一任务：`LOOPFIX02B2-R1` — Triggering Cause Binding
+LOOPFIX02B2-R1: `IMPLEMENTED (uncommitted)` — 见上方 "LOOPFIX02B2-R1 — IMPLEMENTED"。
+binding 机制已贯通并全绿；等待 commit 与 B2 重试评审。
+
+下一任务：`LOOPFIX02B2`（重试）— Cause Closure / Lifecycle，
+在 R1 的 `triggeringCause:true` 之上授权 player-facing closure 内容。
 
 范围约束：
 

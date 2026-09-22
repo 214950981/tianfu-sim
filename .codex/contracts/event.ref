@@ -30,6 +30,7 @@ type EffectSpec = (
  {op:'ADD_NPC_MILESTONE';npcId?:string;actorBindingKey?:string;type:string;sourceRef:string;reasonTag:string}|
  {op:'ADD_CAUSE';templateId:string;salience:1|2|3|4|5;visibility?:'hidden'|'hint'|'journal';actorBindingKeys?:Record<string,string>}|
  {op:'RESOLVE_CAUSE'|'EXPIRE_CAUSE';causeId:string}|
+ {op:'RESOLVE_CAUSE'|'EXPIRE_CAUSE';triggeringCause:true}|
  {op:'GRANT_COMPONENT'|'REMOVE_COMPONENT';componentId:string}|
  {op:'SET_REGION';regionId:string}|
  {op:'OUTCOME_TIME_DELTA';years:number}|
@@ -86,6 +87,16 @@ type EventDefinition={id:string;version:number;kind:'choice'|'narrative'|'combat
 // Content cannot author riskHint. UI risk language is derived later (UI01).
 // ADD_BUILD_EVIDENCE is authoritative semantic evidence only; amount/buildId/reasonTag are content-authored and validated against the locked BuildPack.
 // NPC effects target exactly one authoritative npcId or actorBindingKey and are validated against the locked NpcPack. Full NpcInstance replacement is forbidden.
+// A choice is executable only if its OutcomeTable declares a success or failure tier; with neither tier an outcome can never resolve, and OutcomeTable otherwise requires a success tier.
+// RESOLVE_CAUSE/EXPIRE_CAUSE target exactly one Cause: either an author-time causeId, or the triggering Cause via triggeringCause:true. Exactly one of the two is required, never both.
+// triggeringCause:true is the only legal way to reference the Cause selected by P3. It is legal only when the Event is reached as a P3 Cause echo, and resolves at runtime to the exact bound CauseInstance.causeId.
+// Its Content requirement is only that the Event be Cause-linked: some CauseTemplate.linkedEventIds must contain it, so an authoritative triggering Cause can exist for that scene.
+// Cause actor roles are content meaning (rescuedNpc, master, debtor, enemy, witness, and any other legal role) and are never renamed, reserved or constrained by this mechanism.
+// Safety does not come from a role name: it comes from the runtime reading the persisted events.current.triggeringCauseId, so an unbound scene fails closed however the Cause was authored.
+// At runtime the reference resolves only from the authoritative current-scene Cause binding; it never looks up a CauseTemplate, never searches active Causes by templateId, actor, salience or any other signal, and never fabricates one.
+// No triggering Cause, no authoritative binding, or a bound Cause that is missing or already terminal => fail closed: no RNG, no partial state mutation, and the same INVALID_OPTION cause.invalid surface as any other invalid Cause effect.
+// A triggeringCause Effect may declare repeatBehavior:'allow-cumulative' exactly like its causeId form, when its owning Event can repeat.
+// Lifetime asymmetry is intentional: after the triggering Cause is resolved or expired the scene may remain current, and repeating the Effect then fails closed. An authored transition or continuation is how such a scene ends.
 // A risk Choice references one registered threatId and uses that ThreatDefinition CheckSpec; it cannot declare a second CheckSpec.
 // END_RUN, killPlayer, setDead, forceDeath and equivalent direct-death effects are forbidden. Only lifespan handling or RISK01 RiskResolver may enter death/dying.
 // ActionType is the command/state ActionType; no second action enum exists. actionAffinity classifies selector candidates only.
