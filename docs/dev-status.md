@@ -9,9 +9,8 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `4a176ee`
-- reviewedDate: `2026-09-22`
-- workingTree: LOOPFIX02B2-R1 implemented, uncommitted
+- lastReviewedCommit: `a040f0f122f7f3ac5512cecda7414011567f7293`
+- reviewedDate: `2026-09-23`
 
 不要修改 `main` / 1.0，除非未来任务明确要求。
 
@@ -52,8 +51,8 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - SIM02: PASS
 - LOOPFIX02A: PASS
 - LOOPFIX02B1: PASS
-- LOOPFIX02B2: BLOCKED
-- LOOPFIX02B2-R1: IMPLEMENTED (uncommitted)
+- LOOPFIX02B2: BLOCKED（已由 LOOPFIX02B2_R1 解除，READY FOR RETRY）
+- LOOPFIX02B2_R1: PASS
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
 
@@ -137,9 +136,13 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - full regression 323/323 PASS。
 - Core / Director / contracts 未修改。
 
-### LOOPFIX02B2 — BLOCKED
+### LOOPFIX02B2 — BLOCKED（历史记录，已解除）
 
-**Blocker: player-facing Cause closure 缺少 exact triggering Cause instance binding**
+> **状态说明：本 blocker 已由 `LOOPFIX02B2_R1` 解决。**
+> 以下内容仅作为历史记录保留，当前 B2 的真实状态是 `READY FOR RETRY`，
+> 不再是 "因缺少 exact triggering Cause binding 而 BLOCKED"。
+
+**Blocker（已解除）: player-facing Cause closure 缺少 exact triggering Cause instance binding**
 
 - `RESOLVE_CAUSE` / `EXPIRE_CAUSE` 目前只能以 exact `causeId` 表达。
 - 静态 content 无法预知 runtime `causeId`：`causeId = cause:<commandId>:<ordinal>:<templateId>`，
@@ -156,9 +159,15 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 
 本次 B2 未产生任何未完成运行时代码改动；工作区已恢复到 B2 开始前的可运行状态。
 
-### LOOPFIX02B2-R1 — IMPLEMENTED (uncommitted)
+**解除方式（`LOOPFIX02B2_R1`, commit `a040f0f`）**：runtime binding 已由 authoritative scene provenance 贯通，
+`{op:'RESOLVE_CAUSE'|'EXPIRE_CAUSE';triggeringCause:true}` 可合法引用 P3 选中的 exact Cause instance。
+上述 blocker 的第 1–3 条已失效；第 4 条（`transform` 无 player-facing 表达）仍属 B2 retry 范围。
 
-**Triggering Cause Binding 已贯通。**
+### LOOPFIX02B2_R1 — PASS
+
+人类标题：**LOOPFIX02B2-R1 — Triggering Cause Binding**
+
+**Triggering Cause Binding 已贯通，已 commit + push（`a040f0f122f7f3ac5512cecda7414011567f7293`）。**
 
 - P3 Cause selector 选中的 exact `CauseInstance` 现持久化为
   `run.events.current.triggeringCauseId`，随 `instanceId` / `participantBindings` 一同进入
@@ -175,8 +184,6 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
   全部 audit tool 0 violations。
 - Director precedence、RNG、echoBudget、Build / Risk / Progression 数值均未修改。
 - 共享 dev fixture、既有测试、participant bridge audit 均未修改。
-
-本次 R1 尚未 commit / push。
 
 ## 最新可信玩法数据
 
@@ -208,11 +215,10 @@ SIM02 默认配置：6 policies × 100 fixed seeds，`maxActions = 50`。
 
 - Cause origin recurrence 已由 LOOPFIX02B1 完成。
 - Cause echo 高频出现。
-- `resolved` / `expired` / `transformed` 当前均为 0。
-- LOOPFIX02B2 BLOCKED：缺少 exact triggering Cause instance binding，
-  player-facing closure effect 无法在静态 content 中合法引用 runtime Cause instance。
-- 解绑路径 LOOPFIX02B2-R1 已实现：authoritative scene provenance + `triggeringCause:true`。
-- `resolved` / `expired` / `transformed` 仍为 0，因为 CONTENT01 尚未授权 closure 内容（属 B2 重试范围）。
+- exact triggering Cause binding 已由 `LOOPFIX02B2_R1` PASS 解决（authoritative scene provenance + `triggeringCause:true`）。
+- `resolved` / `expired` / `transformed` 当前仍均为 0。
+- 原因现在是 **CONTENT01 尚未授权正式 closure 内容**（`resolved` / `expired` / `transformed` 无内容侧触发源），
+  属 `LOOPFIX02B2` retry 范围；**不再是 runtime binding blocker**。
 
 ### 2. Core NPC 高频循环
 
@@ -270,22 +276,25 @@ Cause：
 
 ## Next
 
-Latest completed: `LOOPFIX02B1 PASS`
+Latest completed: `LOOPFIX02B2_R1 PASS`（commit `a040f0f`，已 push）
 
-LOOPFIX02B2: `BLOCKED` — 见上方 "LOOPFIX02B2 — BLOCKED"。
+LOOPFIX02B2: `READY FOR RETRY`
 
-LOOPFIX02B2-R1: `IMPLEMENTED (uncommitted)` — 见上方 "LOOPFIX02B2-R1 — IMPLEMENTED"。
-binding 机制已贯通并全绿；等待 commit 与 B2 重试评审。
+- runtime binding blocker 已解除（见上方 "LOOPFIX02B2 — BLOCKED（历史记录，已解除）"）。
+- CONTENT01 closure / lifecycle 尚未施工：`resolved` / `expired` / `transformed` 仍为 0。
+- 不再是 "因缺少 exact triggering Cause binding 而 BLOCKED"。
 
-下一任务：`LOOPFIX02B2`（重试）— Cause Closure / Lifecycle，
+下一任务：`LOOPFIX02B2`（retry）— Cause Closure / Lifecycle，
 在 R1 的 `triggeringCause:true` 之上授权 player-facing closure 内容。
 
 范围约束：
 
-- R1 只处理 triggering Cause provenance 与 closure binding。
-- B2 只处理 Cause closure / lifecycle。
-- 不要把 NPC / P6 pacing 合并进 R1。
-- P6 starvation 归属 LOOPFIX02B3。
+- R1 已只处理 triggering Cause provenance 与 closure binding（PASS，commit `a040f0f`）。
+- B2 retry 只处理 Cause closure / lifecycle。
+- 不处理 NPC pacing。
+- 不处理 P6 starvation，P6 归属 `LOOPFIX02B3`。
+- 不修改 Director strict precedence。
+- 不合并 R1 范围进 B2。
 
 后续目标（R1 / B2 / B3 之后）：
 

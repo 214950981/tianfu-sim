@@ -87,7 +87,6 @@ type EventDefinition={id:string;version:number;kind:'choice'|'narrative'|'combat
 // Content cannot author riskHint. UI risk language is derived later (UI01).
 // ADD_BUILD_EVIDENCE is authoritative semantic evidence only; amount/buildId/reasonTag are content-authored and validated against the locked BuildPack.
 // NPC effects target exactly one authoritative npcId or actorBindingKey and are validated against the locked NpcPack. Full NpcInstance replacement is forbidden.
-// A choice is executable only if its OutcomeTable declares a success or failure tier; with neither tier an outcome can never resolve, and OutcomeTable otherwise requires a success tier.
 // RESOLVE_CAUSE/EXPIRE_CAUSE target exactly one Cause: either an author-time causeId, or the triggering Cause via triggeringCause:true. Exactly one of the two is required, never both.
 // triggeringCause:true is the only legal way to reference the Cause selected by P3. It is legal only when the Event is reached as a P3 Cause echo, and resolves at runtime to the exact bound CauseInstance.causeId.
 // Its Content requirement is only that the Event be Cause-linked: some CauseTemplate.linkedEventIds must contain it, so an authoritative triggering Cause can exist for that scene.
