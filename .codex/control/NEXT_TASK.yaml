@@ -1,44 +1,41 @@
 version: 1
 status: READY
-attempt: 2
+attempt: 3
 taskId: LOOPFIX02B2
-title: LOOPFIX02B2 — Cause Closure / Lifecycle repair
+title: LOOPFIX02B2 — Cause Closure / Lifecycle final micro-repair
 taskDefinition: .codex/tasks/LOOPFIX02B2.yaml
 sourceBranch: dev/tianfu-2.0
 workBranch: wb-LOOPFIX02B2
 worktreeRequired: true
 allowSyntheticTreeBase: true
 basePolicy: remote-source-head-at-repair-start
-resumeResultCommit: 407f64b8bcd0d545d59726ad2f88895c050bfbca
+resumeResultCommit: 88b3061aaceb0af2684734980fee7ce87d0e5fd4
 execution:
   readProtocolFirst: true
   commitTaskResult: true
   pushWorkBranch: true
   updateSourceBranch: false
   startNextTask: false
-controllerDecision:
-  blocker: B2-TESTFIXTURE-CONFLICT
-  decision: authorize-test-fixture-repair
-  rationale: Cause-linked echo Events are P3-owned; direct fixture entry without triggeringCauseId is no longer a legal execution fixture.
-  allowedTestChanges:
-    - tests/content01.test.mjs CONTENT01-016 reachability fixture only
-    - tests/content01.test.mjs CONTENT01-019 build-route fixture only
-  forbiddenDecision:
-    - do not relax triggeringCause fail-closed semantics
-    - do not alter R1 runtime binding
+controllerReview:
+  previousAttemptStatus: CONDITIONAL_REJECT
+  acceptedParts:
+    - closure true on all 10 Cause-linked echoes
+    - engage/consider RESOLVE and leave EXPIRE with no exception
+    - CONTENT01-016/019 fixture repair
+    - dedicated B2 test file and all reported test/gate results
+  microRepairsRequired:
+    - Revert the generic risk-choice branch in choices(spec) to its exact pre-B2 behavior. No current Cause-linked echo uses spec.risk, so B2 must not edit that generic branch.
+    - Fix B2-L so Director reservation is actually tested for P4=coreNpc, P5=contextual, and P6=ordinary. The string fallback is not a valid DirectorIndexQuery slot and does not test P6.
+  testExpectation:
+    - Keep all existing B2 coverage.
+    - B2-L must query valid slot names only and demonstrate no Cause-linked echo appears in P4/P5/P6 candidate indexes.
+    - Run dedicated B2 tests, affected content/director tests, then all tests and existing gates.
 controllerIntent:
-  mode: content-first
-  goal: terminal player-facing closure for every CONTENT01 Cause echo
   closurePolicy: engage-and-consider-resolve; leave-expires
-  requireAllChoicesTerminal: true
-  forbidZeroBudgetZombiePath: true
-  removePerEventLeaveResolveExceptions: true
-  requireDedicatedB2TestFile: tests/loopfix02b2.test.mjs
+  noOtherBehaviorChange: true
+  coreContractsDirectorMustRemainUnchanged: true
 notes:
-  - Continue from the prior B2 implementation as evidence, but conform it exactly to the task definition.
-  - Remove the xu/other special-case leave-resolves behavior. For all 10 Cause-linked echo Events, leave must EXPIRE_CAUSE.
-  - The current Closure enum/helper is overcomplicated if its variants do not change behavior; simplify to the smallest declarative flag/helper.
-  - No current Cause-linked echo Event uses the risk-choice branch. Do not modify generic risk-choice behavior merely to support B2.
-  - Add the required targeted tests/loopfix02b2.test.mjs; the previous attempt did not add it.
-  - CONTENT01-016/019 must respect real P3 provenance for Cause-linked echoes instead of force-entering them unbound.
-  - If Core/contracts/Director changes appear necessary, stop and return BLOCKED.
+  - This is a micro-repair, not a redesign.
+  - Do not change the accepted CONTENT01-016/019 fixture approach unless a new failure proves it necessary.
+  - Do not modify PROTOCOL/NEXT_TASK/task definition on the work branch; consume the latest source versions.
+  - If these two repairs uncover a Core/contracts/Director requirement, stop BLOCKED.
