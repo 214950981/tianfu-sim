@@ -9,7 +9,7 @@ allowedScope:
   - CONTENT01 player-facing terminal Cause closure authoring on all Cause-linked echo Events
   - minimal declarative CONTENT01 helper needed to append triggeringCause closure effects without copy-paste
   - repeatBehavior declarations required by existing recurrence contract
-  - tests/loopfix02b2.test.mjs targeted LOOPFIX02B2 coverage
+  - tests/loopfix02b2.test.mjs targeted LOOPFIX02B2 coverage, including correct P4 coreNpc / P5 contextual / P6 ordinary reservation queries
   - tests/content01.test.mjs CONTENT01-016 fixture repair so Cause-linked echo Events are reached with authoritative P3 provenance
   - tests/content01.test.mjs CONTENT01-019 fixture repair so Cause-linked Build echo Events are reached with authoritative P3 provenance
   - .codex/control/LAST_RESULT.yaml task result
@@ -29,6 +29,8 @@ accept:
   - repeatable-cause-echo-closure-effects-have-valid-repeatBehavior
   - cause-linked-events-remain-reserved-from-P4-P5-P6-director-indexes
   - dedicated-loopfix02b2-test-file-present-and-green
+  - generic-risk-choice-branch-byte-equivalent-to-pre-B2-source
+  - director-reservation-test-explicitly-covers-P4-coreNpc-P5-contextual-and-P6-ordinary
   - R1-regression-green
   - P1-P6-precedence-unchanged
   - echoBudget-unchanged
