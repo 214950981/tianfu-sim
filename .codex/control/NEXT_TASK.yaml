@@ -1,15 +1,14 @@
 version: 1
 status: READY
-attempt: 2
-taskId: LOOPFIX02B3
-title: LOOPFIX02B3 — Core NPC Repeat Gating / P6 Reachability provenance repair
-taskDefinition: .codex/tasks/LOOPFIX02B3.yaml
+attempt: 1
+taskId: SIM02
+title: SIM02 — Post-LOOPFIX 600-Run Balance / Reachability Verification
+taskDefinition: .codex/tasks/SIM02.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-LOOPFIX02B3
+workBranch: wb-SIM02
 worktreeRequired: true
 allowSyntheticTreeBase: true
-basePolicy: remote-source-head-at-repair-start
-resumeResultCommit: 038cadbba623442d3545f8c01f21fd73fe8a8ee2
+basePolicy: remote-source-head-at-task-start
 execution:
   readProtocolFirst: true
   commitTaskResult: true
@@ -17,38 +16,23 @@ execution:
   updateSourceBranch: false
   startNextTask: false
 controllerReview:
-  previousAttemptStatus: CONDITIONAL_REJECT
-  acceptedParts:
-    - same-core-NPC P4 eligibility gate shape and exclusion reason
-    - strict precedence / weights / RNG unchanged
-    - dedicated B3 coverage and reported regression results
-  defect:
-    - attempt 1 violates the task design requirement to use existing recentScenes.actorIds only
-    - sceneCoreActorIds re-derives missing P3 actor identity from current Event npcRoleAffinityTags and matchingActorIds; this is a content lookup heuristic and can bind the wrong actor when multiple active core NPC instances share a role
-  repairDecision:
-    - remove sceneCoreActorIds fallback/content re-derivation entirely
-    - preserve the simple P4 gate as intersection against the most recent DirectorSceneRecord.actorIds only
-    - when recording a selected P3 Cause echo, persist actorIds on that existing DirectorSceneRecord from the exact selected CauseInstance.actorIdsByRole values
-    - obtain the exact CauseInstance via the selected causeId already returned by selectCauseEcho / stored as triggeringCauseId; do not look up by templateId, role, salience, or uniqueness heuristic
-    - this uses the already-existing DirectorSceneRecord.actorIds field and does not add persistent schema/state
-  allowedRepairScope:
-    - packages/core/src/director.ts remove the content lookup heuristic and make the repeat gate actorIds-only
-    - packages/core/src/reducer.ts minimally pass exact selected Cause actor ids into recordDirectorScene for P3
-    - .codex/contracts/director.ref clarify exact P3 actorIds provenance instead of re-derivation
-    - tests/loopfix02b3.test.mjs and minimal director/reducer test adjustments
-    - package.json only if test registration needs correction
-  forbidden:
-    - Cause lifecycle/selection semantic changes
-    - triggeringCause binding semantic changes
-    - templateId/role/salience/unique-active-Cause lookup
-    - new state fields or schema changes
-    - Director precedence/weight/RNG changes
-    - content changes or balance changes
+  previousTask: LOOPFIX02B3
+  previousAttempt: 2
+  previousStatus: ACCEPTED
+  acceptedResultCommit: fcb7a106f497c5e6b9cc2fd4ae8bdadf2d44e2ba
+  acceptanceBasis:
+    - P4 repeat gate now reads only the immediately previous DirectorSceneRecord.actorIds
+    - P3 Director scene records persist exact actorIds from the selected CauseInstance.actorIdsByRole
+    - no content/role re-derivation heuristic remains
+    - same-role sibling regression coverage added
+    - npm test 249/249 and all reported gates green
 controllerIntent:
-  goal: same-core-NPC consecutive P4 gate with exact authoritative actor provenance and zero heuristic rebinding
-  postTask: do not run 600-run SIM02 or PLAYCHECK02; controller will dispatch those only after B3 acceptance
+  mode: verification-only
+  goal: run the deferred 600-run simulation and establish empirical P3/P4/P5/P6 reachability and post-LOOPFIX stability before PLAYCHECK02
+  postTask: do not start PLAYCHECK02; controller will review SIM02 first
 notes:
-  - This is a narrow provenance repair, not a redesign.
-  - The exact selected Cause already owns actorIdsByRole; use that provenance when writing the existing P3 DirectorSceneRecord.actorIds.
-  - Add a regression case with two active core NPC instances sharing the same role so the old heuristic would be observably unsafe and the exact Cause-bound actor remains correct.
-  - Complete full regression and existing gates, update LAST_RESULT.yaml, push only wb-LOOPFIX02B3, then stop.
+  - LOOPFIX02B3 attempt 2 is accepted. Do not reimplement or tune B3.
+  - This task is evidence collection, not balance tuning.
+  - Run exactly 600 deterministic runs through the established content-sim path and report reproducible configuration plus aggregate metrics.
+  - P6 must be empirically observed. Same-core-NPC consecutive P4 must remain absent. Cause echo/closure must remain healthy.
+  - If acceptance requires gameplay/rule/balance changes, stop BLOCKED with evidence rather than modifying them.
