@@ -1,26 +1,54 @@
 version: 1
 status: READY
-attempt: 1
+attempt: 2
 taskId: LOOPFIX02B3
-title: LOOPFIX02B3 — Core NPC Repeat Gating / P6 Reachability
+title: LOOPFIX02B3 — Core NPC Repeat Gating / P6 Reachability provenance repair
 taskDefinition: .codex/tasks/LOOPFIX02B3.yaml
 sourceBranch: dev/tianfu-2.0
 workBranch: wb-LOOPFIX02B3
 worktreeRequired: true
 allowSyntheticTreeBase: true
-basePolicy: remote-source-head-at-task-start
+basePolicy: remote-source-head-at-repair-start
+resumeResultCommit: 038cadbba623442d3545f8c01f21fd73fe8a8ee2
 execution:
   readProtocolFirst: true
   commitTaskResult: true
   pushWorkBranch: true
   updateSourceBranch: false
   startNextTask: false
+controllerReview:
+  previousAttemptStatus: CONDITIONAL_REJECT
+  acceptedParts:
+    - same-core-NPC P4 eligibility gate shape and exclusion reason
+    - strict precedence / weights / RNG unchanged
+    - dedicated B3 coverage and reported regression results
+  defect:
+    - attempt 1 violates the task design requirement to use existing recentScenes.actorIds only
+    - sceneCoreActorIds re-derives missing P3 actor identity from current Event npcRoleAffinityTags and matchingActorIds; this is a content lookup heuristic and can bind the wrong actor when multiple active core NPC instances share a role
+  repairDecision:
+    - remove sceneCoreActorIds fallback/content re-derivation entirely
+    - preserve the simple P4 gate as intersection against the most recent DirectorSceneRecord.actorIds only
+    - when recording a selected P3 Cause echo, persist actorIds on that existing DirectorSceneRecord from the exact selected CauseInstance.actorIdsByRole values
+    - obtain the exact CauseInstance via the selected causeId already returned by selectCauseEcho / stored as triggeringCauseId; do not look up by templateId, role, salience, or uniqueness heuristic
+    - this uses the already-existing DirectorSceneRecord.actorIds field and does not add persistent schema/state
+  allowedRepairScope:
+    - packages/core/src/director.ts remove the content lookup heuristic and make the repeat gate actorIds-only
+    - packages/core/src/reducer.ts minimally pass exact selected Cause actor ids into recordDirectorScene for P3
+    - .codex/contracts/director.ref clarify exact P3 actorIds provenance instead of re-derivation
+    - tests/loopfix02b3.test.mjs and minimal director/reducer test adjustments
+    - package.json only if test registration needs correction
+  forbidden:
+    - Cause lifecycle/selection semantic changes
+    - triggeringCause binding semantic changes
+    - templateId/role/salience/unique-active-Cause lookup
+    - new state fields or schema changes
+    - Director precedence/weight/RNG changes
+    - content changes or balance changes
 controllerIntent:
-  mode: smallest-deterministic-eligibility-fix
-  goal: break same-core-NPC consecutive P4 chains without changing strict precedence
-  postTask: do not run 600-run SIM02 or PLAYCHECK02 yet; controller will dispatch those after B3 acceptance
+  goal: same-core-NPC consecutive P4 gate with exact authoritative actor provenance and zero heuristic rebinding
+  postTask: do not run 600-run SIM02 or PLAYCHECK02; controller will dispatch those only after B3 acceptance
 notes:
-  - LOOPFIX02B2 is PASS and already transplanted onto dev/tianfu-2.0. Do not reimplement B2.
-  - This task may change Director eligibility only as specified in the task design.
-  - Do not change scoring weights, precedence, recurrence, content cooldowns, Cause, NPC state, or balance numbers.
-  - If P6 still appears structurally unreachable even after the specified gate, stop BLOCKED and report evidence instead of widening scope.
+  - This is a narrow provenance repair, not a redesign.
+  - The exact selected Cause already owns actorIdsByRole; use that provenance when writing the existing P3 DirectorSceneRecord.actorIds.
+  - Add a regression case with two active core NPC instances sharing the same role so the old heuristic would be observably unsafe and the exact Cause-bound actor remains correct.
+  - Complete full regression and existing gates, update LAST_RESULT.yaml, push only wb-LOOPFIX02B3, then stop.
