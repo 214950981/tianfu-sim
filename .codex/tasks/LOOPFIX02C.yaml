@@ -1,0 +1,36 @@
+id: LOOPFIX02C
+title: LOOPFIX02C — Contextual Pacing / P6 Reachability
+phase: 2
+requiredContracts: [.codex/contracts/director.ref,.codex/contracts/state.ref,.codex/contracts/reducer.ref,.codex/contracts/event.ref,.codex/contracts/rng.ref,.codex/contracts/crosslayer.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [packages/core/src/director.ts,packages/content/src/director-v1.ts,packages/core/src/reducer.ts,packages/content/src/registry.ts,tools/content-sim.mjs,tests/director.test.mjs,tests/content-sim.test.mjs]
+allowedScope:
+  - add one deterministic P5 contextual pacing rule while preserving strict P1 through P6 precedence
+  - add DirectorRules contextualGapScenes with v1 value exactly 2 and validate it as versioned Director content
+  - P5 candidate is ineligible with exclusionReason contextual-gap when any of the last contextualGapScenes DirectorSceneRecords has slot P5
+  - the P5 gate reads only existing bounded recentScenes and adds no persistent state counter timer or RNG
+  - P4 and P6 eligibility semantics remain unchanged; P6 remains ordinary fallback and is reached only when higher tiers have no eligible candidate
+  - update director contract narrowly to document the P5 contextual gap and its exact v1 value
+  - add dedicated tests/loopfix02c.test.mjs plus minimal director test updates and package test registration
+  - run exactly one post-change 600-run deterministic CONTENT01 verification using the established content-sim path and report P3 P4 P5 P6 counts
+  - preserve accepted SIM02 reporting instrumentation
+  - .codex/control/LAST_RESULT.yaml task result
+forbiddenScope: [P1-P6-reordering,P6-promotion-or-random-bypass,Director-weight-formula-changes,Director-weight-constant-changes,CONTENT01-event-reclassification,CONTENT01-cooldown-rebalance,Cause-semantic-changes,NPC-state-machine-changes,recurrence-rule-changes,new-RNG,new-persistent-state,Build-Risk-Progression-number-changes,PLAYCHECK02,UI,ITEM01,TECH01,SECT01,WORLD01,CHAL01,source-branch-push]
+accept:
+  - context-loader-parses-all-task-definitions-cleanly
+  - strict-P1-through-P6-precedence-unchanged
+  - contextualGapScenes-is-versioned-Director-rule-and-equals-2-in-v1
+  - P5-is-ineligible-when-a-P5-scene-exists-in-last-two-Director-records
+  - P5-reopens-after-two-subsequent-non-P5-Director-scenes
+  - P4-eligibility-and-same-core-NPC-repeat-gate-unchanged
+  - P6-selection-occurs-when-P4-is-empty-and-P5-is-contextual-gap-gated
+  - P5-remains-reachable-and-is-not-blanket-suppressed
+  - gate-consumes-zero-RNG-and-adds-no-state
+  - exactly-600-post-change-runs-complete-deterministically
+  - P6-observed-at-least-once-in-600-runs
+  - same-core-NPC-consecutive-P4-violations-remain-zero
+  - Cause-echo-and-closure-remain-healthy-with-no-cause-invalid-regression
+  - no-content-event-reclassification-or-balance-retuning
+  - full-regression-and-audits-green
+tests: [loopfix02c,director,sim02,reducer,state,replay,content-registry,content01,loopfix02b3,loopfix02b2,loopfix02b1,recurrence,typecheck,lint,content-lint,content01-lint,secret-scan,director-audit,recurrence-audit,participant-bridge-audit,npc-audit,build-audit,risk-audit,content-playability-audit]

@@ -1,11 +1,11 @@
 version: 1
 status: READY
 attempt: 1
-taskId: SIM02
-title: SIM02 — Post-LOOPFIX 600-Run Balance / Reachability Verification
-taskDefinition: .codex/tasks/SIM02.yaml
+taskId: LOOPFIX02C
+title: LOOPFIX02C — Contextual Pacing / P6 Reachability
+taskDefinition: .codex/tasks/LOOPFIX02C.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-SIM02
+workBranch: wb-LOOPFIX02C
 worktreeRequired: true
 allowSyntheticTreeBase: true
 basePolicy: remote-source-head-at-task-start
@@ -16,23 +16,25 @@ execution:
   updateSourceBranch: false
   startNextTask: false
 controllerReview:
-  previousTask: LOOPFIX02B3
-  previousAttempt: 2
-  previousStatus: ACCEPTED
-  acceptedResultCommit: fcb7a106f497c5e6b9cc2fd4ae8bdadf2d44e2ba
-  acceptanceBasis:
-    - P4 repeat gate now reads only the immediately previous DirectorSceneRecord.actorIds
-    - P3 Director scene records persist exact actorIds from the selected CauseInstance.actorIdsByRole
-    - no content/role re-derivation heuristic remains
-    - same-role sibling regression coverage added
-    - npm test 249/249 and all reported gates green
+  previousTask: SIM02
+  previousStatus: BLOCKED
+  evidenceCommit: e3a0f39f0aa4c2db6b9f586792812fb238cd232a
+  acceptedEvidence:
+    - 600 deterministic runs completed with runtimeFailures 0 deadlocks 0 AIcalls 0
+    - B3 same-core-NPC P4 gate held with 0 violations across 11976 consecutive P4 pairs
+    - Cause closure remained healthy with origins 1344 echo 1329 resolved 1329 and no cause.invalid regression
+    - P6 remained 0 in both 600-run verification and 1800-run escalation control
+    - on measured action nodes P5 had at least one eligible candidate at 5205 of 5205 nodes, so strict precedence shadowed P6
+controllerDecision:
+  strategy: deterministic-P5-contextual-gap
+  rationale: preserve strict precedence and content ownership; create real P6 windows by pacing P5 eligibility rather than reordering tiers or retuning event weights
+  contextualGapScenesV1: 2
 controllerIntent:
-  mode: verification-only
-  goal: run the deferred 600-run simulation and establish empirical P3/P4/P5/P6 reachability and post-LOOPFIX stability before PLAYCHECK02
-  postTask: do not start PLAYCHECK02; controller will review SIM02 first
+  mode: smallest-deterministic-eligibility-fix
+  goal: keep contextual P5 important but prevent P4/P5 alternation from permanently starving ordinary P6 scenes
+  postTask: if 600-run acceptance passes, controller will dispatch PLAYCHECK02; do not start it yourself
 notes:
-  - LOOPFIX02B3 attempt 2 is accepted. Do not reimplement or tune B3.
-  - This task is evidence collection, not balance tuning.
-  - Run exactly 600 deterministic runs through the established content-sim path and report reproducible configuration plus aggregate metrics.
-  - P6 must be empirically observed. Same-core-NPC consecutive P4 must remain absent. Cause echo/closure must remain healthy.
-  - If acceptance requires gameplay/rule/balance changes, stop BLOCKED with evidence rather than modifying them.
+  - First run node .codex/context.mjs LOOPFIX02C after reading this task. The controller repaired the stale SIM02 task schema that previously broke global task discovery.
+  - Implement exactly contextualGapScenes=2. Do not search/tune several values in this task.
+  - Do not change Director precedence, weights, CONTENT01 event classification, recurrence, Cause, NPC, Build/Risk/Progression values, or RNG.
+  - After implementation and tests, run exactly one required 600-run post-change verification. If P6 is still 0, stop BLOCKED with evidence; do not tune further.

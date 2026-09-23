@@ -10,16 +10,11 @@ allowedScope:
   - collect and report Director precedence/slot reachability, especially P3/P4/P5/P6, Cause echo/closure behavior, same-core-NPC repeat-gate observations, event recurrence, terminal/death outcomes, and existing balance metrics emitted by the simulator
   - run existing test:sim02 plus full regression and required audits
   - minimal simulation/reporting instrumentation only if existing tooling cannot expose an acceptance metric, with no gameplay semantic change
+  - verification-only after accepted LOOPFIX02B1/B2/B3; run exactly 600 deterministic runs and record reproducible command seed and configuration
+  - verify P6 aggregate reachability, same-core-NPC P4 gate behavior, Cause echo closure, recurrence and terminal outcomes without tuning gameplay
+  - if P6 is unreachable or gameplay changes are required, stop BLOCKED with evidence instead of widening scope
   - .codex/control/LAST_RESULT.yaml task result
 forbiddenScope: [gameplay-balance-tuning,Director-precedence-changes,Director-weight-formula-changes,Director-weight-constant-changes,recurrence-rule-changes,CONTENT01-cooldown-rebalance,Cause-semantic-changes,NPC-state-machine-changes,new-RNG,new-persistent-state,Build-Risk-Progression-number-changes,PLAYCHECK02,UI,ITEM01,TECH01,SECT01,WORLD01,CHAL01,source-branch-push]
-design:
-  - This is a verification task after accepted LOOPFIX02B1/B2/B3, not a tuning task.
-  - Run exactly 600 deterministic simulation runs through the existing repository simulation path; record command/seed/configuration precisely enough to reproduce.
-  - Verify P6 is actually reachable in aggregate after B3 rather than merely structurally reachable in unit tests.
-  - Verify P4 no longer forms consecutive selected-scene chains through the same core NPC; different core NPCs remain legal.
-  - Verify P3 Cause echoes and Cause closure remain live and no cause.invalid regression appears.
-  - Report slot/event distribution and any starvation or pathological concentration visible in existing metrics, but do not change balance numbers in this task.
-  - If the existing simulator cannot complete 600 runs, a P0/P1 invariant fails, P6 remains empirically unreachable, same-core-NPC consecutive P4 recurs, Cause closure regresses, or a gameplay change is required, stop BLOCKED with evidence instead of widening scope.
 accept:
   - exactly-600-runs-completed-deterministically
   - P6-observed-at-least-once
