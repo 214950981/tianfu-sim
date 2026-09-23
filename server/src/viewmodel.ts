@@ -24,6 +24,48 @@ export interface ServerRiskPolicyInput { state: GameState; event: EventDefinitio
 export type ServerRiskPolicy = (input: ServerRiskPolicyInput) => RiskPresentation | undefined;
 export interface ServerViewModelBuilderOptions { capabilities?: Partial<Record<KnownCapability, boolean>>; riskPolicy?: ServerRiskPolicy }
 
+/**
+ * UI02 special-action projection. This is a read-only *availability* projection, not a second rules
+ * engine: it mirrors the authoritative reducer legality for ATTEMPT_BREAKTHROUGH
+ * (active run, no pending interaction, cultivation complete, ordinary successor realm, configured
+ * InnateProfile) using only authoritative state fields, and it never resolves anything.
+ *
+ * It deliberately exposes NO difficulty, odds, RNG, check spec, hidden modifier or score. The only
+ * gameplay-adjacent data is the target realm display name, which is public presentation.
+ */
+export interface PublicSpecialAction {
+  actionId: "attemptBreakthrough";
+  kind: "breakthrough";
+  available: boolean;
+  labelKey: string;
+  blockedReasonKey?: string;
+  targetRealm?: { id: string; displayName: string };
+}
+
+function specialActions(state: GameState, content: ContentRegistry): PublicJson[] {
+  const status = state.run.status;
+  if (status !== "active" && status !== "dying") return [];
+  if (state.run.identity.innateProfile === undefined) return [];
+  const progression = content.getProgression(state.contentVersion);
+  const realm = progression.realms.find((candidate) => candidate.id === state.run.realm.id);
+  if (realm === undefined || realm.nextRealmId === undefined) return [];
+  const target = progression.realms.find((candidate) => candidate.id === realm.nextRealmId);
+  if (target === undefined) return [];
+  const cultivation = state.run.realm.cultivationBps ?? state.run.realm.cultivation;
+  const blockedReasonKey = status !== "active" ? "run.not_active"
+    : state.run.events.current !== undefined ? "breakthrough.interaction_pending"
+      : cultivation !== 10_000 ? "breakthrough.cultivation_incomplete"
+        : realm.breakthroughDifficulty === undefined ? "breakthrough.unavailable"
+          : undefined;
+  const action: PublicSpecialAction = {
+    actionId: "attemptBreakthrough", kind: "breakthrough", available: blockedReasonKey === undefined,
+    labelKey: "special.attemptBreakthrough",
+    ...(blockedReasonKey === undefined ? {} : { blockedReasonKey }),
+    targetRealm: { id: target.id, displayName: target.displayName }
+  };
+  return [action as unknown as PublicJson];
+}
+
 function capabilities(value: ServerViewModelBuilderOptions["capabilities"]): CapabilitySet {
   return Object.fromEntries(capabilityNames.map((name) => [name, value?.[name] === true])) as unknown as CapabilitySet;
 }
@@ -68,6 +110,7 @@ function publicRun(state: GameState, content: ContentRegistry): Record<string, P
     people,
     ...(state.run.build.dominantBuildId === undefined ? {} : { dominantBuildId: state.run.build.dominantBuildId }),
     actions: ["cultivate", "travel", "worldly", "pursuit"].map((actionId) => ({ actionId, enabled: state.run.actions.available.includes(actionId as GameState["run"]["actions"]["available"][number]) })),
+    specialActions: specialActions(state, content),
     world: { regionId: state.run.world.regionId, knownRegionIds: [...state.run.world.knownRegionIds], tags: [...state.run.world.tags] },
     ...(state.run.ending === undefined ? {} : { ending: { endingId: state.run.ending.endingId, age: state.run.ending.age, ...(state.run.ending.deathCause === undefined ? {} : { deathCause: state.run.ending.deathCause }) } }),
     ...(death === undefined ? {} : { death: { deathCauseId: death.deathCauseId, deathAge: death.age, deathRealm: death.realmId, directCause: death.immediateSource, contributingFactors: death.contributingSourceRefs.filter((reference) => reference !== death.sourceActorId && (reference !== death.sourceCauseId || causeRelatedDeath)), wasWarned: death.warningFacts.length > 0, warningFacts: [...death.warningFacts], causeRelatedDeath, breakthroughDeath: death.category === "breakthrough", lifespanDeath: death.category === "lifespan", injuryAtDeath: injuryLevel(state), remainingLifespanPressure: Math.max(0, state.run.maxAge - death.age) } })

@@ -1,0 +1,240 @@
+<!-- UI02 dev preview: RUN_HOME / EVENT / SPECIAL_NODE / LIFE_ARCHIVE. Public projections only. -->
+<view class="sheet">
+
+  <view class="dev-chrome">
+    <view class="dev-note">UI02 内景预览 · 开发路由 · 非默认页 · 生产接线未完成</view>
+    <view class="dev-tabs">
+      <view wx:for="{{tabs}}" wx:key="key"
+            class="dev-tab {{activeKey === item.key ? 'is-active' : ''}}"
+            data-key="{{item.key}}" bindtap="onSelectTab">{{item.label}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{!ready}}" class="card">
+    <view class="quiet">缺少 v2-fixtures.json，请先运行 node tools/ui02-preview-fixtures.mjs --write。</view>
+  </view>
+
+  <block wx:if="{{ready && vm !== null}}">
+
+    <!-- ===================== RUN_HOME ===================== -->
+    <block wx:if="{{vm.kind === 'RUN_HOME'}}">
+
+      <view class="realm-line">
+        <view>
+          <view class="eyebrow">此生</view>
+          <view class="realm-name">{{vm.runHome.realmName}}</view>
+        </view>
+        <view class="realm-sub">第 {{vm.runHome.realmOrder}} 境</view>
+      </view>
+      <view class="realm-sub">{{vm.runHome.runName}}</view>
+
+      <view class="pressure">
+        <view class="pressure-track">
+          <view class="pressure-fill {{vm.runHome.lifespan.pressing ? 'is-pressing' : ''}}"
+                style="width: {{vm.runHome.lifespan.percent}}%;"></view>
+        </view>
+        <view class="pressure-legend">
+          <text class="quiet">寿元 {{vm.runHome.lifespan.age}} / {{vm.runHome.lifespan.maxAge}}</text>
+          <text class="quiet">余 {{vm.runHome.lifespan.remaining}}</text>
+        </view>
+      </view>
+
+      <view class="section">
+        <view class="section-title">当前</view>
+        <view class="stat-row">
+          <view class="stat">
+            <view class="stat-label">修为</view>
+            <view class="stat-value">{{vm.runHome.cultivation}} / 10000</view>
+          </view>
+          <view class="stat">
+            <view class="stat-label">道基</view>
+            <view class="stat-value">{{vm.runHome.foundation}} / 10000</view>
+          </view>
+          <view class="stat">
+            <view class="stat-label">灵石</view>
+            <view class="stat-value">{{vm.runHome.possessions}}</view>
+          </view>
+        </view>
+      </view>
+
+      <view class="section">
+        <view class="section-title">公开条件</view>
+        <block wx:if="{{vm.runHome.conditions.length === 0}}">
+          <view class="quiet">无</view>
+        </block>
+        <view wx:for="{{vm.runHome.conditions}}" wx:key="key" class="card">
+          <view class="tag tag--zhu">{{item.label}}</view>
+          <text class="quiet">层数 {{item.stacks}}</text>
+        </view>
+      </view>
+
+      <view class="section">
+        <view class="section-title">公开因果线索</view>
+        <block wx:if="{{!vm.runHome.hasCauses}}">
+          <view class="quiet">尚未显现</view>
+        </block>
+        <view wx:for="{{vm.runHome.causes}}" wx:key="publicId" class="card">
+          <view class="tag {{item.level === 'explicit' ? 'tag--jin' : ''}}">{{item.label}}</view>
+        </view>
+      </view>
+
+      <view class="section">
+        <view class="section-title">道途印记</view>
+        <block wx:if="{{!vm.runHome.hasBuilds}}">
+          <view class="quiet">尚未成势</view>
+        </block>
+        <view wx:for="{{vm.runHome.builds}}" wx:key="buildId"
+              class="build-line {{item.dominant ? 'is-dominant' : ''}}">
+          <text class="build-name">{{item.name}}</text>
+          <text class="build-stage">{{item.stageLabel}}{{item.dominant ? ' · 主修' : ''}}</text>
+        </view>
+      </view>
+
+      <view class="section">
+        <view class="section-title">相识之人</view>
+        <block wx:if="{{!vm.runHome.hasPeople}}">
+          <view class="quiet">尚未与人相识</view>
+        </block>
+        <view wx:for="{{vm.runHome.people}}" wx:key="npcId" class="person">
+          <view>
+            <view class="person-name">{{item.name}}</view>
+            <view class="person-meta">{{item.roles}}</view>
+          </view>
+          <view class="person-meta">{{item.relation}}<text wx:if="{{item.milestoneCount > 0}}"> · 往事 {{item.milestoneCount}}</text></view>
+        </view>
+      </view>
+
+      <view class="section">
+        <view class="section-title">四行</view>
+        <view class="actions-grid">
+          <view wx:for="{{vm.runHome.actions}}" wx:key="intentId"
+                class="action {{item.enabled ? '' : 'is-disabled'}}"
+                data-intent="{{item.intentId}}" bindtap="onIntent">
+            <view class="action-label">{{item.label}}</view>
+          </view>
+        </view>
+      </view>
+
+      <block wx:for="{{vm.runHome.special}}" wx:key="intentId">
+        <view class="special-entry {{item.enabled ? '' : 'is-blocked'}}"
+              data-intent="{{item.intentId}}" bindtap="onIntent">
+          <view class="special-label">{{item.label}}</view>
+          <view class="special-target" wx:if="{{item.targetName}}">目标 {{item.targetName}}</view>
+          <view class="special-reason" wx:if="{{!item.enabled}}">暂不可行 · {{item.reason}}</view>
+        </view>
+      </block>
+
+      <view class="gated-strip">
+        <view class="eyebrow">能力入口</view>
+        <block wx:if="{{vm.gatedEntries.length === 0}}">
+          <view class="gated-item">全部可用</view>
+        </block>
+        <view wx:for="{{vm.gatedEntries}}" wx:key="*this" class="gated-item">已隐藏 · {{item}}</view>
+      </view>
+    </block>
+
+    <!-- ===================== EVENT / SPECIAL_NODE ===================== -->
+    <block wx:if="{{vm.kind === 'EVENT' || vm.kind === 'SPECIAL_NODE'}}">
+      <view class="decision">
+        <view class="eyebrow">{{vm.kind === 'SPECIAL_NODE' ? '特殊节点' : '事件'}}</view>
+        <view class="title">{{vm.decision.headline}}</view>
+
+        <view class="decision-locked" wx:if="{{vm.decision.locked}}">未落定 · 普通返回已锁定</view>
+
+        <view class="scene-body">{{vm.decision.bodyKey}}</view>
+
+        <view class="participants" wx:if="{{vm.decision.participants.length > 0}}">
+          <view wx:for="{{vm.decision.participants}}" wx:key="slot" class="tag">{{item.slot}} · {{item.name}}</view>
+        </view>
+
+        <view class="section">
+          <view class="section-title">选项</view>
+          <view wx:for="{{vm.decision.options}}" wx:key="optionId" class="option">
+            <view class="option-head">
+              <text class="option-label">{{item.label}}</text>
+              <text wx:if="{{item.hasRisk}}" class="option-risk {{item.tierClass}}">{{item.tier}}</text>
+            </view>
+            <view class="option-reasons" wx:if="{{item.hasRisk && item.reasons.length > 0}}">{{item.reasons}}</view>
+            <view class="fatal-flag" wx:if="{{item.canBeFatal}}">此选项可能致命</view>
+          </view>
+        </view>
+
+        <view class="section">
+          <view class="section-title">交互边界</view>
+          <view class="quiet">交互状态 · {{vm.decision.state}}</view>
+          <view class="quiet">决策标识 · {{vm.decision.decisionId}}</view>
+          <view class="quiet" wx:if="{{vm.decision.locked}}">锁定说明 · 服务端页面状态未落定，普通返回不可用</view>
+          <view class="option" bindtap="onBlockedBack">
+            <view class="option-head"><text class="option-label">尝试普通返回</text></view>
+          </view>
+        </view>
+      </view>
+    </block>
+
+    <!-- ===================== LIFE_ARCHIVE ===================== -->
+    <block wx:if="{{vm.kind === 'LIFE_ARCHIVE'}}">
+      <view class="archive-head">
+        <view class="title">{{vm.archive.runName}}</view>
+        <view class="tag tag--jin">只读</view>
+      </view>
+
+      <view class="section" wx:if="{{vm.archive.hasDeath}}">
+        <view class="section-title">终局</view>
+        <view class="entry">
+          <view class="entry-key">享年 / 境界</view>
+          <view class="entry-title">{{vm.archive.deathAge}} 岁 · {{vm.archive.deathRealm}}</view>
+          <view class="entry-summary">直接缘由 · {{vm.archive.deathCause}}</view>
+          <view class="entry-summary" wx:if="{{vm.archive.wasWarned}}">事前已有警示</view>
+        </view>
+      </view>
+
+      <view class="section">
+        <view class="section-title">公开因果</view>
+        <block wx:if="{{vm.archive.causes.length === 0}}">
+          <view class="quiet">无</view>
+        </block>
+        <view wx:for="{{vm.archive.causes}}" wx:key="publicId" class="entry">
+          <view class="tag {{item.level === 'explicit' ? 'tag--jin' : ''}}">{{item.label}}</view>
+        </view>
+      </view>
+
+      <view class="section">
+        <view class="section-title">已公开往事</view>
+        <block wx:if="{{vm.archive.entries.length === 0}}">
+          <view class="quiet">无</view>
+        </block>
+        <view wx:for="{{vm.archive.entries}}" wx:key="entryId" class="entry">
+          <view class="entry-key">{{item.kind}}</view>
+          <view class="entry-title">{{item.title}}</view>
+          <view class="entry-summary">{{item.summary}}</view>
+        </view>
+      </view>
+
+      <view class="section">
+        <view class="section-title">道途印记</view>
+        <view wx:for="{{vm.archive.builds}}" wx:key="buildId" class="build-line {{item.dominant ? 'is-dominant' : ''}}">
+          <text class="build-name">{{item.name}}</text>
+          <text class="build-stage">{{item.stage}}</text>
+        </view>
+      </view>
+
+      <view class="section">
+        <view class="section-title">相识之人</view>
+        <view wx:for="{{vm.archive.people}}" wx:key="npcId" class="person">
+          <view class="person-name">{{item.name}}</view>
+          <view class="person-meta">{{item.roles}}</view>
+        </view>
+      </view>
+
+      <view class="archive-footnote">
+        命书为只读侧页，仅聚合服务端已公开的历史、明确或暗示的因果、相识之人与公开道途印记。
+        隐藏因果不会以占位、数量或可推断元数据的形式出现。
+      </view>
+    </block>
+
+    <view class="archive-footnote">
+      最近意图 · {{lastIntent}}
+    </view>
+  </block>
+
+</view>

@@ -1,133 +1,91 @@
 version: 1
-taskId: PLAYCHECK02
+taskId: UI02
 attempt: 1
 status: PASS
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-PLAYCHECK02
-baseCommit: 5547550e7aeb76f1ca5193fad9d840a6f18203d9
-baseTreeSha: ac168e4393acf068320888f81dced664243c1963
+workBranch: wb-UI02
+baseCommit: 61da8ee94bc666b6130d72680cc161e8f6830ae0
+baseTreeSha: f2b4ad08e30209a6f3b8686045e9bdde96d19f34
 historyMode: real-ancestry
 sourceHeadVerifiedBy: >-
-  git ls-remote origin refs/heads/dev/tianfu-2.0 resolved to 5547550e7aeb76f1ca5193fad9d840a6f18203d9
-  ("chore: seal LOOPFIX02C and dispatch PLAYCHECK02"), whose parent is 2e09bc2b2c0ff2a494698db3604b79cf1922cb16
-  - my accepted LOOPFIX02C implementer commit. The worktree is checked out directly at that commit and
-  git merge-base --is-ancestor 2e09bc2b2c0ff2a494698db3604b79cf1922cb16 5547550e7aeb76f1ca5193fad9d840a6f18203d9
-  returns success, so the accepted LOOPFIX02C result is a genuine ancestor and this base has real ancestry.
-  No synthetic tree base was used despite allowSyntheticTreeBase=true; the tree at base equals
-  ac168e4393acf068320888f81dced664243c1963.
+  git fetch origin dev/tianfu-2.0 succeeded and git rev-parse FETCH_HEAD resolved to
+  61da8ee94bc666b6130d72680cc161e8f6830ae0 ("chore: accept PLAYCHECK02 and dispatch UI02"), matching the
+  repository API branch head for dev/tianfu-2.0. git cat-file -p HEAD shows
+  "tree f2b4ad08e30209a6f3b8686045e9bdde96d19f34" and
+  "parent 3d3dc03a9d951dacd3cedfa0df9046cdaef2b109" (my accepted PLAYCHECK02 implementer commit), and
+  git merge-base --is-ancestor 3d3dc03a9d951dacd3cedfa0df9046cdaef2b109 HEAD returned success. The base
+  therefore has real ancestry and no synthetic tree base was used despite allowSyntheticTreeBase=true.
+  context.mjs UI02 exited 0 at this base.
 
 summary: >-
-  PLAYCHECK02 is a verification-only pre-UI playability audit of the accepted LOOPFIX02C rules. No gameplay
-  code was changed. I built a deterministic trace probe that replays the exact content-sim.mjs loop
-  (identical ACTION_PLAN, initial fixture, choose() policy mapping and shouldAttemptBreakthrough() gate) while
-  additionally projecting director scenes, Cause lifecycle, NPC state, Build evidence/transitions, risk
-  conditions and death records per step. The probe was validated against the repository's own simulator before
-  being trusted: 30/30 runs matched exactly on realm, death category, node count and slot distribution
-  ({"P1":0,"P2":60,"P3":57,"P4":708,"P5":286,"P6":256}), 0 mismatches.
+  UI02 is the first deliberately player-visible Tianfu-sim 2.0 slice: a dev-only WeChat preview route
+  that renders the in-life core loop in the frozen paper/ink/cinnabar/restrained-dark-gold visual
+  language, built entirely on authoritative server projections. No gameplay rule, contract or content
+  file was touched.
 
-  A 30-run sample (6 established policies x seeds 0-4, maxActions 50, include-runs) completed deterministically:
-  two invocations were byte-identical, runtimeFailures=0, deadlocks=0, AI calls=0, and all 6 policies are
-  represented. The 12 fixed representative traces (cautious/aggressive/sword_seeking/body_seeking/
-  alchemy_seeking/fortune_seeking at seeds 0 and 4) were deep-read.
+  New preview route miniprogram/pages/v2-preview/v2-preview is registered as the LAST entry of
+  miniprogram/app.json pages, is not the first page and is not a tabBar entry. The four required visual
+  states render: RUN_HOME, EVENT, SPECIAL_NODE and LIFE_ARCHIVE. RUN_HOME presents public status, public
+  lifespan pressure (derived only from already-public age/maxAge), public conditions, public Cause
+  clues, Build identity, known people and exactly the four core action intents
+  cultivate/travel/worldly/pursuit. EVENT is a full-page decision state showing public participants,
+  server-built riskPresentation per option, and locked ordinary-back while unresolved. SPECIAL_NODE
+  renders the same generic authoritative interaction/retry boundary through the identical builder and
+  shell path, with no second breakthrough rules engine. LIFE_ARCHIVE is read-only and aggregates only
+  public history, explicit/hinted Causes, known people, public Build identity and the public death
+  projection.
 
-  Verdict: PASS. No reproducible structural playability defect was found. Every acceptance item is satisfied,
-  including both regression guards carried over from LOOPFIX02C: sameCoreNpcConsecutiveP4Count=0 across 708 P4
-  scenes and p5ContextualGapViolations=0 across 286 P5 scenes. Cause is healthy (58 instances, invalid=0,
-  observable dormant->echoed->resolved chains). Risk and death are fully explainable (4/4 deaths carry a
-  RISK01 trace with threat id, outcome tier, rngRoll, effectiveDifficulty, modifier sources and lethal=true,
-  plus 2 populated warningFacts each, resolved only on an explicit player take-risk choice). Progression,
-  Build formation and NPC accumulation are all reachable in representative traces.
+  Three implementation pieces make this real rather than mocked:
+  (1) server/src/viewmodel.ts gains a public breakthrough special-action projection in publicRun
+  (specialActions), emitted only for a non-terminal run with a configured InnateProfile and an ordinary
+  successor realm, whose available flag mirrors the reducer legality exactly (active status, no pending
+  interaction, cultivationBps 10000, successor realm) and whose only payload is
+  actionId/kind/available/labelKey/optional blockedReasonKey plus the target realm's id and displayName.
+  It exposes no difficulty, odds, RNG, check spec, hidden modifier, score, retention or lifespan value.
+  (2) packages/wechat-shell/src/index.ts gains platform-neutral presentation mapping:
+  mapCoreActionIntents (bounded to the four core action ids, dropping unknown/malformed projections
+  rather than guessing) and mapSpecialActionIntents (emits ATTEMPT_BREAKTHROUGH purely from the
+  server-projected availability flag), plus buildArchiveView for the read-only LIFE_ARCHIVE selection.
+  (3) tools/ui02-preview-fixtures.mjs generates miniprogram/pages/v2-preview/v2-fixtures.json through
+  the production chain generateServerDestinyOffer -> reduce(START_RUN) -> ServerViewModelBuilder.build
+  -> buildWeChatPageShell -> the two intent mappers -> buildArchiveView, so the preview page renders
+  real projection output and never invents a rule.
 
-  Eight non-blocking observations were recorded as BACKLOG and deliberately left unfixed, per the task's
-  decision rule that only a reproducible structural playability defect blocks UI02:
-  B1 cautious never forms a Build nor creates a Cause in 5/5 runs (all four affinities exactly 0, dom=none,
-  causes=none) because choose() maps cautious to consider and never selects a build-affinity engage option,
-  so the policy produces a structurally flat identity-less life; this is test-harness policy expressiveness,
-  not a rules defect.
-  B2 alchemy_seeking ends both traced runs at spirit-transformation with cultivationFinal=0, and 8 runs sample-
-  wide finish at cultivation 0.
-  B3 progression tracks policy path more than cultivation investment: fortune_seeking reaches the highest
-  realms observed (golden-core x4) with the lowest action count for a surviving policy, while cautious, which
-  maximises cultivation to 10000, only reaches nascent-soul.
-  B4 Cause echo richness is exactly 1 in practice: 57/58 causes finish finalEcho=1 and the starting echoBudget
-  of 2 is never fully consumed, so multi-echo causes are unreachable; a resolved cause additionally keeps
-  re-emitting an identical resolved@node#e1 log line every subsequent node (resolvedTail avg 57.28 entries,
-  max 96), which is correct semantics but semantically noisy bookkeeping.
-  B5 generated NPCs are inert: 173 instances, knownFacts>0 = 0, knownTraits>0 = 0, promotedToA = 0, encounter
-  histogram {1:22, 2:84}, i.e. they cap at 2 encounters and never accumulate knowledge or promote.
-  B6 maxAge is never the terminator: 26/30 runs right-censor at the 50-action harness cap and observed ages
-  span 44-151 against maxAge values of 120-500, so no life ends from its lifespan ceiling.
-  B7 Build stage regression is contract-legal but frequent: 10 regressions (refined->formed, emerging->
-  latent) because build.ref makes stage a derived function of a mutable affinity that "may rise or fall";
-  a design-feel question only, with 0 contract violations.
-  B8 P4 and P5 event sets overlap heavily: 32 of 42 distinct P5 events also appear under P4, which is
-  eligibility-driven by design but reduces slot distinctiveness.
-  One further cosmetic note: warningFacts for a poison or special death carry risk.reason.injury as their
-  second fact. risk.ref does not pin the content of that array, the category fact is correct in every case
-  (risk.category.poison / risk.category.special), and no lethal resolution occurred without a warning, so
-  this is naming verbosity rather than a contract breach.
+  Scope guarantees were verified by content, not by assertion: the UI02 test suite pins base tree
+  digests for miniprogram/pages/start, miniprogram/pages/game, miniprogram/pages/rank,
+  packages/core/src, packages/content/src and miniprogram/app.wxss and asserts they are unchanged, so
+  legacy 1.0 gameplay logic and all Core/Content gameplay sources are byte-equivalent to the task base.
+  The suite also asserts the committed fixture is exactly what the real code regenerates, that the
+  fixture contains no authoritative rule state, that hidden Causes and unmet NPC state never surface,
+  that capability-disabled entries stay hidden, and that preview code contains no legacy 1.0 neon value.
 
-  Deliberate non-actions respecting scope: no gameplay rule, Director precedence, Director weight or gap,
-  CONTENT01 content, Cause semantic, NPC state machine, recurrence rule, Build/Risk/Progression number, new
-  RNG, new persistent state or UI02 work was touched; the 600-run suite was not rerun; no report-only
-  instrumentation was needed because every acceptance observation was reachable from the existing trace
-  surface.
+  Evidence highlights: 282/282 full npm test (was 264), 18/18 dedicated UI02 tests, 6/6 viewmodel-ui
+  (A12 security boundaries intact), typecheck/lint/content-lint/content01-lint/secret-scan all green.
+  The projected breakthrough availability is proven equivalent to the authoritative reducer on five
+  distinct states rather than merely asserted.
 
 changedFiles:
   - .codex/control/LAST_RESULT.yaml
+  - miniprogram/app.json
+  - miniprogram/pages/v2-preview/v2-preview.js
+  - miniprogram/pages/v2-preview/v2-preview.json
+  - miniprogram/pages/v2-preview/v2-preview.wxml
+  - miniprogram/pages/v2-preview/v2-preview.wxss
+  - miniprogram/pages/v2-preview/v2-fixtures.json
+  - packages/wechat-shell/src/index.ts
+  - server/src/viewmodel.ts
+  - tests/ui02.test.mjs
+  - tools/ui02-preview-fixtures.mjs
+  - docs/UI02_PREVIEW.md
+  - package.json
 
 tests:
-  - name: sim02
-    command: node --test tests/content-sim.test.mjs
-    result: PASS (8/8)
-  - name: content01
-    command: node --test tests/content01.test.mjs
-    result: PASS (32/32)
-  - name: director
-    command: node --test tests/director.test.mjs
-    result: PASS (47/47)
-  - name: loopfix02c
-    command: node --test tests/loopfix02c.test.mjs
-    result: PASS (15/15)
-  - name: loopfix02b3
-    command: node --test tests/loopfix02b3.test.mjs
-    result: PASS (19/19)
-  - name: loopfix02b2
-    command: node --test tests/loopfix02b2.test.mjs
-    result: PASS (13/13)
-  - name: recurrence
-    command: node --test tests/recurrence.test.mjs
+  - name: ui02
+    command: node --test tests/ui02.test.mjs
     result: PASS (18/18)
-  - name: reducer
-    command: node --test tests/reducer.test.mjs
-    result: PASS (10/10)
-  - name: state
-    command: node --test tests/state.test.mjs
-    result: PASS (5/5)
-  - name: replay
-    command: node --test tests/replay.test.mjs
-    result: PASS (6/6)
-  - name: content-playability-audit
-    command: node tools/content-playability-audit.mjs
-    result: PASS (exit 0, AIorNetworkDependencies 0)
-  - name: director-audit
-    command: node tools/director-audit.mjs
-    result: PASS (exit 0, securityViolations 0)
-  - name: recurrence-audit
-    command: node tools/recurrence-audit.mjs
-    result: PASS (exit 0, contentIdHardcodingViolations 0)
-  - name: participant-bridge-audit
-    command: node tools/participant-bridge-audit.mjs
-    result: PASS (exit 0, directorSideEffectViolations 0)
-  - name: npc-audit
-    command: node tools/npc-audit.mjs
-    result: PASS (exit 0, fullNpcTickViolations 0)
-  - name: build-audit
-    command: node tools/build-audit.mjs
-    result: PASS (exit 0, securityViolations 0)
-  - name: risk-audit
-    command: node tools/risk-audit.mjs
-    result: PASS (exit 0, securityViolations 0)
+  - name: viewmodel-ui
+    command: node --test tests/viewmodel-ui.test.mjs
+    result: PASS (6/6, A12 boundaries intact)
   - name: typecheck
     command: npx tsc --noEmit
     result: PASS (exit 0, no diagnostics)
@@ -139,248 +97,104 @@ tests:
     result: PASS (Content lint: PASS, 1 pack)
   - name: content01-lint
     command: node tools/content01-lint.mjs
-    result: PASS (exit 0, npcArchetypes 8)
+    result: PASS (exit 0)
   - name: secret-scan
     command: node tools/scan-secrets.mjs
     result: PASS (Secret scan: PASS)
+  - name: full-suite
+    command: node --test tests/*.test.mjs (all 24 registered files)
+    result: PASS (282/282, 0 fail; 264 before this task)
 
 gates:
-  total: 22
-  green: 22
+  total: 8
+  green: 8
   failed: 0
   note: >-
-    All 22 tests and audits named in the PLAYCHECK02 task contract are green. A full npm test run was
-    deliberately not executed: no gameplay code or test file was modified in this task (the only changed file
-    is .codex/control/LAST_RESULT.yaml), and NEXT_TASK explicitly scopes the full suite out unless report
-    instrumentation is added, which was not needed.
-
-sample:
-  mode: lightweight-pre-UI
-  runs: 30
-  policies: [cautious, aggressive, sword_seeking, body_seeking, alchemy_seeking, fortune_seeking]
-  seeds: [0, 1, 2, 3, 4]
-  maxActions: 50
-  includeRuns: true
-  deterministic: true
-  deterministicEvidence: two invocations produced byte-identical trace output
-  runtimeFailures: 0
-  deadlocks: 0
-  aiCalls: 0
-  probeValidatedAgainstRepoSimulator: 30/30 runs matched, 0 mismatches
-  slotDistribution: {P1: 0, P2: 60, P3: 57, P4: 708, P5: 286, P6: 256}
-  runsContainingSlot: {P3: 24, P4: 29, P5: 30, P6: 30}
-  note: >-
-    P1 is structurally impossible rather than missing: director.ref types DirectorSlot as
-    'P2'|'P3'|'P4'|'P5'|'P6'|'CONTINUATION', so no P1 record can exist. P3 appears in 24/30 runs and P4/P5/P6
-    in 29-30/30; every slot is observed at sample level, satisfying the acceptance criterion for slot
-    coverage. The 6 runs without a P3 are aggressive/1 (died at node 24 before any echo could land) and all
-    five cautious runs (see backlog B1).
-
-acceptance:
-  - id: source-base-is-accepted-loopfix02c-result
-    status: PASS
-    evidence: >-
-      baseCommit 5547550e7aeb76f1ca5193fad9d840a6f18203d9 is directly parented by 2e09bc2b2c0ff2a494698db3604b79cf1922cb16,
-      my accepted LOOPFIX02C implementer commit; merge-base --is-ancestor confirms real ancestry.
-  - id: 30-run-sample-completes-deterministically-with-zero-runtime-failures-deadlocks-and-ai-calls
-    status: PASS
-    evidence: runtimeFailures=0, deadlocks=0, aiCalls=0, two invocations byte-identical.
-  - id: all-6-established-policies-are-represented
-    status: PASS
-    evidence: cautious/aggressive/sword_seeking/body_seeking/alchemy_seeking/fortune_seeking, 5 seeds each.
-  - id: 12-fixed-traces-are-reviewed-and-summarized
-    status: PASS
-    evidence: >-
-      seeds 0 and 4 for each of the 6 policies were deep-read field by field (slots, realm chain,
-      cultivation/foundation, Build dominant + affinities, Cause chain states, core-NPC encounters/affinity,
-      generated-NPC count, death record, conditions) and summarized in the findings above.
-  - id: P3-P4-P5-P6-are-all-observed-in-the-sample
-    status: PASS
-    evidence: >-
-      P3 57 records / 7 distinct events, P4 708 / 12, P5 286 / 42, P6 256 / 12. P6 ordinary scenes
-      (tea-house, night-rain, broken-bridge, ferry-wait, market-bargain, missed-letter, mountain-view,
-      old-song, roadside-debate, shared-fire, harvest-help, empty-search) appear naturally in every
-      50-action run.
-  - id: no-same-core-npc-consecutive-P4-regression
-    status: PASS
-    evidence: >-
-      sameCoreNpcConsecutiveP4Count=0 across 708 P4 scene records in the 30-run sample; the accepted
-      LOOPFIX02B3 coreNpcRepeatGate holds.
-  - id: ordinary-P6-scenes-appear-naturally-in-representative-traces
-    status: PASS
-    evidence: >-
-      256 P6 selections; every surviving run contains P6, e.g. fortune_seeking/4 has 18 P6 scenes and
-      cautious/2 has 20. This is the LOOPFIX02C repair holding in the lightweight sample.
-  - id: at-least-one-real-cause-origin-to-echo-to-terminal-closure-chain-observed-without-cause-invalid
-    status: PASS
-    evidence: >-
-      58 Cause instances, cause.invalid=0. Observable chain in aggressive/0: dormant@6 -> echoed@7#e1 ->
-      resolved@8#e1 for content01.cause.broken-sword-promise, driven by a real P3 echo scene
-      content01.pei.promise-echo at node 7 bound to the same causeId. 57/58 causes reach finalState=resolved.
-  - id: player-choice-effects-remain-visible
-    status: PASS
-    evidence: >-
-      Across 2847 recorded steps: 1719 carry a meaningful delta, 1367 are explicit option choices, 788 change
-      cultivation, 765 change spiritStone, 814 change foundation, 660 change NPC state, 394 add Build
-      evidence, 100 add Build transitions, 172 touch Cause state, 20 apply a condition. Deaths resolve only on
-      the player's take-risk option.
-  - id: progression-and-breakthrough-remain-reachable
-    status: PASS
-    evidence: >-
-      realmAtEnd spans mortal(2), qi-refining(2), foundation-establishment(2), golden-core(4),
-      nascent-soul(12), spirit-transformation(8); cultivationFinal reaches 10000 in 8 runs; foundationFinal
-      spans 1953-8368. The repo simulator on the same seeds independently reports breakthrough
-      attempts=113, successes=106, greatSuccesses=68, failures=7.
-  - id: risk-and-death-outcomes-have-explainable-records
-    status: PASS
-    evidence: >-
-      9 risk-condition records all visibility=explicit (old-injury x5, tribulation-mark x2, poison x2,
-      severity 1-3). All 4 deaths carry a full RISK01 trace with threatId, outcomeTier=failure, rngRoll,
-      effectiveDifficulty, modifierSources and lethal=true, plus 2 populated warningFacts and a matching
-      ending object, and each resolved on an explicitly warned take-risk choice.
-  - id: no-recurrence-or-repeat-safe-regression-observed
-    status: PASS
-    evidence: >-
-      recurrence suite 18/18 and recurrence-audit contentIdHardcodingViolations=0; no repeated-scene
-      pathology appeared in any of the 12 traced lives.
-  - id: no-structural-playability-blocker-remains-before-UI02
-    status: PASS
-    evidence: >-
-      No reproducible structural playability defect found. All 8 observations are backlog-grade: they are
-      policy expressiveness, bookkeeping verbosity, balance asymmetry or design-feel questions, none of which
-      prevents a player from playing a complete and meaningful life.
-  - id: non-blocking-findings-recorded-as-backlog-not-fixed-in-scope
-    status: PASS
-    evidence: 8 BACKLOG entries recorded above; no gameplay file was modified.
-  - id: no-gameplay-code-change
-    status: PASS
-    evidence: >-
-      git status --short shows no tracked-file modification; git diff --stat is empty. All analysis artifacts
-      live in the git-excluded .b2base/ scratch directory. changedFiles contains only
-      .codex/control/LAST_RESULT.yaml.
-  - id: targeted-tests-and-playability-audits-green
-    status: PASS
-    evidence: 22/22 green (see tests and gates).
+    All seven task-required verifications are green, plus the complete npm test suite as an extra
+    regression guard because this task does change shipped code (server projection, shell mapping,
+    app.json, package.json).
 
 scope:
   coreChanged: false
   contractsChanged: false
   directorChanged: false
   contentChanged: false
-  testsChanged: false
-  uiChanged: false
+  riskChanged: false
+  buildChanged: false
+  npcChanged: false
+  causeChanged: false
+  progressionChanged: false
+  recurrenceChanged: false
+  legacy1_0GameplayChanged: false
+  ui02PreviewAdded: true
   note: >-
-    Verification-only. No gameplay rule, Director precedence, Director weight or gap, CONTENT01 content,
-    Cause semantic, NPC state machine, recurrence rule, Build/Risk/Progression number, new RNG, new
-    persistent state, UI02, ITEM01, TECH01, SECT01, WORLD01 or CHAL01 work was performed. The 600-run
-    simulation was not rerun and the source branch was not pushed.
+    .codex/contracts/* were not edited and packages/platform-contract/src/index.ts is byte-identical:
+    the breakthrough projection rides inside publicRun, which the ViewModel contract already types as
+    an open Record<string, PublicJson> exactly like the existing publicRun.actions field, so no contract
+    shape changed. miniprogram/pages/start, miniprogram/pages/game and miniprogram/pages/rank are
+    byte-equivalent to the base (pinned by tree digest in tests/ui02.test.mjs). No 600-run simulation,
+    no UI03/UI04, no source-branch push.
 
 blockers: []
 
 backlog:
-  - id: B1
+  - id: U1
     severity: BACKLOG
-    title: cautious never forms a Build and never creates a Cause
+    title: production transport is not wired in the preview
     evidence: >-
-      All 5 cautious runs show dominantBuildId=none with all four build affinities exactly 0 and causes=none;
-      cautious/0 and cautious/4 also have P3=0. choose() maps cautious to consider and the cautious
-      ACTION_PLAN is [cultivate, worldly], so no build-affinity engage option is ever selected.
-    impact: A legal, apparently reasonable policy produces a structurally flat identity-less life.
-    suggestedOwner: PLAYBACK or a policy/test-harness task
-  - id: B2
+      The preview records the intent it would submit but never calls a transport; it contains no
+      wx.request and no ApplicationTransport binding.
+    impact: Intended for this task; UI03 owns real page wiring and transport binding.
+    suggestedOwner: UI03
+  - id: U2
     severity: BACKLOG
-    title: cultivation resource reads 0 at high realm for some policies
-    evidence: alchemy_seeking/0 and alchemy_seeking/4 both end spirit-transformation with cultivationFinal=0; 8 runs sample-wide finish at cultivation 0.
-    impact: Cultivation progress stops being visible exactly where it matters most.
-    suggestedOwner: PROGRESSION tuning task
-  - id: B3
-    severity: BACKLOG
-    title: progression tracks policy path more than cultivation investment
+    title: SPECIAL_NODE cannot be reached from an event definition in current content
     evidence: >-
-      fortune_seeking reaches the highest realms observed (golden-core x4) with the lowest action count of
-      any surviving policy (avgActions 50 but maxAge 114), while cautious maximises cultivation to 10000 and
-      only reaches nascent-soul.
-    impact: Investment in cultivation does not read as the main driver of realm advance.
-    suggestedOwner: balance task
-  - id: B4
+      CONTENT01 and the dev fixture contain no event with kind combat or breakthrough, so the server
+      derivePageState can only reach SPECIAL_NODE through run.status === "dying". The preview fixture
+      reflects that honestly instead of inventing a special event.
+    impact: The special-node container is exercised, but no authored special event exists yet.
+    suggestedOwner: CONTENT02 / a special-node content task
+  - id: U3
     severity: BACKLOG
-    title: Cause echo richness is always exactly 1 and resolved causes keep re-logging
+    title: preview fixture is a committed 78 KB JSON blob
+    evidence: miniprogram/pages/v2-preview/v2-fixtures.json is 77801 bytes of generated public ViewModel data.
+    impact: Fine for a dev preview; a production build should generate it instead of committing it.
+    suggestedOwner: UI03 or a build-step task
+  - id: U4
+    severity: BACKLOG
+    title: i18n / copy keys are rendered as raw keys in the preview
     evidence: >-
-      57/58 causes finish finalEcho=1; echoBudget starts at 2 but is consumed to 1; resolvedTail has 57
-      entries with average 57.28 and max 96 identical resolved@node#e1 log lines per cause.
-    impact: Multi-echo causes are unreachable and Cause bookkeeping is dominated by no-op log growth.
-    suggestedOwner: CAUSE02 or a Cause verbosity task
-  - id: B5
-    severity: BACKLOG
-    title: generated NPCs are inert
-    evidence: >-
-      173 instances, knownFacts>0=0, knownTraits>0=0, promotedToA=0, encounter histogram {1:22, 2:84}.
-    impact: Generated NPCs never grow beyond a shallow two-encounter acquaintance.
-    suggestedOwner: NPC02
-  - id: B6
-    severity: BACKLOG
-    title: maxAge is never the terminator
-    evidence: >-
-      26/30 runs right-censor at the 50-action harness cap; observed ages span 44-151 against maxAge values
-      of 120-500. No run ended from lifespan.
-    impact: Lifespan is currently a ceiling that never binds, so the end of a life is never authored by the rules.
-    suggestedOwner: a lifespan/ending task
-  - id: B7
-    severity: BACKLOG
-    title: Build stage regression is contract-legal but frequent
-    evidence: >-
-      10 regressions observed (refined->formed, emerging->latent). build.ref states affinity "may rise or
-      fall" and stage is derived and never stored, so this is legal; 0 contract violations.
-    impact: A player can watch their Build visually regress a stage, which may read as a loss of progress.
-    suggestedOwner: design-feel review
-  - id: B8
-    severity: BACKLOG
-    title: P4 and P5 event sets overlap heavily
-    evidence: 32 of 42 distinct P5 events also appear under P4 (e.g. content01.cen.*, jiang.*, build.*, onboarding.*).
-    impact: Slot distinctiveness between core-NPC and contextual scenes is low.
-    suggestedOwner: CONTENT02 authoring
-  - id: B9
-    severity: BACKLOG
-    title: generic reason id reused across death categories in warningFacts
-    evidence: >-
-      aggressive/1 (poison) and aggressive/3 (special) both carry risk.reason.injury as the second
-      warningFact. risk.ref does not pin the array content and the category fact is correct in every case.
-    impact: Cosmetic naming verbosity only; no lethal resolution occurred without a warning.
-    suggestedOwner: RISK02 polish
-
-toolingObservations:
-  - id: TSC-NOT-LOCAL-DEP
-    severity: info
-    detail: >-
-      tsc is not a local dependency, so typecheck must run as npx tsc --noEmit rather than
-      node node_modules/typescript/bin/tsc. Carried forward from LOOPFIX02C.
-  - id: TIMEOUT-BINARY-MISMATCH
-    severity: info
-    detail: >-
-      Windows timeout is not coreutils, so time-boxed commands must use spawnSync timeout rather than the
-      timeout binary. Carried forward from LOOPFIX02C.
-  - id: SHELL-UTILS-UNAVAILABLE
-    severity: info
-    detail: >-
-      In this sandbox bash cannot resolve dirname/ls/grep/head/tail, so node -e is used as the shell and
-      tsx is unavailable in favour of node --experimental-strip-types.
+      The preview displays labelKey/summaryKey strings directly (for example
+      "dev.first-choice.continue", "risk.dangerous", "action.cultivate") because no locale table is
+      wired yet.
+    impact: Expected at this stage; the real copy pass belongs to a later UI task.
+    suggestedOwner: UI03/UI04
 
 recommendedCommitMessage: |-
-  chore(playcheck02): record lightweight pre-UI playability verification as PASS
+  feat(ui02): add 2.0 core-loop high-fidelity preview route
 
-  Verification-only audit of the accepted LOOPFIX02C rules. No gameplay code changed.
+  First player-visible 2.0 slice. No gameplay rule, contract or content change.
 
-  - Validated a deterministic trace probe against the repo simulator: 30/30 runs, 0 mismatches.
-  - 30-run sample (6 policies x seeds 0-4, maxActions 50): deterministic, runtimeFailures 0,
-    deadlocks 0, AI calls 0; slots {P2:60, P3:57, P4:708, P5:286, P6:256}.
-  - Deep-read the 12 fixed representative traces (seeds 0 and 4 for all 6 policies).
-  - Regression guards hold: sameCoreNpcConsecutiveP4Count 0 (708 P4 scenes),
-    p5ContextualGapViolations 0 (286 P5 scenes).
-  - Cause healthy: 58 instances, invalid 0, observable dormant->echoed->resolved chains with real P3 echoes.
-  - Death explainable: 4/4 with full RISK01 trace, warningFacts and player take-risk attribution.
-  - 22/22 named tests and audits green.
-  - 8 BACKLOG observations recorded (no Build/Cause for cautious, cultivation reads 0 at high realm,
-    path-driven progression, single-echo causes plus redundant resolved logging, inert generated NPCs,
-    maxAge never binding, legal-but-frequent stage regression, P4/P5 event overlap).
+  - New dev-only route miniprogram/pages/v2-preview/v2-preview, registered last in
+    app.json; not the default page and not a tabBar entry.
+  - Renders RUN_HOME / EVENT / SPECIAL_NODE / LIFE_ARCHIVE in the frozen
+    paper-ink-cinnabar-restrained-dark-gold language with UI02 tokens.
+  - RUN_HOME shows public status, lifespan pressure, conditions, Cause clues, Build
+    identity, known people and exactly the four core action intents.
+  - EVENT renders server-built riskPresentation per option and locks ordinary back
+    while unresolved.
+  - SPECIAL_NODE reuses the same authoritative interaction/retry boundary; no second
+    breakthrough engine.
+  - LIFE_ARCHIVE is a read-only public selection; hidden Causes and unmet NPCs never
+    appear.
+  - server: publicRun.specialActions breakthrough projection, availability only,
+    never difficulty/odds/RNG/hidden modifiers; mirrors the reducer exactly (proven
+    by test on five states).
+  - wechat-shell: mapCoreActionIntents / mapSpecialActionIntents / buildArchiveView.
+  - tools/ui02-preview-fixtures.mjs generates the preview fixture through the real
+    production chain; tests/ui02.test.mjs pins base tree digests so legacy 1.0
+    gameplay and Core/Content sources are provably byte-equivalent to base.
 
-  Status: PASS. No reproducible structural playability blocker remains before UI02.
+  Verification: 282/282 full suite (was 264), 18/18 ui02, 6/6 viewmodel-ui,
+  typecheck/lint/content-lint/content01-lint/secret-scan green.

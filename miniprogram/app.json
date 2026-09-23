@@ -2,7 +2,8 @@
   "pages": [
     "pages/start/start",
     "pages/game/game",
-    "pages/rank/rank"
+    "pages/rank/rank",
+    "pages/v2-preview/v2-preview"
   ],
   "window": {
     "navigationBarTextStyle": "white",
