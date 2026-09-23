@@ -1,17 +1,83 @@
 version: 1
-taskId: null
-status: NONE
+taskId: LOOPFIX02B2
+attempt: 3
+status: PASS
 sourceBranch: dev/tianfu-2.0
-workBranch: null
-baseCommit: null
-summary: ""
-changedFiles: []
-tests: {}
-gates: {}
+workBranch: wb-LOOPFIX02B2
+baseCommit: 3ca1cab0159af2417483da02c4bcbb9a7fe08e10
+historyMode: synthetic-tree-base
+baseTreeSha: b9c06ca4ec94ecde4755c4f71464bf0c094dc542
+sourceHeadVerifiedBy: repository API read of refs/heads/dev/tianfu-2.0 (HEAD = 3ca1cab0); full working tree verified byte-identical to the remote source tree before editing (tree SHA match)
+summary: >-
+  LOOPFIX02B2 attempt 3. Cause terminal closure on all 10 CONTENT01 Cause-linked echo
+  Events, plus the two required final micro-repairs. SCOPE DISCLOSURE: the remote source
+  HEAD 3ca1cab0 does NOT contain attempt 2's B2 work (verified by live repository-API
+  reads: closure:true = 0, closureEffect = 0, RESOLVE_CAUSE = 0, EXPIRE_CAUSE = 0,
+  triggeringCause = 0; tests/loopfix02b2.test.mjs = 404; the commit chain
+  26b63e40 -> 072a1f6f -> 3ca1cab0 touches only .codex/ metadata). The transplant
+  described in PROTOCOL never reached the source branch, so attempt 2's result exists
+  only on wb-LOOPFIX02B2 = 88b3061a. Attempt 3 therefore re-applied the accepted B2 end
+  state onto base 3ca1cab0 rather than a literal two-line delta. Both micro-repairs are
+  satisfied: (1) the generic risk-choice branch is byte-identical to the pre-B2 base;
+  (2) B2-L and B2-M query only the real DirectorIndexQuery slot names coreNpc /
+  contextual / ordinary and prove non-vacuous, slot-correct reservation.
+changedFiles:
+  - packages/content/src/content01-v1.ts
+  - tests/content01.test.mjs
+  - tests/loopfix02b2.test.mjs
+  - package.json
+  - .codex/control/LAST_RESULT.yaml
+changes:
+  content01-v1.ts:
+    - Added "closure?: true" and "cooldown?: NonNullable<EventDefinition[\"cooldown\"]>" to the local Spec type.
+    - Added the closureEffect helper and the close(op) guard inside choices(spec).
+    - engage -> [...safePrimary, ...npcEffect, ...close("RESOLVE_CAUSE")]
+    - consider -> [...declare([{op:"ADD_CULTIVATION",amount:150}]), ...close("RESOLVE_CAUSE")]
+    - leave -> [...declare([{op:"ADD_RESOURCE",key:"spiritStone",amount:1}]), ...close("EXPIRE_CAUSE")]
+    - "closure: true" set on exactly 10 Cause-linked echo Events.
+    - Closure reference is always {op: <RESOLVE|EXPIRE>_CAUSE, triggeringCause: true}; no authored causeId anywhere.
+    - The generic risk-choice branch (take-risk / read-signs / turn-away) left byte-identical to the pre-B2 base.
+  content01.test.mjs:
+    - Repaired CONTENT01-016 and CONTENT01-019 via the withCauseProvenance helper so Cause-linked Events carry real triggeringCause provenance.
+  loopfix02b2.test.mjs:
+    - New dedicated suite, 13 tests (B2-A..B2-M).
+    - B2-L queries only valid slots coreNpc / contextual / ordinary, derives probes from the index keys the echoes actually declare, and asserts each probe is non-vacuous.
+    - B2-M exercises P3 at the real reducer seam and proves the echoed Event is unreachable from P4/P5/P6.
+  package.json:
+    - Added "test:loopfix02b2": "node --test tests/loopfix02b2.test.mjs".
+    - Appended tests/loopfix02b2.test.mjs to the aggregate "test" script file list.
+tests:
+  test:loopfix02b2: { run: true, files: 1, pass: 13, fail: 0 }
+  test:loopfix02b1: { run: true, pass: 13, fail: 0 }
+  test:content01: { run: true, pass: 32, fail: 0 }
+  test:a09_cause: { run: true, pass: 6, fail: 0 }
+  test:director01: { run: true, pass: 45, fail: 0 }
+  test:a05_reducer: { run: true, pass: 10, fail: 0 }
+  test:a03_state: { run: true, pass: 5, fail: 0 }
+  test:a08_event-dsl: { run: true, pass: 9, fail: 0 }
+  test:a06_content-registry: { run: true, pass: 7, fail: 0 }
+  recurrence: { run: true, pass: 18, fail: 0 }
+  participant-bridge: { run: true, pass: 39, fail: 0 }
+  replay: { run: true, pass: 6, fail: 0 }
+  npm_test_aggregate: { run: true, tests: 228, pass: 228, fail: 0 }
+gates:
+  typecheck: { run: true, result: PASS }
+  lint: { run: true, result: PASS }
+  content:lint: { run: true, result: PASS }
+  content01:lint: { run: true, result: PASS }
+  scan:secrets: { run: true, result: PASS }
+  combo-audit: { run: true, result: PASS }
+  risk-audit: { run: true, result: PASS }
+  build-audit: { run: true, result: PASS }
+  npc-audit: { run: true, result: PASS }
+  participant-bridge-audit: { run: true, result: PASS }
+  recurrence-audit: { run: true, result: PASS }
+  director-audit: { run: true, result: PASS }
+  content-playability-audit: { run: true, result: PASS }
 scope:
   coreChanged: false
   contractsChanged: false
   directorChanged: false
-  contentChanged: false
+  contentChanged: true
 blockers: []
-recommendedCommitMessage: ""
+recommendedCommitMessage: "LOOPFIX02B2 attempt 3: Cause terminal closure on all 10 echo Events; restore byte-identical risk-choice branch; real-slot Director reservation coverage (P4 coreNpc / P5 contextual / P6 ordinary)"
