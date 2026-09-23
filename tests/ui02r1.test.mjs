@@ -558,9 +558,13 @@ test("UI02R1_fixture: the module exports the same public data as the JSON and th
   const loaded = JSON.parse(JSON.stringify(sandbox.module.exports));
   assert.deepEqual(loaded, fixtures, "module export must equal the committed JSON fixture");
   assert.deepEqual(loaded, generated, "module export must equal a fresh generator run");
-  // 4. and the page renders only from that module, never from inlined fixture values
+  // 4. and the page renders only from that module, never from inlined fixture values.
+  // UI02R2 note: "mortal" was removed from this sample list because the page now legitimately maps the
+  // six contract realm ids to their Chinese displayNames; a contract enum key is not a per-run fixture
+  // value. tests/ui02r2.test.mjs pins exactly which contract enum keys may appear and that per-run
+  // values still never do.
   const pageCode = stripJs(pageJs) + stripMarkup(wxml);
-  for (const sample of ["青芜问道", "无名老者", "柳氏药婆", "mortal", "inst-ui02-event"]) {
+  for (const sample of ["青芜问道", "无名老者", "柳氏药婆", "inst-ui02-event", "npc:core:mentor", "hint_cause"]) {
     assert.equal(pageCode.includes(sample), false, "fixture value leaked into the page source: " + sample);
   }
 });

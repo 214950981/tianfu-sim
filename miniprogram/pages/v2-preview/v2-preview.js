@@ -24,6 +24,12 @@
  *
  * Names shown for people/Causes/Builds are public display labels. Hidden Causes and hidden NPC state
  * are absent from the fixture by construction, because the server never projects them.
+ *
+ * UI02R2 adds a presentation-only Chinese label vocabulary for structural enum ids (realm ids, build
+ * stages, condition kinds, affinity/trust semantics, roles, participant slots, risk tiers, known
+ * reason keys, death causes, archive entry kinds). It changes no projected value: unknown ids fall
+ * back verbatim to the raw value, and narrative content keys (titleKey/bodyKey/labelKey/summaryKey
+ * prose) are not translated — that is content i18n, not presentation.
  */
 
 /**
@@ -155,6 +161,69 @@ var PAGE_KIND_BY_PAGE_STATE = {
 var ACTION_LABELS = { cultivate: "闭关", travel: "游历", worldly: "入世", pursuit: "追索" };
 var RISK_TIER_CLASS = { low: "", caution: "is-caution", dangerous: "is-dangerous", lethal: "is-lethal" };
 
+/**
+ * UI02R2 presentation label vocabulary (Chinese-facing display labels).
+ *
+ * These tables mirror ONLY structural enum ids that already exist in the accepted Core / Content
+ * contracts: realm ids (content progression-v1 displayNames), build stages (core BUILD_STAGES),
+ * condition kinds, affinity/trust semantics (core npc.ts), observed npc roles, participant slots,
+ * risk tiers (core risk.ts), known reason keys and archive entry kinds. They are presentation
+ * dictionaries, not a locale table: narrative content keys (titleKey / bodyKey / labelKey /
+ * summaryKey prose) are deliberately NOT translated here — that belongs to a later content/i18n
+ * task — and no gameplay value is computed, changed or invented by them.
+ *
+ * Fail-open rule: an unknown projected value falls back verbatim to the raw value, so a future
+ * content pack with a new realm id or condition kind renders its raw id instead of a wrong label.
+ */
+var REALM_LABELS = {
+  "mortal": "凡人",
+  "qi-refining": "炼气",
+  "foundation-establishment": "筑基",
+  "golden-core": "金丹",
+  "nascent-soul": "元婴",
+  "spirit-transformation": "化神"
+};
+var BUILD_STAGE_LABELS = { "latent": "潜藏", "emerging": "初显", "formed": "成形", "refined": "精纯" };
+var CONDITION_KIND_LABELS = { "injury": "伤患" };
+var AFFINITY_LABELS = { "hostile": "敌视", "distant": "疏远", "neutral": "平常", "warm": "亲近", "close": "亲密" };
+var TRUST_LABELS = { "wary": "戒备", "guarded": "存疑", "familiar": "相熟", "trusted": "信任", "deeplyTrusted": "深信" };
+var ROLE_LABELS = { "mentor": "师长", "merchant": "商贾" };
+var SLOT_LABELS = {
+  "self": "自身",
+  "other": "对方",
+  "master": "师尊",
+  "rescuedNpc": "被救之人",
+  "debtor": "负债之人",
+  "enemy": "仇家",
+  "witness": "见证之人"
+};
+var RISK_TIER_LABELS = { "low": "低险", "caution": "宜慎", "dangerous": "危险", "lethal": "凶险" };
+var REASON_KEY_LABELS = {
+  "breakthrough.cultivation_incomplete": "修为未满",
+  "breakthrough.interaction_pending": "尚有抉择未了",
+  "breakthrough.unavailable": "机缘未至",
+  "risk.category.combat": "争斗之险",
+  "risk.category.lifespan": "寿元之危",
+  "risk.reason.injury": "身负伤患"
+};
+var DEATH_CAUSE_LABELS = { "lifespan": "寿元耗尽", "injury": "伤重不治" };
+var ENTRY_KIND_LABELS = { "event": "事件", "build": "道途" };
+var CN_NUMERALS = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
+
+/** Presentation label lookup: a known contract enum id -> its Chinese label; anything unknown -> the raw value verbatim. */
+function presentLabel(table, value) {
+  if (typeof value !== "string" || value.length === 0) return value;
+  var label = table[value];
+  return typeof label === "string" && label.length > 0 ? label : value;
+}
+
+/** Presentation of the realm order: realms are 0-based and 凡人 is pre-cultivation, so order 0 reads "未入修行" instead of "第 0 境". */
+function realmOrderLabel(order) {
+  if (typeof order !== "number" || !isFinite(order) || order < 1) return "未入修行";
+  var numeral = CN_NUMERALS[order] !== undefined ? CN_NUMERALS[order] : String(order);
+  return "第" + numeral + "境";
+}
+
 /** RUN_HOME shows at most three public attention summaries; the rest lives in read-only drawers. */
 var ATTENTION_SLOT_LIMIT = 3;
 
@@ -201,10 +270,11 @@ function buildRunHome(vm) {
   var run = vm.view.state.publicRun;
   var lifespan = lifespanView(run);
   var realm = run.realm || {};
+  var realmOrder = number(realm.order, 0);
   var conditions = (run.conditions || []).map(function (condition) {
     return {
       key: condition.id,
-      label: condition.kind,
+      label: presentLabel(CONDITION_KIND_LABELS, condition.kind),
       stacks: number(condition.stacks, 0)
     };
   });
@@ -219,7 +289,7 @@ function buildRunHome(vm) {
     return {
       buildId: build.buildId,
       name: text(build.displayName, build.buildId),
-      stageLabel: build.stage,
+      stageLabel: presentLabel(BUILD_STAGE_LABELS, build.stage),
       dominant: build.dominant === true
     };
   });
@@ -228,8 +298,10 @@ function buildRunHome(vm) {
     return {
       npcId: person.npcId,
       name: text(person.displayName, person.npcId),
-      roles: (person.knownRoles || []).join(" · "),
-      relation: [person.affinity, person.trust].filter(Boolean).join(" / "),
+      roles: (person.knownRoles || []).map(function (role) {
+        return presentLabel(ROLE_LABELS, role);
+      }).join(" · "),
+      relation: [presentLabel(AFFINITY_LABELS, person.affinity), presentLabel(TRUST_LABELS, person.trust)].filter(Boolean).join(" / "),
       status: person.knownStatus,
       milestoneCount: milestones.length
     };
@@ -256,8 +328,9 @@ function buildRunHome(vm) {
   var entries = run.specialActions || [];
   for (var index = 0; index < special.length; index += 1) {
     var projected = entries[index] || {};
-    special[index].targetName = text((projected.targetRealm || {}).displayName, "");
-    special[index].reason = projected.available === true ? "" : text(projected.blockedReasonKey, "breakthrough.unavailable");
+    var targetRealm = projected.targetRealm || {};
+    special[index].targetName = presentLabel(REALM_LABELS, text(targetRealm.displayName, text(targetRealm.id, "")));
+    special[index].reason = projected.available === true ? "" : presentLabel(REASON_KEY_LABELS, text(projected.blockedReasonKey, "breakthrough.unavailable"));
   }
 
   var dominant = null;
@@ -309,8 +382,9 @@ function buildRunHome(vm) {
   return {
     kind: "RUN_HOME",
     runName: text(run.runName, "无名"),
-    realmName: text(realm.id, "unknown"),
-    realmOrder: number(realm.order, 0),
+    realmName: presentLabel(REALM_LABELS, text(realm.id, "unknown")),
+    realmOrder: realmOrder,
+    realmOrderLabel: realmOrderLabel(realmOrder),
     cultivation: number(realm.cultivationBps, number(realm.cultivation, 0)),
     foundation: number(realm.realmFoundationBps, 0),
     lifespan: lifespan,
@@ -335,7 +409,7 @@ function buildDecision(vm) {
   var interaction = vm.view.currentInteraction || {};
   var body = interaction.body || {};
   var participants = (body.participants || []).map(function (participant) {
-    return { slot: participant.slot, name: text(participant.displayName, "未知") };
+    return { slot: presentLabel(SLOT_LABELS, text(participant.slot, "")), name: text(participant.displayName, "未知") };
   });
   var options = (interaction.options || []).map(function (option) {
     var risk = option.riskPresentation || null;
@@ -343,10 +417,12 @@ function buildDecision(vm) {
       optionId: option.optionId,
       label: text(option.labelKey, option.optionId),
       hasRisk: risk !== null,
-      tier: risk === null ? "" : risk.tier,
+      tier: risk === null ? "" : presentLabel(RISK_TIER_LABELS, risk.tier),
       tierClass: risk === null ? "" : (RISK_TIER_CLASS[risk.tier] || ""),
       canBeFatal: risk !== null && risk.canBeFatal === true,
-      reasons: risk === null ? [] : (risk.reasons || [])
+      reasons: risk === null ? [] : (risk.reasons || []).map(function (reason) {
+        return presentLabel(REASON_KEY_LABELS, reason);
+      }).join(" · ")
     };
   });
   return {
@@ -371,16 +447,28 @@ function buildArchive(vm) {
   var entries = archive.history.map(function (entry) {
     return {
       entryId: entry.entryId,
-      kind: entry.kind,
+      kind: presentLabel(ENTRY_KIND_LABELS, entry.kind),
       title: entry.titleKey,
       summary: entry.summaryKey
     };
   });
   var builds = archive.builds.map(function (build) {
-    return { buildId: build.buildId, name: text(build.displayName, build.buildId), stage: build.stage, dominant: build.dominant };
+    return {
+      buildId: build.buildId,
+      name: text(build.displayName, build.buildId),
+      stage: presentLabel(BUILD_STAGE_LABELS, build.stage),
+      dominant: build.dominant
+    };
   });
   var people = archive.people.map(function (person) {
-    return { npcId: person.npcId, name: person.displayName, roles: (person.knownRoles || []).join(" · "), status: person.knownStatus };
+    return {
+      npcId: person.npcId,
+      name: person.displayName,
+      roles: (person.knownRoles || []).map(function (role) {
+        return presentLabel(ROLE_LABELS, role);
+      }).join(" · "),
+      status: person.knownStatus
+    };
   });
   var death = archive.death || null;
   return {
@@ -393,8 +481,8 @@ function buildArchive(vm) {
     people: people,
     hasDeath: death !== null,
     deathAge: death === null ? 0 : number(death.deathAge, 0),
-    deathRealm: death === null ? "" : text(death.deathRealm, ""),
-    deathCause: death === null ? "" : text(death.directCause, ""),
+    deathRealm: death === null ? "" : presentLabel(REALM_LABELS, text(death.deathRealm, "")),
+    deathCause: death === null ? "" : presentLabel(DEATH_CAUSE_LABELS, text(death.directCause, "")),
     wasWarned: death !== null && death.wasWarned === true,
     lifespanDeath: death !== null && death.lifespanDeath === true
   };

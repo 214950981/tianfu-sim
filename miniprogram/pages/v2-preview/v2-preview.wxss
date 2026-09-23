@@ -15,6 +15,13 @@
  * flex and safe-area insets. Nothing here shrinks text or touch targets to fake a one-screen fit:
  * --touch-min / --cta-h / --dock-row-h never drop below 104rpx, which is ~44 CSS px at windowWidth 320.
  *
+ * UI02R2 keeps every structural contract above and refines presentation only: rhythm tokens gain
+ * breathing room, the breakthrough CTA becomes the single solid-ink primary control, the four core
+ * actions stay uniform outline secondaries, attention tags become chips, and structural enum ids are
+ * shown through the Chinese presentation label vocabulary in v2-preview.js (unknown ids fall back
+ * verbatim). The frozen design language and all UI02 HEX values are unchanged; --radius-card is an
+ * additional, slightly rounder corner reserved for interactive cards and buttons.
+ *
  * WXSS compatibility (checked by tools/wxss-compat-audit.mjs):
  *  - No universal `*` selector. The DevTools WXSS compiler rejects the `*` token outright, and there is
  *    no universal reset here; every box that has a definite size AND padding/border declares
@@ -56,6 +63,7 @@ page {
   --space-6: 96rpx;
 
   --radius: 4rpx;
+  --radius-card: 8rpx;
   --hairline: 1rpx;
 
   /* ---------- UI02R1 baseline viewport ---------- */
@@ -64,21 +72,23 @@ page {
 
   /* ---------- UI02R1 vertical budget tokens ----------
      Every token below is consumed by a real rule. tools/ui02r1-layout-audit.mjs re-reads them and
-     proves the worst-case first-screen stack still fits the supported baseline. */
+     proves the worst-case first-screen stack still fits the supported baseline.
+     UI02R2 raises the non-interactive rhythm tokens (vitals / attention rows / section gaps) for
+     breathing room; the interaction floors (--touch-min / --cta-h / --dock-row-h) are untouched. */
   --screen-pad-x: 28rpx;
   --screen-pad-top: 12rpx;
   --hero-name-lh: 84rpx;
-  --hero-meta-h: 36rpx;
-  --life-h: 52rpx;
-  --vitals-h: 76rpx;
-  --attn-head-h: 36rpx;
-  --attn-slot-h: 66rpx;
+  --hero-meta-h: 40rpx;
+  --life-h: 56rpx;
+  --vitals-h: 84rpx;
+  --attn-head-h: 40rpx;
+  --attn-slot-h: 70rpx;
   --attn-note-pad: 8rpx;
-  --dock-pad-top: 12rpx;
+  --dock-pad-top: 16rpx;
   --dock-pad-bottom: 12rpx;
   --dock-note-h: 56rpx;
-  --dock-gap: 10rpx;
-  --dock-col-w: calc(50% - 5rpx);
+  --dock-gap: 12rpx;
+  --dock-col-w: calc(50% - 6rpx);
 
   /* Interaction floors. 104rpx == 44.37 CSS px at windowWidth 320 (104 * 320 / 750). */
   --touch-min: 104rpx;
@@ -118,8 +128,8 @@ page {
   page {
     --screen-pad-top: 14rpx;
     --hero-name-lh: 88rpx;
-    --vitals-h: 80rpx;
-    --attn-slot-h: 70rpx;
+    --vitals-h: 88rpx;
+    --attn-slot-h: 74rpx;
   }
 }
 
@@ -127,9 +137,9 @@ page {
   page {
     --screen-pad-top: 16rpx;
     --hero-name-lh: 92rpx;
-    --vitals-h: 84rpx;
+    --vitals-h: 90rpx;
     --attn-head-h: 40rpx;
-    --attn-slot-h: 74rpx;
+    --attn-slot-h: 76rpx;
     --dock-pad-top: 16rpx;
   }
 }
@@ -138,11 +148,11 @@ page {
   page {
     --screen-pad-top: 20rpx;
     --hero-name-lh: 100rpx;
-    --hero-meta-h: 40rpx;
-    --life-h: 56rpx;
-    --vitals-h: 88rpx;
+    --hero-meta-h: 44rpx;
+    --life-h: 60rpx;
+    --vitals-h: 96rpx;
     --attn-head-h: 44rpx;
-    --attn-slot-h: 78rpx;
+    --attn-slot-h: 82rpx;
     --dock-pad-top: 20rpx;
     --dock-pad-bottom: 16rpx;
   }
@@ -151,7 +161,7 @@ page {
 @media (min-height: 820px) {
   page {
     --hero-name-lh: 108rpx;
-    --attn-slot-h: 84rpx;
+    --attn-slot-h: 88rpx;
     --cta-h: 112rpx;
     --dock-row-h: 112rpx;
   }
@@ -199,7 +209,7 @@ page {
   margin-top: var(--space-3);
   padding: var(--space-3);
   border: var(--hairline) solid var(--cinnabar-soft);
-  border-radius: var(--radius);
+  border-radius: var(--radius-card);
   background-color: var(--paper-raised);
 }
 
@@ -302,9 +312,10 @@ page {
 
 .hero-name {
   font-size: 52rpx;
+  font-weight: 600;
   line-height: var(--hero-name-lh);
   height: var(--hero-name-lh);
-  letter-spacing: 4rpx;
+  letter-spacing: 6rpx;
   color: var(--ink);
   padding-right: var(--dev-reserve-x);
   overflow: hidden;
@@ -330,11 +341,13 @@ page {
   text-overflow: ellipsis;
 }
 
+/* The realm order is the one restrained dark-gold accent in the hero: order 0 renders 未入修行. */
 .hero-realm {
   flex: 0 0 auto;
   margin-left: var(--space-2);
   font-size: 22rpx;
-  color: var(--ink-faint);
+  letter-spacing: 2rpx;
+  color: var(--gold);
   white-space: nowrap;
 }
 
@@ -347,12 +360,12 @@ page {
 }
 
 .life-track {
-  height: 2rpx;
+  height: 3rpx;
   background-color: var(--rule);
 }
 
 .life-fill {
-  height: 2rpx;
+  height: 3rpx;
   background-color: var(--ink-soft);
 }
 
@@ -377,6 +390,7 @@ page {
   color: var(--cinnabar);
 }
 
+/* Core cultivation status: one strip, three equal columns separated by hairline dividers. */
 .vitals {
   box-sizing: border-box;
   display: flex;
@@ -394,22 +408,36 @@ page {
   display: flex;
   flex-direction: column;
   justify-content: center;
-  padding-right: var(--space-1);
+  padding: 0 var(--space-1);
+}
+
+.vital--lead {
+  padding-left: 0;
+}
+
+.vital--rule {
+  border-right: var(--hairline) solid var(--rule);
+  padding-right: var(--space-2);
+}
+
+.vital--tail {
+  padding-right: 0;
 }
 
 .vital-label {
   font-size: 20rpx;
   color: var(--ink-faint);
-  letter-spacing: 2rpx;
+  letter-spacing: 4rpx;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
 }
 
 .vital-value {
-  font-size: 28rpx;
-  color: var(--ink-soft);
-  margin-top: 2rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--ink);
+  margin-top: 4rpx;
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -426,17 +454,32 @@ page {
 
 .attention-head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   flex: 0 0 auto;
   height: var(--attn-head-h);
   min-width: 0;
 }
 
+.attention-title-group {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+}
+
+/* Small dark-gold square: the single accent that marks the "current priorities" panel header. */
+.attention-mark {
+  flex: 0 0 auto;
+  width: 10rpx;
+  height: 10rpx;
+  margin-right: var(--space-1);
+  background-color: var(--gold);
+}
+
 .attention-title {
   font-size: 24rpx;
-  letter-spacing: 4rpx;
-  color: var(--ink-muted);
+  letter-spacing: 6rpx;
+  color: var(--ink-soft);
   white-space: nowrap;
 }
 
@@ -468,18 +511,23 @@ page {
   opacity: 0.72;
 }
 
+/* Attention tags read as small chips, not a fixed-width table column. */
 .attn-tag {
   flex: 0 0 auto;
-  width: 72rpx;
+  margin-right: var(--space-2);
+  padding: 3rpx 12rpx;
   font-size: 20rpx;
   letter-spacing: 2rpx;
-  color: var(--ink-faint);
+  color: var(--ink-muted);
+  border: var(--hairline) solid var(--rule-strong);
+  border-radius: var(--radius);
+  white-space: nowrap;
 }
 
 .attn-value {
   flex: 1 1 auto;
   min-width: 0;
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: var(--ink-soft);
   overflow: hidden;
   white-space: nowrap;
@@ -490,10 +538,12 @@ page {
   flex: 0 0 auto;
   margin-left: var(--space-1);
   font-size: 26rpx;
-  color: var(--ink-faint);
+  color: var(--gold-soft);
 }
 
-/* ---------- action dock ---------- */
+/* ---------- action dock ----------
+   Hierarchy: the breakthrough CTA is the single primary control (solid ink, paper text, gold target);
+   the four core actions are a coherent group of secondary outline buttons beneath it. */
 
 .dock {
   flex: 0 0 auto;
@@ -501,7 +551,7 @@ page {
   padding-bottom: var(--dock-pad-bottom);
   padding-bottom: calc(var(--dock-pad-bottom) + constant(safe-area-inset-bottom));
   padding-bottom: calc(var(--dock-pad-bottom) + env(safe-area-inset-bottom, 0px));
-  border-top: var(--hairline) solid var(--rule);
+  border-top: var(--hairline) solid var(--rule-strong);
 }
 
 .cta {
@@ -511,21 +561,22 @@ page {
   justify-content: space-between;
   min-height: var(--cta-h);
   padding: 0 var(--space-3);
-  border: var(--hairline) solid var(--gold-soft);
-  border-radius: var(--radius);
-  background-color: var(--paper-raised);
+  border: 2rpx solid var(--ink);
+  border-radius: var(--radius-card);
+  background-color: var(--ink);
   margin-bottom: var(--dock-gap);
 }
 
 .cta:active {
-  opacity: 0.72;
+  opacity: 0.8;
 }
 
 .cta-label {
   flex: 0 0 auto;
-  font-size: 30rpx;
-  letter-spacing: 4rpx;
-  color: var(--gold);
+  font-size: 32rpx;
+  font-weight: 600;
+  letter-spacing: 8rpx;
+  color: var(--paper);
   white-space: nowrap;
 }
 
@@ -534,7 +585,8 @@ page {
   min-width: 0;
   margin-left: var(--space-2);
   font-size: 22rpx;
-  color: var(--ink-faint);
+  letter-spacing: 2rpx;
+  color: var(--gold-soft);
   text-align: right;
   overflow: hidden;
   white-space: nowrap;
@@ -551,7 +603,7 @@ page {
   font-size: 20rpx;
   color: var(--ink-faint);
   border: var(--hairline) dashed var(--rule-strong);
-  border-radius: var(--radius);
+  border-radius: var(--radius-card);
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
@@ -572,7 +624,7 @@ page {
   min-height: var(--dock-row-h);
   padding: var(--space-2);
   border: var(--hairline) solid var(--rule-strong);
-  border-radius: var(--radius);
+  border-radius: var(--radius-card);
   background-color: var(--paper-raised);
   transition: opacity 160ms ease;
 }
@@ -583,7 +635,8 @@ page {
 
 .action-label {
   font-size: 30rpx;
-  letter-spacing: 6rpx;
+  font-weight: 500;
+  letter-spacing: 8rpx;
   color: var(--ink);
   overflow: hidden;
   white-space: nowrap;
@@ -655,7 +708,7 @@ page {
   margin-top: var(--space-2);
   padding: var(--space-3);
   border: var(--hairline) solid var(--rule-strong);
-  border-radius: var(--radius);
+  border-radius: var(--radius-card);
   background-color: var(--paper-raised);
 }
 
@@ -670,6 +723,7 @@ page {
   flex: 1 1 auto;
   min-width: 0;
   font-size: 30rpx;
+  font-weight: 500;
   color: var(--ink);
   letter-spacing: 2rpx;
   overflow: hidden;
@@ -677,11 +731,16 @@ page {
   text-overflow: ellipsis;
 }
 
+/* Risk tier reads as a chip: the mapped tier label plus the tier colour the page already carried. */
 .option-risk {
   flex: 0 0 auto;
-  margin-left: var(--space-1);
-  font-size: 22rpx;
+  margin-left: var(--space-2);
+  padding: 2rpx 12rpx;
+  font-size: 20rpx;
+  letter-spacing: 2rpx;
   color: var(--ink-muted);
+  border: var(--hairline) solid var(--rule-strong);
+  border-radius: var(--radius);
   white-space: nowrap;
 }
 
@@ -861,7 +920,7 @@ page {
   min-height: var(--touch-min);
   padding: 0 var(--space-2);
   border: var(--hairline) solid var(--rule-strong);
-  border-radius: var(--radius);
+  border-radius: var(--radius-card);
   background-color: var(--paper-raised);
 }
 

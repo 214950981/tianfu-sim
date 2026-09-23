@@ -232,6 +232,61 @@ UI02 负责 HEX、字号、间距、圆角与组件尺寸，token 定义在
 页面内**不含**任何 1.0 霓虹仪表盘取值（`#FFD700`、`#050508`、`#55ff55`、`#55ccff`、
 `#dd55ff`、发光 `text-shadow`、`box-shadow`）。测试会扫描并阻止回流。
 
+## 五点五、UI02R2 视觉打磨与中文呈现层
+
+UI02R2 是**纯 presentation 打磨**，不扩张功能，不触碰任何 UI02R1 结构合同。
+
+### 5.1 版式与层级（RUN_HOME）
+
+- **hero**：境界名（52rpx/600 字重）是唯一大字；此生名称次之；境界序（`第N境`，
+  `order 0` 呈现为「未入修行」）以**暗金**单色作为 hero 内唯一强调。
+- **vitals**：修为 / 道基 / 灵石为一条三等分横带，列间以发丝线分隔；数值 30rpx/600
+  提到前景，标签 20rpx 退到背景。
+- **眼下要务**（原「此刻值得关注」）：标题前置一个 10rpx 暗金方点，像任务面板头而不像
+  列表头；三行摘要的 tag（主修/因果/相识/条件）改为描边 chip；行尾箭头用 `--gold-soft`
+  提示可点。
+- **行动区**：突破 CTA 改为**实心墨底 + 纸色文字 + 暗金目标**的主按钮（32rpx/600/8rpx
+  字距），四行动保持浅底描边次级按钮（30rpx/500/8rpx 字距），主次关系一眼可分。
+- **统一圆角**：新增 `--radius-card: 8rpx` 专用于按钮与卡片（CTA / 行动 / dock 说明 /
+  选项 / 失败面板 / 调试触发器）；`--radius: 4rpx` 冻结值不变，仍用于小 chip 与标签。
+- **呼吸感**：`--vitals-h/--attn-slot-h/--attn-head-h/--hero-meta-h/--life-h/--dock-gap`
+  等节奏 token 上调，六视口首屏预算仍全部达标（最紧 320×500 余 34.6px），
+  触控下限（104rpx≈44.37px@320）与 20rpx 字号下限**未动**。
+
+### 5.2 中文呈现层（presentation labels）
+
+页面顶部新增一组呈现层标签表，只镜像**合同里已存在的结构性枚举 id**：
+
+| 表 | 覆盖 | 来源 |
+| --- | --- | --- |
+| `REALM_LABELS` | 六境界 id → 凡人/炼气/筑基/金丹/元婴/化神 | content progression-v1 官方 displayName |
+| `BUILD_STAGE_LABELS` | latent/emerging/formed/refined → 潜藏/初显/成形/精纯 | core `BUILD_STAGES` |
+| `CONDITION_KIND_LABELS` / `DEATH_CAUSE_LABELS` | injury→伤患；lifespan→寿元耗尽 | core 风险/条件 |
+| `AFFINITY_LABELS` / `TRUST_LABELS` | 五档亲疏 / 五档信任 | core `affinitySemantic`/`trustSemantic` |
+| `ROLE_LABELS` / `SLOT_LABELS` | 师长/商贾；自身/对方/师尊/被救之人… | 投影 knownRoles / participant slots |
+| `RISK_TIER_LABELS` | low/caution/dangerous/lethal → 低险/宜慎/危险/凶险 | core `RiskPresentationData.tier` |
+| `REASON_KEY_LABELS` | `breakthrough.*` / `risk.category.*` / `risk.reason.injury` | 已知 reason key |
+| `ENTRY_KIND_LABELS` | event/build → 事件/道途 | 命书 history |
+
+规则（`tests/ui02r2.test.mjs` 钉死）：
+
+1. **未知值原样回退**（`presentLabel`）：未来内容包出现新 id 时显示原始 id，不显示错标签。
+2. **不是 locale 层**：叙事内容键（`titleKey`/`bodyKey`/`labelKey`/`summaryKey` 的正文）
+   **不在**映射范围——那是后续内容 i18n 任务，映射它们等于伪造文案。
+3. **不含任何 per-run 夹具值**（人名、局名、npc id 等），也不含叙事键。
+4. `realmOrder` 数值原样保留在投影上；`第N境`/`未入修行` 只是 order 的呈现。
+
+### 5.3 仍需人工验收（UI02R2 新增项）
+
+在原有 UI02R1 人工验收清单之上，追加：
+
+- RUN_HOME 主次关系：突破 CTA 是否明显读作**主按钮**，四行动是否读作一组次级操作。
+- hero 层级：境界名 → 此生名 → 暗金境界序，三级是否一眼可分。
+- vitals 三列分隔线与数值字重是否清晰不糊；小屏（320）数值是否仍完整不截断。
+- 「眼下要务」是否像任务面板；chip 在 320 宽是否与正文挤压。
+- 全部中文标签无生硬英文残留（境界、阶段、条件、亲疏、风险档位、命书条目）；
+  若出现未知 id 原样显示（预期行为，提回即可）。
+
 ## 六、自动验证与人工视觉验收（务必区分）
 
 ### 6.1 自动结构验证（已执行）
@@ -241,6 +296,7 @@ node tools/ui02r1-layout-audit.mjs          # 96 项结构检查 + 6 视口首�
 node tools/wxss-compat-audit.mjs            # WXSS 语法子集检查（含通配选择器与 border-box）
 node tools/ui02-preview-fixture-module.mjs  # fixture JS 模块 / JSON 是否最新 + require 字面量合同
 node --test tests/ui02r1.test.mjs           # UI02R1 专项（含两个审计与 fixture 一致性的负向对照）
+node --test tests/ui02r2.test.mjs           # UI02R2 专项（呈现层标签表 + 视觉打磨结构断言）
 node --test tests/ui02.test.mjs             # UI02 视觉语言 / fixture / A12 边界
 node --test tests/viewmodel-ui.test.mjs     # A12 安全边界（必须保持全绿）
 npx tsc --noEmit

@@ -1,0 +1,33 @@
+id: UI02R2
+title: UI02R2 — RUN_HOME Visual Polish / Layout Refinement
+phase: 2
+requiredContracts: [.codex/contracts/ui.ref,.codex/contracts/viewmodel.ref,.codex/contracts/page-state.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [docs/UI02R1_RESPONSIVE_LAYOUT.md,docs/UI02_PREVIEW.md,docs/UIUX_RULES.md,miniprogram/pages/v2-preview/v2-preview.wxml,miniprogram/pages/v2-preview/v2-preview.wxss,miniprogram/pages/v2-preview/v2-preview.js,tests/ui02r1.test.mjs,tools/ui02r1-layout-audit.mjs,tools/wxss-compat-audit.mjs]
+allowedScope:
+  - polish only the 2.0 dev preview presentation (pages/v2-preview) so RUN_HOME reads as a refined game interface instead of a form-like table; presentation-only, no functional expansion
+  - improve typographic hierarchy (font weights, sizes within the existing token floors), section breathing room, button sizing/spacing consistency, and the primary/secondary relationship between the breakthrough CTA and the four core actions
+  - make the breakthrough CTA the visually primary control and the four core actions a coherent grouped secondary control area, without changing intent ids, gating, or the exactly-four dock contract
+  - treat the attention region as a "current priorities" panel rather than a plain list (title, mark, chip-like tags), keeping the at-most-three summaries plus one condition row and the read-only drawer entries exactly as accepted
+  - add a presentation-layer Chinese label vocabulary that maps already-known structural enum ids (realm ids, build stages, condition kinds, affinity/trust semantics, npc roles, participant slots, risk tiers, known reason keys, death causes, archive entry kinds) to Chinese display labels; unknown values must fall back to the raw projected value verbatim
+  - the label vocabulary may only mirror enums that exist in the accepted Core/Content contracts; it must not invent gameplay, alter projection semantics, translate narrative content keys (titleKey/bodyKey/labelKey/summaryKey prose), or hide information
+  - refine section spacing, hairlines, radius, and stroke weight within the frozen 宣纸/墨/朱砂/克制暗金 design language; keep all UI02 HEX tokens
+  - extend the structural layout audit and dedicated tests for the polish invariants; no new heavy browser or rendering dependency
+  - update docs/UI02_PREVIEW.md with the UI02R2 polish policy and the presentation label policy
+  - add tests/ui02r2.test.mjs and package test registration
+  - .codex/control/LAST_RESULT.yaml task result
+forbiddenScope: [server-viewmodel-changes,wechat-shell-intent-mapping-changes,application-ui-controller-changes,Core-gameplay-rule-changes,Content-gameplay-changes,Director-changes,Cause-semantics,Progression-changes,Risk-resolution-changes,Build-or-NPC-rule-changes,narrative-content-i18n,locale-table-wiring-for-titleKey-bodyKey-labelKey-summaryKey-prose,fake-gameplay-or-invented-lore-text,one-screen-contract-change,viewport-matrix-change,safe-area-policy-change,scroll-boundary-change,touch-target-reduction-below-approximately-44-CSS-px,detail-expansion-back-onto-RUN_HOME,debug-overlay-removal-is-not-required-but-moving-it-into-product-flow-is-forbidden,legacy-1.0-start-game-rank-changes,miniprogram-app-route-changes,default-route-changes,real-transport-wiring,UI03-implementation,UI04,CHAL01,ITEM01,TECH01,SECT01,WORLD01,new-heavy-test-dependency,source-branch-push]
+accept:
+  - RUN_HOME-one-screen-structure-from-UI02R1-remains-intact-no-page-level-scroll-same-scroll-ownership-same-safe-area-and-viewport-matrix-coverage
+  - four-core-actions-remain-exactly-four-first-screen-visible-with-touch-targets-not-below-approximately-44-CSS-px
+  - breakthrough-CTA-remains-gated-on-server-projected-availability-and-is-visually-primary-when-enabled
+  - attention-region-keeps-at-most-three-public-summaries-plus-one-condition-row-all-opening-read-only-drawers
+  - presentation-labels-cover-the-known-contract-enums-and-unknown-projected-values-fall-back-verbatim-to-the-raw-value
+  - presentation-label-tables-contain-no-per-run-fixture-values-and-no-narrative-content-keys
+  - no-raw-structural-enum-ids-such-as-realm-ids-or-build-stages-are-rendered-when-a-known-label-exists
+  - old-1.0-pages-server-viewmodel-wechat-shell-Core-and-Content-are-byte-equivalent-to-task-base
+  - UI02-UI02R1-and-A12-tests-remain-green-with-the-leak-sample-list-updated-to-distinguish-contract-enum-keys-from-per-run-fixture-values
+  - dedicated-ui02r2-tests-and-layout-audit-green
+  - LAST_RESULT-distinguishes-automated-structural-proof-from-manual-visual-QA-and-does-not-claim-unperformed-device-testing
+tests: [ui02r2,ui02r1,ui02,viewmodel-ui,typecheck,lint,content-lint,content01-lint,secret-scan]

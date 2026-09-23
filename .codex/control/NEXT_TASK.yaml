@@ -1,14 +1,14 @@
 version: 1
 status: READY
 attempt: 1
-taskId: UI02R1
-title: UI02R1 — One-Screen Responsive Gameplay Layout
-taskDefinition: .codex/tasks/UI02R1.yaml
+taskId: UI02R2
+title: UI02R2 — RUN_HOME Visual Polish / Layout Refinement
+taskDefinition: .codex/tasks/UI02R2.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-UI02R1
+workBranch: wb-UI02R2
 worktreeRequired: true
 allowSyntheticTreeBase: true
-basePolicy: remote-source-head-at-task-start
+basePolicy: ui02r1-result-head-at-task-start
 execution:
   readProtocolFirst: true
   commitTaskResult: true
@@ -16,26 +16,32 @@ execution:
   updateSourceBranch: false
   startNextTask: false
 controllerReview:
-  previousTask: UI02
-  previousStatus: ACCEPTED
-  acceptedResultCommit: f091c82f9c2f34a2cef8731feeb1e698a7dce8d8
+  previousTask: UI02R1
+  previousStatus: PASS_ON_WORK_BRANCH_PENDING_ACCEPTANCE
+  previousResultCommit: 9ecb7d1c3ef61725d624c80e6a2f136fcf1b7e16
   postAcceptanceFinding:
-    - user visual review found RUN_HOME behaves like a vertical document and requires page-level scrolling on a normal phone preview
-    - dev preview chrome contributes height but is not the root cause; the product information hierarchy itself is too vertically expanded
-    - UI03 has not started and no wb-UI03 branch exists, so layout repair should happen before live controller wiring
+    - user visual review accepts the one-screen structure but finds the presentation still reads like a form/table rather than a refined game interface
+    - buttons feel stiff and their hierarchy is unclear; the breakthrough CTA does not read as the primary control versus the four core actions
+    - the attention region reads as a plain list instead of a "current priorities" panel; section rhythm and breathing room are weak
+    - raw structural enum ids (realm ids, build stages, condition kinds, affinity/trust semantics, risk tiers) render as English keys, which breaks the Chinese presentation without changing gameplay
 controllerDecision:
-  strategy: one-screen-before-live-wiring
-  rationale: stabilize responsive information architecture, safe-area behavior and small-screen constraints before binding real session interactions, avoiding controller work against a layout that will immediately be restructured
-  supportedPortraitBaseline: windowWidth>=320 CSS px and windowHeight>=500 CSS px
-  viewportMatrix: [320x500,360x560,375x603,390x750,414x820,430x850]
+  strategy: polish-before-live-wiring
+  rationale: with UI02R1 the information architecture, viewport matrix and safe-area contract are accepted as structure; refine presentation quality and Chinese-facing labels now, before UI03 binds live interactions, so controller wiring lands on a visually stable surface
+  baseChain: dc5675d6 (remote dev/tianfu-2.0 HEAD at dispatch) -> f091c82 (UI02) -> UI02R1 result commits -> 9ecb7d1 (UI02R1 result HEAD, PASS, pending controller acceptance)
+  baseCommit: 9ecb7d1c3ef61725d624c80e6a2f136fcf1b7e16
 controllerIntent:
-  mode: responsive-layout-hardening
-  goal: make RUN_HOME feel like a game control surface rather than a scrollable data sheet, while keeping detailed public information available in read-only secondary views
-  postTask: after automated PASS the controller/user will visually inspect the preview; UI03 remains blocked until UI02R1 is accepted
+  mode: presentation-only-polish
+  goal: make RUN_HOME feel like a refined small-game interface (hierarchy, breathing room, button grouping, primary CTA, attention panel) and stop rendering raw structural enum ids as English, while preserving every UI02R1 structural contract
+  hardConstraints:
+    - no Core / Content / Director / server projection / shell intent / gameplay rule change
+    - no change to the one-screen contract, viewport matrix, safe-area policy, or scroll ownership boundaries
+    - touch targets stay at or above approximately 44 CSS px; readability floor 20rpx unchanged
+    - detail stays summarized on RUN_HOME with read-only drawers; no detail expansion back onto the home surface
+    - presentation labels mirror contract enums only; unknown values fall back verbatim; no narrative content keys (titleKey/bodyKey/labelKey/summaryKey prose) are translated; no invented lore or fake gameplay
+    - UI03 remains blocked and must not be started
+  postTask: controller reviews tree diff and LAST_RESULT, then visually inspects in DevTools; UI03 stays blocked until UI02R2 is accepted
 notes:
-  - Read docs/UI02R1_RESPONSIVE_LAYOUT.md first. It is the controller-owned responsive layout contract for this repair.
-  - Do not modify server projection or shell intent mapping. The data and authority boundary are already accepted; this is a presentation/layout task.
-  - Do not hide required information by clipping it invisibly. Summarize on RUN_HOME and move public detail to explicit read-only secondary UI.
-  - Do not solve fit by making fonts or touch targets tiny. Preserve readability and approximately 44 CSS px touch targets.
-  - Do not claim real-device coverage you did not execute. Report automated structural evidence separately from manual visual QA still required.
-  - UI03 is deliberately paused and now declares UI02R1 as a blocker.
+  - Read .codex/tasks/UI02R2.yaml and docs/UI02_PREVIEW.md first. docs/UI02R1_RESPONSIVE_LAYOUT.md is the controller-owned one-screen contract and must not be edited.
+  - UI02R2 builds on the UI02R1 result branch head because UI02R1 is PASS but not yet accepted onto dev/tianfu-2.0. If the controller instead accepts UI02R1 onto source and moves this base, re-dispatch with an updated baseCommit.
+  - The UI02R1 leak-sample test lists "mortal" as a forbidden inlined fixture value; the presentation label table now legitimately contains the six contract realm ids as keys. Update that sample list to per-run fixture values and add a dedicated UI02R2 test pinning exactly which contract enum keys may appear.
+  - The dev overlay and debug floating trigger may remain; they must stay outside the product layout flow.

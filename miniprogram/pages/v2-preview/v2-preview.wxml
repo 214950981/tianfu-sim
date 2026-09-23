@@ -50,7 +50,7 @@
             <view class="hero-name">{{vm.runHome.realmName}}</view>
             <view class="hero-meta">
               <view class="hero-run">{{vm.runHome.runName}}</view>
-              <view class="hero-realm">第 {{vm.runHome.realmOrder}} 境</view>
+              <view class="hero-realm">{{vm.runHome.realmOrderLabel}}</view>
             </view>
             <view class="life">
               <view class="life-track">
@@ -64,17 +64,17 @@
             </view>
           </view>
 
-          <!-- 2. core cultivation status -->
+          <!-- 2. core cultivation status: one strip, three columns, hairline dividers -->
           <view class="vitals">
-            <view class="vital">
+            <view class="vital vital--lead vital--rule">
               <view class="vital-label">修为</view>
               <view class="vital-value">{{vm.runHome.cultivation}} / 10000</view>
             </view>
-            <view class="vital">
+            <view class="vital vital--rule">
               <view class="vital-label">道基</view>
               <view class="vital-value">{{vm.runHome.foundation}} / 10000</view>
             </view>
-            <view class="vital">
+            <view class="vital vital--tail">
               <view class="vital-label">灵石</view>
               <view class="vital-value">{{vm.runHome.possessions}}</view>
             </view>
@@ -83,8 +83,11 @@
           <!-- 3. at most three public attention summaries; full lists live in read-only drawers -->
           <view class="attention">
             <view class="attention-head">
-              <view class="attention-title">此刻值得关注</view>
-              <view class="attention-hint">点开查看只读详情</view>
+              <view class="attention-title-group">
+                <view class="attention-mark"></view>
+                <view class="attention-title">眼下要务</view>
+              </view>
+              <view class="attention-hint">轻点查看详情</view>
             </view>
             <scroll-view class="attention-scroll" scroll-y>
               <view wx:for="{{vm.runHome.attentions}}" wx:key="key" class="attn"
