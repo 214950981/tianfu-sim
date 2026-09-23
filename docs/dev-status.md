@@ -9,7 +9,7 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `2e09bc2b2c0ff2a494698db3604b79cf1922cb16`
+- lastReviewedCommit: `3d3dc03a9d951dacd3cedfa0df9046cdaef2b109`
 - reviewedDate: `2026-09-23`
 
 不要修改 `main` / 1.0，除非未来任务明确要求。
@@ -56,6 +56,7 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - LOOPFIX02B3: PASS
 - Post-LOOPFIX SIM02 verification: BLOCKED（历史：P6 reachability only）
 - LOOPFIX02C: PASS
+- PLAYCHECK02: PASS
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
 
@@ -214,45 +215,20 @@ SIM02 默认配置：6 policies × 100 fixed seeds，`maxActions = 50`。
 
 ## 当前未解决玩法问题
 
-### 1. P6 starvation 已解除，进入代表性玩法验收
+PLAYCHECK02 已通过：当前没有可复现的结构性玩法 blocker 阻止进入 UI02。
 
-LOOPFIX02C 已通过并合入：
+以下均降级为 BACKLOG，不在 UI02 前继续 LOOPFIX：
 
-- Director v1 新增 `contextualGapScenes = 2`
-- strict P1→P6 precedence 不变
-- P5 仍可达，但不再永久遮蔽 P6
-- required 600-run 中 P6 = 4824，出现在 583 / 600 局
-- P5 = 5701
-- same-core-NPC consecutive-P4 violations = 0
-- runtimeFailures / deadlocks / AIcalls 均为 0
+- cautious 自动策略不形成 Build / Cause：属于测试策略表达问题。
+- 部分高境界样本 cultivation 显示为 0：后续 Progression 体验复核。
+- Cause 实际多为单次 echo，resolved 日志偏冗余：后续 Cause 丰富度/日志优化。
+- Generated NPC 当前较浅、未自然 promotion：后续 NPC02。
+- maxAge 在 50-action 代表样本中很少成为终局：后续 lifespan/ending 体验复核。
+- Build stage 可合法回退但视觉体验需观察。
+- P4/P5 内容集合重叠较高：后续 CONTENT02。
+- 少量 risk warning reason 命名复用：后续 RISK02 polish。
 
-下一步不继续调 Director，而是执行 PLAYCHECK02，检查代表性人生轨迹是否存在真正阻塞 UI02 的结构性玩法问题。
-
-### 2. Cause closure 当前健康
-
-最新 600-run：
-
-- origins = 1226
-- eligible = 1212
-- echoes = 1212
-- resolved = 1212
-- expired = 0
-- transformed = 0
-- cause.invalid = 0
-
-expired / transformed 在自动策略样本中为 0 暂记观察项，不作为当前 blocker。
-
-### 3. Actor unavailable 自然路径偏弱
-
-已有运行时语义与测试，当前只记 BACKLOG，不阻塞 UI02。
-
-### 4. 微信壳缺少突破入口
-
-这是 UI02 的接线范围，PLAYCHECK02 PASS 后进入。
-
-### 5. Build / 内容分布暂不追加调参
-
-PLAYCHECK02 只区分“结构性 blocker”和“后续 backlog”。普通平衡与内容密度问题不再触发新的 LOOPFIX，避免在 UI 前无限调参。
+当前最值钱的工作已从“继续修规则”切换为“让 2.0 主循环可见、可理解、可用于真人试玩”。
 
 ## 当前 Director / Cause 证据
 
@@ -293,22 +269,23 @@ Full regression：264 / 264 PASS；全部 reported audits PASS。
 
 ## Next
 
-Latest completed: `LOOPFIX02C PASS`，commit `2e09bc2b2c0ff2a494698db3604b79cf1922cb16`。
+Latest completed: `PLAYCHECK02 PASS`，commit `3d3dc03a9d951dacd3cedfa0df9046cdaef2b109`。
 
-下一任务：`PLAYCHECK02` — Representative Gameplay / Pre-UI Gate。
+下一任务：`UI02` — WeChat 2.0 Core-Loop High-Fidelity Visual Slice。
 
 目标：
 
-- 不再做新一轮平衡修复。
-- 轻量跑 30 局：6 policies × seeds 0..<5，maxActions=50。
-- 固定深读每个 policy 的 seed 0 与 seed 4，共 12 条人生轨迹。
-- 检查 P3/P4/P5/P6 混合、Cause 闭环、NPC 节奏、普通人生事件、Build 形成、突破、风险/死亡、recurrence 与终局。
-- 只有“可复现的结构性不可玩问题”才 BLOCK UI02。
-- 平衡偏差、内容密度、叙事润色、低频自然路径等全部记 BACKLOG，不在本任务继续修。
+- 不再继续玩法调参。
+- 在现有微信 1.0 页面旁新增独立 2.0 dev preview route，不覆盖旧页面、不设为默认入口。
+- 首批高保真覆盖 RUN_HOME / EVENT / SPECIAL_NODE / LIFE_ARCHIVE。
+- 视觉语言：宣纸、墨、朱砂、极少暗金、大量留白、克制动画。
+- RUN_HOME 保持四个核心行动：闭关 / 游历 / 入世 / 追索。
+- 增加服务端控制的公开“可突破”入口，仅投影 availability / target display，不泄露概率、difficulty、RNG 或隐藏 modifier。
+- EVENT 只渲染服务端 riskPresentation；客户端不算胜率。
+- 命书只显示公开历史、公开 Cause、已知人物与 Build identity。
+- 产出可在微信开发者工具中直接打开检查的 2.0 视觉预览页。
 
-PLAYCHECK02 PASS 后直接进入 UI02。
-
-不要提前开始 ITEM01 / TECH01 / SECT01 / WORLD01 / CHAL01。
+UI02 PASS 后，再决定 UI03 的生产 transport / page wiring，不提前开发 ITEM01 / TECH01 / SECT01 / WORLD01 / CHAL01。
 
 ## 新 Codex 会话 / 账号接手步骤
 

@@ -1,0 +1,42 @@
+id: UI02
+title: UI02 — WeChat 2.0 Core-Loop High-Fidelity Visual Slice
+phase: 2
+requiredContracts: [.codex/contracts/ui.ref,.codex/contracts/viewmodel.ref,.codex/contracts/page-state.ref,.codex/contracts/platform.ref,.codex/contracts/command.ref,.codex/contracts/progression.ref,.codex/contracts/crosslayer.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [docs/UIUX_RULES.md,packages/wechat-shell/src/index.ts,packages/application-ui/src/index.ts,packages/platform-contract/src/index.ts,server/src/viewmodel.ts,miniprogram/app.json,miniprogram/app.wxss,miniprogram/pages/game/game.wxml,tests/viewmodel-ui.test.mjs]
+allowedScope:
+  - implement the first high-fidelity Tianfu-sim 2.0 WeChat visual slice for the in-life core loop without changing gameplay rules
+  - add a dedicated dev-only preview route at miniprogram/pages/v2-preview/v2-preview and register it after existing routes in miniprogram/app.json; it must not become the first page or a tabBar entry
+  - do not rewrite or reuse legacy 1.0 gameplay logic from miniprogram/pages/start miniprogram/pages/game or miniprogram/pages/rank; the new preview may coexist beside them
+  - implement RUN_HOME EVENT SPECIAL_NODE and LIFE_ARCHIVE visual states using the frozen paper ink cinnabar restrained-dark-gold design language with generous whitespace and restrained animation
+  - RUN_HOME must present public status lifespan pressure public conditions public Cause clues Build identity known people and exactly four core action intents cultivate travel worldly pursuit
+  - add a server-controlled public breakthrough special-action projection so UI can show an attempt-breakthrough entry only when authoritative public state says it is available; projection may expose target realm display information but never difficulty odds RNG or hidden modifiers
+  - add or extend platform-neutral WeChat shell presentation mapping so core actions and breakthrough map to GameCommand intents without locally calculating outcomes or eligibility
+  - EVENT must be a full-page decision state with public scene participants options server-built riskPresentation and locked ordinary-back behavior while unresolved
+  - SPECIAL_NODE must render the same authoritative interaction/retry boundary generically and must not implement a second breakthrough rules engine
+  - LIFE_ARCHIVE must be read-only and show only public history explicit or hinted Causes known people and public Build identity
+  - add UI02 design tokens and component styling in the v2 preview page; no neon dashboard visual language from legacy 1.0
+  - add docs/UI02_PREVIEW.md with route opening instructions state-fixture notes and clear statement that production transport binding remains later work
+  - add tests/ui02.test.mjs plus package test registration covering presentation safety action count breakthrough projection event risk rendering capability gates and preview route isolation
+  - preserve CommandSubmissionController pending retry reconfirmation semantics and A12 ViewModel security boundaries
+  - .codex/control/LAST_RESULT.yaml task result
+forbiddenScope: [Core-gameplay-rule-changes,Director-changes,Cause-semantics,Progression-numbers-or-breakthrough-resolution-changes,Risk-resolution-changes,Build-or-NPC-rule-changes,recurrence-changes,CONTENT01-rebalance,legacy-1.0-gameplay-rewrite,replace-existing-start-or-game-route,make-v2-preview-default-route,cloudfunction-backend-rewrite,CHAL01,leaderboard-backend,real-commerce-or-ad-SDK,new-monetization,UI03,UI04,ITEM01,TECH01,SECT01,WORLD01,source-branch-push]
+accept:
+  - v2-preview-route-is-registered-but-not-default-and-not-tabBar
+  - legacy-miniprogram-start-game-rank-business-logic-is-byte-equivalent-to-task-base
+  - visual-language-is-paper-ink-cinnabar-restrained-dark-gold-with-no-legacy-neon-dashboard-copy
+  - RUN_HOME-renders-exactly-four-core-actions-cultivate-travel-worldly-pursuit
+  - breakthrough-entry-is-driven-only-by-server-projected-public-special-action-availability
+  - breakthrough-projection-exposes-no-difficulty-odds-RNG-hidden-modifier-or-check-spec
+  - shell-intent-mapping-can-create-ATTEMPT_BREAKTHROUGH-without-local-rule-calculation
+  - EVENT-renders-server-built-riskPresentation-and-unresolved-event-blocks-ordinary-back
+  - SPECIAL_NODE-uses-authoritative-currentInteraction-and-submission-state-only
+  - LIFE_ARCHIVE-is-read-only-and-omits-hidden-Causes-and-hidden-NPC-state
+  - capability-disabled-entries-remain-hidden-or-safely-degraded
+  - preview-fixtures-contain-public-ViewModel-shaped-data-only-and-no-authoritative-rule-state
+  - no-Core-Content-Director-Cause-Risk-Build-NPC-gameplay-file-change
+  - A12-viewmodel-security-tests-remain-green
+  - dedicated-ui02-tests-green
+  - typecheck-lint-content-lint-secret-scan-green
+tests: [ui02,viewmodel-ui,typecheck,lint,content-lint,content01-lint,secret-scan]

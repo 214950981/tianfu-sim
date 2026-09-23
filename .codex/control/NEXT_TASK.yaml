@@ -1,11 +1,11 @@
 version: 1
 status: READY
 attempt: 1
-taskId: PLAYCHECK02
-title: PLAYCHECK02 — Representative Gameplay / Pre-UI Gate
-taskDefinition: .codex/tasks/PLAYCHECK02.yaml
+taskId: UI02
+title: UI02 — WeChat 2.0 Core-Loop High-Fidelity Visual Slice
+taskDefinition: .codex/tasks/UI02.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-PLAYCHECK02
+workBranch: wb-UI02
 worktreeRequired: true
 allowSyntheticTreeBase: true
 basePolicy: remote-source-head-at-task-start
@@ -16,25 +16,29 @@ execution:
   updateSourceBranch: false
   startNextTask: false
 controllerReview:
-  previousTask: LOOPFIX02C
+  previousTask: PLAYCHECK02
   previousStatus: ACCEPTED
-  acceptedResultCommit: 2e09bc2b2c0ff2a494698db3604b79cf1922cb16
+  acceptedResultCommit: 3d3dc03a9d951dacd3cedfa0df9046cdaef2b109
   acceptanceBasis:
-    - contextualGapScenes v1 equals 2 and is validated as versioned Director content
-    - strict P1 through P6 precedence remains unchanged
-    - P6 increased from 0 to 4824 selections in the required 600-run verification and appeared in 583 of 600 runs
-    - P5 remained reachable at 5701 selections
-    - same-core-NPC consecutive-P4 violations remained 0 across 8851 consecutive P4 pairs
-    - Cause closure remained healthy with 1212 echoes and 1212 resolved and no cause.invalid
-    - npm test 264 of 264 and all reported gates passed
+    - 30 deterministic representative lives completed with runtimeFailures 0 deadlocks 0 AI calls 0
+    - all 6 policies represented and 12 fixed traces deep-read
+    - P3 P4 P5 P6 all appeared naturally in the sample
+    - same-core-NPC consecutive-P4 regression count remained 0
+    - real Cause origin to P3 echo to terminal closure was observed with cause.invalid 0
+    - progression Build NPC risk death recurrence and player-choice effects were all reachable and explainable
+    - 22 of 22 named tests and audits passed
+    - no structural playability blocker remains before UI02
+controllerDecision:
+  strategy: parallel-v2-preview-first
+  rationale: build the new 2.0 visual language and public presentation layer beside legacy 1.0 UI without contaminating or rewriting the currently running legacy mini-program
 controllerIntent:
-  mode: lightweight-pre-UI-verification
-  goal: confirm the repaired rules feel structurally playable in representative life traces, without opening another tuning loop
-  decisionRule: only a reproducible structural playability defect blocks UI02; ordinary polish and balance observations become backlog
-  postTask: if PASS, controller will dispatch UI02; do not start UI02 yourself
+  mode: visible-product-progress
+  goal: produce a high-fidelity inspectable WeChat 2.0 core-loop slice while keeping server authority and A12 security boundaries intact
+  postTask: controller will review UI02 before deciding UI03 production transport/page wiring
 notes:
-  - Do not rerun the 600-run suite. LOOPFIX02C already supplied accepted 600-run evidence.
-  - Run the lightweight 30-life sample defined in PLAYCHECK02 and inspect the fixed 12 representative traces.
-  - Do not modify gameplay code, content, weights, pacing gaps, recurrence, Cause, NPC, Build, Risk, or Progression.
-  - If a genuine structural blocker is found, return BLOCKED with exact reproducible evidence. Otherwise PASS and record lesser issues as backlog.
-  - If no code is changed other than LAST_RESULT, do not run an unnecessary full npm test solely for ceremony; run the listed targeted tests and audits. If report instrumentation is added, run full npm test as well.
+  - This is the first deliberately player-visible 2.0 UI task after gameplay stabilization.
+  - Do not modify the old miniprogram/pages/start, miniprogram/pages/game, or miniprogram/pages/rank gameplay code. They are legacy 1.0 reference/working pages and must remain intact in this task.
+  - The new route is a dev preview, not the production default route. Register it last in miniprogram/app.json and document how to open it in WeChat Developer Tools.
+  - The preview may use public-only fixtures for visual states, but shell presentation and breakthrough availability must be backed by real platform-neutral/server ViewModel code and tests rather than invented local game rules.
+  - Do not calculate breakthrough chance, risk, outcome, hidden Cause or NPC truth on the client.
+  - If a clean visual preview would require changing Core gameplay contracts, stop BLOCKED instead of widening scope.
