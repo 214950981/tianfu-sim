@@ -1,11 +1,11 @@
 version: 1
 status: READY
 attempt: 1
-taskId: LOOPFIX02C
-title: LOOPFIX02C — Contextual Pacing / P6 Reachability
-taskDefinition: .codex/tasks/LOOPFIX02C.yaml
+taskId: PLAYCHECK02
+title: PLAYCHECK02 — Representative Gameplay / Pre-UI Gate
+taskDefinition: .codex/tasks/PLAYCHECK02.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-LOOPFIX02C
+workBranch: wb-PLAYCHECK02
 worktreeRequired: true
 allowSyntheticTreeBase: true
 basePolicy: remote-source-head-at-task-start
@@ -16,25 +16,25 @@ execution:
   updateSourceBranch: false
   startNextTask: false
 controllerReview:
-  previousTask: SIM02
-  previousStatus: BLOCKED
-  evidenceCommit: e3a0f39f0aa4c2db6b9f586792812fb238cd232a
-  acceptedEvidence:
-    - 600 deterministic runs completed with runtimeFailures 0 deadlocks 0 AIcalls 0
-    - B3 same-core-NPC P4 gate held with 0 violations across 11976 consecutive P4 pairs
-    - Cause closure remained healthy with origins 1344 echo 1329 resolved 1329 and no cause.invalid regression
-    - P6 remained 0 in both 600-run verification and 1800-run escalation control
-    - on measured action nodes P5 had at least one eligible candidate at 5205 of 5205 nodes, so strict precedence shadowed P6
-controllerDecision:
-  strategy: deterministic-P5-contextual-gap
-  rationale: preserve strict precedence and content ownership; create real P6 windows by pacing P5 eligibility rather than reordering tiers or retuning event weights
-  contextualGapScenesV1: 2
+  previousTask: LOOPFIX02C
+  previousStatus: ACCEPTED
+  acceptedResultCommit: 2e09bc2b2c0ff2a494698db3604b79cf1922cb16
+  acceptanceBasis:
+    - contextualGapScenes v1 equals 2 and is validated as versioned Director content
+    - strict P1 through P6 precedence remains unchanged
+    - P6 increased from 0 to 4824 selections in the required 600-run verification and appeared in 583 of 600 runs
+    - P5 remained reachable at 5701 selections
+    - same-core-NPC consecutive-P4 violations remained 0 across 8851 consecutive P4 pairs
+    - Cause closure remained healthy with 1212 echoes and 1212 resolved and no cause.invalid
+    - npm test 264 of 264 and all reported gates passed
 controllerIntent:
-  mode: smallest-deterministic-eligibility-fix
-  goal: keep contextual P5 important but prevent P4/P5 alternation from permanently starving ordinary P6 scenes
-  postTask: if 600-run acceptance passes, controller will dispatch PLAYCHECK02; do not start it yourself
+  mode: lightweight-pre-UI-verification
+  goal: confirm the repaired rules feel structurally playable in representative life traces, without opening another tuning loop
+  decisionRule: only a reproducible structural playability defect blocks UI02; ordinary polish and balance observations become backlog
+  postTask: if PASS, controller will dispatch UI02; do not start UI02 yourself
 notes:
-  - First run node .codex/context.mjs LOOPFIX02C after reading this task. The controller repaired the stale SIM02 task schema that previously broke global task discovery.
-  - Implement exactly contextualGapScenes=2. Do not search/tune several values in this task.
-  - Do not change Director precedence, weights, CONTENT01 event classification, recurrence, Cause, NPC, Build/Risk/Progression values, or RNG.
-  - After implementation and tests, run exactly one required 600-run post-change verification. If P6 is still 0, stop BLOCKED with evidence; do not tune further.
+  - Do not rerun the 600-run suite. LOOPFIX02C already supplied accepted 600-run evidence.
+  - Run the lightweight 30-life sample defined in PLAYCHECK02 and inspect the fixed 12 representative traces.
+  - Do not modify gameplay code, content, weights, pacing gaps, recurrence, Cause, NPC, Build, Risk, or Progression.
+  - If a genuine structural blocker is found, return BLOCKED with exact reproducible evidence. Otherwise PASS and record lesser issues as backlog.
+  - If no code is changed other than LAST_RESULT, do not run an unnecessary full npm test solely for ceremony; run the listed targeted tests and audits. If report instrumentation is added, run full npm test as well.

@@ -9,7 +9,7 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `5989381bb35e5ebb9c55504eaee51dbbceb9dc11`
+- lastReviewedCommit: `2e09bc2b2c0ff2a494698db3604b79cf1922cb16`
 - reviewedDate: `2026-09-23`
 
 不要修改 `main` / 1.0，除非未来任务明确要求。
@@ -54,7 +54,8 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - LOOPFIX02B2: PASS
 - LOOPFIX02B2_R1: PASS
 - LOOPFIX02B3: PASS
-- Post-LOOPFIX SIM02 verification: BLOCKED（P6 reachability only; safety/regression PASS）
+- Post-LOOPFIX SIM02 verification: BLOCKED（历史：P6 reachability only）
+- LOOPFIX02C: PASS
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
 
@@ -213,113 +214,101 @@ SIM02 默认配置：6 policies × 100 fixed seeds，`maxActions = 50`。
 
 ## 当前未解决玩法问题
 
-### 1. P6 被 P5 strict precedence 持续遮蔽
+### 1. P6 starvation 已解除，进入代表性玩法验收
 
-Post-LOOPFIX SIM02 已完成 6 policies × 100 fixed seeds、maxActions=50 的 600-run 验证：
+LOOPFIX02C 已通过并合入：
 
-- runtimeFailures = 0
-- deadlocks = 0
-- AIcalls = 0
-- P2 = 1200
-- P3 = 1329
-- P4 = 17371
-- P5 = 7133
-- P6 = 0
-- 1800-run escalation control 中 P6 仍为 0
+- Director v1 新增 `contextualGapScenes = 2`
+- strict P1→P6 precedence 不变
+- P5 仍可达，但不再永久遮蔽 P6
+- required 600-run 中 P6 = 4824，出现在 583 / 600 局
+- P5 = 5701
+- same-core-NPC consecutive-P4 violations = 0
+- runtimeFailures / deadlocks / AIcalls 均为 0
 
-实测 5205 个 action-driven nodes 中：
+下一步不继续调 Director，而是执行 PLAYCHECK02，检查代表性人生轨迹是否存在真正阻塞 UI02 的结构性玩法问题。
 
-- P4 有候选：1822
-- P4 无候选：3383
-- P5 有候选：5205 / 5205
-- P4 为空时，P5 仍有候选：3383 / 3383
+### 2. Cause closure 当前健康
 
-因此当前 blocker 不是 P6 内容稀缺，而是 P5 在所有 action node 都非空，strict precedence 永远先于 P6 返回。
+最新 600-run：
 
-下一步不重排 P1→P6，不随机绕过优先级。LOOPFIX02C 只增加一个确定性的 P5 contextual gap：v1 `contextualGapScenes = 2`，通过 eligibility pacing 给 P6 留出真实窗口。
-
-### 2. Core NPC 连续 P4 循环已修复
-
-- LOOPFIX02B3 PASS。
-- 600-run 中共观察 11976 对真正连续 P4→P4，same-core-NPC violations = 0。
-- 不再扩大 B3。
-
-### 3. Cause closure 已验证健康
-
-- origins = 1344
-- eligible = 1329
-- echoes = 1329
-- resolved = 1329
+- origins = 1226
+- eligible = 1212
+- echoes = 1212
+- resolved = 1212
 - expired = 0
 - transformed = 0
-- cause.invalid markers = 0
+- cause.invalid = 0
 
-当前没有 Cause runtime blocker。expired=0 只代表这批自动策略没有选择 leave，不作为新 bug。
+expired / transformed 在自动策略样本中为 0 暂记观察项，不作为当前 blocker。
 
-### 4. Actor unavailable 自然路径仍偏弱
+### 3. Actor unavailable 自然路径偏弱
 
-运行时语义与测试存在，但自然玩法触发仍少。先记 backlog，不阻塞当前 UI 推进路线。
+已有运行时语义与测试，当前只记 BACKLOG，不阻塞 UI02。
 
-### 5. 微信壳缺少突破入口
+### 4. 微信壳缺少突破入口
 
-属于后续 UI02 接线，不是 Progression Core 缺陷。
+这是 UI02 的接线范围，PLAYCHECK02 PASS 后进入。
 
-### 6. Build 分布继续暂缓调参
+### 5. Build / 内容分布暂不追加调参
 
-先解决 P6 reachability，再做 PLAYCHECK02。当前不依据受 Director pacing 影响的数据直接调 Build 数值。
+PLAYCHECK02 只区分“结构性 blocker”和“后续 backlog”。普通平衡与内容密度问题不再触发新的 LOOPFIX，避免在 UI 前无限调参。
 
 ## 当前 Director / Cause 证据
 
-Post-LOOPFIX 600-run（当前最新）：
+LOOPFIX02C 后最新 600-run：
 
 Director slots：
 
 - P1 = 0
 - P2 = 1200
-- P3 = 1329
-- P4 = 17371
-- P5 = 7133
-- P6 = 0
+- P3 = 1212
+- P4 = 14579
+- P5 = 5701
+- P6 = 4824
+
+Reachability：
+
+- runsWithP3 = 489 / 600
+- runsWithP4 = 590 / 600
+- runsWithP5 = 600 / 600
+- runsWithP6 = 583 / 600
 
 Cause：
 
-- origins = 1344
-- eligible = 1329
-- echoes = 1329
-- resolved = 1329
+- origins = 1226
+- eligible = 1212
+- echoes = 1212
+- resolved = 1212
 - expired = 0
 - transformed = 0
+- cause.invalid markers = 0
 
-B3 gate：
+P4 gate：
 
-- consecutive P4 pairs = 11976
+- consecutive P4 pairs = 8851
 - same-core-NPC consecutive-P4 violations = 0
 
-SIM02 的唯一 task-acceptance blocker 是 P6 reachability；full regression 249/249 与全部 audits 均 PASS。
+Full regression：264 / 264 PASS；全部 reported audits PASS。
 
 ## Next
 
-Latest accepted gameplay fix: `LOOPFIX02B3 PASS`。
+Latest completed: `LOOPFIX02C PASS`，commit `2e09bc2b2c0ff2a494698db3604b79cf1922cb16`。
 
-Latest verification: Post-LOOPFIX `SIM02 BLOCKED` only because P6 remained empirically unreachable; regression/safety evidence PASS。
-
-下一任务：`LOOPFIX02C` — Contextual Pacing / P6 Reachability。
+下一任务：`PLAYCHECK02` — Representative Gameplay / Pre-UI Gate。
 
 目标：
 
-- strict P1→P6 precedence 不变。
-- Director v1 新增 `contextualGapScenes = 2`。
-- 最近 2 条 DirectorSceneRecord 中只要已有 P5，当前 P5 candidate 因 `contextual-gap` 暂时不 eligible。
-- 只使用 existing `recentScenes`；不加新状态、不加 RNG、不改权重。
-- 不修改 CONTENT01 event 分类或 cooldown。
-- 完成后只跑一次规定的 600-run；必须实际观察到 P6，同时 P5 仍可达、B3 gate 与 Cause closure 不回归。
-- 若 P6 仍为 0，BLOCKED 并交证据，不在同一任务继续试数值。
+- 不再做新一轮平衡修复。
+- 轻量跑 30 局：6 policies × seeds 0..<5，maxActions=50。
+- 固定深读每个 policy 的 seed 0 与 seed 4，共 12 条人生轨迹。
+- 检查 P3/P4/P5/P6 混合、Cause 闭环、NPC 节奏、普通人生事件、Build 形成、突破、风险/死亡、recurrence 与终局。
+- 只有“可复现的结构性不可玩问题”才 BLOCK UI02。
+- 平衡偏差、内容密度、叙事润色、低频自然路径等全部记 BACKLOG，不在本任务继续修。
 
-LOOPFIX02C PASS 后：
+PLAYCHECK02 PASS 后直接进入 UI02。
 
-1. PLAYCHECK02
-2. 若整体玩法健康，进入 UI02
-3. ITEM01 / TECH01 / SECT01 / WORLD01 / CHAL01 继续等待 UI02 路线确认
+不要提前开始 ITEM01 / TECH01 / SECT01 / WORLD01 / CHAL01。
 
 ## 新 Codex 会话 / 账号接手步骤
 

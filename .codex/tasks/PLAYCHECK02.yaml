@@ -1,0 +1,35 @@
+id: PLAYCHECK02
+title: PLAYCHECK02 — Representative Gameplay / Pre-UI Gate
+phase: 2
+requiredContracts: [.codex/contracts/director.ref,.codex/contracts/cause.ref,.codex/contracts/progression.ref,.codex/contracts/build.ref,.codex/contracts/npc.ref,.codex/contracts/risk.ref,.codex/contracts/event.ref,.codex/contracts/state.ref,.codex/contracts/reducer.ref,.codex/contracts/viewmodel.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [tools/content-sim.mjs,packages/content/src/content01-v1.ts,packages/core/src/reducer.ts,packages/core/src/director.ts,packages/core/src/cause.ts,packages/core/src/progression.ts,.codex/control/LAST_RESULT.yaml,docs/dev-status.md]
+allowedScope:
+  - verification-only representative gameplay audit after accepted LOOPFIX02C; no gameplay tuning in this task
+  - run a lightweight deterministic sample of 30 CONTENT01 lives using all 6 established policies and seeds 0 through 4 with maxActions 50 and include-runs
+  - inspect at least 12 fixed representative traces: seeds 0 and 4 for each of the 6 established policies
+  - verify scene flow across P3 P4 P5 P6, Cause origin echo closure, core NPC pacing, ordinary life scenes, Build identity formation, progression and breakthrough, risk and death records, recurrence, and terminal behavior
+  - classify findings as BLOCKER or BACKLOG; only a reproducible structural playability defect may block UI02
+  - minor balance skew, rare actor-unavailable paths, narrative polish, content density, and non-blocking distribution concerns must be recorded as BACKLOG rather than widened into new fixes here
+  - minimal report-only instrumentation is allowed only if an acceptance observation is otherwise impossible; no gameplay semantic change
+  - .codex/control/LAST_RESULT.yaml task result
+forbiddenScope: [gameplay-rule-changes,Director-precedence-changes,Director-weight-or-gap-changes,CONTENT01-rebalance-or-rewrite,Cause-semantic-changes,NPC-state-machine-changes,recurrence-rule-changes,Build-Risk-Progression-number-changes,new-RNG,new-persistent-state,UI02-implementation,ITEM01,TECH01,SECT01,WORLD01,CHAL01,600-run-simulation,source-branch-push]
+accept:
+  - source-base-is-the-accepted-LOOPFIX02C-result
+  - 30-run-sample-completes-deterministically-with-zero-runtime-failures-deadlocks-and-AI-calls
+  - all-6-established-policies-are-represented
+  - 12-fixed-traces-are-reviewed-and-summarized
+  - P3-P4-P5-P6-are-all-observed-in-the-sample-or-a-larger-existing-accepted-evidence-set-is-cited-for-any-missing-slot
+  - no-same-core-NPC-consecutive-P4-regression
+  - ordinary-P6-scenes-appear-naturally-in-representative-traces
+  - at-least-one-real-Cause-origin-to-echo-to-terminal-closure-chain-is-observed-without-cause-invalid
+  - player-choice-effects-remain-visible-through-resource-cultivation-Build-NPC-or-Cause-state-changes
+  - progression-and-breakthrough-remain-reachable-in-representative-or-accepted-simulation-evidence
+  - risk-and-death-outcomes-have-explainable-records-when-observed
+  - no-recurrence-or-repeat-safe-regression-is-observed
+  - no-structural-playability-blocker-remains-before-UI02
+  - non-blocking-findings-are-recorded-as-BACKLOG-not-fixed-in-scope
+  - no-gameplay-code-change
+  - targeted-tests-and-playability-audits-green
+tests: [sim02,content01,director,loopfix02c,loopfix02b3,loopfix02b2,recurrence,reducer,state,replay,content-playability-audit,director-audit,recurrence-audit,participant-bridge-audit,npc-audit,build-audit,risk-audit,typecheck,lint,content-lint,content01-lint,secret-scan]
