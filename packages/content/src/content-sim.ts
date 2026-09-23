@@ -80,6 +80,11 @@ export interface CompactRunTelemetry {
   eventSelections: Record<string, number>;
   eventSelectionCounts: Record<string, number>;
   first5EventIds: string[];
+  // SIM02 reporting-only observation of the accepted LOOPFIX02B3 same-core-NPC P4 repeat
+  // gate: the ordered log of every appended director scene (slot + core actors), and how
+  // many GENUINELY CONSECUTIVE P4->P4 pairs shared an actor (must be 0).
+  p4SceneActorSequence: Array<{ slot: string; actors: string[] }>;
+  sameCoreNpcConsecutiveP4Count: number;
   maxEventRepeats: number;
   sameEventMaxOccurrencesPerRun: number;
   riskByThreat: Record<string, RiskCounters>;
@@ -271,6 +276,32 @@ function selectorSlots(output: ReduceOutput, slots: Record<SimulationDirectorSlo
   }
 }
 
+// SIM02 reporting-only observation of the accepted LOOPFIX02B3 same-core-NPC P4 repeat
+// gate. The gate's condition is the IMMEDIATELY PRECEDING DirectorSceneRecord, so a P4
+// scene must be compared against the scene appended directly before it - NOT against the
+// previous P4 entry (intervening P2/P3/P5 scenes occupy the .at(-1) slot and mean the gate
+// was never consulted). This observer therefore records the full ordered scene log and
+// counts only genuinely consecutive P4->P4 pairs that share a core actor. It observes
+// rules state; it never mutates it and never influences selection, ordering, weights or RNG.
+function observeP4Gate(output: ReduceOutput, observed: { log: Array<{ slot: string; actors: string[] }>; lastTail: unknown }): void {
+  const scenes = output.state?.run?.director?.recentScenes;
+  if (!Array.isArray(scenes) || scenes.length === 0) return;
+  const tail = scenes[scenes.length - 1];
+  if (tail === observed.lastTail) return;   // nothing appended by this command
+  observed.lastTail = tail;
+  observed.log.push({ slot: tail.slot, actors: [...(tail.actorIds ?? [])] });
+}
+
+// Counts genuinely consecutive P4->P4 scene pairs sharing at least one core actor. Must be 0.
+function countSameCoreConsecutiveP4(log: readonly { slot: string; actors: readonly string[] }[]): number {
+  let violations = 0;
+  for (let index = 1; index < log.length; index += 1) {
+    if (log[index].slot !== "P4" || log[index - 1].slot !== "P4") continue;
+    if (log[index].actors.some((actorId) => log[index - 1].actors.includes(actorId))) violations += 1;
+  }
+  return violations;
+}
+
 function observeNpcTransitions(before: GameState, after: GameState, core: Record<string, number>, generatedIds: Set<string>): number {
   let generatedEncounters = 0;
   for (const npc of Object.values(after.run.npcs.byId)) {
@@ -320,6 +351,7 @@ function runOne(content: ContentRegistry, policy: ContentSimPolicy, seed: number
   const causeTotals: CauseCounters = { origins: 0, eligible: 0, echoes: 0, resolved: 0, expired: 0, transformed: 0 };
   const causesByTemplate: Record<string, CauseCounters> = {}; const causeBindingsByCoreNpc: Record<string, number> = {}; const everEligibleCauseIds = new Set<string>();
   const directorSlots = emptySlots(); const eventSelections: Record<string, number> = {}; const first5EventIds: string[] = []; const riskByThreat: Record<string, RiskCounters> = {};
+  const p4Observation = { log: [] as Array<{ slot: string; actors: string[] }>, lastTail: undefined as unknown };
   const guardLimit = maxActions * 12 + 100;
 
   try {
@@ -362,6 +394,7 @@ function runOne(content: ContentRegistry, policy: ContentSimPolicy, seed: number
       state = output.state; commandCount += 1;
       if (state.stateVersion <= before.stateVersion) { deadlocked = true; break; }
       selectorSlots(output, directorSlots);
+      observeP4Gate(output, p4Observation);
       generatedNpcEncounters += observeNpcTransitions(before, state, coreNpcEncounters, generatedIds);
       addCauseCounters(causeTotals, observeCauseTransitions(before, state, causesByTemplate, causeBindingsByCoreNpc, everEligibleCauseIds));
       if (state.run.realm.id !== before.run.realm.id) realmTransitions.push(`${before.run.realm.id}->${state.run.realm.id}`);
@@ -401,6 +434,8 @@ function runOne(content: ContentRegistry, policy: ContentSimPolicy, seed: number
     causeTotals, causeOrigins: causeTotals.origins, causeEligible: causeTotals.eligible, causeEchoes: causeTotals.echoes, causeResolved: causeTotals.resolved, causeExpired: causeTotals.expired, causeTransformed: causeTotals.transformed,
     causesByTemplate, maxEchoesPerCauseByTemplate, causeBindingsByCoreNpc, maxSameTemplateInstances,
     directorSlots, directorSlotCounts: { ...directorSlots }, eventSelections, eventSelectionCounts: { ...eventSelections }, first5EventIds,
+    p4SceneActorSequence: p4Observation.log,
+    sameCoreNpcConsecutiveP4Count: countSameCoreConsecutiveP4(p4Observation.log),
     maxEventRepeats: Math.max(0, ...Object.values(eventSelections)), sameEventMaxOccurrencesPerRun: Math.max(0, ...Object.values(eventSelections)), riskByThreat,
     riskExposuresByThreat: Object.fromEntries(Object.entries(riskByThreat).map(([id, value]) => [id, value.exposures])), riskDeathsByThreat: Object.fromEntries(Object.entries(riskByThreat).map(([id, value]) => [id, value.deaths])),
     ...(state.run.deathRecord === undefined ? {} : { deathCategory: state.run.deathRecord.category, deathCauseId: state.run.deathRecord.deathCauseId }), AIcalls: 0

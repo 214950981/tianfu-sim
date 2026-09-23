@@ -1,91 +1,108 @@
 version: 1
-taskId: LOOPFIX02B3
-attempt: 2
-status: PASS
+taskId: SIM02
+attempt: 1
+status: BLOCKED
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-LOOPFIX02B3
-baseCommit: 733a45ab7b62681a6509c7eb195c3186f8eb6074
-historyMode: synthetic-tree-base
-baseTreeSha: 01a81653de9fe59af9cd1be7cfd7f8c8a95f3ed9
-sourceHeadVerifiedBy: repository API read of refs/heads/dev/tianfu-2.0 (HEAD = 733a45ab7b62681a6509c7eb195c3186f8eb6074); full working tree verified byte-identical to the remote source tree before editing (tree SHA equality, 01a81653de9fe59af9cd1be7cfd7f8c8a95f3ed9)
+workBranch: wb-SIM02
+baseCommit: 2dc7fb77ebbd2a87bb22df89cd37667e72a9a770
+historyMode: real-ancestry
+sourceHeadVerifiedBy: git ls-remote origin refs/heads/dev/tianfu-2.0 returned 2dc7fb77ebbd2a87bb22df89cd37667e72a9a770, identical to the worktree HEAD at task start, so the branch was created directly from the remote source HEAD with no synthetic base.
 summary: >-
-  LOOPFIX02B3 attempt 2 provenance repair. Attempt 1 (commit 038cadb on wb-LOOPFIX02B3)
-  was CONDITIONALLY_REJECTED: its P4 repeat gate was correct in shape, scope, precedence
-  and reporting, but sceneCoreActorIds re-derived a missing P3 actor identity from the
-  current Event npcRoleAffinityTags via matchingActorIds. That is a content lookup
-  heuristic and can bind the wrong actor when several active core NPC instances share one
-  role. The repair removes that helper entirely and makes provenance exact:
-  (1) The P4 gate now reads DirectorSceneRecord.actorIds verbatim and nothing else.
-  coreNpcRepeatGate(state, coreActorIds) takes no content handle; its body contains no
-  getEvent / getCauseTemplate / npcRoleAffinityTags / matchingActorIds / roleIndex /
-  templateId reference. It consults only recentScenes.at(-1), so one intervening scene
-  with no matching core actor still clears it. Eligibility only; precedence, weights,
-  scoring, ordering and RNG are untouched.
-  (2) Provenance is written at record time, not re-derived at read time. When the reducer
-  records a selected P3 Cause echo it persists actorIds from the exact selected
-  CauseInstance.actorIdsByRole, resolved by the causeId already returned by selectCauseEcho
-  and already persisted as events.current.triggeringCauseId. The resolve is
-  state.run.causes.byId[causeId]; there is no templateId, role, salience or
-  unique-active-Cause lookup. Both P3 record sites (chooseAction and chooseEventOption)
-  pass it. No new state field, no schema change.
-  (3) .codex/contracts/director.ref now states the exact P3 actorIds provenance instead of
-  leaving re-derivation implicit.
-  Because a P3 echo record now carries the actors it was actually bound to, the gate stays
-  exact when two active core NPC instances share a role: the echo's own actor is gated, a
-  same-role sibling is neither gated nor mis-bound. B3-P/Q/R/S prove this against the real
-  fixture (content01.npc.pei-zhaochuan and content01.npc.cen-bugui both declare roleTags
-  ["wanderer"]; a cause bound to pei records [pei] and never cen).
-  SCOPE NOTE: the remote source HEAD moved e0e758be -> 733a45ab during this attempt. The
-  delta touches only .codex/control/NEXT_TASK.yaml (the controller's dispatch commit);
-  no gameplay, core, content or test file changed. The synthetic base was rebuilt against
-  733a45ab and the working tree was proven byte-identical to it (tree SHA match) before
-  editing, then attempt 1 and attempt 2 changes were re-applied. This attempt is evidence
-  only; the controller transplants accepted changes onto the unchanged source HEAD.
+  SIM02 attempt 1 verification-only run. Executed exactly 600 deterministic CONTENT01 simulation runs through
+  the repository's existing tools/content-sim.mjs path (6 policies x seeds 0..<100, maxActions 50); config
+  recorded verbatim above and byte-identical across two independent invocations. Independently recomputed
+  director slot reachability from the ordered per-scene log: P2=1200 P3=1329 P4=17371 P5=7133 P6=0 P1=0. 10 of
+  the 11 acceptance criteria PASS. The single unmet criterion is P6-observed-at-least-once: P6 was selected 0
+  times in the required 600 runs and 0 times in a 1800-run escalation control. Root cause proven on the live
+  run, not inferred: selectDirectorEvent iterates its slot list in strict order and returns at the first slot
+  with an eligible candidate, while the reducer offers [P4,P5,P6]. Across 5205 action-driven nodes the P4 tier
+  was empty 3383 times, and at every one of those nodes the P5 tier still had an eligible candidate (P5
+  populated at 5205/5205 nodes). The P5 'contextual' and P6 'ordinary' index slices are disjoint - 12 events
+  each, zero overlap - so P5 cannot exhaust P6's pool, and scoreDirectorEvent marks any unblocked candidate
+  eligible through baseWeightDefault = 100. P6 is therefore shielded by strict precedence ordering, not by
+  rarity; the ordinary fallback is effectively dead on CONTENT01 v1 under the accepted LOOPFIX02B3 rules. This
+  is a Director precedence/index-slice matter, both inside SIM02 forbiddenScope, so per SIM02 design the task
+  stops BLOCKED with evidence instead of widening scope. Note that LOOPFIX02B3's own accept criterion
+  'gated-P4-with-no-P5-candidate-allows-P6-selection' is satisfiable in a unit fixture but not reachable in the
+  shipped content pack - exactly the gap SIM02 was written to expose. The accepted LOOPFIX02B3 same-core-NPC P4
+  repeat gate holds at scale: 0 violations across 11976 genuinely consecutive P4->P4 pairs, with all 600 per-run
+  counters equal to an independent recompute. Cause echo/closure is healthy with no invalid regression
+  (origins=1344 eligible=1329 echo=1329 resolved=1329 expired=0); no cause.invalid marker appears anywhere.
+  Recurrence/terminal behaviour reported:
+  endReasonDistribution={"death":82,"lifespan":0,"ending":0,"right_censored":518,"other":0} with 0
+  ordinary-event repeat violations and 51 distinct events observed. Reporting-only instrumentation was added to
+  packages/content/src/content-sim.ts because the shipped report exposed no scene ordering or scene actor ids,
+  leaving the consecutive-P4 acceptance metric unobservable; it changes no rule, weight, precedence, RNG,
+  content or balance value and writes nothing to state. No gameplay, rule or balance change was made. npm test
+  249/249 and all audits remain green.
 changedFiles:
-  - .codex/contracts/director.ref
-  - packages/core/src/director.ts
-  - packages/core/src/reducer.ts
-  - tests/director.test.mjs
-  - tests/loopfix02b3.test.mjs
-  - package.json
+  - packages/content/src/content-sim.ts
   - .codex/control/LAST_RESULT.yaml
 changes:
-  director.ts:
-    - Removed the sceneCoreActorIds content/role re-derivation helper completely.
-    - Added coreNpcRepeatGate(state: GameState, coreActorIds: readonly string[]): boolean; reads only state.run.director.recentScenes.at(-1).actorIds.
-    - Added one early return in scoreDirectorEvent immediately after the existing no-core-npc check; P4 only, exclusionReason "core-npc-repeat-gate".
-    - Net +11 -0. No weight, constant, precedence, scoring, ordering or RNG change.
-  reducer.ts:
-    - Added selectedCauseActorIds(state, causeId); resolves state.run.causes.byId[causeId] and returns the deduped Object.values(cause.actorIdsByRole), or undefined when no causeId is available.
-    - Both P3 recordDirectorScene call sites now pass causeId plus actorIds when resolvable, and omit actorIds exactly as before when not.
-    - Net +20 -2. No Cause lifecycle/selection semantic change and no triggeringCause binding change.
-  director.ref:
-    - P4 additionally excludes a candidate whose matched core actor ids intersect the core actor ids of the single most recent DirectorSceneRecord ("core-npc-repeat-gate").
-    - States plainly that the gate reads DirectorSceneRecord.actorIds verbatim and nothing else, that it consults only that one record, that it changes eligibility only, and that P3 echo provenance is the exact selected CauseInstance.actorIdsByRole rather than a templateId/role/salience/uniqueness lookup or a re-derivation from Event tags.
-  director.test.mjs:
-    - Updated the stale "recent NPC continuity contributes score without mutating NPC" test to assert exclusionReason "core-npc-repeat-gate".
-    - Added coverage that the gate is P4-only (never P5/P6) and that an intervening non-matching scene reopens it. Now 47 tests.
-  loopfix02b3.test.mjs:
-    - Dedicated suite, 19 tests (B3-A..B3-S).
-    - Added echoViaReducer, which drives the real reducer to a P3 echo by injecting an eligible CauseInstance with an explicit actorIdsByRole, so provenance is exercised at the real seam.
-    - B3-F/B3-G rewritten to use echoViaReducer; the prior hand-built P3 scene with actorIds [] genuinely carried no actors under the corrected design.
-    - B3-P proves two active core NPCs share a role and the role index holds both (wanderer[0] is the sorted-first instance the old heuristic would have bound).
-    - B3-Q/R prove the recorded actor is the cause-bound one and that a same-role sibling is neither gated nor mis-bound.
-    - B3-S is a source-level assertion that sceneCoreActorIds is gone, the gate takes no content handle, the gate reads previous.actorIds, and neither the gate nor the reducer helper contains a content lookup.
-  package.json:
-    - Added "test:loopfix02b3": "node --test tests/loopfix02b3.test.mjs".
-    - Appended tests/loopfix02b3.test.mjs to the aggregate "test" script file list.
+  content-sim.ts:
+    - Added observeP4Gate(output, observed): after each reduce, reads output.state.run.director.recentScenes and appends {slot, actorIds} of the newly appended tail DirectorSceneRecord to a per-run ordered log. Read-only; never writes to state.
+    - Added countSameCoreConsecutiveP4(log): counts genuinely consecutive P4->P4 scene pairs whose actor sets intersect (must be 0). Pure counting.
+    - CompactRunTelemetry gains p4SceneActorSequence: Array<{slot: string; actors: string[]}> and sameCoreNpcConsecutiveP4Count: number.
+    - Rationale: the shipped report exposed no per-scene director slot ordering and no scene actor ids, so the acceptance metric no-same-core-NPC-consecutive-P4-selected-scenes was not observable. allowedScope permits minimal reporting instrumentation in that case. No gameplay semantic change.
+verification:
+  requiredRun: { command: "node --experimental-strip-types tools/content-sim.mjs --runs 100 --include-runs", runs: 600, policies: 6, seeds: "0..<100", maxActions: 50 }
+  determinism: { repeatInvocations: 2, byteIdenticalSlotDistribution: true, value: {"P1":0,"P2":1200,"P3":1329,"P4":17371,"P5":7133,"P6":0} }
+  runtimeFailures: 0
+  deadlocks: 0
+  AIcalls: 0
+  directorSlotDistributionReported: {"P1":0,"P2":1200,"P3":1329,"P4":17371,"P5":7133,"P6":0}
+  directorSlotDistributionRecomputed: {"P1":0,"P2":1200,"P3":1329,"P4":17371,"P5":7133,"P6":0}
+  runsWithAtLeastOneP4: 586
+  runsWithAtLeastOneP5: 600
+  runsWithAtLeastOneP6: 0
+  sceneObservations: 27033
+  consecutiveP4Pairs: 11976
+  sameCoreNpcConsecutiveP4Violations: 0
+  runsWithViolation: 0
+  telemetryCrossCheck: PASS (all 600 per-run counters equal independent recomputation)
+  cause: { origins: 1344, eligible: 1329, echo: 1329, resolved: 1329, expired: 0, transformed: 0 }
+  causeInvalidMarkers: 0
+  endReasonDistribution: {"death":82,"lifespan":0,"ending":0,"right_censored":518,"other":0}
+  deathCauseDistribution: {"death.exploration":9,"death.combat":15,"death.poison":15,"death.special":9,"death.injury":33,"death.curse":1}
+  repeatViolations: 0
+  uniqueEventsSeen: 51
+  escalationControl: { runs: 1800, maxActions: 120, seeds: "0..<300", slots: {"P1":0,"P2":3600,"P3":4300,"P4":156777,"P5":22977,"P6":0}, runsWithP6: 0, consecutiveP4Pairs: 138349, sameCoreViolations: 0, runtimeFailures: 0, deadlocks: 0, AIcalls: 0 }
+p6Mechanism:
+  verdict: UNREACHABLE_BY_PRECEDENCE_SHADOWING
+  measuredOn: 360 runs / 5205 action-driven nodes of the real reducer + real selectDirectorEvent, interrogating each tier on the same state
+  tierPopulated: { P4: 1822, P5: 5205, P6: 5205 }
+  tierEmpty: { P4: 3383, P5: 0, P6: 0 }
+  realCallReturned: { P4: 1822, P5: 3383, P6: 0 }
+  p4EmptyNodesWhereP5HadCandidate: 3383
+  p4EmptyNodesWhereP5WasEmpty: 0
+  exclusionReasonsAtRealCallSite: { event-ineligible: 3235, core-npc-repeat-gate: 1564, major-gap: 442, danger-gap: 485 }
+  precedenceRule: selectDirectorEvent iterates the slot list in strict order and RETURNS at the first slot with >=1 eligible candidate; reducer.ts:299 offers [P4,P5,P6]; therefore P6 requires P4 empty AND P5 empty at the same node.
+  indexSlices: { p5IndexSlot: contextual, p6IndexSlot: ordinary, contextualEvents: 12, ordinaryEvents: 12, overlap: 0, disjoint: true }
+  eligibility: scoreDirectorEvent returns eligible = (weight > 0); baseWeightDefault = 100; P5 is blocked only by major-gap or danger-gap, and is populated at 100% of action nodes.
+  conclusion: the P6 ordinary fallback is effectively dead code on CONTENT01 v1 under the accepted LOOPFIX02B3 rules; this is a strict-precedence-ordering consequence, not statistical scarcity.
+resolutionOptions:
+  - id: OPT-A
+    summary: Reorder P6 ahead of P5 at some nodes, or demote the P5 contextual tier.
+    blockedBy: SIM02 forbiddenScope entry Director-precedence-changes.
+  - id: OPT-B
+    summary: Add a P5-side gap/throttle gate that can leave the P5 tier empty so the P6 ordinary fallback can be reached.
+    blockedBy: SIM02 forbiddenScope entries Director-precedence-changes and Director-weight-formula-changes.
+  - id: OPT-C
+    summary: Move part of the CONTENT01 event set from the 'contextual' index slice to the 'ordinary' slice so the two pools are not both always populated.
+    blockedBy: SIM02 forbiddenScope entries gameplay-balance-tuning and CONTENT01-cooldown-rebalance. Requires a content task, not SIM02.
+  recommendation: OPT-B or OPT-C in a dedicated LOOPFIX/DIRECTOR task after controller review. OPT-C is the least invasive to Director semantics because it leaves precedence and weights untouched and only changes which index slice owns which content events.
 tests:
-  test:loopfix02b3: { run: true, files: 1, pass: 19, fail: 0 }
-  test:director01: { run: true, pass: 47, fail: 0 }
-  test:a05_reducer: { run: true, pass: 10, fail: 0 }
-  test:a03_state: { run: true, pass: 5, fail: 0 }
-  replay: { run: true, pass: 6, fail: 0 }
-  test:a06_content-registry: { run: true, pass: 7, fail: 0 }
+  test:sim02: { run: true, files: 1, pass: 8, fail: 0 }
   test:content01: { run: true, pass: 32, fail: 0 }
+  test:director01: { run: true, pass: 47, fail: 0 }
+  test:loopfix02b3: { run: true, pass: 19, fail: 0 }
   test:loopfix02b2: { run: true, pass: 13, fail: 0 }
   test:loopfix02b1: { run: true, pass: 13, fail: 0 }
-  recurrence: { run: true, pass: 18, fail: 0 }
+  test:loopfix02a: { run: true, pass: 18, fail: 0 }
+  test:a05_reducer: { run: true, pass: 10, fail: 0 }
+  test:a03_state: { run: true, pass: 5, fail: 0 }
+  test:a06_content-registry: { run: true, pass: 7, fail: 0 }
+  tests/replay.test.mjs: { run: true, pass: 6, fail: 0 }
   npm_test_aggregate: { run: true, tests: 249, pass: 249, fail: 0 }
 gates:
   typecheck: { run: true, result: PASS }
@@ -93,27 +110,71 @@ gates:
   content:lint: { run: true, result: PASS }
   content01:lint: { run: true, result: PASS }
   scan:secrets: { run: true, result: PASS }
-  combo-audit: { run: true, result: PASS }
-  risk-audit: { run: true, result: PASS }
-  build-audit: { run: true, result: PASS }
-  npc-audit: { run: true, result: PASS }
-  participant-bridge-audit: { run: true, result: PASS }
-  recurrence-audit: { run: true, result: PASS }
   director-audit: { run: true, result: PASS }
+  recurrence-audit: { run: true, result: PASS }
+  participant-bridge-audit: { run: true, result: PASS }
+  npc-audit: { run: true, result: PASS }
+  build-audit: { run: true, result: PASS }
+  risk-audit: { run: true, result: PASS }
   content-playability-audit: { run: true, result: PASS }
+  combo-audit: { run: true, result: PASS }
+  replay: { run: true, result: PASS, detail: 'tools/replay.mjs is a CLI taking <replay-input.json> <content-pack.json>; the zero-argument form is a usage error by design, so the behavioural coverage is tests/replay.test.mjs 6/6 plus a negative control that a malformed input exits non-zero.' }
+acceptance:
+  exactly-600-runs-completed-deterministically: { result: PASS, evidence: "runs=600 runtimeFailures=0 deadlocks=0 AIcalls=0 two invocations byte-identical" }
+  P6-observed-at-least-once: { result: FAIL, evidence: "P6 selections = 0 across 600 runs (runs containing a P6 scene = 0/600)" }
+  P3-P4-P5-P6-reachability-counts-reported: { result: PASS, evidence: "observed P2=1200 P3=1329 P4=17371 P5=7133 P6=0 P1=0" }
+  no-same-core-NPC-consecutive-P4-selected-scenes: { result: PASS, evidence: "0 violations across 11976 genuinely consecutive P4->P4 pairs in 27033 observed scenes" }
+  different-core-NPC-P4-not-blanket-suppressed: { result: PASS, evidence: "P4 selected 17371 times in 586/600 runs" }
+  Cause-echo-and-closure-no-cause-invalid-regression: { result: PASS, evidence: "origins=1344 eligible=1329 echo=1329 resolved=1329 expired=0 transformed=0" }
+  recurrence-and-terminal-behavior-reported: { result: PASS, evidence: "endReason={\"death\":82,\"lifespan\":0,\"ending\":0,\"right_censored\":518,\"other\":0} repeatViolations=0 uniqueEventsSeen=51 deathCauses={\"death.exploration\":9,\"death.combat\":15,\"death.poison\":15,\"death.special\":9,\"death.injury\":33,\"death.curse\":1}" }
+  no-gameplay-balance-or-rule-change: { result: PASS, evidence: "no rule, weight, precedence, RNG, content or balance value modified; instrumentation is reporting-only" }
+  deterministic-replay-regressions-green: { result: PASS, evidence: "tests/replay.test.mjs 6/6; tests/content-sim.test.mjs 8/8" }
+  test-sim02-green: { result: PASS, evidence: "tests/content-sim.test.mjs 8/8" }
+  full-regression-and-audits-green: { result: PASS, evidence: "npm test 249/249; lint/typecheck/content lint/secret scan/director/recurrence/participant-bridge/npc/build/risk/content-playability/combo audits all exit 0" }
 scope:
-  coreChanged: true
-  contractsChanged: true
-  directorChanged: true
+  coreChanged: false
+  contractsChanged: false
+  directorChanged: false
   contentChanged: false
+  contentSimInstrumentationOnly: true
   persistentStateAdded: false
   newStateFieldAdded: false
   directorPrecedenceChanged: false
   directorWeightsChanged: false
   rngChanged: false
   causeSemanticsChanged: false
+  recurrenceRulesChanged: false
   balanceChanged: false
-  devSimulation600Run: false
+  devSimulation600Run: true
   sourceBranchPushed: false
-blockers: []
-recommendedCommitMessage: "LOOPFIX02B3 attempt 2: remove P3 content/role re-derivation; make P4 core-NPC repeat gate actorIds-only and persist exact selected-Cause actor provenance"
+  playcheck02Started: false
+blockers:
+  - id: SIM02-P6-UNREACHABLE
+    severity: task-acceptance
+    criterion: P6-observed-at-least-once
+    detail: >-
+      P6 was selected 0 times in the required 600 runs and 0 times in the 1800-run escalation
+      control. Root cause proven on the live run: selectDirectorEvent returns at the first
+      non-empty slot, the reducer offers [P4,P5,P6], and at all 3383 action nodes where the P4
+      tier was empty the P5 tier still had an eligible candidate (P5 populated at 5205/5205
+      nodes = 100%). The P5 'contextual' and P6 'ordinary' index slices are disjoint (12 events
+      each, 0 overlap) so P5 cannot exhaust P6's pool, and scoreDirectorEvent makes any
+      unblocked candidate eligible via baseWeightDefault = 100. P6 is therefore shielded by
+      strict precedence ordering, not by rarity. Making it reachable requires a Director
+      precedence/weight change or a CONTENT01 index-slice change, both outside SIM02 scope.
+      Not a P0/P1 invariant failure: no determinism, security, fairness, data-loss or idempotency
+      invariant is violated. It is a reachability observation that SIM02 itself gated on.
+toolingObservations:
+  - id: CONTEXT-LOADER-MALFORMED-TASK
+    severity: P2
+    detail: >-
+      node .codex/context.mjs SIM02 exits 2 with "MALFORMED_TASK: .codex/tasks/LOOPFIX02B3.yaml:15 unknown field design".
+      .codex/context-lib.mjs ALLOWED_FIELDS has no "design" key, and discoverTaskDefinitions parses every
+      .ya?ml under .codex/tasks/, so one non-conforming file breaks the loader for all tasks, including SIM02.
+      Files using "design": LOOPFIX02B3.yaml and SIM02.yaml. INDEX.yaml is skipped by name so it is not affected.
+      Proven pre-existing: the same failure reproduces at base commit 2dc7fb77 before any SIM02 change.
+      Not repaired here because SIM02 forbiddenScope excludes task-contract and tooling changes, and fixing it
+      would alter LOOPFIX02B3.yaml/SIM02.yaml, which are controller-owned dispatch artifacts.
+      Recommendation: controller either adds "design" to ALLOWED_FIELDS as a non-list pass-through field, or
+      moves the "design" body into the existing "in" list for both task files.
+recommendedCommitMessage: "SIM02: report-only scene-order instrumentation; 600-run verification BLOCKED on P6 reachability (0/600 and 0/1800, precedence shadowed by a 100%-populated P5 tier); 10/11 acceptance criteria PASS, B3 P4 gate 0 violations"
