@@ -4,27 +4,31 @@ phase: 2
 requiredContracts: [.codex/contracts/event.ref,.codex/contracts/cause.ref,.codex/contracts/lifecycle.ref,.codex/contracts/director.ref,.codex/contracts/state.ref,.codex/contracts/reducer.ref,.codex/contracts/command.ref,.codex/contracts/rng.ref,.codex/contracts/crosslayer.ref]
 optionalContracts: [.codex/contracts/qa.yaml]
 blockers: []
-inspect_first: [packages/content/src/content01-v1.ts,packages/content/src/registry.ts,packages/core/src/cause.ts]
+inspect_first: [packages/content/src/content01-v1.ts,packages/content/src/registry.ts,packages/core/src/cause.ts,tests/content01.test.mjs]
 allowedScope:
   - CONTENT01 player-facing terminal Cause closure authoring on all Cause-linked echo Events
   - minimal declarative CONTENT01 helper needed to append triggeringCause closure effects without copy-paste
   - repeatBehavior declarations required by existing recurrence contract
-  - targeted LOOPFIX02B2 tests
+  - tests/loopfix02b2.test.mjs targeted LOOPFIX02B2 coverage
+  - tests/content01.test.mjs CONTENT01-016 fixture repair so Cause-linked echo Events are reached with authoritative P3 provenance
+  - tests/content01.test.mjs CONTENT01-019 fixture repair so Cause-linked Build echo Events are reached with authoritative P3 provenance
   - .codex/control/LAST_RESULT.yaml task result
 forbiddenScope: [LOOPFIX02B2_R1-reimplementation,Cause-Core-changes,triggeringCauseId-semantics,contracts-changes,Director-changes,Director-precedence-or-selector-changes,NPC-repeat-gating,P6-availability,echoBudget-changes,Cause-maturity-changes,templateId-only-lookup,same-template-heuristic-lookup,TRANSFORM_CAUSE,Build-Risk-Progression-number-changes,Event-body-rewrite,Event-weights,UI,ITEM01,TECH01,SECT01,WORLD01,CHAL01,600-run-balance-simulation,source-branch-push]
 accept:
   - all-10-content01-cause-templates-have-player-facing-terminal-closure
   - every-normal-choice-on-each-cause-linked-echo-terminally-closes-triggering-cause
   - engage-and-consider-resolve-triggering-cause
-  - leave-expires-triggering-cause
+  - leave-expires-triggering-cause-on-all-10-echo-events-with-no-per-event-exception
   - no-content01-zero-budget-nonterminal-zombie-choice-path
   - all-content01-closure-effects-use-triggeringCause-true
   - no-runtime-literal-causeId-authored-for-content01-closure
   - resolved-path-reachable-through-real-origin-maturity-p3-choice-flow
   - expired-path-reachable-through-real-origin-maturity-p3-choice-flow
+  - content01-016-and-019-use-legal-provenance-aware-reachability-for-cause-linked-echoes
   - same-template-runtime-isolation-from-R1-remains-green
   - repeatable-cause-echo-closure-effects-have-valid-repeatBehavior
   - cause-linked-events-remain-reserved-from-P4-P5-P6-director-indexes
+  - dedicated-loopfix02b2-test-file-present-and-green
   - R1-regression-green
   - P1-P6-precedence-unchanged
   - echoBudget-unchanged
