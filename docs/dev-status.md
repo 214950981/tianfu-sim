@@ -9,7 +9,7 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `a040f0f122f7f3ac5512cecda7414011567f7293`
+- lastReviewedCommit: `6a6f65249ec95153ba4ccf7fcebe88e52bc24d20`
 - reviewedDate: `2026-09-23`
 
 不要修改 `main` / 1.0，除非未来任务明确要求。
@@ -51,7 +51,7 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - SIM02: PASS
 - LOOPFIX02A: PASS
 - LOOPFIX02B1: PASS
-- LOOPFIX02B2: BLOCKED（已由 LOOPFIX02B2_R1 解除，READY FOR RETRY）
+- LOOPFIX02B2: PASS
 - LOOPFIX02B2_R1: PASS
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
@@ -136,7 +136,7 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - full regression 323/323 PASS。
 - Core / Director / contracts 未修改。
 
-### LOOPFIX02B2 — BLOCKED（历史记录，已解除）
+### LOOPFIX02B2 — PASS（原 blocker 作为历史记录保留）
 
 > **状态说明：本 blocker 已由 `LOOPFIX02B2_R1` 解决。**
 > 以下内容仅作为历史记录保留，当前 B2 的真实状态是 `READY FOR RETRY`，
@@ -157,7 +157,7 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
   `cause.ref` 仅定义 `onActorUnavailable` 驱动的 resolve-old + create-new，
   不存在 `TRANSFORM_CAUSE` effect。
 
-本次 B2 未产生任何未完成运行时代码改动；工作区已恢复到 B2 开始前的可运行状态。
+原始 B2 尝试当时未产生可合入的运行时代码改动；该 blocker 后续先由 R1 解除，再由 B2 retry 完成内容侧 closure。
 
 **解除方式（`LOOPFIX02B2_R1`, commit `a040f0f`）**：runtime binding 已由 authoritative scene provenance 贯通，
 `{op:'RESOLVE_CAUSE'|'EXPIRE_CAUSE';triggeringCause:true}` 可合法引用 P3 选中的 exact Cause instance。
@@ -211,14 +211,15 @@ SIM02 默认配置：6 policies × 100 fixed seeds，`maxActions = 50`。
 
 ## 当前未解决玩法问题
 
-### 1. Cause 生命周期缺少主动 closure
+### 1. Cause closure 已完成，待重跑玩法模拟验证分布
 
 - Cause origin recurrence 已由 LOOPFIX02B1 完成。
-- Cause echo 高频出现。
-- exact triggering Cause binding 已由 `LOOPFIX02B2_R1` PASS 解决（authoritative scene provenance + `triggeringCause:true`）。
-- `resolved` / `expired` / `transformed` 当前仍均为 0。
-- 原因现在是 **CONTENT01 尚未授权正式 closure 内容**（`resolved` / `expired` / `transformed` 无内容侧触发源），
-  属 `LOOPFIX02B2` retry 范围；**不再是 runtime binding blocker**。
+- exact triggering Cause binding 已由 `LOOPFIX02B2_R1` PASS 解决。
+- `LOOPFIX02B2` retry 已为全部 10 个 Cause-linked echo Events 授权终结路径：
+  `engage/consider → RESOLVE_CAUSE`，`leave → EXPIRE_CAUSE`，全部使用 `triggeringCause:true`。
+- dedicated B2 tests、full tests 与 audits PASS。
+- 旧 SIM02 中 `resolved/expired=0` 的数字已过期，需在 B3 后统一重跑 600-run 再看新分布。
+- actor-unavailable transform 仍只走既有 runtime 路径，不新增 player-facing TRANSFORM_CAUSE。
 
 ### 2. Core NPC 高频循环
 
@@ -276,43 +277,26 @@ Cause：
 
 ## Next
 
-Latest completed: `LOOPFIX02B2_R1 PASS`（commit `a040f0f`，已 push）
+Latest completed: `LOOPFIX02B2 PASS`（reviewed/transplanted onto `dev/tianfu-2.0`, commit `6a6f65249ec95153ba4ccf7fcebe88e52bc24d20`）
 
-LOOPFIX02B2: `READY FOR RETRY`
+下一任务：`LOOPFIX02B3` — Core NPC Repeat Gating / P6 Reachability。
 
-- runtime binding blocker 已解除（见上方 "LOOPFIX02B2 — BLOCKED（历史记录，已解除）"）。
-- CONTENT01 closure / lifecycle 尚未施工：`resolved` / `expired` / `transformed` 仍为 0。
-- 不再是 "因缺少 exact triggering Cause binding 而 BLOCKED"。
+目标：
 
-下一任务：`LOOPFIX02B2`（retry）— Cause Closure / Lifecycle，
-在 R1 的 `triggeringCause:true` 之上授权 player-facing closure 内容。
+- 保持 Director strict precedence P1→P6 不变。
+- 不重写 Cause / recurrence。
+- 为 P4 增加最小、确定性的 same-core-NPC consecutive scene gate，防止同一 Core NPC 的多个事件轮转形成连续 P4 链。
+- gate 只影响 P4 eligibility，不改变 Outcome、权重公式、RNG、NPC 状态或 Build/Risk/Progression。
+- 使用既有 `recentScenes.actorIds`，不新增持久状态。
+- 至少证明：同一 Core NPC 刚驱动场景后，其下一次 P4 候选被 gate；当 P5 无候选时 P6 可达。
+- 若自然玩法仍显示 P6 starvation，不在 B3 内扩大成 precedence rewrite，留到 B3 后模拟证据判断。
 
-范围约束：
+B3 完成后：
 
-- R1 已只处理 triggering Cause provenance 与 closure binding（PASS，commit `a040f0f`）。
-- B2 retry 只处理 Cause closure / lifecycle。
-- 不处理 NPC pacing。
-- 不处理 P6 starvation，P6 归属 `LOOPFIX02B3`。
-- 不修改 Director strict precedence。
-- 不合并 R1 范围进 B2。
-
-后续目标（R1 / B2 / B3 之后）：
-
-- NPC repeat gating。
-- 让 P6 重新获得可达窗口。
-- 补足 actor unavailable 必要路径。
-
-实施原则：
-
-- 不改变 Director strict precedence，除非修复后仍有明确合同违反证据。
-- 不把当前循环问题误判为 Progression 故障。
-- 不在修复循环前直接调整 Build 平衡。
-
-LOOPFIX02 完成后：
-
-1. rerun gameplay simulation
-2. 执行 PLAYCHECK02
-3. 若结果健康，再进入 UI02
+1. rerun SIM02 6 policies × 100 fixed seeds / maxActions=50
+2. 对比 P3/P4/P5/P6 与 Cause resolved/expired/transform telemetry
+3. 执行 PLAYCHECK02
+4. 若结果健康，再进入 UI02
 
 不要提前开始：
 
