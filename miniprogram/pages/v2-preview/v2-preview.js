@@ -1,5 +1,5 @@
 /**
- * UI02 — Tianfu-sim 2.0 in-life core-loop preview.
+ * UI02R1 — Tianfu-sim 2.0 in-life core-loop preview, one-screen operational layout.
  *
  * DEV PREVIEW ONLY. This route is registered last in app.json and is neither the first page nor a
  * tabBar entry. It carries no gameplay rules of any kind:
@@ -10,6 +10,14 @@
  *  - The page never computes eligibility, difficulty, odds, cost, risk or outcome. Tapping an action
  *    submits the intent's already-built GameCommand shape and nothing else.
  *  - Production transport binding is deliberately NOT wired here; see docs/UI02_PREVIEW.md.
+ *
+ * UI02R1 changes presentation only. RUN_HOME is a constrained one-screen surface: a compact
+ * identity/lifespan header, core cultivation status, at most three public attention summaries plus a
+ * compact public-condition row, and a bottom action dock holding the breakthrough CTA when the
+ * server projects it as available and the four core actions. Full public Build / Cause / People /
+ * condition lists move into read-only drawers. Dev tabs, interaction diagnostics, the blocked-back
+ * probe and capability diagnostics move into a floating dev overlay so debug chrome never consumes
+ * product layout height.
  *
  * Names shown for people/Causes/Builds are public display labels. Hidden Causes and hidden NPC state
  * are absent from the fixture by construction, because the server never projects them.
@@ -38,12 +46,31 @@ var VARIANT_LABELS = {
 var ACTION_LABELS = { cultivate: "闭关", travel: "游历", worldly: "入世", pursuit: "追索" };
 var RISK_TIER_CLASS = { low: "", caution: "is-caution", dangerous: "is-dangerous", lethal: "is-lethal" };
 
+/** RUN_HOME shows at most three public attention summaries; the rest lives in read-only drawers. */
+var ATTENTION_SLOT_LIMIT = 3;
+
+var DRAWER_TITLES = {
+  builds: "道途印记",
+  causes: "公开因果线索",
+  conditions: "公开条件",
+  people: "相识之人"
+};
+var DRAWER_NOTE = "只读 · 仅展示服务端已公开条目 · 不改变任何玩法状态";
+
 function text(value, fallback) {
   return typeof value === "string" && value.length > 0 ? value : fallback;
 }
 
 function number(value, fallback) {
   return typeof value === "number" && isFinite(value) ? value : fallback;
+}
+
+function joinMeta(parts) {
+  var kept = [];
+  for (var index = 0; index < parts.length; index += 1) {
+    if (typeof parts[index] === "string" && parts[index].length > 0) kept.push(parts[index]);
+  }
+  return kept.join(" · ");
 }
 
 /** Public lifespan pressure presentation derived only from already-public age / maxAge. */
@@ -123,6 +150,53 @@ function buildRunHome(vm) {
     special[index].targetName = text((projected.targetRealm || {}).displayName, "");
     special[index].reason = projected.available === true ? "" : text(projected.blockedReasonKey, "breakthrough.unavailable");
   }
+
+  var dominant = null;
+  for (var build = 0; build < builds.length; build += 1) {
+    if (builds[build].dominant) dominant = builds[build];
+  }
+  if (dominant === null && builds.length > 0) dominant = builds[0];
+
+  var attentions = [
+    {
+      key: "builds",
+      tag: "主修",
+      value: dominant === null ? "尚未成势" : dominant.name + " · " + dominant.stageLabel,
+      drawer: "builds"
+    },
+    {
+      key: "causes",
+      tag: "因果",
+      value: causes.length === 0
+        ? "尚未显现"
+        : causes[0].label + (causes.length > 1 ? " 等 " + causes.length + " 条" : ""),
+      drawer: "causes"
+    },
+    {
+      key: "people",
+      tag: "相识",
+      value: people.length === 0
+        ? "尚未与人相识"
+        : people[0].name + (people.length > 1 ? " 等 " + people.length + " 人" : ""),
+      drawer: "people"
+    }
+  ].slice(0, ATTENTION_SLOT_LIMIT);
+
+  var conditionSummary = conditions.length === 0
+    ? "无"
+    : conditions[0].label + " ×" + conditions[0].stacks + (conditions.length > 1 ? " 等 " + conditions.length + " 项" : "");
+
+  // The breakthrough CTA is rendered only from the server-projected availability of the first special
+  // intent. When it is unavailable the dock keeps one compact reason line at most, never a large block.
+  var breakthrough = { enabled: false, label: "尝试突破", targetName: "", note: "", intentId: "" };
+  if (special.length > 0) {
+    breakthrough.intentId = special[0].intentId;
+    breakthrough.label = special[0].label;
+    breakthrough.targetName = special[0].targetName;
+    breakthrough.enabled = special[0].enabled === true;
+    if (!breakthrough.enabled) breakthrough.note = "突破 · 暂不可行 · " + special[0].reason;
+  }
+
   return {
     kind: "RUN_HOME",
     runName: text(run.runName, "无名"),
@@ -133,14 +207,18 @@ function buildRunHome(vm) {
     lifespan: lifespan,
     possessions: number((run.resources || {}).spiritStone, 0),
     conditions: conditions,
+    conditionSummary: conditionSummary,
     causes: causes,
     builds: builds,
     people: people,
+    attentions: attentions,
     actions: actions,
     special: special,
+    breakthrough: breakthrough,
     hasBuilds: builds.length > 0,
     hasPeople: people.length > 0,
-    hasCauses: causes.length > 0
+    hasCauses: causes.length > 0,
+    hasConditions: conditions.length > 0
   };
 }
 
@@ -213,6 +291,47 @@ function buildArchive(vm) {
   };
 }
 
+/**
+ * Read-only detail drawer for the already-public Build / Cause / People / condition collections.
+ * It only formats projection data that RUN_HOME already holds; it cannot mutate gameplay, submit an
+ * intent or surface a hidden Cause.
+ */
+function buildDrawer(kind, runHome) {
+  if (runHome === undefined || runHome === null) return null;
+  if (DRAWER_TITLES[kind] === undefined) return null;
+  var rows = [];
+  if (kind === "builds") {
+    rows = runHome.builds.map(function (build) {
+      return {
+        key: build.buildId,
+        title: build.name,
+        meta: build.stageLabel + (build.dominant ? " · 主修" : "")
+      };
+    });
+  } else if (kind === "causes") {
+    rows = runHome.causes.map(function (cause) {
+      return {
+        key: cause.publicId,
+        title: cause.label,
+        meta: cause.level === "explicit" ? "明确" : "暗示"
+      };
+    });
+  } else if (kind === "conditions") {
+    rows = runHome.conditions.map(function (condition) {
+      return { key: condition.key, title: condition.label, meta: "层数 " + condition.stacks };
+    });
+  } else if (kind === "people") {
+    rows = runHome.people.map(function (person) {
+      return {
+        key: person.npcId,
+        title: person.name,
+        meta: joinMeta([person.roles, person.relation, person.milestoneCount > 0 ? "往事 " + person.milestoneCount : ""])
+      };
+    });
+  }
+  return { kind: kind, title: DRAWER_TITLES[kind], note: DRAWER_NOTE, rows: rows };
+}
+
 function present(key) {
   if (fixtures === null) return null;
   var entry = fixtures.states[key] || fixtures.variants[key];
@@ -249,7 +368,9 @@ Page({
     tabs: [],
     activeKey: "RUN_HOME",
     vm: null,
-    lastIntent: "(尚未提交意图)"
+    lastIntent: "(尚未提交意图)",
+    devOpen: false,
+    drawer: null
   },
 
   onLoad: function () {
@@ -270,7 +391,33 @@ Page({
 
   onSelectTab: function (event) {
     var key = event.currentTarget.dataset.key;
-    if (typeof key === "string" && key.length > 0) this.show(key);
+    if (typeof key === "string" && key.length > 0) {
+      // Collapse the dev overlay and any drawer so the product one-screen result is immediately visible.
+      this.setData({ devOpen: false, drawer: null });
+      this.show(key);
+    }
+  },
+
+  onToggleDev: function () {
+    this.setData({ devOpen: this.data.devOpen !== true, drawer: null });
+  },
+
+  onCloseDev: function () {
+    this.setData({ devOpen: false });
+  },
+
+  onOpenDrawer: function (event) {
+    var kind = event.currentTarget.dataset.drawer;
+    if (typeof kind !== "string" || kind.length === 0) return;
+    var vm = this.data.vm;
+    if (vm === null || vm.runHome === undefined) return;
+    var drawer = buildDrawer(kind, vm.runHome);
+    if (drawer === null) return;
+    this.setData({ drawer: drawer });
+  },
+
+  onCloseDrawer: function () {
+    this.setData({ drawer: null });
   },
 
   /**

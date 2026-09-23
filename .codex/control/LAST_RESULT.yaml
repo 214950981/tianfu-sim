@@ -1,200 +1,397 @@
 version: 1
-taskId: UI02
+taskId: UI02R1
 attempt: 1
 status: PASS
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-UI02
-baseCommit: 61da8ee94bc666b6130d72680cc161e8f6830ae0
-baseTreeSha: f2b4ad08e30209a6f3b8686045e9bdde96d19f34
+workBranch: wb-UI02R1
+baseCommit: dc5675d6a562a5a4996bb2ccd208070eaa066c29
+baseTreeSha: 09847b9695ca0da90f28668509a78119a95de471
 historyMode: real-ancestry
 sourceHeadVerifiedBy: >-
-  git fetch origin dev/tianfu-2.0 succeeded and git rev-parse FETCH_HEAD resolved to
-  61da8ee94bc666b6130d72680cc161e8f6830ae0 ("chore: accept PLAYCHECK02 and dispatch UI02"), matching the
-  repository API branch head for dev/tianfu-2.0. git cat-file -p HEAD shows
-  "tree f2b4ad08e30209a6f3b8686045e9bdde96d19f34" and
-  "parent 3d3dc03a9d951dacd3cedfa0df9046cdaef2b109" (my accepted PLAYCHECK02 implementer commit), and
-  git merge-base --is-ancestor 3d3dc03a9d951dacd3cedfa0df9046cdaef2b109 HEAD returned success. The base
-  therefore has real ancestry and no synthetic tree base was used despite allowSyntheticTreeBase=true.
-  context.mjs UI02 exited 0 at this base.
+  git fetch origin dev/tianfu-2.0 succeeded after retries and git rev-parse origin/dev/tianfu-2.0 resolved
+  to dc5675d6a562a5a4996bb2ccd208070eaa066c29 (remote HEAD, subject "chore: pause UI03 and dispatch
+  UI02R1 responsive layout hardening"), matching refs/heads/dev/tianfu-2.0 via git ls-remote, and its
+  commit object is present locally (git cat-file -t dc5675d6 == commit). The local worktree was then
+  moved onto exactly that commit, so HEAD^{tree} == 09847b9695ca0da90f28668509a78119a95de471 ==
+  origin/dev/tianfu-2.0^{tree}, and `git write-tree` over the unmodified working tree returned the same
+  09847b96 tree sha, which is the byte-identity proof for the task base. This task commit's parent is
+  dc5675d6, so the work branch IS a descendant of the source branch HEAD
+  (git merge-base --is-ancestor dc5675d6 HEAD succeeds); no synthetic tree base was needed despite
+  allowSyntheticTreeBase=true. context.mjs UI02R1 exited 0 at this base with no BLOCKED report.
 
 summary: >-
-  UI02 is the first deliberately player-visible Tianfu-sim 2.0 slice: a dev-only WeChat preview route
-  that renders the in-life core loop in the frozen paper/ink/cinnabar/restrained-dark-gold visual
-  language, built entirely on authoritative server projections. No gameplay rule, contract or content
-  file was touched.
+  UI02R1 is a presentation-only repair. The accepted UI02 data and authority boundary are untouched;
+  what changed is the information architecture, responsiveness and safe-area behaviour of the 2.0 dev
+  preview, so RUN_HOME behaves like a game control surface instead of a scrollable data sheet. No
+  server ViewModel, wechat-shell intent mapping, application UI controller, Core/Content gameplay,
+  Director, contract, legacy 1.0 page or app route was modified, and UI03 was not started.
 
-  New preview route miniprogram/pages/v2-preview/v2-preview is registered as the LAST entry of
-  miniprogram/app.json pages, is not the first page and is not a tabBar entry. The four required visual
-  states render: RUN_HOME, EVENT, SPECIAL_NODE and LIFE_ARCHIVE. RUN_HOME presents public status, public
-  lifespan pressure (derived only from already-public age/maxAge), public conditions, public Cause
-  clues, Build identity, known people and exactly the four core action intents
-  cultivate/travel/worldly/pursuit. EVENT is a full-page decision state showing public participants,
-  server-built riskPresentation per option, and locked ordinary-back while unresolved. SPECIAL_NODE
-  renders the same generic authoritative interaction/retry boundary through the identical builder and
-  shell path, with no second breakthrough rules engine. LIFE_ARCHIVE is read-only and aggregates only
-  public history, explicit/hinted Causes, known people, public Build identity and the public death
-  projection.
+  One-screen is structural, not cosmetic. The preview route now sets disableScroll: true, `page` is
+  height:100% with overflow:hidden, and the product root is a 100vh flex column whose children are
+  constrained with flex + min-height:0 instead of natural document growth. Nothing uses
+  min-height:100vh. RUN_HOME therefore cannot page-scroll; the only vertical scrolling anywhere is
+  inside explicit scroll-view viewports (the attention region, the EVENT/SPECIAL_NODE decision
+  viewport, the LIFE_ARCHIVE archive viewport, the dev overlay and the read-only drawers).
 
-  Three implementation pieces make this real rather than mocked:
-  (1) server/src/viewmodel.ts gains a public breakthrough special-action projection in publicRun
-  (specialActions), emitted only for a non-terminal run with a configured InnateProfile and an ordinary
-  successor realm, whose available flag mirrors the reducer legality exactly (active status, no pending
-  interaction, cultivationBps 10000, successor realm) and whose only payload is
-  actionId/kind/available/labelKey/optional blockedReasonKey plus the target realm's id and displayName.
-  It exposes no difficulty, odds, RNG, check spec, hidden modifier, score, retention or lifespan value.
-  (2) packages/wechat-shell/src/index.ts gains platform-neutral presentation mapping:
-  mapCoreActionIntents (bounded to the four core action ids, dropping unknown/malformed projections
-  rather than guessing) and mapSpecialActionIntents (emits ATTEMPT_BREAKTHROUGH purely from the
-  server-projected availability flag), plus buildArchiveView for the read-only LIFE_ARCHIVE selection.
-  (3) tools/ui02-preview-fixtures.mjs generates miniprogram/pages/v2-preview/v2-fixtures.json through
-  the production chain generateServerDestinyOffer -> reduce(START_RUN) -> ServerViewModelBuilder.build
-  -> buildWeChatPageShell -> the two intent mappers -> buildArchiveView, so the preview page renders
-  real projection output and never invents a rule.
+  RUN_HOME was restructured into exactly four layers: (1) a compact identity/lifespan header, (2) core
+  cultivation status (修为 / 道基 / 灵石) in one row, (3) at most three public attention summaries
+  (dominant Build, one public Cause, one known person) plus a single public-condition row, and (4) a
+  bottom action dock. Exactly four core actions stay first-screen visible in a stable 2x2 dock, and the
+  Primary breakthrough CTA is rendered only through wx:if on the accepted server-projected
+  available flag; the unavailable variant renders at most one compact reason line, reserving no large
+  CTA block, and because the flexible space is in the middle of the layout the four actions do not move
+  when the CTA appears or disappears. Disabled action slots keep their grid cell, so there is no layout
+  jump.
 
-  Scope guarantees were verified by content, not by assertion: the UI02 test suite pins base tree
-  digests for miniprogram/pages/start, miniprogram/pages/game, miniprogram/pages/rank,
-  packages/core/src, packages/content/src and miniprogram/app.wxss and asserts they are unchanged, so
-  legacy 1.0 gameplay logic and all Core/Content gameplay sources are byte-equivalent to the task base.
-  The suite also asserts the committed fixture is exactly what the real code regenerates, that the
-  fixture contains no authoritative rule state, that hidden Causes and unmet NPC state never surface,
-  that capability-disabled entries stay hidden, and that preview code contains no legacy 1.0 neon value.
+  Density was reduced by removing duplication, not by shrinking text or touch targets. Summarising is
+  never a dead end: each summary row opens a read-only drawer, and the one-screen surface offers
+  exactly four public detail drawers (Builds / Causes / conditions / People) that only format the
+  already-public projection, contain no submission control and surface no hidden Cause or NPC state.
+  Every dynamic public string is either single-line ellipsized or line-clamped, and wrapping blocks
+  break long raw labelKeys, so long run names, realm ids, cause labels, person names and risk reasons
+  cannot wrap the stack taller or create horizontal overflow.
 
-  Evidence highlights: 282/282 full npm test (was 264), 18/18 dedicated UI02 tests, 6/6 viewmodel-ui
-  (A12 security boundaries intact), typecheck/lint/content-lint/content01-lint/secret-scan all green.
-  The projected breakthrough availability is proven equivalent to the authoritative reducer on five
-  distinct states rather than merely asserted.
+  EVENT and SPECIAL_NODE share one fixed full-screen decision container: the headline, participants and
+  the locked-while-unresolved badge are pinned above a single bounded scroll-view holding the narrative
+  and the options, so many options or long body copy can never push the decision content off the
+  surface. The unresolved decision still cannot be escaped from the product surface because the
+  ordinary-back probe now lives only in the dev overlay.
 
-changedFiles:
-  - .codex/control/LAST_RESULT.yaml
-  - miniprogram/app.json
-  - miniprogram/pages/v2-preview/v2-preview.js
-  - miniprogram/pages/v2-preview/v2-preview.json
-  - miniprogram/pages/v2-preview/v2-preview.wxml
-  - miniprogram/pages/v2-preview/v2-preview.wxss
-  - miniprogram/pages/v2-preview/v2-fixtures.json
-  - packages/wechat-shell/src/index.ts
-  - server/src/viewmodel.ts
-  - tests/ui02.test.mjs
-  - tools/ui02-preview-fixtures.mjs
-  - docs/UI02_PREVIEW.md
-  - package.json
+  The dev preview layer is a collapsed floating "调试" trigger plus a fixed overlay, both outside the
+  product `.surface` subtree and both position:fixed, so tabs, lastIntent, decisionId, interaction
+  state, the blocked-back probe and the capability-entry diagnostics consume zero product layout height.
+  Switching a view collapses the overlay so the one-screen result is directly observable. Detail
+  drawers are fixed bottom sheets with an explicit 46vh internal scroll viewport. The bottom action
+  dock, the decision viewport, the archive viewport and the drawer all reserve
+  env(safe-area-inset-bottom) so the home indicator cannot cover controls.
+
+  Responsiveness is an explicit contract rather than a hope: the WXSS declares the supported baseline
+  (windowWidth >= 320, windowHeight >= 500 CSS px) and the full viewport matrix
+  320x500 / 360x560 / 375x603 / 390x750 / 414x820 / 430x850 as width and height token bands, and every
+  matrix viewport resolves to at least one width band and one height band (or the baseline token set).
+  Compact-height bands tighten non-interactive spacing only: --touch-min, --cta-h and --dock-row-h are
+  identical in every band, so the fit is never bought by shrinking controls. At windowWidth 320 the core
+  action target is 44.37 CSS px, and no product font size goes below 20rpx.
+
+  Proof is structural and derived, not asserted. tools/ui02r1-layout-audit.mjs re-parses the committed
+  WXSS (base `page` tokens plus every matching media band, with the CSS cascade order honoured) and the
+  committed WXML, then prints a per-viewport first-screen budget table. Worst-case RUN_HOME stack +
+  34 px reserved safe area vs viewport height: 320x500 -> 412.6+34 <= 500 (53.4 px slack); 360x560 ->
+  476.6+34 <= 560 (49.4); 375x603 -> 513.5+34 <= 603 (55.5); 390x750 -> 561.1+34 <= 750 (154.9);
+  414x820 -> 626.5+34 <= 820 (159.5); 430x850 -> 650.7+34 <= 850 (165.3). It also proves the pinned
+  decision head takes 22.5% of the baseline viewport, leaving the rest to the options.
 
 tests:
+  - name: ui02r1
+    command: node --test tests/ui02r1.test.mjs
+    result: PASS (17/17)
+  - name: ui02r1-layout-audit
+    command: node tools/ui02r1-layout-audit.mjs
+    result: PASS (96/96 structural checks, exit 0)
   - name: ui02
     command: node --test tests/ui02.test.mjs
-    result: PASS (18/18)
+    result: PASS (18/18, UI02 visual language / fixture regeneration / A12 boundaries intact)
   - name: viewmodel-ui
     command: node --test tests/viewmodel-ui.test.mjs
-    result: PASS (6/6, A12 boundaries intact)
+    result: PASS (6/6, A12 security boundaries intact)
   - name: typecheck
     command: npx tsc --noEmit
     result: PASS (exit 0, no diagnostics)
   - name: lint
     command: node tools/check-import-boundaries.mjs
-    result: PASS (Core import boundary: PASS)
+    result: "PASS (Core import boundary: PASS)"
   - name: content-lint
     command: node tools/content-lint.mjs packages/content/dev-fixtures/minimal-pack.json
-    result: PASS (Content lint: PASS, 1 pack)
+    result: "PASS (Content lint: PASS, 1 pack)"
   - name: content01-lint
     command: node tools/content01-lint.mjs
-    result: PASS (exit 0)
+    result: "PASS (exit 0, 66 events / 10 causeTemplates / 5 npcDefinitions / 8 npcArchetypes)"
   - name: secret-scan
     command: node tools/scan-secrets.mjs
-    result: PASS (Secret scan: PASS)
+    result: "PASS (Secret scan: PASS)"
   - name: full-suite
-    command: node --test tests/*.test.mjs (all 24 registered files)
-    result: PASS (282/282, 0 fail; 264 before this task)
+    command: npm test (all 27 registered test files)
+    result: PASS (299/299, 0 fail; 282 before this task, +17 from tests/ui02r1.test.mjs)
 
 gates:
-  total: 8
-  green: 8
+  total: 10
+  green: 10
   failed: 0
   note: >-
-    All seven task-required verifications are green, plus the complete npm test suite as an extra
-    regression guard because this task does change shipped code (server projection, shell mapping,
-    app.json, package.json).
+    All eight task-required verifications are green, plus the dedicated layout audit and the complete
+    npm test suite as regression guards.
+
+changedFiles:
+  - .codex/control/LAST_RESULT.yaml
+  - docs/UI02_PREVIEW.md
+  - miniprogram/pages/v2-preview/v2-preview.js
+  - miniprogram/pages/v2-preview/v2-preview.json
+  - miniprogram/pages/v2-preview/v2-preview.wxml
+  - miniprogram/pages/v2-preview/v2-preview.wxss
+  - package.json
+  - tests/ui02r1.test.mjs
+  - tools/ui02r1-layout-audit.mjs
+
+changes:
+  - file: miniprogram/pages/v2-preview/v2-preview.wxml
+    what: >-
+      Rebuilt the preview markup as a constrained one-screen product surface plus fixed dev/drawer
+      overlays. RUN_HOME is now hero + vitals + attention summaries + bottom dock; breakthrough CTA is
+      wx:if-gated on vm.runHome.breakthrough.enabled with a compact wx:elif note; EVENT/SPECIAL_NODE
+      share one pinned head plus a bounded scroll-view; LIFE_ARCHIVE scrolls only inside its own
+      viewport; dev tabs, lastIntent, decisionId, the blocked-back probe and capability diagnostics
+      moved into the dev overlay; four read-only drawers added for Builds / Causes / conditions /
+      People.
+  - file: miniprogram/pages/v2-preview/v2-preview.wxss
+    what: >-
+      Added the one-screen layout contract: `page` height/overflow lock, .screen 100vh constrained
+      flex column, compressible .surface/.page/.home-body/.attention chains, dock and CTA tokens,
+      env(safe-area-inset-bottom) reservations, clamps/ellipsis for every dynamic public string, and
+      the width/height media bands covering the supported viewport matrix. UI02 paper/ink/cinnabar/
+      restrained-dark-gold tokens are unchanged; no legacy neon value, text-shadow or box-shadow was
+      introduced. Dead UI02 selectors replaced by the new structure were removed.
+  - file: miniprogram/pages/v2-preview/v2-preview.js
+    what: >-
+      Added the presentation-only model for the new structure: ATTENTION_SLOT_LIMIT = 3 with a capped
+      attentions array, a compact public-condition summary, a breakthrough view object derived purely
+      from the accepted special-intent projection, read-only drawer builders for the four public
+      collections, and dev/drawer open-close state. No rule computation, no transport, no new data.
+  - file: miniprogram/pages/v2-preview/v2-preview.json
+    what: "disableScroll set to false -> true so the preview route cannot page-scroll even outside RUN_HOME."
+  - file: tools/ui02r1-layout-audit.mjs
+    what: >-
+      New structural layout audit: re-derives the RUN_HOME first-screen budget and the decision-head
+      share from the committed WXSS tokens and media bands, and asserts page-overflow policy, scroll
+      ownership, dev-layer containment, four-action dock structure, breakthrough CTA gating,
+      safe-area reservations, touch-target and readability floors, clamping of dynamic strings and the
+      six-viewport matrix. Source overrides make it usable as a negative-control target.
+  - file: tests/ui02r1.test.mjs
+    what: >-
+      New dedicated suite (17 tests): audit green plus fourteen negative controls that mutate the
+      audited inputs and require the audit to fail, base-tree digest purity for 1.0 pages / server /
+      wechat-shell / application-ui / platform-contract / Core / Content / app.json / app.wxss /
+      fixture generator, route registration, one-screen and dock structure, matrix coverage and budget,
+      dev-layer containment, decision-surface containment and read-only archive.
+  - file: docs/UI02_PREVIEW.md
+    what: >-
+      Documented the one-screen scrolling policy per page state, the supported baseline and the full
+      viewport matrix with the wxss band each viewport resolves to, the RUN_HOME four-layer hierarchy,
+      the anti-shrinking rules, and an explicit split between executed automated structural proof and
+      the manual visual QA that is still required.
+  - file: package.json
+    what: "Added scripts test:ui02r1 and ui02r1:audit, and registered tests/ui02r1.test.mjs in the npm test aggregate."
+  - file: .codex/control/LAST_RESULT.yaml
+    what: "This task result."
+
+verification:
+  automated:
+    - command: node tools/ui02r1-layout-audit.mjs
+      proves: >-
+        Structural: page-overflow policy, scroll ownership per page state, dev layer outside the
+        product flow, four-action dock, gated breakthrough CTA, safe-area reservations, touch-target
+        and readability floors, string clamping, and a first-screen budget that fits all six matrix
+        viewports with the safe area reserved. It is code-derived (re-parsed from the WXSS) and has its
+        own negative controls, so a green run is falsifiable rather than tautological.
+    - command: node --test tests/ui02r1.test.mjs
+      proves: "The audit is green and non-vacuous, plus byte-equivalence of every out-of-scope tree to the task base."
+    - command: npm test
+      proves: "No regression anywhere else in the repository (299/299)."
+  structuralInference:
+    - >-
+      The first-screen budget is a box-model computation over the committed token values, not a
+      rendered measurement. WeChat's flex/scroll-view sizing, font metrics and ellipsis behaviour are
+      assumed to follow standard behaviour; the audit asserts the structural preconditions, not the
+      rendered pixels.
+    - >-
+      Safe area is modelled with a 34 px worst-case home-indicator reservation. The actual inset is a
+      device value supplied by env(safe-area-inset-bottom) at runtime.
+  manualVisualQaRequired:
+    status: NOT PERFORMED
+    statement: >-
+      No device or simulator rendering was executed in this sandbox. The automated results above are
+      structural only and must NOT be read as "verified on all phones". A human must still confirm the
+      following in WeChat DevTools / on a real device before UI02R1 is treated as visually accepted.
+    items:
+      - "Open the preview route and confirm RUN_HOME cannot scroll vertically at all (no page displacement on drag)."
+      - "Step through 320x500, 360x560, 375x603, 390x750, 414x820 and 430x850 in the device simulator; confirm core status and all four actions are first-screen visible with no horizontal scrollbar."
+      - "Confirm the four core action blocks and the breakthrough CTA still feel >= 44 CSS px and that text was not shrunk to fit."
+      - "Tap each summary row and confirm the read-only drawer opens from the bottom, scrolls internally, closes on 收起, and changes nothing about the product layout behind it."
+      - "Open the dev overlay and confirm it overlays the product without moving it; switch views and confirm the overlay collapses."
+      - "Enter 事件 and confirm long body copy scrolls only inside the decision viewport while the headline stays pinned."
+      - "Enter 命书 and confirm it scrolls internally without moving the page."
+      - "On a device with a home indicator, confirm the action dock and the event options are not covered by the indicator."
+      - "Switch to 突破未成·变体 and confirm the four actions keep exactly the same position as the normal RUN_HOME."
+    docs: docs/UI02_PREVIEW.md section 六
+
+acceptance:
+  - id: RUN_HOME-product-surface-has-no-page-level-vertical-scroll-by-structure
+    covered: true
+    evidence: "disableScroll:true + page{height:100%;overflow:hidden} + .screen{height:100vh;overflow:hidden} + flex/min-height:0 chain; no min-height:100vh anywhere; audit checks green."
+  - id: supported-portrait-baseline-is-windowWidth-at-least-320-and-windowHeight-at-least-500
+    covered: true
+    evidence: "SUPPORTED_BASELINE = {320,500} declared in the audit and documented; base token set is the 320x500 case."
+  - id: viewport-matrix-is-explicitly-covered-by-responsive-rules-or-layout-contract
+    covered: true
+    evidence: "Five wxss bands (min-width 340/400, min-height 560/600/750/820) plus the baseline token set; every matrix viewport resolves to a band, asserted by parsing the wxss."
+  - id: four-core-actions-are-always-first-screen-visible-and-remain-exactly-four
+    covered: true
+    evidence: "One .action template bound to wx:for over vm.runHome.actions inside a non-shrinking .dock; mapCoreActionIntents returns exactly cultivate/travel/worldly/pursuit; dock is inside the 412.6 px baseline stack."
+  - id: core-action-touch-targets-are-not-compressed-below-approximately-44-CSS-px
+    covered: true
+    evidence: "--dock-row-h and --cta-h never drop below 104rpx in any band = 44.37 CSS px at width 320; asserted per viewport."
+  - id: enabled-breakthrough-is-first-screen-reachable-and-unavailable-breakthrough-does-not-consume-a-large-CTA-block
+    covered: true
+    evidence: "wx:if on vm.runHome.breakthrough.enabled; CTA is inside the budgeted baseline stack; the unavailable variant renders only a 56rpx reason line (wx:elif), proven compact by audit."
+  - id: realm-lifespan-cultivation-foundation-and-primary-public-attention-summary-remain-first-screen-readable
+    covered: true
+    evidence: "Layers 1-3 of the home stack are fixed-height rows inside the 412.6 px baseline budget; no font size below 20rpx."
+  - id: full-public-Build-Cause-People-lists-are-not-all-expanded-on-RUN_HOME
+    covered: true
+    evidence: "No wx:for over vm.runHome.builds/causes/people/conditions exists in the home subtree; asserted by audit and test."
+  - id: dev-preview-controls-and-debug-output-do-not-consume-product-layout-height
+    covered: true
+    evidence: "dev-trigger / dev-panel / dev-scrim are position:fixed and outside the .surface subtree; lastIntent, decisionId, onBlockedBack and gatedEntries appear only in the dev overlay source range."
+  - id: bottom-action-and-decision-controls-respect-safe-area-home-indicator-space
+    covered: true
+    evidence: "env(safe-area-inset-bottom) on .dock, .decision-viewport, .archive-viewport and .drawer; 34 px worst-case reservation is included in every budget row."
+  - id: EVENT-and-SPECIAL_NODE-use-bounded-internal-scroll-for-overflow-without-page-level-document-scroll
+    covered: true
+    evidence: "One shared scroll-view.decision-viewport (scroll-y, flex 1 1 auto, min-height 0) under a pinned head; head is 22.5% of the baseline viewport."
+  - id: LIFE_ARCHIVE-remains-intentionally-scrollable-read-only
+    covered: true
+    evidence: "scroll-view.archive-viewport (scroll-y) owns the scrolling; nothing in the archive subtree writes state."
+  - id: long-public-labels-names-and-risk-copy-do-not-create-horizontal-overflow-or-push-core-actions-off-screen
+    covered: true
+    evidence: "17 single-line selectors ellipsize, 2 multi-line selectors are line-clamped, 6 wrapping blocks break long tokens; audit asserts all three groups."
+  - id: capability-and-breakthrough-variants-preserve-layout-without-large-jumps
+    covered: true
+    evidence: "The layout never branches on the variant key (asserted: the wxml contains neither variant name); the dock is bottom-anchored and non-shrinking, and disabled slots keep their cell."
+  - id: old-1.0-pages-server-viewmodel-wechat-shell-Core-and-Content-are-byte-equivalent-to-task-base
+    covered: true
+    evidence: "Tree digests pinned in tests/ui02r1.test.mjs for miniprogram/pages/start|game|rank, pages, miniprogram/app.json, miniprogram/app.wxss, server/src, packages/wechat-shell/src, packages/application-ui/src, packages/platform-contract/src, packages/core/src, packages/content/src, tools/ui02-preview-fixtures.mjs and the committed fixture."
+  - id: UI02-and-A12-tests-remain-green
+    covered: true
+    evidence: "tests/ui02.test.mjs 18/18 and tests/viewmodel-ui.test.mjs 6/6."
+  - id: dedicated-ui02r1-tests-and-layout-audit-green
+    covered: true
+    evidence: "tests/ui02r1.test.mjs 17/17 and tools/ui02r1-layout-audit.mjs 96/96, exit 0."
+  - id: LAST_RESULT-distinguishes-automated-structural-proof-from-manual-visual-QA-and-does-not-claim-unperformed-device-testing
+    covered: true
+    evidence: "verification.automated / structuralInference / manualVisualQaRequired; the manual section is explicitly NOT PERFORMED and lists the items a human must still confirm."
 
 scope:
   coreChanged: false
   contractsChanged: false
   directorChanged: false
   contentChanged: false
-  riskChanged: false
-  buildChanged: false
-  npcChanged: false
-  causeChanged: false
-  progressionChanged: false
-  recurrenceChanged: false
-  legacy1_0GameplayChanged: false
-  ui02PreviewAdded: true
+  serverViewModelChanged: false
+  wechatShellIntentMappingChanged: false
+  applicationUiControllerChanged: false
+  legacy1_0PagesChanged: false
+  appRouteChanged: false
+  ui02PreviewLayoutChanged: true
+  transportWired: false
+  ui03Started: false
   note: >-
-    .codex/contracts/* were not edited and packages/platform-contract/src/index.ts is byte-identical:
-    the breakthrough projection rides inside publicRun, which the ViewModel contract already types as
-    an open Record<string, PublicJson> exactly like the existing publicRun.actions field, so no contract
-    shape changed. miniprogram/pages/start, miniprogram/pages/game and miniprogram/pages/rank are
-    byte-equivalent to the base (pinned by tree digest in tests/ui02.test.mjs). No 600-run simulation,
-    no UI03/UI04, no source-branch push.
+    .codex/contracts/* and .codex/tasks/* were not edited. server/src, packages/core/src,
+    packages/content/src, packages/wechat-shell/src, packages/application-ui/src and
+    packages/platform-contract/src are byte-identical to the task base, pinned by tree digest.
+    miniprogram/app.json is byte-identical, so the preview route is still registered last and is still
+    neither the default page nor a tabBar entry. The only product-visible surface touched is
+    miniprogram/pages/v2-preview/*. No 600-run simulation was executed. No source-branch push.
+
+toolingObservations:
+  - id: T1
+    severity: ENVIRONMENT
+    title: the sandbox silently deletes git ref updates outside the workspace
+    evidence: >-
+      The shared .git lives at C:/Users/Administrator/Documents/GitHub/tianfu-sim/.git, outside this
+      worktree. Any git command that updates a ref (reset --hard / reset --mixed / commit) reported
+      success but left refs/heads/workbuddy/dev-tianfu-2-0-aba5449b absent, so HEAD became unborn
+      immediately afterwards. Object and index writes in the same repository succeeded normally
+      (git cat-file could read the commit that git commit had just created).
+    workaround: >-
+      Created the base commit state with object-only plumbing (git add -> git write-tree ->
+      git commit-tree -p <base>) and wrote the branch ref file directly, verifying
+      git rev-parse HEAD and git log afterwards. git push is unaffected. This is a sandbox property,
+      not repository corruption: refs/heads/dev/tianfu-2.0 and refs/heads/main were never touched and
+      git ls-remote still shows the source branch unchanged at dc5675d6.
+    impact: "No effect on the submitted tree or on the pushed work branch."
+  - id: T2
+    severity: NOTE
+    title: tools/scan-secrets.mjs matches the literal word "token" followed by a quoted string
+    evidence: >-
+      A layout-descriptor field named token: "--screen-pad-top" tripped the
+      (api_key|secret|token|password)[:=]"..." pattern and failed the gate. The field was renamed to
+      cssVar. Worth knowing because the name "token" is natural for CSS custom-property tables.
+    impact: "Informational; no action required unless a future task hits it again."
 
 blockers: []
 
 backlog:
   - id: U1
     severity: BACKLOG
-    title: production transport is not wired in the preview
+    title: manual visual QA on the viewport matrix has not been performed
     evidence: >-
-      The preview records the intent it would submit but never calls a transport; it contains no
-      wx.request and no ApplicationTransport binding.
-    impact: Intended for this task; UI03 owns real page wiring and transport binding.
-    suggestedOwner: UI03
+      No device or simulator rendering was executed. Only structural proof exists: the audit's
+      box-model budget and source-level structural assertions.
+    impact: >-
+      UI02R1 must not be treated as visually accepted, and UI03 must stay blocked, until the items in
+      verification.manualVisualQaRequired are confirmed by a human.
+    suggestedOwner: controller / user review before UI03
   - id: U2
     severity: BACKLOG
-    title: SPECIAL_NODE cannot be reached from an event definition in current content
+    title: i18n / copy keys are still rendered as raw keys
     evidence: >-
-      CONTENT01 and the dev fixture contain no event with kind combat or breakthrough, so the server
-      derivePageState can only reach SPECIAL_NODE through run.status === "dying". The preview fixture
-      reflects that honestly instead of inventing a special event.
-    impact: The special-node container is exercised, but no authored special event exists yet.
-    suggestedOwner: CONTENT02 / a special-node content task
+      The preview still displays labelKey/summaryKey strings directly (for example "mortal",
+      "dev.first-choice.continue", "risk.dangerous") because no locale table is wired yet. The
+      attention summaries inherit this, so a "long raw labelKey" is the realistic pressure case.
+    impact: Expected at this stage; the copy pass belongs to a later UI task, not to layout repair.
+    suggestedOwner: UI03/UI04
   - id: U3
     severity: BACKLOG
-    title: preview fixture is a committed 78 KB JSON blob
-    evidence: miniprogram/pages/v2-preview/v2-fixtures.json is 77801 bytes of generated public ViewModel data.
-    impact: Fine for a dev preview; a production build should generate it instead of committing it.
-    suggestedOwner: UI03 or a build-step task
+    title: event options remain read-only presentation
+    evidence: The decision viewport renders options and server-built riskPresentation but no option can be submitted.
+    impact: Intended; submitting the chosen option is UI03 live-session wiring, explicitly out of scope here.
+    suggestedOwner: UI03
   - id: U4
     severity: BACKLOG
-    title: i18n / copy keys are rendered as raw keys in the preview
-    evidence: >-
-      The preview displays labelKey/summaryKey strings directly (for example
-      "dev.first-choice.continue", "risk.dangerous", "action.cultivate") because no locale table is
-      wired yet.
-    impact: Expected at this stage; the real copy pass belongs to a later UI task.
-    suggestedOwner: UI03/UI04
+    title: preview fixture is a committed ~78 KB JSON blob
+    evidence: miniprogram/pages/v2-preview/v2-fixtures.json is a generated artifact checked into the repo.
+    impact: Fine for a dev preview; a production build step should generate it.
+    suggestedOwner: UI03 or a build-step task
 
 recommendedCommitMessage: |-
-  feat(ui02): add 2.0 core-loop high-fidelity preview route
+  feat(ui02r1): make the 2.0 preview RUN_HOME a one-screen responsive surface
 
-  First player-visible 2.0 slice. No gameplay rule, contract or content change.
+  Presentation-only repair of the accepted UI02 preview. No rule, contract, server,
+  shell, controller, Core/Content, legacy 1.0 or route change.
 
-  - New dev-only route miniprogram/pages/v2-preview/v2-preview, registered last in
-    app.json; not the default page and not a tabBar entry.
-  - Renders RUN_HOME / EVENT / SPECIAL_NODE / LIFE_ARCHIVE in the frozen
-    paper-ink-cinnabar-restrained-dark-gold language with UI02 tokens.
-  - RUN_HOME shows public status, lifespan pressure, conditions, Cause clues, Build
-    identity, known people and exactly the four core action intents.
-  - EVENT renders server-built riskPresentation per option and locks ordinary back
-    while unresolved.
-  - SPECIAL_NODE reuses the same authoritative interaction/retry boundary; no second
-    breakthrough engine.
-  - LIFE_ARCHIVE is a read-only public selection; hidden Causes and unmet NPCs never
-    appear.
-  - server: publicRun.specialActions breakthrough projection, availability only,
-    never difficulty/odds/RNG/hidden modifiers; mirrors the reducer exactly (proven
-    by test on five states).
-  - wechat-shell: mapCoreActionIntents / mapSpecialActionIntents / buildArchiveView.
-  - tools/ui02-preview-fixtures.mjs generates the preview fixture through the real
-    production chain; tests/ui02.test.mjs pins base tree digests so legacy 1.0
-    gameplay and Core/Content sources are provably byte-equivalent to base.
+  - One-screen is structural: disableScroll true, page height/overflow lock, 100vh
+    constrained flex root, min-height:0 on every flexible layer. RUN_HOME cannot
+    page-scroll; every vertical scroll happens inside an explicit scroll-view.
+  - RUN_HOME restructured to four layers: identity/lifespan header, core cultivation
+    status, at most three public attention summaries plus one condition row, bottom
+    action dock with exactly four core actions and a breakthrough CTA gated on the
+    server-projected availability (unavailable = one compact line, no reserved block).
+  - Full public Build / Cause / People / condition lists move into four read-only
+    drawers. Summarising is never a dead end and never mutates gameplay.
+  - EVENT / SPECIAL_NODE share one full-screen container: pinned head plus a bounded
+    scroll-view for narrative and options.
+  - LIFE_ARCHIVE scrolls only inside its own viewport.
+  - Dev tabs, lastIntent, decisionId, interaction state, the blocked-back probe and
+    capability diagnostics move into a collapsed floating dev overlay outside the
+    product flow; detail drawers are fixed bottom sheets with bounded scroll.
+  - Explicit viewport contract: baseline 320x500 and the 320x500 / 360x560 / 375x603 /
+    390x750 / 414x820 / 430x850 matrix as wxss width/height bands, safe-area
+    reservations on dock and decision controls, no font below 20rpx, core action
+    targets 44.37 CSS px at width 320, and clamping for every dynamic public string.
+  - tools/ui02r1-layout-audit.mjs re-derives the first-screen budget from the WXSS and
+    reports it per matrix viewport; tests/ui02r1.test.mjs proves the audit green and
+    non-vacuous with fourteen negative controls, and pins base-tree digests so every
+    out-of-scope tree is provably byte-equivalent to the task base.
 
-  Verification: 282/282 full suite (was 264), 18/18 ui02, 6/6 viewmodel-ui,
-  typecheck/lint/content-lint/content01-lint/secret-scan green.
+  Verification: 299/299 npm test (was 282), 17/17 ui02r1, 18/18 ui02, 6/6
+  viewmodel-ui, layout audit 96/96, typecheck/lint/content-lint/content01-lint/
+  secret-scan green. Manual visual QA on the viewport matrix is still required and is
+  documented as not performed.
