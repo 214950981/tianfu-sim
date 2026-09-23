@@ -34,6 +34,18 @@
  * collapsed into a "file is missing" message: the previous attempt to require the .json sibling threw
  * at runtime, the catch swallowed it, and the page blamed the fixture file while that file was present.
  *
+ * HARD CONSTRAINT — the require() argument must be a string literal.
+ *
+ * The WeChat packager builds the page's dependency graph by statically analysing the source. Only
+ * `require("./v2-fixtures.js")` is analysable, so only that form registers the dependency and gets the
+ * module bundled. `require(FIXTURE_MODULE_SPECIFIER)` packs nothing and dies at runtime with
+ * "module '<path>' is not defined" — the second runtime failure this page produced, and the reason the
+ * regression test now scans every miniprogram module for a non-literal require argument.
+ *
+ * FIXTURE_MODULE_SPECIFIER therefore has exactly one job: labelling the failure panel. It is never an
+ * argument to require(), and the test suite asserts it stays equal to the literal below so the two
+ * cannot drift apart.
+ *
  * The reported diagnostics are deliberately bounded: a stage, an error name, a sanitized one-line
  * message with path-like tokens removed, the (already documented) module specifier, and a CLI hint.
  * No fixture content, no raw state and no environment detail is ever rendered.
@@ -79,7 +91,9 @@ function loadFailureOf(stage, code, detail, hint) {
 function loadFixtures() {
   var loaded = null;
   try {
-    loaded = require(FIXTURE_MODULE_SPECIFIER);
+    // String literal, not FIXTURE_MODULE_SPECIFIER: the packager only bundles statically analysable
+    // requires. Do not "clean this up" into a variable. See the constraint note above.
+    loaded = require("./v2-fixtures.js");
   } catch (error) {
     return { fixtures: null, failure: loadFailureOf("module", errorName(error), errorMessage(error)) };
   }

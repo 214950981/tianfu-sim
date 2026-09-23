@@ -8,12 +8,17 @@ import vm from "node:vm";
 import { mapCoreActionIntents, mapSpecialActionIntents } from "../packages/wechat-shell/src/index.ts";
 import { FIXTURE_PATH as FIXTURE_JSON_PATH, buildPreviewFixtures } from "../tools/ui02-preview-fixtures.mjs";
 import {
+  FIXTURE_CONSUMER_PATH,
   FIXTURE_JSON_SPECIFIER,
   FIXTURE_MODULE_PATH,
   FIXTURE_MODULE_SPECIFIER,
   buildFixtureJsonSource,
   buildFixtureModuleSource,
-  fixturePayload
+  checkFixtureRequire,
+  fixturePayload,
+  listRuntimeModules,
+  nonLiteralRequireArguments,
+  requireArguments
 } from "../tools/ui02-preview-fixture-module.mjs";
 import {
   MIN_FONT_SIZE_RPX,
@@ -428,7 +433,10 @@ test("UI02R1_fixture: the page loads the generated JS module and never requires 
     false,
     "the WeChat runtime cannot require a .json module, so no .json require may exist"
   );
-  assert.equal(pageCode.includes("require(" + "FIXTURE_MODULE_SPECIFIER)"), true, "the page must require the fixture module");
+  // the load point is the literal, checked structurally rather than by substring
+  const calls = requireArguments(pageJs);
+  assert.equal(calls.length, 1, "the page must contain exactly one require() call");
+  assert.equal(calls[0].specifier, FIXTURE_MODULE_SPECIFIER, "the page must require the fixture module by literal");
   assert.equal(
     fs.existsSync(path.join(ROOT, FIXTURE_MODULE_PATH)),
     true,
@@ -436,6 +444,85 @@ test("UI02R1_fixture: the page loads the generated JS module and never requires 
   );
   // The JSON sibling is only ever named as the thing the runtime cannot load.
   assert.equal(pageCode.includes(FIXTURE_JSON_SPECIFIER), true);
+});
+
+/**
+ * Regression for the second runtime failure of this page.
+ *
+ * `require(FIXTURE_MODULE_SPECIFIER)` compiled and passed the Node test suite, but the WeChat packager
+ * resolves dependencies by static analysis: a variable argument registers no dependency, so the page
+ * failed at runtime with "module '<path>' is not defined, require args is './v2-fixtures.js'".
+ *
+ * Node's module system happily accepts a computed require, which is exactly why the previous suite
+ * could not see this. The guard is therefore syntactic — it reads the source and rejects any require
+ * argument that is not a plain string literal, across every miniprogram module.
+ */
+test("UI02R1_fixture: the fixture is loaded with a statically analysable literal require", () => {
+  // 1. the real entry point satisfies the contract
+  const check = checkFixtureRequire(ROOT);
+  assert.deepEqual(check.problems, [], "the preview entry point must load the fixture with a literal require");
+  assert.equal(check.ok, true);
+
+  // 2. the load point is a literal, and the diagnostics constant agrees with it (no drift)
+  const calls = requireArguments(pageJs);
+  assert.deepEqual(calls.map((entry) => entry.raw), ['"' + FIXTURE_MODULE_SPECIFIER + '"']);
+  const declared = /var\s+FIXTURE_MODULE_SPECIFIER\s*=\s*(["'])([^"']*)\1/.exec(pageJs);
+  assert.notEqual(declared, null, "FIXTURE_MODULE_SPECIFIER must be declared for the failure panel");
+  assert.equal(declared[2], FIXTURE_MODULE_SPECIFIER, "the diagnostics constant must equal the required literal");
+  // the literal must also resolve, relative to the entry point, to the committed module
+  assert.equal(
+    path.posix.join(path.posix.dirname(FIXTURE_CONSUMER_PATH), FIXTURE_MODULE_SPECIFIER.replace(/^\.\//, "")),
+    FIXTURE_MODULE_PATH,
+    "the literal specifier must address the committed fixture module"
+  );
+
+  // 3. no miniprogram module — the fixture writer least of all — uses a non-literal require
+  const modules = listRuntimeModules(ROOT);
+  assert.equal(modules.length > 0, true, "expected miniprogram modules to scan");
+  const offenders = modules
+    .map((relative) => ({ relative, bad: nonLiteralRequireArguments(read(relative)) }))
+    .filter((entry) => entry.bad.length > 0);
+  assert.deepEqual(offenders, [], "no miniprogram module may use a non-literal require argument");
+  // the generated module contains the words "cannot require() a .json file" in its header comment, so
+  // this also proves comments are stripped rather than mistaken for calls
+  assert.equal(nonLiteralRequireArguments(read(FIXTURE_MODULE_PATH)).length, 0);
+
+  // 4. the checker is not vacuous: it must reject every way the bug can come back
+  const positives = [
+    "var x = require('./v2-fixtures.js');",
+    'var x = require("./v2-fixtures.js");',
+    "var x  =  require ( './a(b)/c.js' );",
+    "// require(specifier) mentioned in prose only\nvar x = require('./ok.js');"
+  ];
+  for (const source of positives) {
+    assert.deepEqual(nonLiteralRequireArguments(source), [], "false positive on: " + JSON.stringify(source));
+  }
+  const negatives = [
+    "var x = require(FIXTURE_MODULE_SPECIFIER);",
+    "var x = require(specifier);",
+    'var x = require("./v2-" + "fixtures.js");',
+    "var x = require('./v2-fixtures.' + 'js');",
+    "var x = require(`./v2-fixtures.js`);",
+    "var x = require(SPECS[0]);",
+    'var x = require(getPath());'
+  ];
+  for (const source of negatives) {
+    assert.equal(
+      nonLiteralRequireArguments(source).length,
+      1,
+      "the checker must reject: " + JSON.stringify(source)
+    );
+  }
+  // and the CLI verifier agrees on a mutated entry point: the real call site is rewritten back to the
+  // variable form that broke the runtime, and the checker must reject it. The mutation is applied at
+  // the call's own offsets, because the file also *documents* the literal in a comment.
+  const call = requireArguments(pageJs)[0];
+  const mutated = pageJs.slice(0, call.start) + "require(FIXTURE_MODULE_SPECIFIER)" + pageJs.slice(call.end);
+  assert.notEqual(mutated, pageJs, "negative control must actually change the source");
+  assert.equal(requireArguments(mutated).length, 1, "the mutation must replace the one real call");
+  assert.equal(requireArguments(mutated)[0].specifier, null);
+  assert.deepEqual(nonLiteralRequireArguments(mutated), ["FIXTURE_MODULE_SPECIFIER"]);
+  assert.equal(checkFixtureRequire(ROOT).ok, true, "the committed page is still clean");
 });
 
 test("UI02R1_fixture: the committed module and JSON are exactly what the real production chain generates", () => {
@@ -499,7 +586,7 @@ test("UI02R1_fixture: a load failure is reported with an explicit stage, not swa
     assert.equal(pageCode.includes('"' + stage + '"'), true, "missing failure stage: " + stage);
   }
   assert.equal(
-    /try\s*\{[\s\S]*?require\(FIXTURE_MODULE_SPECIFIER\)[\s\S]*?catch\s*\(error\)\s*\{[\s\S]*?loadFailureOf\(/.test(pageCode),
+    /try\s*\{[\s\S]*?require\("\.\/v2-fixtures\.js"\)[\s\S]*?catch\s*\(error\)\s*\{[\s\S]*?loadFailureOf\(/.test(pageCode),
     true,
     "the module load must catch and turn the error into a staged failure"
   );

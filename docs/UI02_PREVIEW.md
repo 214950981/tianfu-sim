@@ -56,6 +56,16 @@ node tools/ui02-preview-fixtures.mjs --write        # 重新生成 JSON
 > 现在运行时只加载生成的 `./v2-fixtures.js`（`module.exports = …`），
 > 测试会断言 **JS 模块 payload == 提交的 JSON == 重新调用生成器**，因此不存在第二套数据。
 
+> **第二个必须记住的加载约束：`require` 的参数必须是字符串字面量。**
+> 微信打包器靠**静态分析**源码建立依赖图。`require("./v2-fixtures.js")` 可被分析、依赖会被打进包；
+> 而 `require(FIXTURE_MODULE_SPECIFIER)` 这种**变量形式不能建立依赖**，编译通过但运行时失败：
+> `module '<path>' is not defined, require args is './v2-fixtures.js'`。
+> 这是本页第二次运行时翻车（Node 的模块系统接受计算式 require，所以之前的 Node 测试看不见它）。
+> 因此：`FIXTURE_MODULE_SPECIFIER` **只用于失败面板展示**，永不作为 `require` 参数；
+> 回归测试会**按语法**扫描整个 `miniprogram`，拒绝任何非字面量 require 参数，
+> 并断言该常量与真实字面量一致（防止两者漂移）。`node tools/ui02-preview-fixture-module.mjs`
+> 在校验新鲜度的同时也会执行这项检查。
+
 生成链路全部是生产同款代码（模块写入工具只是调用同一个 `buildPreviewFixtures()`）：
 
 | 环节 | 真实代码 |
@@ -79,7 +89,7 @@ node tools/ui02-preview-fixtures.mjs --write        # 重新生成 JSON
 | 阶段 | `module`（模块加载抛错）/ `shape`（导出结构不对）/ `view`（fixture 中没有该视图） |
 | 代码 | 错误类名（如 `TypeError`）或结构化代码（如 `missing-collections`） |
 | 详情 | 单行、去路径、截断到 160 字符的错误摘要 |
-| 模块 | 尝试加载的模块说明符（`./v2-fixtures.js`） |
+| 模块 | 诊断展示用的字面量 `./v2-fixtures.js`（仅用于展示，不是 `require` 的参数） |
 | 提示 | 重新生成的 CLI 命令 |
 
 面板只渲染阶段/代码/摘要/说明符/提示；**不渲染任何 fixture 内容、原始 state 或环境细节**。
@@ -229,7 +239,7 @@ UI02 负责 HEX、字号、间距、圆角与组件尺寸，token 定义在
 ```bash
 node tools/ui02r1-layout-audit.mjs          # 96 项结构检查 + 6 视口首屏预算表
 node tools/wxss-compat-audit.mjs            # WXSS 语法子集检查（含通配选择器与 border-box）
-node tools/ui02-preview-fixture-module.mjs  # fixture JS 模块与 JSON 是否为最新
+node tools/ui02-preview-fixture-module.mjs  # fixture JS 模块 / JSON 是否最新 + require 字面量合同
 node --test tests/ui02r1.test.mjs           # UI02R1 专项（含两个审计与 fixture 一致性的负向对照）
 node --test tests/ui02.test.mjs             # UI02 视觉语言 / fixture / A12 边界
 node --test tests/viewmodel-ui.test.mjs     # A12 安全边界（必须保持全绿）
@@ -248,11 +258,14 @@ node tools/scan-secrets.mjs
 
 自动测试**不能**替代真机或开发者工具的肉眼验收。请在微信开发者工具中完成：
 
-0. **首先确认编译通过，且预览页进入了 RUN_HOME 而不是失败面板。** UI02R1 曾出现过两次加载
-   问题：`v2-preview.wxss` 因通配选择器 `*` 编译失败（`unexpected token '*'`），以及页面因
-   `require` 一个 `.json` 模块而显示"缺少 v2-fixtures.json"。两者都已修复。若出现任何 WXSS 语法
-   错误，或看到失败面板（阶段 / 代码 / 详情 / 模块 / 提示），请把它当成 UI02R1 的返修项提回，
-   而不是绕过——失败面板是**故意**显示这些信息的，它就是给返修用的。
+0. **首先确认编译通过，且预览页进入了 RUN_HOME 而不是失败面板。** UI02R1 曾出现过三次加载
+   问题：`v2-preview.wxss` 因通配选择器 `*` 编译失败（`unexpected token '*'`）；
+   页面因 `require` 一个 `.json` 模块而显示"缺少 v2-fixtures.json"；
+   以及加载点写成 `require(FIXTURE_MODULE_SPECIFIER)` 变量形式，
+   打包器无法建立依赖，运行时 `module '<path>' is not defined`。三者都已修复。
+   若出现任何 WXSS 语法错误，或看到失败面板（阶段 / 代码 / 详情 / 模块 / 提示），
+   请把它当成 UI02R1 的返修项提回，而不是绕过——失败面板是**故意**显示这些信息的，
+   它就是给返修用的。
 1. 用**自定义编译模式**或设备模拟器，逐个切到上表 6 个视口（320×500 起）。
 2. RUN_HOME：确认**页面完全不能纵向滑动**（手势下拉没有页面位移），
    四个行动块与突破 CTA 全部在首屏内，且没有横向滚动条。

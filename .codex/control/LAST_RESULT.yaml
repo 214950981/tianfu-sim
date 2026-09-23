@@ -151,10 +151,35 @@ summary: >-
   lists, so the digest now fails closed on any unreviewed addition inside a pinned tree while still
   tolerating the three documented DevTools scratch paths.
 
+  Third repair — the loading point was not statically analysable. After the two repairs above the WXSS
+  compiled again, and the manual visual review then failed with
+  "module '<path>' is not defined, require args is './v2-fixtures.js'". Root cause: the load point was
+  written as require(FIXTURE_MODULE_SPECIFIER). The WeChat packager builds the page's dependency graph by
+  STATIC ANALYSIS of the source, so it only bundles a require() whose argument is a plain string
+  literal; a variable argument registers no dependency and dies at runtime. Node's module system accepts
+  a computed require without complaint, which is exactly why the previous suite could not see it — this
+  page has now been caught three times by something only the real compiler or the real runtime could
+  produce.
+
+  The behavioural fix is one line: the load point is now the literal require("./v2-fixtures.js").
+  FIXTURE_MODULE_SPECIFIER keeps exactly one job — labelling the failure panel — and the suite asserts it
+  stays equal to the literal actually required, so a diagnostic can never name a module the page does not
+  load. The guard is deliberately syntactic rather than behavioural: a codeMask-based scanner (comment
+  bodies and string literals are data, not code — which also stops the generated module's own header
+  prose "cannot require() a .json file" from being read as a call) walks every require() in every
+  miniprogram module and rejects any argument that is not a plain string literal, fail-closed on
+  concatenation, template literals and array/function arguments. It runs against the real entry point and
+  all other miniprogram modules, its negative controls rewrite the real call site back to the variable
+  form using offsets returned by the scanner (the file also DOCUMENTS the literal in a comment, so a
+  naive string replace would have mutated the comment instead), and the same verifier is wired into the
+  CLI, so `node tools/ui02-preview-fixture-module.mjs` now checks freshness AND the require contract.
+  The fixture generation chain, the payload and the module contents are untouched: the module is still
+  byte-equal to a fresh generator run and still equal to the committed JSON.
+
 tests:
   - name: ui02r1
     command: node --test tests/ui02r1.test.mjs
-    result: PASS (28/28)
+    result: PASS (29/29)
   - name: ui02r1-layout-audit
     command: node tools/ui02r1-layout-audit.mjs
     result: PASS (96/96 structural checks, exit 0)
@@ -163,7 +188,7 @@ tests:
     result: PASS (14/14 checks, exit 0; 112 selectors, at-rules [media], 6 media bands, 15 border-box boxes matching the 15 derived)
   - name: fixture-module-freshness
     command: node tools/ui02-preview-fixture-module.mjs
-    result: PASS (exit 0; module 78230 bytes and the JSON sibling both reported up to date)
+    result: PASS (exit 0; module 78230 bytes and the JSON sibling both up to date, and the entry point requires "./v2-fixtures.js" with a static literal with no miniprogram module using a non-literal require)
   - name: ui02
     command: node --test tests/ui02.test.mjs
     result: PASS (18/18, UI02 visual language / fixture regeneration / A12 boundaries intact)
@@ -187,7 +212,7 @@ tests:
     result: "PASS (Secret scan: PASS)"
   - name: full-suite
     command: npm test (all 27 registered test files)
-    result: PASS (310/310, 0 fail; 282 before this task, 299 before the WXSS repair, 304 before the fixture repair)
+    result: PASS (311/311, 0 fail; 282 before this task, 299 before the WXSS repair, 304 before the fixture repair, 310 before the literal-require repair)
 
 gates:
   total: 12
@@ -195,8 +220,8 @@ gates:
   failed: 0
   note: >-
     All eight task-required verifications are green, plus the dedicated layout audit, the WXSS
-    compatibility audit, the fixture-module freshness check and the complete npm test suite as
-    regression guards.
+    compatibility audit, the fixture-module freshness + require-contract check and the complete npm
+    test suite as regression guards.
 
 changedFiles:
   - .codex/control/LAST_RESULT.yaml
@@ -263,7 +288,12 @@ changes:
       capped at 160 chars) and carry only stage, error name, sanitized summary, the documented module
       specifier and a CLI hint — never fixture content, raw state or environment detail. A view absent
       from the fixture now reports the view stage plus the fixture's key list instead of rendering a
-      blank page.
+      blank page. REPAIR 3: the load point is now the literal require("./v2-fixtures.js") instead of
+      require(FIXTURE_MODULE_SPECIFIER), because the WeChat packager only registers a dependency for a
+      statically analysable literal argument and the variable form died at runtime with
+      "module '<path>' is not defined". FIXTURE_MODULE_SPECIFIER is retained purely as the failure
+      panel's label and is never an argument to require(); a doc comment states the constraint and warns
+      against "cleaning it up" back into a variable.
   - file: miniprogram/pages/v2-preview/v2-preview.json
     what: "disableScroll set to false -> true so the preview route cannot page-scroll even outside RUN_HOME."
   - file: tools/ui02r1-layout-audit.mjs
@@ -283,7 +313,7 @@ changes:
       compiler, with source overrides for negative controls.
   - file: tests/ui02r1.test.mjs
     what: >-
-      New dedicated suite, now 28 tests: the layout audit green plus fourteen negative controls that
+      New dedicated suite, now 29 tests: the layout audit green plus fourteen negative controls that
       mutate the audited inputs and require the audit to fail; four WXSS compatibility tests including
       a negative control that reintroduces the universal selector, drops the border-box declarations
       and injects an attribute selector, a parameterised pseudo-class, an unsupported at-rule, an
@@ -299,7 +329,14 @@ changes:
       with no fixture value inlined in the page; the module writer imports only the existing generator;
       a load failure produces a staged, sanitized diagnostic and the markup renders it while no
       missing-file wording remains anywhere; and a behavioural test that runs the page's own sanitizer
-      to prove path redaction, whitespace collapsing and the length cap.
+      to prove path redaction, whitespace collapsing and the length cap. REPAIR 3 replaces the
+      substring assertion on the load point with the static-require regression test: exactly one
+      require() in the entry point, its argument a plain string literal equal to the diagnostics
+      constant, that literal resolving to the committed module, and no miniprogram module anywhere
+      using a non-literal require argument — with four positive and seven negative controls proving the
+      checker rejects variables, concatenation, template literals, indexed and called arguments, and a
+      mutation applied at the real call site's offsets (the file documents the literal in a comment, so
+      a naive string replace would have mutated the comment instead of the call).
   - file: docs/UI02_PREVIEW.md
     what: >-
       Documented the one-screen scrolling policy per page state, the supported baseline and the full
@@ -334,13 +371,19 @@ verification:
       proves: >-
         Both audits are green and non-vacuous (14 + 7 negative controls), that the preview fixture the
         page loads is the generated artifact and identical to the JSON and to a fresh generator run,
-        that the load path is the module rather than the JSON, that a load failure is reported with a
+        that the fixture is loaded with a statically analysable literal require and that no miniprogram
+        module uses a non-literal require (syntactic guard with its own positive and negative controls,
+        including one that rewrites the real call site), that a load failure is reported with a
         sanitized staged diagnostic (behaviourally tested by running the page's own sanitizer), and
         byte-equivalence of every out-of-scope tree to the task base.
     - command: node tools/ui02-preview-fixture-module.mjs
-      proves: "The committed fixture module and its JSON sibling are exactly what the real generator produces right now."
+      proves: >-
+        The committed fixture module and its JSON sibling are exactly what the real generator produces
+        right now, AND that the entry point requires "./v2-fixtures.js" with a static literal, that the
+        diagnostics constant equals that literal, and that no miniprogram module uses a non-literal
+        require argument.
     - command: npm test
-      proves: "No regression anywhere else in the repository (304/304)."
+      proves: "No regression anywhere else in the repository (311/311)."
   structuralInference:
     - >-
       The first-screen budget is a box-model computation over the committed token values, not a
@@ -360,6 +403,13 @@ verification:
       here by executing the generator and the module in Node. The page's own behaviour in the WeChat
       sandbox (that require() of the module resolves at runtime) is inferred from module placement and
       the standard CommonJS form; only a DevTools run confirms it.
+    - >-
+      The static-require guard analyses source syntax, not a runtime. It proves the argument is a plain
+      string literal and that the literal resolves to the committed module relative to the page; it
+      cannot execute the WeChat packager, so the packager's acceptance of that call is still inferred.
+      The guard is also fail-closed beyond the bug it was written for: concatenation, template literals
+      and computed arguments are all rejected, even though only the variable form has been observed to
+      fail.
   manualVisualQaRequired:
     status: NOT PERFORMED
     statement: >-
@@ -369,8 +419,8 @@ verification:
       confirm the following in WeChat DevTools / on a real device before UI02R1 is treated as visually
       accepted.
     items:
-      - "Compile once in WeChat DevTools, confirm the WXSS error is gone and no new WXSS syntax error appears, and confirm the preview page enters RUN_HOME rather than the failure panel. This is the authoritative check for both the WXSS subset audit and the fixture load path; neither tool can prove the runtime behaviour."
-      - "If the failure panel does appear, report its 阶段 / 代码 / 详情 / 模块 / 提示 verbatim — it is bounded and sanitized by design, so it contains no secrets and is the intended rework input."
+      - "Compile once in WeChat DevTools, confirm the WXSS error is gone and no new WXSS syntax error appears, and confirm the preview page enters RUN_HOME rather than the failure panel. This is the authoritative check for the WXSS subset audit, the fixture load path and the static require; none of the tools can prove the runtime behaviour."
+      - "If the failure panel does appear, report its 阶段 / 代码 / 详情 / 模块 / 提示 verbatim — it is bounded and sanitized by design, so it contains no secrets and is the intended rework input. If the error is still a module-resolution error, note the exact wording: that distinguishes a packager dependency problem from a genuine throw inside the fixture module."
       - "Open the preview route and confirm RUN_HOME cannot scroll vertically at all (no page displacement on drag)."
       - "Step through 320x500, 360x560, 375x603, 390x750, 414x820 and 430x850 in the device simulator; confirm core status and all four actions are first-screen visible with no horizontal scrollbar, and that removing the blanket border-box reset did not change the expected box heights."
       - "Confirm the four core action blocks and the breakthrough CTA still feel >= 44 CSS px and that text was not shrunk to fit."
@@ -433,7 +483,16 @@ acceptance:
     evidence: "tests/ui02.test.mjs 18/18 and tests/viewmodel-ui.test.mjs 6/6 (ui02 required quarantining the three DevTools-generated files first; see toolingObservations T3)."
   - id: dedicated-ui02r1-tests-and-layout-audit-green
     covered: true
-    evidence: "tests/ui02r1.test.mjs 28/28, tools/ui02r1-layout-audit.mjs 96/96 exit 0, tools/wxss-compat-audit.mjs 14/14 exit 0, tools/ui02-preview-fixture-module.mjs freshness check exit 0."
+    evidence: "tests/ui02r1.test.mjs 29/29, tools/ui02r1-layout-audit.mjs 96/96 exit 0, tools/wxss-compat-audit.mjs 14/14 exit 0, tools/ui02-preview-fixture-module.mjs freshness + require-contract check exit 0."
+  - id: preview-fixture-is-loaded-with-a-statically-analysable-literal-require
+    covered: true
+    evidence: >-
+      Added in the third repair. The entry point's single require() argument is the plain string literal
+      "./v2-fixtures.js"; the diagnostics constant is asserted equal to it and the literal is asserted to
+      resolve to the committed module; a fail-closed scanner rejects any non-literal require argument in
+      any miniprogram module; the checker is proven non-vacuous by four positive and seven negative
+      controls, one of which rewrites the real call site. The same check runs in the CLI. Runtime
+      resolution inside the WeChat packager is still the DevTools step in manualVisualQaRequired.
   - id: LAST_RESULT-distinguishes-automated-structural-proof-from-manual-visual-QA-and-does-not-claim-unperformed-device-testing
     covered: true
     evidence: "verification.automated / structuralInference / manualVisualQaRequired; the manual section is explicitly NOT PERFORMED, records that the DevTools compile was run by the controller/user rather than here, and lists the items a human must still confirm."
@@ -460,11 +519,14 @@ scope:
     miniprogram/pages/v2-preview/*, plus the generated preview fixture module next to it. The post-review
     repairs touched only that page (js/wxml/wxss), the two audit tools, the new fixture-module writer and
     its generated output, the dedicated test file, the preview documentation, package.json and this
-    result file. The fixture generation chain, the server projection, Core/Content and UI03 were not
-    touched: tools/ui02-preview-fixtures.mjs is byte-identical to the base (pinned by digest) and the new
-    writer only calls it. No 600-run simulation was executed. No source-branch push. .gitignore was NOT
-    changed, and the DevTools-rewritten root project.config.json / project.private.config.json were NOT
-    committed.
+    result file. The third repair is narrower still: it changed only the load point inside
+    miniprogram/pages/v2-preview/v2-preview.js, the require-contract verifier in
+    tools/ui02-preview-fixture-module.mjs, the regression test, the documentation and this file. The
+    fixture generation chain, the canonical payload, the generated module's contents, the server
+    projection, Core/Content, the shell intents and UI03 were not touched:
+    tools/ui02-preview-fixtures.mjs is byte-identical to the base (pinned by digest) and the writer only
+    calls it. No 600-run simulation was executed. No source-branch push. .gitignore was NOT changed, and
+    the DevTools-rewritten root project.config.json / project.private.config.json were NOT committed.
 
 toolingObservations:
   - id: T1
@@ -531,6 +593,24 @@ toolingObservations:
       Fixed by emitting the fixture as a generated CommonJS module and adding tests that pin the load
       path, the payload equality and the error reporting. This class of bug is invisible to Node-only
       verification and is exactly why the manual DevTools pass in manualVisualQaRequired is step 0.
+  - id: T5
+    severity: RUNTIME
+    title: the WeChat packager needs a static literal require argument; a variable argument is not a dependency
+    evidence: >-
+      The page loaded the fixture as require(FIXTURE_MODULE_SPECIFIER). It compiled, typechecked and
+      passed every Node test, then failed in DevTools with
+      "module '<path>' is not defined, require args is './v2-fixtures.js'". The packager builds the
+      dependency graph by statically analysing the source, so only a plain string literal registers the
+      module; a variable argument resolves to nothing and the module is never bundled. Node accepts a
+      computed require without complaint, so no Node-based test could observe this — the same structural
+      blind spot as T4, in the same three lines of code.
+    impact: >-
+      Fixed by restoring the literal and adding a syntactic guard (a comment- and string-aware scanner
+      that rejects any non-literal require argument in any miniprogram module), wired into both the test
+      suite and the CLI verifier, with positive and negative controls. The general lesson for this repo:
+      anything that only the WeChat compiler or runtime evaluates (WXSS syntax, module resolution,
+      require analysability) is outside the reach of the automated suite, so each such rule needs either
+      a DevTools pass or a deliberately curated source-level guard with its own negative controls.
 
 blockers: []
 
@@ -550,13 +630,16 @@ backlog:
     severity: BACKLOG
     title: WeChat DevTools scratch output is not gitignored and breaks the pre-existing digest tests
     evidence: >-
-      Observed across two DevTools sessions: miniprogram/pages/game/game.js is re-created every time the
-      project is opened (an empty Page({}) stub that must never be committed because it would shadow the
-      1.0 仙途 page), miniprogram/project.config.json and
+      Observed across three DevTools sessions: miniprogram/pages/game/game.js is re-created every time
+      the project is opened (an empty Page({}) stub that must never be committed because it would shadow
+      the 1.0 仙途 page), miniprogram/project.config.json and
       miniprogram/pages/v2-preview/project.config.json appear, miniprogram/.vscode/launch.json appears,
       and the tracked root project.config.json / project.private.config.json are rewritten.
       tests/ui02.test.mjs hashes directories and therefore fails while they are present;
-      tests/ui02r1.test.mjs now tolerates exactly three of those paths by pinned file list.
+      tests/ui02r1.test.mjs now tolerates exactly three of those paths by pinned file list. The page
+      itself also still fails this session's manual QA for a different reason (see T5), so the
+      quarantine was repeated: miniprogram/pages/game/game.js was moved to the git-excluded
+      .b2base/devtools-artifacts/ with a sha256 manifest and can be copied back verbatim.
     impact: >-
       Every future manual QA session makes the baseline ui02 suite red for environmental reasons unless
       .gitignore is updated or that suite's digest checks are scoped to the base file list.
@@ -584,39 +667,38 @@ backlog:
     suggestedOwner: UI03 or a build-step task
 
 recommendedCommitMessage: |-
-  fix(ui02r1): load the preview fixture as a generated JS module and stop hiding load errors
+  fix(ui02r1): load the fixture with a static literal require the packager can resolve
 
-  The preview page rendered "缺少 v2-fixtures.json" while that file was present and
-  complete. The WeChat runtime cannot require() a .json file, so the page's
-  require("./v2-fixtures.json") threw and the surrounding try/catch discarded the error,
-  re-labelling a module-load failure as a missing data file.
+  Third repair on this page, and the same class of bug as the previous one. After the
+  WXSS and .json fixes, DevTools still failed the manual review with
+  "module '<path>' is not defined, require args is './v2-fixtures.js'": the load point was
+  require(FIXTURE_MODULE_SPECIFIER). The WeChat packager builds the dependency graph by
+  statically analysing the source, so only a plain string literal registers the dependency;
+  a variable argument is never bundled and dies at runtime. Node accepts a computed require,
+  which is why the existing suite could not see it.
 
-  - New generated artifact miniprogram/pages/v2-preview/v2-fixtures.js
-    (module.exports = <payload>) and the writer tools/ui02-preview-fixture-module.mjs
-    that emits it from the existing buildPreviewFixtures(). No second source of truth:
-    the writer imports only node:fs, node:path and tools/ui02-preview-fixtures.mjs, and
-    serializes exactly the same canonical payload as the JSON writer.
-  - tests/ui02r1.test.mjs asserts the committed module, the committed JSON and a fresh
-    generator run are equal, that the module payload is the canonical serialization and
-    loads to the same object, that the page requires the module and never a .json, and
-    that no fixture value is inlined in the page.
-  - Load failures now produce an explicit staged diagnostic (module / shape / view) with
-    a sanitized one-line summary (paths redacted, whitespace collapsed, 160-char cap),
-    the module specifier and a CLI hint — never fixture content, raw state or
-    environment detail. An absent view reports the view stage plus the fixture's key
-    names instead of rendering a blank page; the "missing file" wording is gone.
-  - A behavioural test extracts and runs the page's own sanitizer to prove redaction,
-    collapsing and the cap, rather than trusting a regex over the source.
-  - Base-tree pins upgraded from counts to exact file lists so the digest fails closed
-    on any unreviewed addition while tolerating the three documented DevTools scratch
-    paths. DevTools also rewrote the root project.config.json /
-    project.private.config.json and created miniprogram/.vscode/; none are committed.
+  - The load point is now require("./v2-fixtures.js").
+  - FIXTURE_MODULE_SPECIFIER is retained for the failure panel only, is never an argument to
+    require(), and is asserted equal to the literal actually required so a diagnostic can
+    never name a module the page does not load. A comment states the constraint.
+  - tools/ui02-preview-fixture-module.mjs gains a comment- and string-aware scanner that
+    rejects any non-literal require argument (variables, concatenation, template literals,
+    computed arguments) across every miniprogram module, and the CLI now runs freshness AND
+    that require-contract check.
+  - tests/ui02r1.test.mjs: the substring assertion on the load point is replaced by the
+    static-require regression test — exactly one require() in the entry point, its argument a
+    literal equal to the diagnostics constant, that literal resolving to the committed module,
+    and no non-literal require anywhere in miniprogram — with 4 positive and 7 negative
+    controls, one of which rewrites the real call site using the scanner's offsets (the file
+    documents the literal in a comment, so a naive string replace would have mutated the
+    comment instead of the call).
 
-  No rule, contract, server, shell, controller, Core/Content, legacy 1.0 or route change.
-  Fixture generation chain, server projection and UI03 scope are untouched.
+  Fixture generation chain, canonical payload, generated module contents, server projection,
+  shell intents, Core/Content and UI03 are untouched; the module remains byte-equal to a fresh
+  generator run and to the committed JSON.
 
-  Verification: 310/310 npm test, 28/28 ui02r1, 96/96 layout audit, 14/14 WXSS
-  compatibility audit, fixture-module freshness check green, 18/18 ui02, 6/6
-  viewmodel-ui, typecheck/lint/content-lint/content01-lint/secret-scan green. Manual
-  visual QA in DevTools — starting with "the page enters RUN_HOME, not the failure
-  panel" — is still required and is documented as not performed.
+  Verification: 311/311 npm test, 29/29 ui02r1, 96/96 layout audit, 14/14 WXSS compatibility
+  audit, fixture freshness + require-contract check green, 18/18 ui02, 6/6 viewmodel-ui,
+  typecheck/lint/content-lint/content01-lint/secret-scan green. Manual visual QA in DevTools —
+  starting with "compiles, and the page enters RUN_HOME rather than the failure panel" — is
+  still required and is documented as not performed.
