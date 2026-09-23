@@ -11,7 +11,7 @@ export interface DirectorHints {
 }
 export interface DirectorRules {
   recentWindowSize: number; continuityWindow: number; noveltyWindow: number; firstRunWindowNodes: number;
-  majorSalienceThreshold: number; majorGapNodes: number; randomDangerGapNodes: number;
+  majorSalienceThreshold: number; majorGapNodes: number; randomDangerGapNodes: number; contextualGapScenes: number;
   baseWeightDefault: number; baseWeightMin: number; baseWeightMax: number; actionAffinityBonus: number;
   buildEmergingBonus: number; buildFormedBonus: number; buildRefinedBonus: number; worldAffinityBonus: number;
   recentNpcContinuityBonus: number; continuityOverlapBonus: number; continuityBonusCap: number; topicNoveltyBonus: number;
@@ -52,6 +52,18 @@ function coreNpcRepeatGate(state: GameState, coreActorIds: readonly string[]): b
   const previous = state.run.director.recentScenes.at(-1); if (previous === undefined) return false;
   return coreActorIds.some((id) => previous.actorIds.includes(id));
 }
+// P5 contextual pacing gate (DIRECTOR01). Strict P1-P6 precedence is preserved: this only removes P5
+// candidates from the eligible set, so the selector can fall through to the P6 ordinary fallback at
+// nodes where P4 is also empty. Without it the P5 contextual tier is populated at essentially every
+// node (measured 5205/5205), which permanently shadows P6 and makes the ordinary fallback dead.
+// The gate counts DirectorSceneRecords, not node distance: a P5 candidate is ineligible while any of
+// the last `contextualGapScenes` records was itself a P5 scene. Two later non-P5 scenes therefore
+// reopen P5 on their own. It reads only the existing bounded recentScenes ring - no counter, timer,
+// or new state field - and consumes no RNG.
+function contextualGapGate(state: GameState, rules: DirectorRules): boolean {
+  const window = rules.contextualGapScenes; if (window <= 0) return false;
+  return state.run.director.recentScenes.slice(-window).some((scene) => scene.slot === "P5");
+}
 function riskPreview(state: GameState, event: DirectorEvent, content: DirectorContentAccess, contentVersion: string): "low" | "caution" | "dangerous" | "lethal" { const severity = { low: 0, caution: 1, dangerous: 2, lethal: 3 } as const; let result: keyof typeof severity = "low"; for (const choice of event.choices ?? []) { if (choice.threatId === undefined) continue; if (content.getRisk === undefined) throw new TypeError("Director risk preview requires locked RiskPack"); const preview = buildRiskPresentation(state, threatDefinition(content.getRisk(contentVersion), choice.threatId)); if (severity[preview.tier] > severity[result]) result = preview.tier; } return result; }
 function stageBonus(stage: BuildStage, rules: DirectorRules): number { return stage === "refined" ? rules.buildRefinedBonus : stage === "formed" ? rules.buildFormedBonus : stage === "emerging" ? rules.buildEmergingBonus : 0; }
 function increment(counts: Record<string, number>, reason: string): void { counts[reason] = (counts[reason] ?? 0) + 1; }
@@ -63,6 +75,7 @@ export function scoreDirectorEvent(state: GameState, eventValue: unknown, action
   if (slot === "P2" && !(state.run.director.profileId === "first_run" && state.run.nodeIndex <= rules.firstRunWindowNodes && hints.onboardingEligible === true)) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "not-onboarding" };
   const coreActorIds = matchingActorIds(state, hints.npcRoleAffinityTags, "core"); if (slot === "P4" && coreActorIds.length === 0) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "no-core-npc" };
   if (slot === "P4" && coreNpcRepeatGate(state, coreActorIds)) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "core-npc-repeat-gate" };
+  if (slot === "P5" && contextualGapGate(state, rules)) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "contextual-gap" };
   if ((slot === "P5" || slot === "P6") && hints.salience >= rules.majorSalienceThreshold && recentWithin(state, rules.majorGapNodes, (scene) => scene.salience >= rules.majorSalienceThreshold && scene.slot !== "P3" && scene.slot !== "CONTINUATION")) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "major-gap" };
   if ((slot === "P5" || slot === "P6") && (riskTier === "dangerous" || riskTier === "lethal") && recentWithin(state, rules.randomDangerGapNodes, (scene) => scene.riskTier === "dangerous" || scene.riskTier === "lethal")) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "danger-gap" };
   let weight = hints.baseWeight; const reasons: string[] = [];
