@@ -1,182 +1,386 @@
 version: 1
-taskId: LOOPFIX02C
+taskId: PLAYCHECK02
 attempt: 1
 status: PASS
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-LOOPFIX02C
-baseCommit: c376dc72b1fde1d82e3c66d131a7731a1f2087fc
-baseTreeSha: 549172f153adc21d8c5de2fb098a89c453a3dbaa
+workBranch: wb-PLAYCHECK02
+baseCommit: 5547550e7aeb76f1ca5193fad9d840a6f18203d9
+baseTreeSha: ac168e4393acf068320888f81dced664243c1963
 historyMode: real-ancestry
 sourceHeadVerifiedBy: >-
-  git ls-remote origin refs/heads/dev/tianfu-2.0 resolved to c376dc72b1fde1d82e3c66d131a7731a1f2087fc, the
-  controller's "dispatch LOOPFIX02C P5 contextual pacing repair" commit. The worktree was checked out
-  directly at that commit and git merge-base --is-ancestor e3a0f39f0aa4c2db6b9f586792812fb238cd232a
-  c376dc72b1fde1d82e3c66d131a7731a1f2087fc returned success, so the accepted SIM02 commit is a genuine
-  ancestor and the LOOPFIX02C base has real ancestry. No synthetic tree base was needed despite
-  allowSyntheticTreeBase=true; the tree at base equals 549172f153adc21d8c5de2fb098a89c453a3dbaa.
+  git ls-remote origin refs/heads/dev/tianfu-2.0 resolved to 5547550e7aeb76f1ca5193fad9d840a6f18203d9
+  ("chore: seal LOOPFIX02C and dispatch PLAYCHECK02"), whose parent is 2e09bc2b2c0ff2a494698db3604b79cf1922cb16
+  - my accepted LOOPFIX02C implementer commit. The worktree is checked out directly at that commit and
+  git merge-base --is-ancestor 2e09bc2b2c0ff2a494698db3604b79cf1922cb16 5547550e7aeb76f1ca5193fad9d840a6f18203d9
+  returns success, so the accepted LOOPFIX02C result is a genuine ancestor and this base has real ancestry.
+  No synthetic tree base was used despite allowSyntheticTreeBase=true; the tree at base equals
+  ac168e4393acf068320888f81dced664243c1963.
+
 summary: >-
-  LOOPFIX02C adds one deterministic P5 contextual pacing rule to the Director selector so the P6 ordinary
-  fallback stops being dead code, exactly as the controller decided (strategy deterministic-P5-contextual-gap,
-  contextualGapScenesV1 = 2, which is OPT-B from the SIM02 result). Root cause carried forward from SIM02:
-  selectDirectorEvent iterates its slot list in strict order and returns at the first slot with an eligible
-  candidate while the reducer offers [P4,P5,P6], and the P5 contextual tier was populated at 5205 of 5205
-  action nodes, so P6 was shadowed by precedence rather than scarce. The fix paces P5 eligibility instead of
-  reordering tiers or retuning weights. DirectorRules gains contextualGapScenes (v1 value exactly 2) and
-  scoreDirectorEvent gains one P5-only branch: a P5 candidate is ineligible with exclusionReason
-  'contextual-gap' while any of the last contextualGapScenes DirectorSceneRecords is itself a P5 scene. The
-  gate counts DirectorSceneRecords, not node distance, so two later non-P5 scenes reopen P5 on their own; it
-  reads only the existing bounded recentScenes ring plus the versioned rule, consumes no RNG, and adds no
-  persistent state, counter, or timer. Strict P1-P6 precedence, P4 eligibility, the accepted LOOPFIX02B3
-  same-core-NPC repeat gate, P6 eligibility, all scoring weights and all CONTENT01 content are untouched.
-  The rule is validated as versioned Director content: validateDirectorPack whitelists contextualGapScenes,
-  ranges it as a safe integer, and the frozen-v1 check pins it to exactly 2, so 3 / NaN / -1 / 2.5 / a
-  missing field all throw. One post-change 600-run verification was executed (the only one, as required):
-  6 policies x seeds 0..<100, maxActions 50. P3=1212 P4=14579 P5=5701 P6=4824 and P1=0 P2=1200. P6 went
-  from 0 to 4824 selections and now appears in 583 of 600 runs (max 2 consecutive), while P5 remains the
-  dominant contextual tier at 5701. Independent recomputation from the ordered scene log found 0 P5 gate
-  violations across 5701 P5 selections and 0 P6 selections that fired while the previous two scenes were
-  both P5. The P4 repeat gate still holds at scale: 0 same-core-actor violations across 8851 genuinely
-  consecutive P4->P4 pairs over 27516 observed scenes, with all 600 per-run counters equal to an
-  independent recompute. Cause closure is healthy (origins=1226 eligible=1212 echo=1212 resolved=1212
-  expired=0) with no cause.invalid. runtimeFailures=0 deadlocks=0 AIcalls=0 and two invocations of the
-  required configuration produced byte-identical slot distributions. npm test 264/264 green (was 249;
-  the 15 new tests are registered). No source-branch push and PLAYCHECK02 was not started.
+  PLAYCHECK02 is a verification-only pre-UI playability audit of the accepted LOOPFIX02C rules. No gameplay
+  code was changed. I built a deterministic trace probe that replays the exact content-sim.mjs loop
+  (identical ACTION_PLAN, initial fixture, choose() policy mapping and shouldAttemptBreakthrough() gate) while
+  additionally projecting director scenes, Cause lifecycle, NPC state, Build evidence/transitions, risk
+  conditions and death records per step. The probe was validated against the repository's own simulator before
+  being trusted: 30/30 runs matched exactly on realm, death category, node count and slot distribution
+  ({"P1":0,"P2":60,"P3":57,"P4":708,"P5":286,"P6":256}), 0 mismatches.
+
+  A 30-run sample (6 established policies x seeds 0-4, maxActions 50, include-runs) completed deterministically:
+  two invocations were byte-identical, runtimeFailures=0, deadlocks=0, AI calls=0, and all 6 policies are
+  represented. The 12 fixed representative traces (cautious/aggressive/sword_seeking/body_seeking/
+  alchemy_seeking/fortune_seeking at seeds 0 and 4) were deep-read.
+
+  Verdict: PASS. No reproducible structural playability defect was found. Every acceptance item is satisfied,
+  including both regression guards carried over from LOOPFIX02C: sameCoreNpcConsecutiveP4Count=0 across 708 P4
+  scenes and p5ContextualGapViolations=0 across 286 P5 scenes. Cause is healthy (58 instances, invalid=0,
+  observable dormant->echoed->resolved chains). Risk and death are fully explainable (4/4 deaths carry a
+  RISK01 trace with threat id, outcome tier, rngRoll, effectiveDifficulty, modifier sources and lethal=true,
+  plus 2 populated warningFacts each, resolved only on an explicit player take-risk choice). Progression,
+  Build formation and NPC accumulation are all reachable in representative traces.
+
+  Eight non-blocking observations were recorded as BACKLOG and deliberately left unfixed, per the task's
+  decision rule that only a reproducible structural playability defect blocks UI02:
+  B1 cautious never forms a Build nor creates a Cause in 5/5 runs (all four affinities exactly 0, dom=none,
+  causes=none) because choose() maps cautious to consider and never selects a build-affinity engage option,
+  so the policy produces a structurally flat identity-less life; this is test-harness policy expressiveness,
+  not a rules defect.
+  B2 alchemy_seeking ends both traced runs at spirit-transformation with cultivationFinal=0, and 8 runs sample-
+  wide finish at cultivation 0.
+  B3 progression tracks policy path more than cultivation investment: fortune_seeking reaches the highest
+  realms observed (golden-core x4) with the lowest action count for a surviving policy, while cautious, which
+  maximises cultivation to 10000, only reaches nascent-soul.
+  B4 Cause echo richness is exactly 1 in practice: 57/58 causes finish finalEcho=1 and the starting echoBudget
+  of 2 is never fully consumed, so multi-echo causes are unreachable; a resolved cause additionally keeps
+  re-emitting an identical resolved@node#e1 log line every subsequent node (resolvedTail avg 57.28 entries,
+  max 96), which is correct semantics but semantically noisy bookkeeping.
+  B5 generated NPCs are inert: 173 instances, knownFacts>0 = 0, knownTraits>0 = 0, promotedToA = 0, encounter
+  histogram {1:22, 2:84}, i.e. they cap at 2 encounters and never accumulate knowledge or promote.
+  B6 maxAge is never the terminator: 26/30 runs right-censor at the 50-action harness cap and observed ages
+  span 44-151 against maxAge values of 120-500, so no life ends from its lifespan ceiling.
+  B7 Build stage regression is contract-legal but frequent: 10 regressions (refined->formed, emerging->
+  latent) because build.ref makes stage a derived function of a mutable affinity that "may rise or fall";
+  a design-feel question only, with 0 contract violations.
+  B8 P4 and P5 event sets overlap heavily: 32 of 42 distinct P5 events also appear under P4, which is
+  eligibility-driven by design but reduces slot distinctiveness.
+  One further cosmetic note: warningFacts for a poison or special death carry risk.reason.injury as their
+  second fact. risk.ref does not pin the content of that array, the category fact is correct in every case
+  (risk.category.poison / risk.category.special), and no lethal resolution occurred without a warning, so
+  this is naming verbosity rather than a contract breach.
+
+  Deliberate non-actions respecting scope: no gameplay rule, Director precedence, Director weight or gap,
+  CONTENT01 content, Cause semantic, NPC state machine, recurrence rule, Build/Risk/Progression number, new
+  RNG, new persistent state or UI02 work was touched; the 600-run suite was not rerun; no report-only
+  instrumentation was needed because every acceptance observation was reachable from the existing trace
+  surface.
+
 changedFiles:
-  - packages/core/src/director.ts
-  - packages/content/src/director-v1.ts
-  - .codex/contracts/director.ref
-  - tests/director.test.mjs
-  - tests/loopfix02c.test.mjs
-  - package.json
   - .codex/control/LAST_RESULT.yaml
-changes:
-  packages/core/src/director.ts:
-    - "DirectorRules gains contextualGapScenes: number (declared directly after randomDangerGapNodes)."
-    - "Added function contextualGapGate(state, rules): returns true when state.run.director.recentScenes.slice(-rules.contextualGapScenes) contains a record with slot === 'P5'; returns false when the window is <= 0. Pure read; no RNG, no state write."
-    - "scoreDirectorEvent: added one branch immediately after the existing core-npc-repeat-gate branch, so P4 semantics are untouched: if (slot === \"P5\" && contextualGapGate(state, rules)) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: \"contextual-gap\" };"
-    - "No other line of the selector, scorer, or index mapping changed; no weight or precedence constant was edited."
-  packages/content/src/director-v1.ts:
-    - "validateDirectorPack: 'contextualGapScenes' added to the exact() rule-key whitelist and to the integer() range loop."
-    - "validateDirectorPack: the frozen-v1 equality check extended to '|| rules.contextualGapScenes !== 2' with the existing 'v1 pacing constants are frozen' message."
-    - "DIRECTOR_V1.rules: added contextualGapScenes: 2."
-  .codex/contracts/director.ref:
-    - "Appended one paragraph documenting the P5 contextual-gap gate: it counts DirectorSceneRecords rather than node distance, exists because the P5 tier is otherwise populated at essentially every action node, reads only the bounded recentScenes ring, changes P5 candidate eligibility only, and adds no state, counter, timer or RNG draw. v1 value contextualGapScenes = 2."
-  tests/director.test.mjs:
-    - "5 seed-slot corrections only (P5 -> P6), 5 lines changed. Five pre-existing tests seeded a P5 DirectorSceneRecord and then scored a P5 candidate to assert scoring behaviour; the new P5 gate now correctly short-circuits that path before scoring, so the seeds were changed to P6 to keep each test exercising the scorer rather than the gate. Asserted behaviour is unchanged (T17 continuity 4 / weight 180, T21 major-gap, T22 danger-gap all still observed)."
-  tests/loopfix02c.test.mjs:
-    - "New 15-test suite C-A..C-O covering rule presence/value 2, versioned validation and the frozen-v1 pin (3 / NaN / -1 / 2.5 / missing all rejected), gate on 1 and 2 trailing P5 records, reopening after exactly two non-P5 scenes, P5-only scope (P4 and P6 never report contextual-gap), zero RNG consumption and zero state-shape growth, strict precedence preservation including P2 winning on first-run and P6 fallthrough, P6 selection when P4 is empty and P5 is gated, P5 not being blanket suppressed, an alternating 40-step sequence proving P6 is no longer starved, P4 eligibility equivalence with and without a trailing P5 record, a 23-key deep-equal of the frozen rule table, determinism and order-independence, absence of new persistent state, and a source-level assertion that the gate reads rules.contextualGapScenes and recentScenes, inspects slot === 'P5', consumes no RNG, and is wired as slot === \"P5\" && contextualGapGate(state, rules)."
-  package.json:
-    - "Added script test:loopfix02c and appended tests/loopfix02c.test.mjs to the aggregate test file list."
-verification:
-  requiredRun: { command: "node --experimental-strip-types tools/content-sim.mjs --runs 100 --include-runs", runs: 600, policies: 6, seeds: "0..<100", maxActions: 50, count: 1 }
-  determinism: { repeatInvocations: 2, byteIdenticalSlotDistribution: true, value: {"P1":0,"P2":1200,"P3":1212,"P4":14579,"P5":5701,"P6":4824} }
+
+tests:
+  - name: sim02
+    command: node --test tests/content-sim.test.mjs
+    result: PASS (8/8)
+  - name: content01
+    command: node --test tests/content01.test.mjs
+    result: PASS (32/32)
+  - name: director
+    command: node --test tests/director.test.mjs
+    result: PASS (47/47)
+  - name: loopfix02c
+    command: node --test tests/loopfix02c.test.mjs
+    result: PASS (15/15)
+  - name: loopfix02b3
+    command: node --test tests/loopfix02b3.test.mjs
+    result: PASS (19/19)
+  - name: loopfix02b2
+    command: node --test tests/loopfix02b2.test.mjs
+    result: PASS (13/13)
+  - name: recurrence
+    command: node --test tests/recurrence.test.mjs
+    result: PASS (18/18)
+  - name: reducer
+    command: node --test tests/reducer.test.mjs
+    result: PASS (10/10)
+  - name: state
+    command: node --test tests/state.test.mjs
+    result: PASS (5/5)
+  - name: replay
+    command: node --test tests/replay.test.mjs
+    result: PASS (6/6)
+  - name: content-playability-audit
+    command: node tools/content-playability-audit.mjs
+    result: PASS (exit 0, AIorNetworkDependencies 0)
+  - name: director-audit
+    command: node tools/director-audit.mjs
+    result: PASS (exit 0, securityViolations 0)
+  - name: recurrence-audit
+    command: node tools/recurrence-audit.mjs
+    result: PASS (exit 0, contentIdHardcodingViolations 0)
+  - name: participant-bridge-audit
+    command: node tools/participant-bridge-audit.mjs
+    result: PASS (exit 0, directorSideEffectViolations 0)
+  - name: npc-audit
+    command: node tools/npc-audit.mjs
+    result: PASS (exit 0, fullNpcTickViolations 0)
+  - name: build-audit
+    command: node tools/build-audit.mjs
+    result: PASS (exit 0, securityViolations 0)
+  - name: risk-audit
+    command: node tools/risk-audit.mjs
+    result: PASS (exit 0, securityViolations 0)
+  - name: typecheck
+    command: npx tsc --noEmit
+    result: PASS (exit 0, no diagnostics)
+  - name: lint
+    command: node tools/check-import-boundaries.mjs
+    result: PASS (Core import boundary: PASS)
+  - name: content-lint
+    command: node tools/content-lint.mjs packages/content/dev-fixtures/minimal-pack.json
+    result: PASS (Content lint: PASS, 1 pack)
+  - name: content01-lint
+    command: node tools/content01-lint.mjs
+    result: PASS (exit 0, npcArchetypes 8)
+  - name: secret-scan
+    command: node tools/scan-secrets.mjs
+    result: PASS (Secret scan: PASS)
+
+gates:
+  total: 22
+  green: 22
+  failed: 0
+  note: >-
+    All 22 tests and audits named in the PLAYCHECK02 task contract are green. A full npm test run was
+    deliberately not executed: no gameplay code or test file was modified in this task (the only changed file
+    is .codex/control/LAST_RESULT.yaml), and NEXT_TASK explicitly scopes the full suite out unless report
+    instrumentation is added, which was not needed.
+
+sample:
+  mode: lightweight-pre-UI
+  runs: 30
+  policies: [cautious, aggressive, sword_seeking, body_seeking, alchemy_seeking, fortune_seeking]
+  seeds: [0, 1, 2, 3, 4]
+  maxActions: 50
+  includeRuns: true
+  deterministic: true
+  deterministicEvidence: two invocations produced byte-identical trace output
   runtimeFailures: 0
   deadlocks: 0
-  AIcalls: 0
-  directorSlotDistributionReported: {"P1":0,"P2":1200,"P3":1212,"P4":14579,"P5":5701,"P6":4824}
-  directorSlotDistributionRecomputed: {"P1":0,"P2":1200,"P3":1212,"P4":14579,"P5":5701,"P6":4824}
-  reportedAgreesWithRecomputed: true
-  runsWithAtLeastOneP3: 489
-  runsWithAtLeastOneP4: 590
-  runsWithAtLeastOneP5: 600
-  runsWithAtLeastOneP6: 583
-  maxConsecutiveP6ScenesInARun: 2
-  p6Before: 0
-  p6After: 4824
-  p5Before: 7133
-  p5After: 5701
-  p4Before: 17371
-  p4After: 14579
-  p5GateAudit: { observedP5Selections: 5701, p5SelectedWithP5InPreviousTwoScenes: 0, observedP6Selections: 4824, p6SelectedWithPreviousTwoBothP5: 0 }
-  sceneObservations: 27516
-  consecutiveP4Pairs: 8851
-  sameCoreNpcConsecutiveP4Violations: 0
-  telemetryCrossCheck: "PASS (all 600 per-run counters equal independent recomputation)"
-  cause: { origins: 1226, eligible: 1212, echo: 1212, resolved: 1212, expired: 0, transformed: 0 }
-  causeInvalidMarkers: 0
-  endReasonDistribution: {"death":80,"lifespan":0,"ending":0,"right_censored":520,"other":0}
-  deathCauseDistribution: {"death.injury":36,"death.poison":10,"death.special":8,"death.combat":8,"death.exploration":16,"death.curse":1,"death.cause":1}
-  repeatViolations: 0
-  uniqueEventsSeen: 63
-tests:
-  test:loopfix02c: { run: true, files: 1, pass: 15, fail: 0 }
-  test:director01: { run: true, pass: 47, fail: 0 }
-  test:sim02: { run: true, pass: 8, fail: 0 }
-  test:a05_reducer: { run: true, pass: 10, fail: 0 }
-  test:a03_state: { run: true, pass: 5, fail: 0 }
-  test:a10_replay: { run: true, pass: 6, fail: 0 }
-  test:a06_content-registry: { run: true, pass: 7, fail: 0 }
-  test:content01: { run: true, pass: 32, fail: 0 }
-  test:loopfix02b3: { run: true, pass: 19, fail: 0 }
-  test:loopfix02b2: { run: true, pass: 13, fail: 0 }
-  test:loopfix02b1: { run: true, pass: 13, fail: 0 }
-  test:loopfix02a_recurrence: { run: true, pass: 18, fail: 0 }
-  npm_test_aggregate: { run: true, tests: 264, pass: 264, fail: 0 }
-gates:
-  typecheck: { run: true, result: PASS, detail: "npx tsc --noEmit exit 0" }
-  lint: { run: true, result: PASS, detail: "tools/check-import-boundaries.mjs: Core import boundary PASS" }
-  content:lint: { run: true, result: PASS, detail: "tools/content-lint.mjs: PASS (1 pack)" }
-  content01:lint: { run: true, result: PASS }
-  scan:secrets: { run: true, result: PASS }
-  director-audit: { run: true, result: PASS, detail: "determinismFailures 0, replayFailures 0, securityViolations 0" }
-  recurrence-audit: { run: true, result: PASS, detail: "directorPrecedenceDrift 0, lifecycleNumberingDrift 0, contentIdHardcodingViolations 0" }
-  participant-bridge-audit: { run: true, result: PASS, detail: "causeActorBindingFailures 0, knowledgeLeakViolations 0, directorSideEffectViolations 0" }
-  npc-audit: { run: true, result: PASS, detail: "relationViolations 0, milestoneViolations 0, fullNpcTickViolations 0" }
-  build-audit: { run: true, result: PASS, detail: "determinismFailures 0, replayFailures 0, securityViolations 0" }
-  risk-audit: { run: true, result: PASS, detail: "deathRecordViolations 0, determinismFailures 0, securityViolations 0" }
-  content-playability-audit: { run: true, result: PASS, detail: "AIorNetworkDependencies 0" }
-  context-loader: { run: true, result: PASS, detail: "node .codex/context.mjs LOOPFIX02C exit 0" }
+  aiCalls: 0
+  probeValidatedAgainstRepoSimulator: 30/30 runs matched, 0 mismatches
+  slotDistribution: {P1: 0, P2: 60, P3: 57, P4: 708, P5: 286, P6: 256}
+  runsContainingSlot: {P3: 24, P4: 29, P5: 30, P6: 30}
+  note: >-
+    P1 is structurally impossible rather than missing: director.ref types DirectorSlot as
+    'P2'|'P3'|'P4'|'P5'|'P6'|'CONTINUATION', so no P1 record can exist. P3 appears in 24/30 runs and P4/P5/P6
+    in 29-30/30; every slot is observed at sample level, satisfying the acceptance criterion for slot
+    coverage. The 6 runs without a P3 are aggressive/1 (died at node 24 before any echo could land) and all
+    five cautious runs (see backlog B1).
+
 acceptance:
-  context-loader-parses-all-task-definitions-cleanly: { result: PASS, evidence: "node .codex/context.mjs LOOPFIX02C exits 0 after the controller's 5989381 task-schema repair; the previous MALFORMED_TASK on LOOPFIX02B3.yaml:15 (unknown field design) no longer reproduces because it was fixed upstream." }
-  contextualGapScenes-added-as-versioned-director-rule: { result: PASS, evidence: "DirectorRules.contextualGapScenes declared in packages/core/src/director.ts; DIRECTOR_V1.rules.contextualGapScenes === 2 and is read at runtime from the dev/registry pack, not inlined in core." }
-  contextualGapScenes-v1-value-exactly-2: { result: PASS, evidence: "validateDirectorPack accepts 2 and rejects 3 (frozen check), Number.NaN, -1, 2.5 (integer range) and a deleted field (exact whitelist). Proven in tests/loopfix02c.test.mjs C-B." }
-  P5-candidate-ineligible-when-recent-contextual-scene: { result: PASS, evidence: "scoreDirectorEvent returns exclusionReason 'contextual-gap' for a P5 candidate whenever any of the last 2 DirectorSceneRecords has slot P5; C-C covers 1 and 2 trailing P5 records and a P5-only ring, C-D confirms reopening after exactly 2 non-P5 scenes and that 1 is not enough. At scale: 0 violations across 5701 P5 selections in 600 runs." }
-  exclusionReason-contextual-gap-exposed: { result: PASS, evidence: "The new branch returns exclusionReason: 'contextual-gap', which flows into trace.exclusionReasonCounts; C-H asserts a non-zero count at a real P6-selecting call site." }
-  gate-reads-only-bounded-recentScenes: { result: PASS, evidence: "contextualGapGate's body reads state.run.director.recentScenes and rules.contextualGapScenes only; no other state field is referenced. C-O asserts the source text, C-N asserts no new state field." }
-  no-persistent-state-counter-timer-added: { result: PASS, evidence: "Object.keys(state.run.director) is exactly ['profileId','recentScenes'] before and after; JSON.stringify(state) contains no 'contextualGap' substring, so the rule value is never persisted into RuleState. C-N and C-F both assert this." }
-  no-rng-consumed-by-gate: { result: PASS, evidence: "The gate body contains no drawInt/drawBps/drawUint32/seedStream call; a fully gated tier reports trace.logicalRngRequests === 0 and state.run.rng deep-equals the pre-call value. C-F." }
-  strict-P1-P6-precedence-preserved: { result: PASS, evidence: "selectDirectorEvent still returns at the first slot with >=1 eligible candidate; P2 still wins when the run is first-run inside the window (profileId 'first_run', selectedPrecedenceLevel 'P2'); P6 is chosen only when P4 and P5 are both empty and is never promoted above a live P4. C-G." }
-  P4-eligibility-and-repeat-gate-unchanged: { result: PASS, evidence: "coreNpcRepeatGate is byte-identical and still returns 'core-npc-repeat-gate'; the new branch is wired to slot === 'P5' only, so a trailing P5 record cannot clear or trigger it. C-K asserts a P4 candidate's eligible/weight/reasons are identical with and without a trailing P5 record. At scale 0 same-core violations across 8851 consecutive P4->P4 pairs." }
-  P6-eligibility-unchanged: { result: PASS, evidence: "No P6 candidate in the 'ordinary' slice ever reports 'contextual-gap' (C-E enumerates the whole slice), and no P6 rule, weight, or index mapping was touched." }
-  P6-observed-at-least-once-after-fix: { result: PASS, evidence: "P6 selected 4824 times in the single required 600-run verification, appearing in 583 of 600 runs (max 2 consecutive). This was 0 in SIM02's identical configuration." }
-  P3-P4-P5-P6-reachability-counts-reported: { result: PASS, evidence: "Reported and independently recomputed slot distribution agree exactly: P1=0 P2=1200 P3=1212 P4=14579 P5=5701 P6=4824." }
-  no-collateral-rule-weight-or-content-change: { result: PASS, evidence: "The director rule table deep-equals the frozen 23-key v1 table (the only difference from LOOPFIX02B3 being the one added contextualGapScenes key); no precedence constant, weight, CONTENT01 classification, cooldown, Cause semantic, NPC state machine, recurrence rule, or Build/Risk/Progression value was changed. C-L pins this, and the recurrence/director/participant-bridge audits all report 0 drift." }
-  deterministic-600-run-verification: { result: PASS, evidence: "Two invocations of the required configuration produced byte-identical slot distributions and byte-identical recomputed counts; ruleStateHash equality is asserted in C-M. runtimeFailures 0, deadlocks 0, AIcalls 0." }
+  - id: source-base-is-accepted-loopfix02c-result
+    status: PASS
+    evidence: >-
+      baseCommit 5547550e7aeb76f1ca5193fad9d840a6f18203d9 is directly parented by 2e09bc2b2c0ff2a494698db3604b79cf1922cb16,
+      my accepted LOOPFIX02C implementer commit; merge-base --is-ancestor confirms real ancestry.
+  - id: 30-run-sample-completes-deterministically-with-zero-runtime-failures-deadlocks-and-ai-calls
+    status: PASS
+    evidence: runtimeFailures=0, deadlocks=0, aiCalls=0, two invocations byte-identical.
+  - id: all-6-established-policies-are-represented
+    status: PASS
+    evidence: cautious/aggressive/sword_seeking/body_seeking/alchemy_seeking/fortune_seeking, 5 seeds each.
+  - id: 12-fixed-traces-are-reviewed-and-summarized
+    status: PASS
+    evidence: >-
+      seeds 0 and 4 for each of the 6 policies were deep-read field by field (slots, realm chain,
+      cultivation/foundation, Build dominant + affinities, Cause chain states, core-NPC encounters/affinity,
+      generated-NPC count, death record, conditions) and summarized in the findings above.
+  - id: P3-P4-P5-P6-are-all-observed-in-the-sample
+    status: PASS
+    evidence: >-
+      P3 57 records / 7 distinct events, P4 708 / 12, P5 286 / 42, P6 256 / 12. P6 ordinary scenes
+      (tea-house, night-rain, broken-bridge, ferry-wait, market-bargain, missed-letter, mountain-view,
+      old-song, roadside-debate, shared-fire, harvest-help, empty-search) appear naturally in every
+      50-action run.
+  - id: no-same-core-npc-consecutive-P4-regression
+    status: PASS
+    evidence: >-
+      sameCoreNpcConsecutiveP4Count=0 across 708 P4 scene records in the 30-run sample; the accepted
+      LOOPFIX02B3 coreNpcRepeatGate holds.
+  - id: ordinary-P6-scenes-appear-naturally-in-representative-traces
+    status: PASS
+    evidence: >-
+      256 P6 selections; every surviving run contains P6, e.g. fortune_seeking/4 has 18 P6 scenes and
+      cautious/2 has 20. This is the LOOPFIX02C repair holding in the lightweight sample.
+  - id: at-least-one-real-cause-origin-to-echo-to-terminal-closure-chain-observed-without-cause-invalid
+    status: PASS
+    evidence: >-
+      58 Cause instances, cause.invalid=0. Observable chain in aggressive/0: dormant@6 -> echoed@7#e1 ->
+      resolved@8#e1 for content01.cause.broken-sword-promise, driven by a real P3 echo scene
+      content01.pei.promise-echo at node 7 bound to the same causeId. 57/58 causes reach finalState=resolved.
+  - id: player-choice-effects-remain-visible
+    status: PASS
+    evidence: >-
+      Across 2847 recorded steps: 1719 carry a meaningful delta, 1367 are explicit option choices, 788 change
+      cultivation, 765 change spiritStone, 814 change foundation, 660 change NPC state, 394 add Build
+      evidence, 100 add Build transitions, 172 touch Cause state, 20 apply a condition. Deaths resolve only on
+      the player's take-risk option.
+  - id: progression-and-breakthrough-remain-reachable
+    status: PASS
+    evidence: >-
+      realmAtEnd spans mortal(2), qi-refining(2), foundation-establishment(2), golden-core(4),
+      nascent-soul(12), spirit-transformation(8); cultivationFinal reaches 10000 in 8 runs; foundationFinal
+      spans 1953-8368. The repo simulator on the same seeds independently reports breakthrough
+      attempts=113, successes=106, greatSuccesses=68, failures=7.
+  - id: risk-and-death-outcomes-have-explainable-records
+    status: PASS
+    evidence: >-
+      9 risk-condition records all visibility=explicit (old-injury x5, tribulation-mark x2, poison x2,
+      severity 1-3). All 4 deaths carry a full RISK01 trace with threatId, outcomeTier=failure, rngRoll,
+      effectiveDifficulty, modifierSources and lethal=true, plus 2 populated warningFacts and a matching
+      ending object, and each resolved on an explicitly warned take-risk choice.
+  - id: no-recurrence-or-repeat-safe-regression-observed
+    status: PASS
+    evidence: >-
+      recurrence suite 18/18 and recurrence-audit contentIdHardcodingViolations=0; no repeated-scene
+      pathology appeared in any of the 12 traced lives.
+  - id: no-structural-playability-blocker-remains-before-UI02
+    status: PASS
+    evidence: >-
+      No reproducible structural playability defect found. All 8 observations are backlog-grade: they are
+      policy expressiveness, bookkeeping verbosity, balance asymmetry or design-feel questions, none of which
+      prevents a player from playing a complete and meaningful life.
+  - id: non-blocking-findings-recorded-as-backlog-not-fixed-in-scope
+    status: PASS
+    evidence: 8 BACKLOG entries recorded above; no gameplay file was modified.
+  - id: no-gameplay-code-change
+    status: PASS
+    evidence: >-
+      git status --short shows no tracked-file modification; git diff --stat is empty. All analysis artifacts
+      live in the git-excluded .b2base/ scratch directory. changedFiles contains only
+      .codex/control/LAST_RESULT.yaml.
+  - id: targeted-tests-and-playability-audits-green
+    status: PASS
+    evidence: 22/22 green (see tests and gates).
+
 scope:
-  coreChanged: true
-  coreChangeLimitedToSingleP5EligibilityBranch: true
-  contractsChanged: true
-  contractsChangeLimitedToDirectorRefP5Paragraph: true
-  directorPrecedenceChanged: false
-  directorWeightsChanged: false
-  directorWeightFormulaChanged: false
-  p6PromotionOrRandomBypass: false
-  content01EventReclassification: false
-  content01CooldownRebalance: false
-  causeSemanticsChanged: false
-  npcStateMachineChanged: false
-  recurrenceRulesChanged: false
-  newRngIntroduced: false
-  newPersistentStateAdded: false
-  buildRiskProgressionNumbersChanged: false
-  sim02InstrumentationPreserved: true
-  playcheck02Started: false
-  uiItemTechSectWorldChalTouched: false
-  sourceBranchPushed: false
+  coreChanged: false
+  contractsChanged: false
+  directorChanged: false
+  contentChanged: false
+  testsChanged: false
+  uiChanged: false
+  note: >-
+    Verification-only. No gameplay rule, Director precedence, Director weight or gap, CONTENT01 content,
+    Cause semantic, NPC state machine, recurrence rule, Build/Risk/Progression number, new RNG, new
+    persistent state, UI02, ITEM01, TECH01, SECT01, WORLD01 or CHAL01 work was performed. The 600-run
+    simulation was not rerun and the source branch was not pushed.
+
 blockers: []
+
+backlog:
+  - id: B1
+    severity: BACKLOG
+    title: cautious never forms a Build and never creates a Cause
+    evidence: >-
+      All 5 cautious runs show dominantBuildId=none with all four build affinities exactly 0 and causes=none;
+      cautious/0 and cautious/4 also have P3=0. choose() maps cautious to consider and the cautious
+      ACTION_PLAN is [cultivate, worldly], so no build-affinity engage option is ever selected.
+    impact: A legal, apparently reasonable policy produces a structurally flat identity-less life.
+    suggestedOwner: PLAYBACK or a policy/test-harness task
+  - id: B2
+    severity: BACKLOG
+    title: cultivation resource reads 0 at high realm for some policies
+    evidence: alchemy_seeking/0 and alchemy_seeking/4 both end spirit-transformation with cultivationFinal=0; 8 runs sample-wide finish at cultivation 0.
+    impact: Cultivation progress stops being visible exactly where it matters most.
+    suggestedOwner: PROGRESSION tuning task
+  - id: B3
+    severity: BACKLOG
+    title: progression tracks policy path more than cultivation investment
+    evidence: >-
+      fortune_seeking reaches the highest realms observed (golden-core x4) with the lowest action count of
+      any surviving policy (avgActions 50 but maxAge 114), while cautious maximises cultivation to 10000 and
+      only reaches nascent-soul.
+    impact: Investment in cultivation does not read as the main driver of realm advance.
+    suggestedOwner: balance task
+  - id: B4
+    severity: BACKLOG
+    title: Cause echo richness is always exactly 1 and resolved causes keep re-logging
+    evidence: >-
+      57/58 causes finish finalEcho=1; echoBudget starts at 2 but is consumed to 1; resolvedTail has 57
+      entries with average 57.28 and max 96 identical resolved@node#e1 log lines per cause.
+    impact: Multi-echo causes are unreachable and Cause bookkeeping is dominated by no-op log growth.
+    suggestedOwner: CAUSE02 or a Cause verbosity task
+  - id: B5
+    severity: BACKLOG
+    title: generated NPCs are inert
+    evidence: >-
+      173 instances, knownFacts>0=0, knownTraits>0=0, promotedToA=0, encounter histogram {1:22, 2:84}.
+    impact: Generated NPCs never grow beyond a shallow two-encounter acquaintance.
+    suggestedOwner: NPC02
+  - id: B6
+    severity: BACKLOG
+    title: maxAge is never the terminator
+    evidence: >-
+      26/30 runs right-censor at the 50-action harness cap; observed ages span 44-151 against maxAge values
+      of 120-500. No run ended from lifespan.
+    impact: Lifespan is currently a ceiling that never binds, so the end of a life is never authored by the rules.
+    suggestedOwner: a lifespan/ending task
+  - id: B7
+    severity: BACKLOG
+    title: Build stage regression is contract-legal but frequent
+    evidence: >-
+      10 regressions observed (refined->formed, emerging->latent). build.ref states affinity "may rise or
+      fall" and stage is derived and never stored, so this is legal; 0 contract violations.
+    impact: A player can watch their Build visually regress a stage, which may read as a loss of progress.
+    suggestedOwner: design-feel review
+  - id: B8
+    severity: BACKLOG
+    title: P4 and P5 event sets overlap heavily
+    evidence: 32 of 42 distinct P5 events also appear under P4 (e.g. content01.cen.*, jiang.*, build.*, onboarding.*).
+    impact: Slot distinctiveness between core-NPC and contextual scenes is low.
+    suggestedOwner: CONTENT02 authoring
+  - id: B9
+    severity: BACKLOG
+    title: generic reason id reused across death categories in warningFacts
+    evidence: >-
+      aggressive/1 (poison) and aggressive/3 (special) both carry risk.reason.injury as the second
+      warningFact. risk.ref does not pin the array content and the category fact is correct in every case.
+    impact: Cosmetic naming verbosity only; no lethal resolution occurred without a warning.
+    suggestedOwner: RISK02 polish
+
 toolingObservations:
-  - id: TIMEOUT-BINARY-MISMATCH
-    severity: P2
-    detail: >-
-      The Windows timeout binary on PATH is the native Windows tool and rejects the coreutils form
-      (timeout 150 node ...) with "错误: 无效语法。默认选项不允许超过 '1' 次。". Any harness that shells out to
-      timeout will silently misbehave. Use spawnSync(..., { timeout }) from Node instead. Recorded for the
-      controller's harness conventions; not a task defect.
   - id: TSC-NOT-LOCAL-DEP
-    severity: P2
+    severity: info
     detail: >-
-      node node_modules/typescript/bin/tsc fails with MODULE_NOT_FOUND because typescript is not a local
-      dependency of this workspace; the typecheck gate only resolves via the tsc on PATH. Use
-      npx tsc --noEmit (exit 0 here). Recorded because a fresh agent will otherwise misreport the
-      typecheck gate as failing.
-recommendedCommitMessage: "LOOPFIX02C: add deterministic P5 contextual-gap pacing (contextualGapScenes=2) so the P6 ordinary fallback is reachable; P6 0 -> 4824 selections across the required 600 runs (583/600 runs), 0 gate violations, 0 same-core P4 violations across 8851 consecutive pairs"
+      tsc is not a local dependency, so typecheck must run as npx tsc --noEmit rather than
+      node node_modules/typescript/bin/tsc. Carried forward from LOOPFIX02C.
+  - id: TIMEOUT-BINARY-MISMATCH
+    severity: info
+    detail: >-
+      Windows timeout is not coreutils, so time-boxed commands must use spawnSync timeout rather than the
+      timeout binary. Carried forward from LOOPFIX02C.
+  - id: SHELL-UTILS-UNAVAILABLE
+    severity: info
+    detail: >-
+      In this sandbox bash cannot resolve dirname/ls/grep/head/tail, so node -e is used as the shell and
+      tsx is unavailable in favour of node --experimental-strip-types.
+
+recommendedCommitMessage: |-
+  chore(playcheck02): record lightweight pre-UI playability verification as PASS
+
+  Verification-only audit of the accepted LOOPFIX02C rules. No gameplay code changed.
+
+  - Validated a deterministic trace probe against the repo simulator: 30/30 runs, 0 mismatches.
+  - 30-run sample (6 policies x seeds 0-4, maxActions 50): deterministic, runtimeFailures 0,
+    deadlocks 0, AI calls 0; slots {P2:60, P3:57, P4:708, P5:286, P6:256}.
+  - Deep-read the 12 fixed representative traces (seeds 0 and 4 for all 6 policies).
+  - Regression guards hold: sameCoreNpcConsecutiveP4Count 0 (708 P4 scenes),
+    p5ContextualGapViolations 0 (286 P5 scenes).
+  - Cause healthy: 58 instances, invalid 0, observable dormant->echoed->resolved chains with real P3 echoes.
+  - Death explainable: 4/4 with full RISK01 trace, warningFacts and player take-risk attribution.
+  - 22/22 named tests and audits green.
+  - 8 BACKLOG observations recorded (no Build/Cause for cautious, cultivation reads 0 at high realm,
+    path-driven progression, single-echo causes plus redundant resolved logging, inert generated NPCs,
+    maxAge never binding, legal-but-frequent stage regression, P4/P5 event overlap).
+
+  Status: PASS. No reproducible structural playability blocker remains before UI02.
