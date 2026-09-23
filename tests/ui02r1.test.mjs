@@ -25,6 +25,13 @@ import {
   resolveTokens,
   rpxToPx
 } from "../tools/ui02r1-layout-audit.mjs";
+import {
+  BORDER_BOX_CANDIDATES,
+  COMPAT_TARGETS,
+  SUPPORTED_AT_RULES,
+  auditWxssCompat,
+  selectorIsSupported
+} from "../tools/wxss-compat-audit.mjs";
 
 const ROOT = path.resolve(new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
 const read = (relative) => fs.readFileSync(path.join(ROOT, relative), "utf8");
@@ -35,24 +42,40 @@ const readJson = (relative) => JSON.parse(read(relative));
  *
  * They pin, without needing git at test time, that this presentation-only task touched nothing but
  * the 2.0 dev preview surface. A later task that is legitimately allowed to change one of these trees
- * must update the digest on purpose.
+ * must update the digest and the file count on purpose.
+ *
+ * `files` is the base file count: it makes the digest non-forgeable by deletion/addition, because the
+ * hashed set must have exactly that cardinality after DEVTOOLS_ARTIFACTS is excluded.
  */
-const BASE_TREE_DIGESTS = {
-  "miniprogram/pages/start": "60e0cc693eb8849d74a23b56cca97b7a154e18ad2167013109efb534f1dfbcba",
-  "miniprogram/pages/game": "c04c015e9ea8e37c3ea9d817377cf010a07e618a35d7b84a00f61b816d991cfe",
-  "miniprogram/pages/rank": "3171b3fbbb94368e7ed3df556b1cfb58379911e1bf2d617e19554c37c5c0d605",
-  "miniprogram/app.json": "222ff69299f6e8c800a4e9a5ef334cfeb67a28ace5e55405cee050105e3fb47f",
-  "miniprogram/app.wxss": "50d3287504a6112527997fbbf85678724c457bb90513467609895c936da370fe",
-  pages: "19cdc6c90862f1fc12572bdbf2b394a3dc2119ff75d69840b739f555a0b88700",
-  "packages/core/src": "247b0b9e650aab642824491fc36186fbef552e62dddf9a75cc0ebeaaa92ef80d",
-  "packages/content/src": "3a290c9b6fbf03969990857544709acebaea57d22fe5f864fa9c197b65bfec67",
-  "packages/wechat-shell/src": "f821d3de163d1cb8e9b47e694fc4a73d92e8230c89e9221693962b9cd3582e9c",
-  "packages/application-ui/src": "9548718c649769adcf8b825115c93657ee902a03883dfc2076a528f0688cabd9",
-  "packages/platform-contract/src": "c1b057b87f4fc75554334fce767ca2a46a64e83785ae9dbeca8daf74d8a42bc1",
-  "server/src": "71df0d6e33d0ef815fe6072c701ab53f090508da4f1c31e9a18c2023a3b343a5",
-  "tools/ui02-preview-fixtures.mjs": "9327e7018f256735860d21efbd92f35bfbc1367486f26e011a15d94a8d662c48",
-  "miniprogram/pages/v2-preview/v2-fixtures.json": "af40f19c015a3a00855fa9e031eb7fe15700b0f61af0fd9a96ccd7ad3c869a7d"
+const BASE_TREE = {
+  "miniprogram/pages/start": { files: 2, digest: "60e0cc693eb8849d74a23b56cca97b7a154e18ad2167013109efb534f1dfbcba" },
+  "miniprogram/pages/game": { files: 2, digest: "c04c015e9ea8e37c3ea9d817377cf010a07e618a35d7b84a00f61b816d991cfe" },
+  "miniprogram/pages/rank": { files: 4, digest: "3171b3fbbb94368e7ed3df556b1cfb58379911e1bf2d617e19554c37c5c0d605" },
+  "miniprogram/app.json": { files: 1, digest: "222ff69299f6e8c800a4e9a5ef334cfeb67a28ace5e55405cee050105e3fb47f" },
+  "miniprogram/app.wxss": { files: 1, digest: "50d3287504a6112527997fbbf85678724c457bb90513467609895c936da370fe" },
+  pages: { files: 9, digest: "19cdc6c90862f1fc12572bdbf2b394a3dc2119ff75d69840b739f555a0b88700" },
+  "packages/core/src": { files: 17, digest: "247b0b9e650aab642824491fc36186fbef552e62dddf9a75cc0ebeaaa92ef80d" },
+  "packages/content/src": { files: 18, digest: "3a290c9b6fbf03969990857544709acebaea57d22fe5f864fa9c197b65bfec67" },
+  "packages/wechat-shell/src": { files: 1, digest: "f821d3de163d1cb8e9b47e694fc4a73d92e8230c89e9221693962b9cd3582e9c" },
+  "packages/application-ui/src": { files: 1, digest: "9548718c649769adcf8b825115c93657ee902a03883dfc2076a528f0688cabd9" },
+  "packages/platform-contract/src": { files: 1, digest: "c1b057b87f4fc75554334fce767ca2a46a64e83785ae9dbeca8daf74d8a42bc1" },
+  "server/src": { files: 4, digest: "71df0d6e33d0ef815fe6072c701ab53f090508da4f1c31e9a18c2023a3b343a5" },
+  "tools/ui02-preview-fixtures.mjs": { files: 1, digest: "9327e7018f256735860d21efbd92f35bfbc1367486f26e011a15d94a8d662c48" },
+  "miniprogram/pages/v2-preview/v2-fixtures.json": { files: 1, digest: "af40f19c015a3a00855fa9e031eb7fe15700b0f61af0fd9a96ccd7ad3c869a7d" }
 };
+
+/**
+ * WeChat DevTools writes these into the worktree as soon as the project is opened for manual visual QA
+ * (observed during UI02R1: stock page template + default project settings, mtime 2026-09-23 15:06-15:08).
+ * They are generated scratch output, not authored content, and none of them exists in the task base.
+ * They are excluded from the byte-equivalence claim — but only by exact path, and nothing else may be,
+ * so the digest still fails closed on any other addition inside a pinned tree.
+ */
+const DEVTOOLS_ARTIFACTS = [
+  "miniprogram/project.config.json",
+  "miniprogram/pages/v2-preview/project.config.json",
+  "miniprogram/pages/game/game.js"
+];
 
 function walk(dir) {
   const out = [];
@@ -64,13 +87,17 @@ function walk(dir) {
   return out;
 }
 
-/** Same algorithm the digests were produced with: sha256 over sorted "<relpath>:<sha256(content)>\n". */
-function treeDigest(relative) {
+/** Base files of a pinned path, as repo-relative POSIX paths, with generated artifacts excluded. */
+function baseTreeFiles(relative, ignored = DEVTOOLS_ARTIFACTS) {
   const absolute = path.join(ROOT, relative);
   const stat = fs.statSync(absolute);
-  const files = (stat.isDirectory() ? walk(absolute) : [absolute])
-    .map((file) => path.relative(ROOT, file).replace(/\\/g, "/"))
-    .sort();
+  const all = (stat.isDirectory() ? walk(absolute) : [absolute])
+    .map((file) => path.relative(ROOT, file).replace(/\\/g, "/"));
+  return { all, hashed: all.filter((file) => !ignored.includes(file)).sort() };
+}
+
+/** Same algorithm the digests were produced with: sha256 over sorted "<relpath>:<sha256(content)>\n". */
+function treeDigestOf(files) {
   const digest = createHash("sha256");
   for (const file of files) {
     digest.update(file);
@@ -125,7 +152,7 @@ test("UI02R1_audit: the audit actually detects contract violations (negative con
     ],
     [
       "dev chrome moved into the product flow",
-      { wxss: wxss.replace(".dev-trigger {\n  position: fixed;", ".dev-trigger {\n  position: static;") },
+      { wxss: wxss.replace(".dev-trigger {\n  box-sizing: border-box;\n  position: fixed;", ".dev-trigger {\n  box-sizing: border-box;\n  position: static;") },
       "position: fixed"
     ],
     [
@@ -194,11 +221,116 @@ test("UI02R1_audit: the audit actually detects contract violations (negative con
   }
 });
 
+// ---------------------------------------------------------------- WXSS compatibility
+
+/**
+ * UI02R1 attempt 1 failed to compile in WeChat DevTools:
+ *   ./pages/v2-preview/v2-preview.wxss(150:1): unexpected token '*'
+ * The universal selector is not the only WXSS hazard, and the real compiler is not available in this
+ * repository, so the stylesheet is held inside a documented, covered subset and that subset is pinned
+ * here with negative controls.
+ */
+test("UI02R1_wxss: the stylesheet stays inside the WXSS-supported syntax subset", () => {
+  const result = auditWxssCompat();
+  assert.equal(
+    result.failures.length,
+    0,
+    "wxss compatibility failures:\n" + result.failures.map((entry) => entry.name + " :: " + entry.detail).join("\n")
+  );
+  for (const requirement of [
+    COMPAT_TARGETS[0] + ": no universal `*` selector (the DevTools compiler rejects the `*` token)",
+    COMPAT_TARGETS[0] + ": no attribute selectors (documented WXSS exception)",
+    COMPAT_TARGETS[0] + ": no parameterised pseudo-classes or pseudo-elements (documented WXSS exception)",
+    COMPAT_TARGETS[0] + ": every selector stays inside the documented WXSS selector subset",
+    COMPAT_TARGETS[0] + ": at-rules limited to " + SUPPORTED_AT_RULES.join(" / "),
+    COMPAT_TARGETS[0] + ": media conditions limited to (min|max)-(width|height) in px",
+    COMPAT_TARGETS[0] + ": every definite-sized box with padding/border declares border-box (replaces the removed `*`)"
+  ]) {
+    assert.equal(result.checks.some((entry) => entry.name === requirement), true, "missing compat check: " + requirement);
+  }
+  assert.equal(result.checks.every((entry) => entry.ok) || result.failures.length === 0, true);
+});
+
+test("UI02R1_wxss: removing the universal reset did not silently break the box model", () => {
+  // The removed `* { box-sizing: border-box }` used to cover every box. Each box that a definite size
+  // and padding/border applies to must now declare it itself, or the one-screen budget arithmetic lies.
+  assert.equal(/^\s*\*\s*\{/m.test(stripCss(wxss)), false, "the universal selector must not come back");
+  const sheet = parseStylesheet(wxss);
+  for (const name of BORDER_BOX_CANDIDATES) {
+    const rule = sheet.outerRules.find((entry) => entry.selector === "." + name);
+    assert.notEqual(rule, undefined, "." + name + " must exist");
+    assert.equal(/box-sizing:\s*border-box/.test(rule.body), true, "." + name + " must declare box-sizing: border-box");
+  }
+  // and the declaration count stays exactly the derived requirement: no blanket rule smuggled back in
+  assert.equal((stripCss(wxss).match(/box-sizing:\s*border-box/g) || []).length, BORDER_BOX_CANDIDATES.length);
+});
+
+test("UI02R1_wxss: the compatibility audit detects unsupported WXSS syntax (negative controls)", () => {
+  const target = COMPAT_TARGETS[0];
+  const mutations = [
+    ["universal selector reintroduced", wxss.replace(/^  box-sizing: border-box;\n/gm, "") + "\n* {\n  box-sizing: border-box;\n}\n", "*"],
+    ["attribute selector added", wxss + "\n.attn[data-drawer] {\n  color: var(--ink);\n}\n", "attribute"],
+    ["parameterised pseudo-class added", wxss + "\n.attn:nth-child(2) {\n  color: var(--ink);\n}\n", "parameterised pseudo"],
+    ["unsupported at-rule added", wxss + "\n@supports (display: flex) {\n  page {\n    --x: 1rpx;\n  }\n}\n", "at-rules"],
+    ["unsupported media condition added", wxss + "\n@media screen and (orientation: landscape) {\n  page {\n    --x: 1rpx;\n  }\n}\n", "media conditions"],
+    ["border-box declarations dropped", wxss.replace(/^  box-sizing: border-box;\n/gm, ""), "border-box"],
+    ["sticky positioning added", wxss.replace(".dev-trigger {\n  box-sizing: border-box;\n  position: fixed;", ".dev-trigger {\n  box-sizing: border-box;\n  position: sticky;"), "sticky"]
+  ];
+  for (const [label, mutated, expectedFragment] of mutations) {
+    assert.notEqual(mutated, wxss, 'negative control "' + label + '" did not mutate its input');
+    const result = auditWxssCompat(COMPAT_TARGETS, { [target]: mutated });
+    assert.equal(result.failures.length > 0, true, "compat audit did not detect: " + label);
+    assert.equal(
+      result.failures.some((entry) => (entry.name + " " + entry.detail).includes(expectedFragment)),
+      true,
+      'compat audit failed for the wrong reason on "' + label + '": ' + result.failures.map((entry) => entry.name).join(" | ")
+    );
+  }
+});
+
+test("UI02R1_wxss: the selector whitelist accepts the documented WXSS selector forms and rejects the exclusions", () => {
+  for (const selector of ["page", "view", ".screen", ".action", ".attn", ".life-fill", ".life-fill.is-pressing",
+    ".life-legend .quiet", ".build-line.is-dominant .build-name", ".attn:active", "view, checkbox", ".a, .b .c", "#firstname"]) {
+    assert.equal(selectorIsSupported(selector), true, selector + " should be accepted");
+  }
+  for (const selector of ["*", ".a > .b", ".a + .b", ".a ~ .b", ".a[data-x]", ".a:nth-child(2)", ".a::before(1)", "::part(x)"]) {
+    assert.equal(selectorIsSupported(selector), false, selector + " should be rejected");
+  }
+  // and the real stylesheet uses no comma list at all, so the construct is never load-bearing
+  assert.equal(parseStylesheet(wxss).outerRules.some((rule) => rule.selector.includes(",")), false);
+});
+
 // ---------------------------------------------------------------- scope purity
 
 test("UI02R1_scope: server ViewModel, wechat-shell intent mapping, application UI controller, Core/Content gameplay and 1.0 pages are byte-equivalent to the task base", () => {
-  for (const relative of Object.keys(BASE_TREE_DIGESTS)) {
-    assert.equal(treeDigest(relative), BASE_TREE_DIGESTS[relative], `${relative} must be byte-equivalent to the task base`);
+  for (const relative of Object.keys(BASE_TREE)) {
+    const { hashed } = baseTreeFiles(relative);
+    assert.equal(hashed.length, BASE_TREE[relative].files, `${relative} must still contain exactly its base files (got ${hashed.join(", ")})`);
+    assert.equal(treeDigestOf(hashed), BASE_TREE[relative].digest, `${relative} must be byte-equivalent to the task base`);
+  }
+});
+
+test("UI02R1_scope: the DevTools-artifact exclusion is narrow and cannot hide a real change", () => {
+  // 1. Every excluded path must be absent from the base tree, or the exclusion would mask a real file.
+  const baseFiles = new Set();
+  for (const relative of Object.keys(BASE_TREE)) {
+    for (const file of baseTreeFiles(relative, []).all) baseFiles.add(file);
+  }
+  for (const artifact of DEVTOOLS_ARTIFACTS) {
+    assert.equal(baseFiles.has(artifact), false, `${artifact} must not be a base file`);
+  }
+  // 2. The allowlist is exactly the observed generated set — it cannot silently grow.
+  assert.deepEqual([...DEVTOOLS_ARTIFACTS].sort(), [
+    "miniprogram/pages/game/game.js",
+    "miniprogram/pages/v2-preview/project.config.json",
+    "miniprogram/project.config.json"
+  ]);
+  // 3. Across every pinned tree, the exclusion removes nothing that is actually there: the hashed set
+  //    equals the full set. If a future DevTools run drops a *different* artifact, this fails closed.
+  for (const relative of Object.keys(BASE_TREE)) {
+    const all = baseTreeFiles(relative, []).all;
+    const hashed = baseTreeFiles(relative).hashed;
+    assert.equal(hashed.length, all.length, `${relative} contains an unreviewed extra file: ${all.filter((file) => !hashed.includes(file)).join(", ")}`);
   }
 });
 

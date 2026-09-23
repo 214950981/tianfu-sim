@@ -112,7 +112,7 @@ function parseRules(text) {
   return rules;
 }
 
-function parseDeclarations(body) {
+export function parseDeclarations(body) {
   const declarations = new Map();
   for (const match of body.matchAll(/(-{0,2}[a-zA-Z][a-zA-Z0-9-]*)\s*:\s*([^;]+);?/g)) {
     declarations.set(match[1].trim(), match[2].trim());

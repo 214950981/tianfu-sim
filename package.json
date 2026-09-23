@@ -52,7 +52,8 @@
   "test:ui02": "node --test tests/ui02.test.mjs",
   "ui02:fixtures": "node tools/ui02-preview-fixtures.mjs",
   "test:ui02r1": "node --test tests/ui02r1.test.mjs",
-  "ui02r1:audit": "node tools/ui02r1-layout-audit.mjs"
+  "ui02r1:audit": "node tools/ui02r1-layout-audit.mjs",
+  "ui02r1:compat": "node tools/wxss-compat-audit.mjs"
 },
   "devDependencies": {
     "typescript": "5.9.3"

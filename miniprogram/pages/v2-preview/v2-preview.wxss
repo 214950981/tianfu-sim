@@ -14,6 +14,16 @@
  * rpx is used for horizontal scale and typography; vertical space is managed with viewport units,
  * flex and safe-area insets. Nothing here shrinks text or touch targets to fake a one-screen fit:
  * --touch-min / --cta-h / --dock-row-h never drop below 104rpx, which is ~44 CSS px at windowWidth 320.
+ *
+ * WXSS compatibility (checked by tools/wxss-compat-audit.mjs):
+ *  - No universal `*` selector. The DevTools WXSS compiler rejects the `*` token outright, and there is
+ *    no universal reset here; every box that has a definite size AND padding/border declares
+ *    `box-sizing: border-box` itself, which is what keeps the one-screen budget arithmetic true.
+ *  - No attribute selectors (`[...]`) and no parameterised pseudo-classes/pseudo-elements
+ *    (the two documented WXSS exceptions).
+ *  - Selectors stay inside page / simple element / simple class / compound class / descendant-class,
+ *    plus the parameterless `:active` pseudo-class.
+ *  - At-rules limited to @media; media conditions limited to (min|max)-(width|height) in px.
  */
 
 page {
@@ -147,13 +157,10 @@ page {
   }
 }
 
-* {
-  box-sizing: border-box;
-}
-
 /* ---------- screen shell: constrained viewport, no page-level document scroll ---------- */
 
 .screen {
+  box-sizing: border-box;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -319,6 +326,7 @@ page {
 }
 
 .vitals {
+  box-sizing: border-box;
   display: flex;
   align-items: stretch;
   flex: 0 0 auto;
@@ -389,12 +397,14 @@ page {
 /* Bounded internal scroll: at supported viewports the three summary rows fit without scrolling, and
    below the supported baseline the region degrades into internal scroll instead of hidden clipping. */
 .attention-scroll {
+  box-sizing: border-box;
   flex: 1 1 auto;
   min-height: 0;
   padding-top: var(--attn-note-pad);
 }
 
 .attn {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   height: var(--attn-slot-h);
@@ -443,6 +453,7 @@ page {
 }
 
 .cta {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -479,6 +490,7 @@ page {
 }
 
 .dock-note {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   height: var(--dock-note-h);
@@ -500,6 +512,7 @@ page {
 }
 
 .action {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -571,6 +584,7 @@ page {
 
 /* Bounded internal scroll for long narrative and many options; the headline stays pinned. */
 .decision-viewport {
+  box-sizing: border-box;
   flex: 1 1 auto;
   min-height: 0;
   padding-bottom: var(--dock-pad-bottom);
@@ -667,6 +681,7 @@ page {
 }
 
 .archive-viewport {
+  box-sizing: border-box;
   flex: 1 1 auto;
   min-height: 0;
   padding-bottom: var(--space-4);
@@ -782,6 +797,7 @@ page {
 /* ---------- dev layer: fixed overlay, zero product layout height ---------- */
 
 .dev-trigger {
+  box-sizing: border-box;
   position: fixed;
   z-index: 30;
   top: var(--dev-trigger-top);
@@ -834,6 +850,7 @@ page {
 }
 
 .dev-scroll {
+  box-sizing: border-box;
   flex: 1 1 auto;
   min-height: 0;
   padding: var(--space-3);
@@ -866,6 +883,7 @@ page {
 }
 
 .dev-tab {
+  box-sizing: border-box;
   min-height: 64rpx;
   display: flex;
   align-items: center;
@@ -891,6 +909,7 @@ page {
 }
 
 .dev-action {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -955,6 +974,7 @@ page {
 }
 
 .drawer-close {
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -982,6 +1002,7 @@ page {
 
 /* Explicit bounded viewport so the drawer body always scrolls internally and never grows the sheet. */
 .drawer-scroll {
+  box-sizing: border-box;
   flex: 1 1 auto;
   min-height: 0;
   height: 46vh;

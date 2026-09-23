@@ -8,14 +8,14 @@ baseCommit: dc5675d6a562a5a4996bb2ccd208070eaa066c29
 baseTreeSha: 09847b9695ca0da90f28668509a78119a95de471
 historyMode: real-ancestry
 sourceHeadVerifiedBy: >-
-  git fetch origin dev/tianfu-2.0 succeeded after retries and git rev-parse origin/dev/tianfu-2.0 resolved
-  to dc5675d6a562a5a4996bb2ccd208070eaa066c29 (remote HEAD, subject "chore: pause UI03 and dispatch
-  UI02R1 responsive layout hardening"), matching refs/heads/dev/tianfu-2.0 via git ls-remote, and its
-  commit object is present locally (git cat-file -t dc5675d6 == commit). The local worktree was then
-  moved onto exactly that commit, so HEAD^{tree} == 09847b9695ca0da90f28668509a78119a95de471 ==
-  origin/dev/tianfu-2.0^{tree}, and `git write-tree` over the unmodified working tree returned the same
-  09847b96 tree sha, which is the byte-identity proof for the task base. This task commit's parent is
-  dc5675d6, so the work branch IS a descendant of the source branch HEAD
+  git fetch origin dev/tianfu-2.0 succeeded after retries and git ls-remote shows refs/heads/dev/tianfu-2.0
+  = dc5675d6a562a5a4996bb2ccd208070eaa066c29 (subject "chore: pause UI03 and dispatch UI02R1 responsive
+  layout hardening") immediately before this repair commit, i.e. the source branch has not drifted since
+  the original dispatch. The worktree sits on exactly that commit; HEAD^{tree} ==
+  09847b9695ca0da90f28668509a78119a95de471 == origin/dev/tianfu-2.0^{tree}, and `git write-tree` over the
+  unmodified working tree returned the same tree sha, which is the byte-identity proof for the task base.
+  The first result commit fc0828b1 has dc5675d6 as its parent and this repair commit has fc0828b1 as its
+  parent, so the work branch is a descendant of the source branch HEAD
   (git merge-base --is-ancestor dc5675d6 HEAD succeeds); no synthetic tree base was needed despite
   allowSyntheticTreeBase=true. context.mjs UI02R1 exited 0 at this base with no BLOCKED report.
 
@@ -26,7 +26,7 @@ summary: >-
   server ViewModel, wechat-shell intent mapping, application UI controller, Core/Content gameplay,
   Director, contract, legacy 1.0 page or app route was modified, and UI03 was not started.
 
-  One-screen is structural, not cosmetic. The preview route now sets disableScroll: true, `page` is
+  One-screen is structural, not cosmetic. The preview route sets disableScroll: true, `page` is
   height:100% with overflow:hidden, and the product root is a 100vh flex column whose children are
   constrained with flex + min-height:0 instead of natural document growth. Nothing uses
   min-height:100vh. RUN_HOME therefore cannot page-scroll; the only vertical scrolling anywhere is
@@ -37,11 +37,10 @@ summary: >-
   cultivation status (修为 / 道基 / 灵石) in one row, (3) at most three public attention summaries
   (dominant Build, one public Cause, one known person) plus a single public-condition row, and (4) a
   bottom action dock. Exactly four core actions stay first-screen visible in a stable 2x2 dock, and the
-  Primary breakthrough CTA is rendered only through wx:if on the accepted server-projected
-  available flag; the unavailable variant renders at most one compact reason line, reserving no large
-  CTA block, and because the flexible space is in the middle of the layout the four actions do not move
-  when the CTA appears or disappears. Disabled action slots keep their grid cell, so there is no layout
-  jump.
+  primary breakthrough CTA is rendered only through wx:if on the accepted server-projected available
+  flag; the unavailable variant renders at most one compact reason line, reserving no large CTA block,
+  and because the flexible space is in the middle of the layout the four actions do not move when the
+  CTA appears or disappears. Disabled action slots keep their grid cell, so there is no layout jump.
 
   Density was reduced by removing duplication, not by shrinking text or touch targets. Summarising is
   never a dead end: each summary row opens a read-only drawer, and the one-screen surface offers
@@ -81,13 +80,50 @@ summary: >-
   414x820 -> 626.5+34 <= 820 (159.5); 430x850 -> 650.7+34 <= 850 (165.3). It also proves the pinned
   decision head takes 22.5% of the baseline viewport, leaving the rest to the options.
 
+  POST-REVIEW REPAIR (this commit). The controller/user then opened the project in WeChat DevTools for
+  the manual visual QA and the build failed:
+  "./pages/v2-preview/v2-preview.wxss(150:1): unexpected token '*'". Root cause: the universal selector
+  `* { box-sizing: border-box; }` I had added as a blanket reset is rejected by the WXSS compiler — WXSS
+  only accepts a documented subset of selectors, and the universal selector is not part of it. The fix
+  is minimal and stays inside the original scope: the `*` rule is deleted, and every box that has a
+  definite size AND vertical padding/border now declares `box-sizing: border-box` in its own rule
+  (15 boxes). That set is not hand-waved: tools/wxss-compat-audit.mjs DERIVES the requirement from the
+  stylesheet (definite size in an axis + non-zero padding/border in that axis, with unresolvable insets
+  treated as non-zero so the check fails closed) and requires an explicit box-sizing on each, so a
+  future box that silently depends on a global reset is caught. No other construct in the stylesheet
+  changed: the file still uses only `page`, element/`.class`/compound-class/descendant-class selectors,
+  the parameterless `:active`, and `@media` with `(min|max)-(width|height)` conditions. The layout
+  audit's budget numbers are unchanged by the fix (412.6 px at the baseline), which is the check that the
+  box model still matches the arithmetic. A second wrapper, tools/wxss-compat-audit.mjs (14 checks), now
+  encodes the documented WXSS selector exceptions (no attribute selectors, no parameterised
+  pseudo-classes/pseudo-elements), the permitted at-rules and media conditions, the border-box
+  requirement above, and a small explicitly-labelled conservative subset (no `position: sticky`, no
+  `display: grid`). It is a curated subset check, NOT the compiler, and it says so in its own output;
+  the authoritative check remains compiling once in DevTools.
+
+  Also found during that same review: opening the project in DevTools had dropped three untracked
+  generated files into this worktree (miniprogram/project.config.json,
+  miniprogram/pages/v2-preview/project.config.json, miniprogram/pages/game/game.js). Two of them are
+  default project settings and the third is the stock empty DevTools page template; all three are
+  genuinely generated, none exists in the task base, and all three were breaking the repo's own
+  base-tree digest tests (including the pre-existing tests/ui02.test.mjs). They were moved — not
+  deleted — into .b2base/devtools-artifacts/ (git-excluded, with a MANIFEST.json recording sha256 and
+  size) so the worktree is back in the base state, and tests/ui02r1.test.mjs now excludes exactly those
+  three paths from its digest, with a check that the exclusion removes nothing that is actually present
+  in any pinned tree (so a future, different DevTools artifact still fails closed). Note for the
+  controller: tests/ui02.test.mjs is NOT excluded-aware and will fail again whenever DevTools is
+  reopened; the durable fix is a .gitignore entry, which is outside this task's scope and was not made.
+
 tests:
   - name: ui02r1
     command: node --test tests/ui02r1.test.mjs
-    result: PASS (17/17)
+    result: PASS (22/22)
   - name: ui02r1-layout-audit
     command: node tools/ui02r1-layout-audit.mjs
     result: PASS (96/96 structural checks, exit 0)
+  - name: wxss-compat-audit
+    command: node tools/wxss-compat-audit.mjs
+    result: PASS (14/14 checks, exit 0; 112 selectors, at-rules [media], 6 media bands, 15 border-box boxes matching the 15 derived)
   - name: ui02
     command: node --test tests/ui02.test.mjs
     result: PASS (18/18, UI02 visual language / fixture regeneration / A12 boundaries intact)
@@ -111,15 +147,15 @@ tests:
     result: "PASS (Secret scan: PASS)"
   - name: full-suite
     command: npm test (all 27 registered test files)
-    result: PASS (299/299, 0 fail; 282 before this task, +17 from tests/ui02r1.test.mjs)
+    result: PASS (304/304, 0 fail; 282 before this task, 299 before the WXSS repair)
 
 gates:
-  total: 10
-  green: 10
+  total: 11
+  green: 11
   failed: 0
   note: >-
-    All eight task-required verifications are green, plus the dedicated layout audit and the complete
-    npm test suite as regression guards.
+    All eight task-required verifications are green, plus the dedicated layout audit, the WXSS
+    compatibility audit and the complete npm test suite as regression guards.
 
 changedFiles:
   - .codex/control/LAST_RESULT.yaml
@@ -131,6 +167,7 @@ changedFiles:
   - package.json
   - tests/ui02r1.test.mjs
   - tools/ui02r1-layout-audit.mjs
+  - tools/wxss-compat-audit.mjs
 
 changes:
   - file: miniprogram/pages/v2-preview/v2-preview.wxml
@@ -149,7 +186,10 @@ changes:
       env(safe-area-inset-bottom) reservations, clamps/ellipsis for every dynamic public string, and
       the width/height media bands covering the supported viewport matrix. UI02 paper/ink/cinnabar/
       restrained-dark-gold tokens are unchanged; no legacy neon value, text-shadow or box-shadow was
-      introduced. Dead UI02 selectors replaced by the new structure were removed.
+      introduced. Dead UI02 selectors replaced by the new structure were removed. REPAIR: the
+      universal `* { box-sizing: border-box }` rule (which the WXSS compiler rejects) was deleted and
+      replaced by explicit box-sizing on the 15 boxes that have a definite size plus padding/border;
+      the header now documents the WXSS constraints the file is held to.
   - file: miniprogram/pages/v2-preview/v2-preview.js
     what: >-
       Added the presentation-only model for the new structure: ATTENTION_SLOT_LIMIT = 3 with a capped
@@ -164,22 +204,37 @@ changes:
       share from the committed WXSS tokens and media bands, and asserts page-overflow policy, scroll
       ownership, dev-layer containment, four-action dock structure, breakthrough CTA gating,
       safe-area reservations, touch-target and readability floors, clamping of dynamic strings and the
-      six-viewport matrix. Source overrides make it usable as a negative-control target.
+      six-viewport matrix. Source overrides make it usable as a negative-control target. Exports
+      parseDeclarations so the WXSS compatibility audit can reuse the same parser.
+  - file: tools/wxss-compat-audit.mjs
+    what: >-
+      New WXSS compatibility audit (14 checks) written in response to the DevTools compile failure.
+      Encodes the documented WXSS selector exceptions and supported at-rules/media conditions, the
+      observed rejection of the universal selector, and the derived border-box requirement that
+      replaces the removed `*` reset. Explicitly labelled a curated subset check rather than the
+      compiler, with source overrides for negative controls.
   - file: tests/ui02r1.test.mjs
     what: >-
-      New dedicated suite (17 tests): audit green plus fourteen negative controls that mutate the
-      audited inputs and require the audit to fail, base-tree digest purity for 1.0 pages / server /
-      wechat-shell / application-ui / platform-contract / Core / Content / app.json / app.wxss /
-      fixture generator, route registration, one-screen and dock structure, matrix coverage and budget,
-      dev-layer containment, decision-surface containment and read-only archive.
+      New dedicated suite, now 22 tests: the layout audit green plus fourteen negative controls that
+      mutate the audited inputs and require the audit to fail; four WXSS compatibility tests including
+      a negative control that reintroduces the universal selector, drops the border-box declarations
+      and injects an attribute selector, a parameterised pseudo-class, an unsupported at-rule, an
+      unsupported media condition and position: sticky; base-tree digest purity for 1.0 pages /
+      server / wechat-shell / application-ui / platform-contract / Core / Content / app.json /
+      app.wxss / fixture generator, now guarded by base file counts and a narrow, self-checking
+      DevTools-artifact exclusion; route registration; one-screen and dock structure; matrix coverage
+      and budget; dev-layer containment; decision-surface containment and read-only archive.
   - file: docs/UI02_PREVIEW.md
     what: >-
       Documented the one-screen scrolling policy per page state, the supported baseline and the full
       viewport matrix with the wxss band each viewport resolves to, the RUN_HOME four-layer hierarchy,
       the anti-shrinking rules, and an explicit split between executed automated structural proof and
-      the manual visual QA that is still required.
+      the manual visual QA that is still required. REPAIR: added the WXSS compatibility section
+      (root cause of the compile failure, the border-box rule, and the compatibility audit table), the
+      WeChat DevTools generated-artifact section, and a step 0 in the manual QA list telling the
+      reviewer to treat any WXSS compile error as a UI02R1 rework item.
   - file: package.json
-    what: "Added scripts test:ui02r1 and ui02r1:audit, and registered tests/ui02r1.test.mjs in the npm test aggregate."
+    what: "Added scripts test:ui02r1, ui02r1:audit and ui02r1:compat, and registered tests/ui02r1.test.mjs in the npm test aggregate."
   - file: .codex/control/LAST_RESULT.yaml
     what: "This task result."
 
@@ -192,10 +247,19 @@ verification:
         and readability floors, string clamping, and a first-screen budget that fits all six matrix
         viewports with the safe area reserved. It is code-derived (re-parsed from the WXSS) and has its
         own negative controls, so a green run is falsifiable rather than tautological.
+    - command: node tools/wxss-compat-audit.mjs
+      proves: >-
+        That the stylesheet stays inside the WXSS-supported syntax subset: no universal selector, no
+        attribute selectors, no parameterised pseudo-classes/pseudo-elements, selectors limited to the
+        documented forms, at-rules limited to @media, media conditions limited to
+        (min|max)-(width|height) px, and an explicit border-box on every box the derived requirement
+        covers.
     - command: node --test tests/ui02r1.test.mjs
-      proves: "The audit is green and non-vacuous, plus byte-equivalence of every out-of-scope tree to the task base."
+      proves: >-
+        Both audits are green and non-vacuous (14 + 7 negative controls), plus byte-equivalence of every
+        out-of-scope tree to the task base with base file counts.
     - command: npm test
-      proves: "No regression anywhere else in the repository (299/299)."
+      proves: "No regression anywhere else in the repository (304/304)."
   structuralInference:
     - >-
       The first-screen budget is a box-model computation over the committed token values, not a
@@ -205,15 +269,23 @@ verification:
     - >-
       Safe area is modelled with a 34 px worst-case home-indicator reservation. The actual inset is a
       device value supplied by env(safe-area-inset-bottom) at runtime.
+    - >-
+      tools/wxss-compat-audit.mjs is a curated subset check derived from the WXSS documentation plus
+      one observed compiler error. The real WXSS compiler is not available in this repository, so this
+      tool can prove the absence of the known hazards and of the constructs the file deliberately
+      avoids — it cannot prove the stylesheet compiles.
   manualVisualQaRequired:
     status: NOT PERFORMED
     statement: >-
       No device or simulator rendering was executed in this sandbox. The automated results above are
-      structural only and must NOT be read as "verified on all phones". A human must still confirm the
-      following in WeChat DevTools / on a real device before UI02R1 is treated as visually accepted.
+      structural only and must NOT be read as "verified on all phones". The DevTools compile attempt
+      that prompted this repair was performed by the controller/user, not here. A human must still
+      confirm the following in WeChat DevTools / on a real device before UI02R1 is treated as visually
+      accepted.
     items:
+      - "Compile once in WeChat DevTools and confirm the WXSS error is gone and no new WXSS syntax error appears. This is the authoritative compatibility check; the compatibility audit is only a subset check."
       - "Open the preview route and confirm RUN_HOME cannot scroll vertically at all (no page displacement on drag)."
-      - "Step through 320x500, 360x560, 375x603, 390x750, 414x820 and 430x850 in the device simulator; confirm core status and all four actions are first-screen visible with no horizontal scrollbar."
+      - "Step through 320x500, 360x560, 375x603, 390x750, 414x820 and 430x850 in the device simulator; confirm core status and all four actions are first-screen visible with no horizontal scrollbar, and that removing the blanket border-box reset did not change the expected box heights."
       - "Confirm the four core action blocks and the breakthrough CTA still feel >= 44 CSS px and that text was not shrunk to fit."
       - "Tap each summary row and confirm the read-only drawer opens from the bottom, scrolls internally, closes on 收起, and changes nothing about the product layout behind it."
       - "Open the dev overlay and confirm it overlays the product without moving it; switch views and confirm the overlay collapses."
@@ -221,7 +293,7 @@ verification:
       - "Enter 命书 and confirm it scrolls internally without moving the page."
       - "On a device with a home indicator, confirm the action dock and the event options are not covered by the indicator."
       - "Switch to 突破未成·变体 and confirm the four actions keep exactly the same position as the normal RUN_HOME."
-    docs: docs/UI02_PREVIEW.md section 六
+    docs: docs/UI02_PREVIEW.md sections 4.6, 4.7 and 6
 
 acceptance:
   - id: RUN_HOME-product-surface-has-no-page-level-vertical-scroll-by-structure
@@ -238,7 +310,7 @@ acceptance:
     evidence: "One .action template bound to wx:for over vm.runHome.actions inside a non-shrinking .dock; mapCoreActionIntents returns exactly cultivate/travel/worldly/pursuit; dock is inside the 412.6 px baseline stack."
   - id: core-action-touch-targets-are-not-compressed-below-approximately-44-CSS-px
     covered: true
-    evidence: "--dock-row-h and --cta-h never drop below 104rpx in any band = 44.37 CSS px at width 320; asserted per viewport."
+    evidence: "--dock-row-h and --cta-h never drop below 104rpx in any band = 44.37 CSS px at width 320; asserted per viewport; .action declares border-box so the target is not inflated past the token either."
   - id: enabled-breakthrough-is-first-screen-reachable-and-unavailable-breakthrough-does-not-consume-a-large-CTA-block
     covered: true
     evidence: "wx:if on vm.runHome.breakthrough.enabled; CTA is inside the budgeted baseline stack; the unavailable variant renders only a 56rpx reason line (wx:elif), proven compact by audit."
@@ -268,16 +340,16 @@ acceptance:
     evidence: "The layout never branches on the variant key (asserted: the wxml contains neither variant name); the dock is bottom-anchored and non-shrinking, and disabled slots keep their cell."
   - id: old-1.0-pages-server-viewmodel-wechat-shell-Core-and-Content-are-byte-equivalent-to-task-base
     covered: true
-    evidence: "Tree digests pinned in tests/ui02r1.test.mjs for miniprogram/pages/start|game|rank, pages, miniprogram/app.json, miniprogram/app.wxss, server/src, packages/wechat-shell/src, packages/application-ui/src, packages/platform-contract/src, packages/core/src, packages/content/src, tools/ui02-preview-fixtures.mjs and the committed fixture."
+    evidence: "Tree digests pinned in tests/ui02r1.test.mjs for miniprogram/pages/start|game|rank, pages, miniprogram/app.json, miniprogram/app.wxss, server/src, packages/wechat-shell/src, packages/application-ui/src, packages/platform-contract/src, packages/core/src, packages/content/src, tools/ui02-preview-fixtures.mjs and the committed fixture, each with a pinned base file count."
   - id: UI02-and-A12-tests-remain-green
     covered: true
-    evidence: "tests/ui02.test.mjs 18/18 and tests/viewmodel-ui.test.mjs 6/6."
+    evidence: "tests/ui02.test.mjs 18/18 and tests/viewmodel-ui.test.mjs 6/6 (ui02 required quarantining the three DevTools-generated files first; see toolingObservations T3)."
   - id: dedicated-ui02r1-tests-and-layout-audit-green
     covered: true
-    evidence: "tests/ui02r1.test.mjs 17/17 and tools/ui02r1-layout-audit.mjs 96/96, exit 0."
+    evidence: "tests/ui02r1.test.mjs 22/22, tools/ui02r1-layout-audit.mjs 96/96 exit 0, tools/wxss-compat-audit.mjs 14/14 exit 0."
   - id: LAST_RESULT-distinguishes-automated-structural-proof-from-manual-visual-QA-and-does-not-claim-unperformed-device-testing
     covered: true
-    evidence: "verification.automated / structuralInference / manualVisualQaRequired; the manual section is explicitly NOT PERFORMED and lists the items a human must still confirm."
+    evidence: "verification.automated / structuralInference / manualVisualQaRequired; the manual section is explicitly NOT PERFORMED, records that the DevTools compile was run by the controller/user rather than here, and lists the items a human must still confirm."
 
 scope:
   coreChanged: false
@@ -298,7 +370,9 @@ scope:
     packages/platform-contract/src are byte-identical to the task base, pinned by tree digest.
     miniprogram/app.json is byte-identical, so the preview route is still registered last and is still
     neither the default page nor a tabBar entry. The only product-visible surface touched is
-    miniprogram/pages/v2-preview/*. No 600-run simulation was executed. No source-branch push.
+    miniprogram/pages/v2-preview/*. The post-review repair touched only that stylesheet, the two audit
+    tools, the dedicated test file, the preview documentation, package.json and this result file.
+    No 600-run simulation was executed. No source-branch push. .gitignore was NOT changed.
 
 toolingObservations:
   - id: T1
@@ -325,6 +399,28 @@ toolingObservations:
       (api_key|secret|token|password)[:=]"..." pattern and failed the gate. The field was renamed to
       cssVar. Worth knowing because the name "token" is natural for CSS custom-property tables.
     impact: "Informational; no action required unless a future task hits it again."
+  - id: T3
+    severity: PROCESS
+    title: >-
+      the WXSS compiler is stricter than "most CSS", and the repo's base-tree digest tests are
+      fragile against WeChat DevTools scratch output
+    evidence: >-
+      (a) `* { box-sizing: border-box; }` aborted the DevTools build with
+      "unexpected token '*'" even though the WXSS documentation says most CSS selectors are supported;
+      the universal selector is one of the exceptions in practice. Nothing in the previous verification
+      could have caught it, because no WXSS compiler exists in this repo — which is why this repair
+      also adds tools/wxss-compat-audit.mjs and its negative controls.
+      (b) Simply opening the project in DevTools wrote three untracked files into the worktree
+      (miniprogram/project.config.json, miniprogram/pages/v2-preview/project.config.json,
+      miniprogram/pages/game/game.js). tests/ui02.test.mjs and the new tests/ui02r1.test.mjs both hash the
+      working directory, so they failed on the polluted tree before any code was changed.
+    impact: >-
+      (a) Mitigated: the border-box requirement is now derived from the stylesheet and enforced.
+      (b) Mitigated only for tests/ui02r1.test.mjs (narrow, self-checking artifact exclusion). The
+      pre-existing tests/ui02.test.mjs is still digest-fragile: reopening DevTools will make it fail
+      again. Recommend the controller add the DevTools artifacts to .gitignore, or scope the ui02
+      digest check to the base file list in a follow-up task. Not done here because it is outside
+      UI02R1's presentation scope.
 
 blockers: []
 
@@ -333,12 +429,25 @@ backlog:
     severity: BACKLOG
     title: manual visual QA on the viewport matrix has not been performed
     evidence: >-
-      No device or simulator rendering was executed. Only structural proof exists: the audit's
-      box-model budget and source-level structural assertions.
+      No device or simulator rendering was executed here; the single DevTools compile attempt was run
+      by the controller/user and failed on the WXSS syntax error this repair fixes. Only structural
+      proof exists: two audit tools and the source-level test assertions.
     impact: >-
       UI02R1 must not be treated as visually accepted, and UI03 must stay blocked, until the items in
-      verification.manualVisualQaRequired are confirmed by a human.
+      verification.manualVisualQaRequired are confirmed by a human on the repaired commit.
     suggestedOwner: controller / user review before UI03
+  - id: U5
+    severity: BACKLOG
+    title: WeChat DevTools scratch output is not gitignored and breaks the pre-existing digest tests
+    evidence: >-
+      miniprogram/project.config.json, miniprogram/pages/v2-preview/project.config.json and
+      miniprogram/pages/game/game.js appear as soon as the project is opened in DevTools; the third is
+      an empty Page({}) stub that must never be committed because it would shadow the 1.0 仙途 page.
+      tests/ui02.test.mjs hashes directories and therefore fails while they are present.
+    impact: >-
+      Every future manual QA session makes the baseline test suite red for environmental reasons
+      unless .gitignore is updated or the digest checks are scoped to the base file list.
+    suggestedOwner: a small tooling/chore task, or the controller directly
   - id: U2
     severity: BACKLOG
     title: i18n / copy keys are still rendered as raw keys
@@ -362,36 +471,37 @@ backlog:
     suggestedOwner: UI03 or a build-step task
 
 recommendedCommitMessage: |-
-  feat(ui02r1): make the 2.0 preview RUN_HOME a one-screen responsive surface
+  fix(ui02r1): remove the WXSS-incompatible universal selector from the preview stylesheet
 
-  Presentation-only repair of the accepted UI02 preview. No rule, contract, server,
-  shell, controller, Core/Content, legacy 1.0 or route change.
+  Post-review repair. The first DevTools compile of UI02R1 failed with
+  "pages/v2-preview/v2-preview.wxss(150:1): unexpected token '*'" because the
+  blanket `* { box-sizing: border-box; }` reset is not valid WXSS.
 
-  - One-screen is structural: disableScroll true, page height/overflow lock, 100vh
-    constrained flex root, min-height:0 on every flexible layer. RUN_HOME cannot
-    page-scroll; every vertical scroll happens inside an explicit scroll-view.
-  - RUN_HOME restructured to four layers: identity/lifespan header, core cultivation
-    status, at most three public attention summaries plus one condition row, bottom
-    action dock with exactly four core actions and a breakthrough CTA gated on the
-    server-projected availability (unavailable = one compact line, no reserved block).
-  - Full public Build / Cause / People / condition lists move into four read-only
-    drawers. Summarising is never a dead end and never mutates gameplay.
-  - EVENT / SPECIAL_NODE share one full-screen container: pinned head plus a bounded
-    scroll-view for narrative and options.
-  - LIFE_ARCHIVE scrolls only inside its own viewport.
-  - Dev tabs, lastIntent, decisionId, interaction state, the blocked-back probe and
-    capability diagnostics move into a collapsed floating dev overlay outside the
-    product flow; detail drawers are fixed bottom sheets with bounded scroll.
-  - Explicit viewport contract: baseline 320x500 and the 320x500 / 360x560 / 375x603 /
-    390x750 / 414x820 / 430x850 matrix as wxss width/height bands, safe-area
-    reservations on dock and decision controls, no font below 20rpx, core action
-    targets 44.37 CSS px at width 320, and clamping for every dynamic public string.
-  - tools/ui02r1-layout-audit.mjs re-derives the first-screen budget from the WXSS and
-    reports it per matrix viewport; tests/ui02r1.test.mjs proves the audit green and
-    non-vacuous with fourteen negative controls, and pins base-tree digests so every
-    out-of-scope tree is provably byte-equivalent to the task base.
+  - Delete the universal selector. Every box with a definite size AND vertical
+    padding/border now declares `box-sizing: border-box` in its own rule (15 boxes),
+    so the box model the one-screen budget is written in is preserved.
+  - Add tools/wxss-compat-audit.mjs: derives the border-box requirement from the
+    stylesheet (fail-closed on unresolvable insets) and checks the documented WXSS
+    selector exceptions, supported at-rules and media conditions. It is a curated
+    subset check, not the compiler, and says so in its output.
+  - tests/ui02r1.test.mjs gains four WXSS compatibility tests with negative controls
+    that reintroduce the universal selector, drop the border-box declarations and
+    inject an attribute selector, a parameterised pseudo-class, an unsupported
+    at-rule, an unsupported media condition and position: sticky.
+  - Scope base-tree checks by pinned base file counts, with a narrow self-checking
+    exclusion for the three files WeChat DevTools generates on open. Those three files
+    (default project settings and the stock empty page template) were moved out of the
+    worktree into the git-excluded .b2base/devtools-artifacts/ with a sha256 manifest;
+    tests/ui02.test.mjs is not excluded-aware and needs a .gitignore entry or a scoping
+    fix in a follow-up.
+  - Document the root cause, the border-box rule and the DevTools artifacts in
+    docs/UI02_PREVIEW.md, and make "confirm it compiles" step 0 of the manual QA list.
 
-  Verification: 299/299 npm test (was 282), 17/17 ui02r1, 18/18 ui02, 6/6
-  viewmodel-ui, layout audit 96/96, typecheck/lint/content-lint/content01-lint/
-  secret-scan green. Manual visual QA on the viewport matrix is still required and is
-  documented as not performed.
+  No rule, contract, server, shell, controller, Core/Content, legacy 1.0 or route
+  change. Layout audit budget numbers are unchanged (412.6 px at the 320x500 baseline).
+
+  Verification: 304/304 npm test, 22/22 ui02r1, 96/96 layout audit, 14/14 WXSS
+  compatibility audit, 18/18 ui02, 6/6 viewmodel-ui, typecheck/lint/content-lint/
+  content01-lint/secret-scan green. Manual visual QA on the viewport matrix, starting
+  with a successful DevTools compile, is still required and is documented as not
+  performed.

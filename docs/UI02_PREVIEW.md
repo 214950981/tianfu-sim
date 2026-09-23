@@ -136,6 +136,48 @@ dev 触发器、dev overlay、只读抽屉全部是 `position: fixed` 悬浮层�
 在产品 `.surface` **之外**，**不消耗产品布局高度**。`lastIntent`、`decisionId`、
 交互状态、被锁普通返回的测试探针、能力入口诊断都只存在于 dev overlay 内。
 
+### 4.6 WXSS 兼容性（UI02R1 返修项）
+
+第一次人工验收时微信开发者工具编译失败：
+
+```
+./pages/v2-preview/v2-preview.wxss(150:1): unexpected token '*'
+```
+
+根因：`* { box-sizing: border-box; }` 通配选择器不被 WXSS 编译器接受（WXSS 只支持文档列举的
+选择器子集）。修复方式：
+
+- 删除通配选择器。WXSS 没有全局 reset，因此**凡是"有确定尺寸且同时带 padding/border"的盒子，
+  都在自己的规则里显式声明 `box-sizing: border-box`**（当前 15 个）。这不是风格问题：
+  一屏预算算术是按 border-box 写的，漏掉任何一个都会让布局预算失真。
+- 该要求由 `tools/wxss-compat-audit.mjs` **从样式表推导**（有确定尺寸 + 垂直方向 padding/border
+  即要求 border-box，且无法解析的内边距按非零处理），不是手写清单，因此新增盒子漏写会被发现。
+
+`tools/wxss-compat-audit.mjs` 是一份**有界的子集检查**，不是真正的编译器：
+
+| 检查 | 依据 |
+| --- | --- |
+| 无通配选择器 `*` | 编译期实测报错 |
+| 无属性选择器 `[...]` | 官方文档：属性名选择器不会生效 |
+| 无带参数的伪类 / 伪元素 | 官方文档：不支持带参数的伪类和伪元素 |
+| 选择器只使用 page / 元素 / `.class` / 复合 class / 后代 class / 无参 `:active` | 官方选择器表 |
+| `@` 规则只允许 `@media` / `@import` / `@keyframes` | 避免 `@supports` 等未支持规则 |
+| 媒体条件只允许 `(min|max)-(width|height): Npx` | 本任务实际使用 |
+| 有确定尺寸的盒子必须显式 border-box | 见上 |
+| 不用 `position: sticky` / `display: grid` | 本项目自设的保守子集 |
+
+它**不能**证明样式表一定编译通过；权威检查仍然是在微信开发者工具里真正编译一次。
+
+### 4.7 开发者工具产生的临时文件
+
+用微信开发者工具打开本项目时，工具会自动写入若干**未跟踪的临时文件**（实测：
+`miniprogram/project.config.json`、`miniprogram/pages/v2-preview/project.config.json`、
+`miniprogram/pages/game/game.js`）。它们不是仓库内容，也不属于任何一次提交。
+
+注意：`miniprogram/pages/game/game.js` 是**空页面模板**（`Page({ data: {}, onLoad … })`）。
+它绝不能提交——一旦提交会覆盖 1.0 仙途页。人工验收结束后建议清理这些文件，
+或由控制者在 `.gitignore` 中统一忽略工具产物。
+
 ## 五、视觉语言
 
 冻结语言：**宣纸 + 墨 + 朱砂 + 极少暗金 + 大量留白 + 克制动画**。
@@ -155,8 +197,9 @@ UI02 负责 HEX、字号、间距、圆角与组件尺寸，token 定义在
 ### 6.1 自动结构验证（已执行）
 
 ```bash
-node tools/ui02r1-layout-audit.mjs       # 94 项结构检查 + 6 视口首屏预算表
-node --test tests/ui02r1.test.mjs        # UI02R1 专项（含审计的负向对照）
+node tools/ui02r1-layout-audit.mjs       # 96 项结构检查 + 6 视口首屏预算表
+node tools/wxss-compat-audit.mjs         # WXSS 语法子集检查（含通配选择器与 border-box）
+node --test tests/ui02r1.test.mjs        # UI02R1 专项（含两个审计的负向对照）
 node --test tests/ui02.test.mjs          # UI02 视觉语言 / fixture / A12 边界
 node --test tests/viewmodel-ui.test.mjs  # A12 安全边界（必须保持全绿）
 npx tsc --noEmit
@@ -174,6 +217,9 @@ node tools/scan-secrets.mjs
 
 自动测试**不能**替代真机或开发者工具的肉眼验收。请在微信开发者工具中完成：
 
+0. **首先确认编译通过。** UI02R1 attempt 1 曾在 `v2-preview.wxss` 因通配选择器 `*` 编译失败
+   （`unexpected token '*'`），已修复。若控制台出现任何 WXSS 语法错误，请把它当成 UI02R1 的
+   返修项提回，而不是绕过——`tools/wxss-compat-audit.mjs` 只是有界子集检查，不是编译器。
 1. 用**自定义编译模式**或设备模拟器，逐个切到上表 6 个视口（320×500 起）。
 2. RUN_HOME：确认**页面完全不能纵向滑动**（手势下拉没有页面位移），
    四个行动块与突破 CTA 全部在首屏内，且没有横向滚动条。
