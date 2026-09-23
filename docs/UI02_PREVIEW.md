@@ -41,14 +41,22 @@ wx.navigateTo({ url: "/pages/v2-preview/v2-preview" });
 ## 三、数据从哪来（关键）
 
 预览页**不自造任何玩法规则**。页面渲染的每个数值都来自
-`miniprogram/pages/v2-preview/v2-fixtures.json`，而该文件由真实代码生成：
+`miniprogram/pages/v2-preview/v2-fixtures.js`（运行时加载的静态 JS 模块），
+它与同名 `.json` 是**同一份**生成数据：都由真实生产代码产出。
 
 ```bash
-node tools/ui02-preview-fixtures.mjs          # 打印摘要
-node tools/ui02-preview-fixtures.mjs --write  # 重新生成 fixture
+node tools/ui02-preview-fixture-module.mjs          # 校验 JS 模块与 JSON 是否最新（过期退出码 1）
+node tools/ui02-preview-fixture-module.mjs --write  # 重新生成 JS 模块
+node tools/ui02-preview-fixtures.mjs --write        # 重新生成 JSON
 ```
 
-生成链路全部是生产同款代码：
+> **为什么是 `.js` 而不是 `.json`：**微信小程序运行时**不能 `require` 一个 `.json` 文件**。
+> UI02R1 最初写的是 `require("./v2-fixtures.json")`，运行时抛错，而外层 `try/catch` 把错误吞掉
+> 并把它当成"文件缺失"，于是页面显示"缺少 v2-fixtures.json"，实际文件是完整存在的。
+> 现在运行时只加载生成的 `./v2-fixtures.js`（`module.exports = …`），
+> 测试会断言 **JS 模块 payload == 提交的 JSON == 重新调用生成器**，因此不存在第二套数据。
+
+生成链路全部是生产同款代码（模块写入工具只是调用同一个 `buildPreviewFixtures()`）：
 
 | 环节 | 真实代码 |
 | --- | --- |
@@ -59,8 +67,24 @@ node tools/ui02-preview-fixtures.mjs --write  # 重新生成 fixture
 | 意图映射 | `miniprogram` → `mapCoreActionIntents` / `mapSpecialActionIntents` |
 | 命书投影 | `buildArchiveView` |
 
-`tests/ui02.test.mjs` 会**重新生成**一份 fixture 并与已提交文件逐字段比对，
-因此 fixture 一旦被手工篡改或与真实代码脱节，测试立即失败。
+`tests/ui02.test.mjs` 会**重新生成**一份 fixture 并与已提交的 JSON 逐字段比对；
+`tests/ui02r1.test.mjs` 再断言 JS 模块与两者一致，因此任何一方被手工篡改或与真实代码脱节，测试立即失败。
+
+### 3.1 加载失败时的诊断状态
+
+不再用"缺少文件"掩盖模块加载错误。加载失败时页面显示一个**有界、可诊断、不含敏感信息**的失败面板：
+
+| 字段 | 含义 |
+| --- | --- |
+| 阶段 | `module`（模块加载抛错）/ `shape`（导出结构不对）/ `view`（fixture 中没有该视图） |
+| 代码 | 错误类名（如 `TypeError`）或结构化代码（如 `missing-collections`） |
+| 详情 | 单行、去路径、截断到 160 字符的错误摘要 |
+| 模块 | 尝试加载的模块说明符（`./v2-fixtures.js`） |
+| 提示 | 重新生成的 CLI 命令 |
+
+面板只渲染阶段/代码/摘要/说明符/提示；**不渲染任何 fixture 内容、原始 state 或环境细节**。
+`view` 阶段还会列出 fixture 实际拥有的视图键名（仅键名，不含值），避免出现白屏却无信息。
+
 
 ### 状态夹具说明
 
@@ -171,12 +195,18 @@ dev 触发器、dev overlay、只读抽屉全部是 `position: fixed` 悬浮层�
 ### 4.7 开发者工具产生的临时文件
 
 用微信开发者工具打开本项目时，工具会自动写入若干**未跟踪的临时文件**（实测：
-`miniprogram/project.config.json`、`miniprogram/pages/v2-preview/project.config.json`、
-`miniprogram/pages/game/game.js`）。它们不是仓库内容，也不属于任何一次提交。
+`miniprogram/pages/game/game.js`（空页面模板）、`miniprogram/project.config.json`、
+`miniprogram/pages/v2-preview/project.config.json`、`miniprogram/.vscode/`），
+并且会**改写仓库根目录已跟踪的 `project.config.json` / `project.private.config.json`**。
+它们不是仓库内容，也不属于任何一次提交。
 
 注意：`miniprogram/pages/game/game.js` 是**空页面模板**（`Page({ data: {}, onLoad … })`）。
 它绝不能提交——一旦提交会覆盖 1.0 仙途页。人工验收结束后建议清理这些文件，
 或由控制者在 `.gitignore` 中统一忽略工具产物。
+
+`tests/ui02r1.test.mjs` 的基线摘要检查按**钉死的基线文件清单**比对，对上述已知工具产物按
+精确路径豁免（且任何**其它**新增文件仍会 fail-closed 报错），所以开过 DevTools 之后它依然可信。
+`tests/ui02.test.mjs` 仍是按目录哈希，会在工具产物存在时误报——需要 `.gitignore` 或后续任务收口。
 
 ## 五、视觉语言
 
@@ -197,11 +227,12 @@ UI02 负责 HEX、字号、间距、圆角与组件尺寸，token 定义在
 ### 6.1 自动结构验证（已执行）
 
 ```bash
-node tools/ui02r1-layout-audit.mjs       # 96 项结构检查 + 6 视口首屏预算表
-node tools/wxss-compat-audit.mjs         # WXSS 语法子集检查（含通配选择器与 border-box）
-node --test tests/ui02r1.test.mjs        # UI02R1 专项（含两个审计的负向对照）
-node --test tests/ui02.test.mjs          # UI02 视觉语言 / fixture / A12 边界
-node --test tests/viewmodel-ui.test.mjs  # A12 安全边界（必须保持全绿）
+node tools/ui02r1-layout-audit.mjs          # 96 项结构检查 + 6 视口首屏预算表
+node tools/wxss-compat-audit.mjs            # WXSS 语法子集检查（含通配选择器与 border-box）
+node tools/ui02-preview-fixture-module.mjs  # fixture JS 模块与 JSON 是否为最新
+node --test tests/ui02r1.test.mjs           # UI02R1 专项（含两个审计与 fixture 一致性的负向对照）
+node --test tests/ui02.test.mjs             # UI02 视觉语言 / fixture / A12 边界
+node --test tests/viewmodel-ui.test.mjs     # A12 安全边界（必须保持全绿）
 npx tsc --noEmit
 node tools/check-import-boundaries.mjs
 node tools/content-lint.mjs packages/content/dev-fixtures/minimal-pack.json
@@ -217,9 +248,11 @@ node tools/scan-secrets.mjs
 
 自动测试**不能**替代真机或开发者工具的肉眼验收。请在微信开发者工具中完成：
 
-0. **首先确认编译通过。** UI02R1 attempt 1 曾在 `v2-preview.wxss` 因通配选择器 `*` 编译失败
-   （`unexpected token '*'`），已修复。若控制台出现任何 WXSS 语法错误，请把它当成 UI02R1 的
-   返修项提回，而不是绕过——`tools/wxss-compat-audit.mjs` 只是有界子集检查，不是编译器。
+0. **首先确认编译通过，且预览页进入了 RUN_HOME 而不是失败面板。** UI02R1 曾出现过两次加载
+   问题：`v2-preview.wxss` 因通配选择器 `*` 编译失败（`unexpected token '*'`），以及页面因
+   `require` 一个 `.json` 模块而显示"缺少 v2-fixtures.json"。两者都已修复。若出现任何 WXSS 语法
+   错误，或看到失败面板（阶段 / 代码 / 详情 / 模块 / 提示），请把它当成 UI02R1 的返修项提回，
+   而不是绕过——失败面板是**故意**显示这些信息的，它就是给返修用的。
 1. 用**自定义编译模式**或设备模拟器，逐个切到上表 6 个视口（320×500 起）。
 2. RUN_HOME：确认**页面完全不能纵向滑动**（手势下拉没有页面位移），
    四个行动块与突破 CTA 全部在首屏内，且没有横向滚动条。

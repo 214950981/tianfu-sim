@@ -14,11 +14,31 @@
 
   <view class="surface">
 
-    <view wx:if="{{!ready}}" class="notice">
-      <view class="quiet">缺少 v2-fixtures.json，请先运行 node tools/ui02-preview-fixtures.mjs --write。</view>
+    <!-- Preview data could not be loaded. Explicit, bounded diagnostics instead of a silent blank or
+         a misleading "file is missing" message: stage / error name / sanitized detail / module
+         specifier / CLI hint. No fixture content and no raw state is ever rendered here. -->
+    <view wx:if="{{failure !== null}}" class="failure">
+      <view class="failure-title">预览数据加载失败</view>
+      <view class="failure-row">
+        <view class="failure-key">阶段</view>
+        <view class="failure-value">{{failure.stage}}</view>
+      </view>
+      <view class="failure-row">
+        <view class="failure-key">代码</view>
+        <view class="failure-value">{{failure.code}}</view>
+      </view>
+      <view class="failure-row" wx:if="{{failure.detail !== ''}}">
+        <view class="failure-key">详情</view>
+        <view class="failure-value">{{failure.detail}}</view>
+      </view>
+      <view class="failure-row">
+        <view class="failure-key">模块</view>
+        <view class="failure-value">{{failure.specifier}}</view>
+      </view>
+      <view class="failure-hint">{{failure.hint}}</view>
     </view>
 
-    <block wx:if="{{ready && vm !== null}}">
+    <block wx:if="{{failure === null && vm !== null}}">
 
       <!-- ===================== RUN_HOME ===================== -->
       <view wx:if="{{vm.kind === 'RUN_HOME'}}" class="page page--home">
@@ -232,8 +252,11 @@
 
       <view class="dev-block">
         <view class="dev-block-title">能力入口</view>
-        <view class="dev-line" wx:if="{{vm === null || vm.gatedEntries.length === 0}}">全部可用</view>
-        <view class="dev-line" wx:for="{{vm.gatedEntries}}" wx:key="*this">已隐藏 · {{item}}</view>
+        <view class="dev-line" wx:if="{{failure !== null}}">预览数据不可用 · 能力入口未知</view>
+        <block wx:else>
+          <view class="dev-line" wx:if="{{vm.gatedEntries.length === 0}}">全部可用</view>
+          <view class="dev-line" wx:for="{{vm.gatedEntries}}" wx:key="*this">已隐藏 · {{item}}</view>
+        </block>
       </view>
 
       <view class="dev-block">

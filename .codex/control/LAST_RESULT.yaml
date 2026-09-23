@@ -114,16 +114,56 @@ summary: >-
   controller: tests/ui02.test.mjs is NOT excluded-aware and will fail again whenever DevTools is
   reopened; the durable fix is a .gitignore entry, which is outside this task's scope and was not made.
 
+  POST-REVIEW REPAIR 2 (this commit). With the WXSS compiling, the preview page still could not be
+  visually reviewed: it rendered "缺少 v2-fixtures.json" while that file was present and complete. Root
+  cause: the WeChat runtime cannot require() a .json file. The page did require("./v2-fixtures.json"),
+  which threw at runtime, and the surrounding try/catch assigned fixtures = null and discarded the
+  error — so a module-load failure was silently re-labelled as a missing data file, and the real cause
+  was invisible. Two things were wrong and both are fixed.
+
+  (1) Load path. The fixture is now loaded as the generated static CommonJS module
+  miniprogram/pages/v2-preview/v2-fixtures.js, emitted by the new tool
+  tools/ui02-preview-fixture-module.mjs. This introduces no second source of truth: the writer imports
+  buildPreviewFixtures() from the existing tools/ui02-preview-fixtures.mjs (so the payload still comes
+  from the real chain generateServerDestinyOffer -> reduce(START_RUN) -> ServerViewModelBuilder.build ->
+  buildWeChatPageShell -> mapCoreActionIntents/mapSpecialActionIntents -> buildArchiveView), it declares
+  only node:fs, node:path and that one local import (asserted by test, so it cannot re-implement the
+  projection), and it serializes exactly the same canonical payload as the JSON writer. The committed
+  module, the committed JSON and a fresh generator run are asserted equal, and the module's payload is
+  asserted byte-equal to the canonical serialization; loading the module in a vm yields the same object.
+  The JSON sibling is retained because tests/inspection use it and because the pre-existing ui02 suite
+  compares against it, and the two can no longer drift.
+
+  (2) Diagnostics. A load failure now produces an explicit staged failure instead of a missing-file
+  claim: stage `module` (the require threw), `shape` (the export has no states/variants collections) or
+  `view` (the fixture does not carry the requested view). The panel renders stage, error name, a
+  sanitized one-line summary, the documented module specifier and a CLI hint. Sanitization is bounded
+  and behavioural: absolute Windows paths and deep repo paths are replaced with <path>, whitespace is
+  collapsed, the summary is capped at 160 characters, and no fixture content, raw state or environment
+  detail is rendered. The `view` stage also lists the fixture's key names (keys only) so a blank page
+  can never be the outcome. A test extracts the page's own sanitizer and runs it, rather than trusting a
+  regex over the source.
+
+  Note on the earlier DevTools-artifact tolerance: opening DevTools again re-created
+  miniprogram/pages/game/game.js and additionally rewrote the tracked root project.config.json and
+  project.private.config.json (content, not just line endings) and created miniprogram/.vscode/. None of
+  these are committed. The base-tree pins were strengthened in this repair from counts to exact file
+  lists, so the digest now fails closed on any unreviewed addition inside a pinned tree while still
+  tolerating the three documented DevTools scratch paths.
+
 tests:
   - name: ui02r1
     command: node --test tests/ui02r1.test.mjs
-    result: PASS (22/22)
+    result: PASS (28/28)
   - name: ui02r1-layout-audit
     command: node tools/ui02r1-layout-audit.mjs
     result: PASS (96/96 structural checks, exit 0)
   - name: wxss-compat-audit
     command: node tools/wxss-compat-audit.mjs
     result: PASS (14/14 checks, exit 0; 112 selectors, at-rules [media], 6 media bands, 15 border-box boxes matching the 15 derived)
+  - name: fixture-module-freshness
+    command: node tools/ui02-preview-fixture-module.mjs
+    result: PASS (exit 0; module 78230 bytes and the JSON sibling both reported up to date)
   - name: ui02
     command: node --test tests/ui02.test.mjs
     result: PASS (18/18, UI02 visual language / fixture regeneration / A12 boundaries intact)
@@ -147,25 +187,28 @@ tests:
     result: "PASS (Secret scan: PASS)"
   - name: full-suite
     command: npm test (all 27 registered test files)
-    result: PASS (304/304, 0 fail; 282 before this task, 299 before the WXSS repair)
+    result: PASS (310/310, 0 fail; 282 before this task, 299 before the WXSS repair, 304 before the fixture repair)
 
 gates:
-  total: 11
-  green: 11
+  total: 12
+  green: 12
   failed: 0
   note: >-
     All eight task-required verifications are green, plus the dedicated layout audit, the WXSS
-    compatibility audit and the complete npm test suite as regression guards.
+    compatibility audit, the fixture-module freshness check and the complete npm test suite as
+    regression guards.
 
 changedFiles:
   - .codex/control/LAST_RESULT.yaml
   - docs/UI02_PREVIEW.md
+  - miniprogram/pages/v2-preview/v2-fixtures.js
   - miniprogram/pages/v2-preview/v2-preview.js
   - miniprogram/pages/v2-preview/v2-preview.json
   - miniprogram/pages/v2-preview/v2-preview.wxml
   - miniprogram/pages/v2-preview/v2-preview.wxss
   - package.json
   - tests/ui02r1.test.mjs
+  - tools/ui02-preview-fixture-module.mjs
   - tools/ui02r1-layout-audit.mjs
   - tools/wxss-compat-audit.mjs
 
@@ -178,7 +221,10 @@ changes:
       share one pinned head plus a bounded scroll-view; LIFE_ARCHIVE scrolls only inside its own
       viewport; dev tabs, lastIntent, decisionId, the blocked-back probe and capability diagnostics
       moved into the dev overlay; four read-only drawers added for Builds / Causes / conditions /
-      People.
+      People. REPAIR 2: the "缺少 v2-fixtures.json" notice was replaced by the staged failure panel
+      (阶段 / 代码 / 详情 / 模块 / 提示) and the product block now renders only when there is no failure;
+      the dev overlay's capability section states that capability entries are unknown while the preview
+      data is unavailable instead of claiming "全部可用".
   - file: miniprogram/pages/v2-preview/v2-preview.wxss
     what: >-
       Added the one-screen layout contract: `page` height/overflow lock, .screen 100vh constrained
@@ -189,13 +235,35 @@ changes:
       introduced. Dead UI02 selectors replaced by the new structure were removed. REPAIR: the
       universal `* { box-sizing: border-box }` rule (which the WXSS compiler rejects) was deleted and
       replaced by explicit box-sizing on the 15 boxes that have a definite size plus padding/border;
-      the header now documents the WXSS constraints the file is held to.
+      the header now documents the WXSS constraints the file is held to. REPAIR 2: added the bounded
+      failure-panel styles (.failure / -title / -row / -key / -value / -hint) using only existing UI02
+      tokens, >= 20rpx text and no box-shadow; no definite-sized padded box was added, so the WXSS
+      compatibility audit's derived border-box set is unchanged.
+  - file: miniprogram/pages/v2-preview/v2-fixtures.js
+    what: >-
+      NEW generated artifact: the same public-only fixture as a static CommonJS module
+      (module.exports = <payload>). The WeChat runtime cannot require() a .json file, which is why the
+      preview page could not load its data. Produced by tools/ui02-preview-fixture-module.mjs from the
+      existing buildPreviewFixtures(), so it is not a second source of truth: its payload is byte-equal
+      to the committed JSON and to a fresh generator run, and tests/ui02r1.test.mjs asserts all three.
+  - file: tools/ui02-preview-fixture-module.mjs
+    what: >-
+      NEW tool that emits the generated fixture as the static JS module the WeChat runtime loads. Its
+      only imports are node:fs, node:path and tools/ui02-preview-fixtures.mjs (asserted by test), so it
+      cannot rebuild the projection itself; it serializes exactly JSON.stringify(fixtures, null, 2) and
+      the JSON writer is the same canonical payload. CLI reports freshness (exit 1 when stale) or
+      regenerates with --write.
   - file: miniprogram/pages/v2-preview/v2-preview.js
     what: >-
-      Added the presentation-only model for the new structure: ATTENTION_SLOT_LIMIT = 3 with a capped
-      attentions array, a compact public-condition summary, a breakthrough view object derived purely
-      from the accepted special-intent projection, read-only drawer builders for the four public
-      collections, and dev/drawer open-close state. No rule computation, no transport, no new data.
+      Fixture loading rewritten. The page now requires the generated ./v2-fixtures.js module, and a load
+      failure produces an explicit staged failure (module / shape / view) instead of being swallowed
+      into a "file is missing" message: the previous require of the .json sibling threw at runtime, the
+      catch discarded the error, and the page blamed the fixture file while that file was present and
+      complete. Diagnostics are bounded and sanitized (absolute and deep repo paths redacted, one line,
+      capped at 160 chars) and carry only stage, error name, sanitized summary, the documented module
+      specifier and a CLI hint — never fixture content, raw state or environment detail. A view absent
+      from the fixture now reports the view stage plus the fixture's key list instead of rendering a
+      blank page.
   - file: miniprogram/pages/v2-preview/v2-preview.json
     what: "disableScroll set to false -> true so the preview route cannot page-scroll even outside RUN_HOME."
   - file: tools/ui02r1-layout-audit.mjs
@@ -215,15 +283,23 @@ changes:
       compiler, with source overrides for negative controls.
   - file: tests/ui02r1.test.mjs
     what: >-
-      New dedicated suite, now 22 tests: the layout audit green plus fourteen negative controls that
+      New dedicated suite, now 28 tests: the layout audit green plus fourteen negative controls that
       mutate the audited inputs and require the audit to fail; four WXSS compatibility tests including
       a negative control that reintroduces the universal selector, drops the border-box declarations
       and injects an attribute selector, a parameterised pseudo-class, an unsupported at-rule, an
       unsupported media condition and position: sticky; base-tree digest purity for 1.0 pages /
       server / wechat-shell / application-ui / platform-contract / Core / Content / app.json /
-      app.wxss / fixture generator, now guarded by base file counts and a narrow, self-checking
-      DevTools-artifact exclusion; route registration; one-screen and dock structure; matrix coverage
-      and budget; dev-layer containment; decision-surface containment and read-only archive.
+      app.wxss / fixture generator, guarded by pinned base file lists (upgraded from counts so the
+      digest fails closed on any unreviewed addition) plus a narrow, self-checking DevTools-artifact
+      exclusion; route registration; one-screen and dock structure; matrix coverage and budget;
+      dev-layer containment; decision-surface containment and read-only archive. REPAIR 2 adds six
+      fixture-loading tests: the page loads the generated JS module and never requires a .json module;
+      the committed module and JSON are byte-equal to a fresh generator run; the module payload is the
+      canonical payload and loading it (in a vm) yields the same object as the JSON and the generator,
+      with no fixture value inlined in the page; the module writer imports only the existing generator;
+      a load failure produces a staged, sanitized diagnostic and the markup renders it while no
+      missing-file wording remains anywhere; and a behavioural test that runs the page's own sanitizer
+      to prove path redaction, whitespace collapsing and the length cap.
   - file: docs/UI02_PREVIEW.md
     what: >-
       Documented the one-screen scrolling policy per page state, the supported baseline and the full
@@ -234,7 +310,7 @@ changes:
       WeChat DevTools generated-artifact section, and a step 0 in the manual QA list telling the
       reviewer to treat any WXSS compile error as a UI02R1 rework item.
   - file: package.json
-    what: "Added scripts test:ui02r1, ui02r1:audit and ui02r1:compat, and registered tests/ui02r1.test.mjs in the npm test aggregate."
+    what: "Added scripts test:ui02r1, ui02r1:audit, ui02r1:compat and ui02r1:fixture, and registered tests/ui02r1.test.mjs in the npm test aggregate."
   - file: .codex/control/LAST_RESULT.yaml
     what: "This task result."
 
@@ -256,8 +332,13 @@ verification:
         covers.
     - command: node --test tests/ui02r1.test.mjs
       proves: >-
-        Both audits are green and non-vacuous (14 + 7 negative controls), plus byte-equivalence of every
-        out-of-scope tree to the task base with base file counts.
+        Both audits are green and non-vacuous (14 + 7 negative controls), that the preview fixture the
+        page loads is the generated artifact and identical to the JSON and to a fresh generator run,
+        that the load path is the module rather than the JSON, that a load failure is reported with a
+        sanitized staged diagnostic (behaviourally tested by running the page's own sanitizer), and
+        byte-equivalence of every out-of-scope tree to the task base.
+    - command: node tools/ui02-preview-fixture-module.mjs
+      proves: "The committed fixture module and its JSON sibling are exactly what the real generator produces right now."
     - command: npm test
       proves: "No regression anywhere else in the repository (304/304)."
   structuralInference:
@@ -274,6 +355,11 @@ verification:
       one observed compiler error. The real WXSS compiler is not available in this repository, so this
       tool can prove the absence of the known hazards and of the constructs the file deliberately
       avoids — it cannot prove the stylesheet compiles.
+    - >-
+      The fixture module's freshness, byte-equality with the JSON and CommonJS loadability are proven
+      here by executing the generator and the module in Node. The page's own behaviour in the WeChat
+      sandbox (that require() of the module resolves at runtime) is inferred from module placement and
+      the standard CommonJS form; only a DevTools run confirms it.
   manualVisualQaRequired:
     status: NOT PERFORMED
     statement: >-
@@ -283,7 +369,8 @@ verification:
       confirm the following in WeChat DevTools / on a real device before UI02R1 is treated as visually
       accepted.
     items:
-      - "Compile once in WeChat DevTools and confirm the WXSS error is gone and no new WXSS syntax error appears. This is the authoritative compatibility check; the compatibility audit is only a subset check."
+      - "Compile once in WeChat DevTools, confirm the WXSS error is gone and no new WXSS syntax error appears, and confirm the preview page enters RUN_HOME rather than the failure panel. This is the authoritative check for both the WXSS subset audit and the fixture load path; neither tool can prove the runtime behaviour."
+      - "If the failure panel does appear, report its 阶段 / 代码 / 详情 / 模块 / 提示 verbatim — it is bounded and sanitized by design, so it contains no secrets and is the intended rework input."
       - "Open the preview route and confirm RUN_HOME cannot scroll vertically at all (no page displacement on drag)."
       - "Step through 320x500, 360x560, 375x603, 390x750, 414x820 and 430x850 in the device simulator; confirm core status and all four actions are first-screen visible with no horizontal scrollbar, and that removing the blanket border-box reset did not change the expected box heights."
       - "Confirm the four core action blocks and the breakthrough CTA still feel >= 44 CSS px and that text was not shrunk to fit."
@@ -346,7 +433,7 @@ acceptance:
     evidence: "tests/ui02.test.mjs 18/18 and tests/viewmodel-ui.test.mjs 6/6 (ui02 required quarantining the three DevTools-generated files first; see toolingObservations T3)."
   - id: dedicated-ui02r1-tests-and-layout-audit-green
     covered: true
-    evidence: "tests/ui02r1.test.mjs 22/22, tools/ui02r1-layout-audit.mjs 96/96 exit 0, tools/wxss-compat-audit.mjs 14/14 exit 0."
+    evidence: "tests/ui02r1.test.mjs 28/28, tools/ui02r1-layout-audit.mjs 96/96 exit 0, tools/wxss-compat-audit.mjs 14/14 exit 0, tools/ui02-preview-fixture-module.mjs freshness check exit 0."
   - id: LAST_RESULT-distinguishes-automated-structural-proof-from-manual-visual-QA-and-does-not-claim-unperformed-device-testing
     covered: true
     evidence: "verification.automated / structuralInference / manualVisualQaRequired; the manual section is explicitly NOT PERFORMED, records that the DevTools compile was run by the controller/user rather than here, and lists the items a human must still confirm."
@@ -370,9 +457,14 @@ scope:
     packages/platform-contract/src are byte-identical to the task base, pinned by tree digest.
     miniprogram/app.json is byte-identical, so the preview route is still registered last and is still
     neither the default page nor a tabBar entry. The only product-visible surface touched is
-    miniprogram/pages/v2-preview/*. The post-review repair touched only that stylesheet, the two audit
-    tools, the dedicated test file, the preview documentation, package.json and this result file.
-    No 600-run simulation was executed. No source-branch push. .gitignore was NOT changed.
+    miniprogram/pages/v2-preview/*, plus the generated preview fixture module next to it. The post-review
+    repairs touched only that page (js/wxml/wxss), the two audit tools, the new fixture-module writer and
+    its generated output, the dedicated test file, the preview documentation, package.json and this
+    result file. The fixture generation chain, the server projection, Core/Content and UI03 were not
+    touched: tools/ui02-preview-fixtures.mjs is byte-identical to the base (pinned by digest) and the new
+    writer only calls it. No 600-run simulation was executed. No source-branch push. .gitignore was NOT
+    changed, and the DevTools-rewritten root project.config.json / project.private.config.json were NOT
+    committed.
 
 toolingObservations:
   - id: T1
@@ -416,11 +508,29 @@ toolingObservations:
       working directory, so they failed on the polluted tree before any code was changed.
     impact: >-
       (a) Mitigated: the border-box requirement is now derived from the stylesheet and enforced.
-      (b) Mitigated only for tests/ui02r1.test.mjs (narrow, self-checking artifact exclusion). The
-      pre-existing tests/ui02.test.mjs is still digest-fragile: reopening DevTools will make it fail
-      again. Recommend the controller add the DevTools artifacts to .gitignore, or scope the ui02
-      digest check to the base file list in a follow-up task. Not done here because it is outside
-      UI02R1's presentation scope.
+      (b) Mitigated only for tests/ui02r1.test.mjs, whose base-tree pins now compare exact file lists
+      with a narrow, self-checking exclusion for the three observed DevTools paths. The pre-existing
+      tests/ui02.test.mjs is still directory-hashing and therefore fails whenever DevTools is reopened;
+      recommend the controller add the DevTools artifacts to .gitignore, or scope the ui02 digest check
+      to the base file list in a follow-up task. Not done here because it is outside UI02R1's scope.
+      A second DevTools session confirmed the pollution is not a one-off: it re-created
+      miniprogram/pages/game/game.js, additionally rewrote the tracked root project.config.json and
+      project.private.config.json (content and line endings) and created miniprogram/.vscode/launch.json.
+      None of those were committed.
+  - id: T4
+    severity: RUNTIME
+    title: the WeChat mini program runtime cannot require() a .json file
+    evidence: >-
+      miniprogram/pages/v2-preview/v2-preview.js did require("./v2-fixtures.json"). In the WeChat
+      runtime that does not resolve, so the call threw; the surrounding try/catch set fixtures = null
+      and discarded the error, and the page reported a missing fixture file while the file was present
+      and complete. Nothing in a Node-based test suite can observe this, because Node resolves JSON
+      requires happily (and this repo runs with "type": "module", so the same v2-fixtures.js file is ESM
+      to Node and CommonJS to WeChat — a Node import of it would fail for the opposite reason).
+    impact: >-
+      Fixed by emitting the fixture as a generated CommonJS module and adding tests that pin the load
+      path, the payload equality and the error reporting. This class of bug is invisible to Node-only
+      verification and is exactly why the manual DevTools pass in manualVisualQaRequired is step 0.
 
 blockers: []
 
@@ -440,13 +550,16 @@ backlog:
     severity: BACKLOG
     title: WeChat DevTools scratch output is not gitignored and breaks the pre-existing digest tests
     evidence: >-
-      miniprogram/project.config.json, miniprogram/pages/v2-preview/project.config.json and
-      miniprogram/pages/game/game.js appear as soon as the project is opened in DevTools; the third is
-      an empty Page({}) stub that must never be committed because it would shadow the 1.0 仙途 page.
-      tests/ui02.test.mjs hashes directories and therefore fails while they are present.
+      Observed across two DevTools sessions: miniprogram/pages/game/game.js is re-created every time the
+      project is opened (an empty Page({}) stub that must never be committed because it would shadow the
+      1.0 仙途 page), miniprogram/project.config.json and
+      miniprogram/pages/v2-preview/project.config.json appear, miniprogram/.vscode/launch.json appears,
+      and the tracked root project.config.json / project.private.config.json are rewritten.
+      tests/ui02.test.mjs hashes directories and therefore fails while they are present;
+      tests/ui02r1.test.mjs now tolerates exactly three of those paths by pinned file list.
     impact: >-
-      Every future manual QA session makes the baseline test suite red for environmental reasons
-      unless .gitignore is updated or the digest checks are scoped to the base file list.
+      Every future manual QA session makes the baseline ui02 suite red for environmental reasons unless
+      .gitignore is updated or that suite's digest checks are scoped to the base file list.
     suggestedOwner: a small tooling/chore task, or the controller directly
   - id: U2
     severity: BACKLOG
@@ -471,37 +584,39 @@ backlog:
     suggestedOwner: UI03 or a build-step task
 
 recommendedCommitMessage: |-
-  fix(ui02r1): remove the WXSS-incompatible universal selector from the preview stylesheet
+  fix(ui02r1): load the preview fixture as a generated JS module and stop hiding load errors
 
-  Post-review repair. The first DevTools compile of UI02R1 failed with
-  "pages/v2-preview/v2-preview.wxss(150:1): unexpected token '*'" because the
-  blanket `* { box-sizing: border-box; }` reset is not valid WXSS.
+  The preview page rendered "缺少 v2-fixtures.json" while that file was present and
+  complete. The WeChat runtime cannot require() a .json file, so the page's
+  require("./v2-fixtures.json") threw and the surrounding try/catch discarded the error,
+  re-labelling a module-load failure as a missing data file.
 
-  - Delete the universal selector. Every box with a definite size AND vertical
-    padding/border now declares `box-sizing: border-box` in its own rule (15 boxes),
-    so the box model the one-screen budget is written in is preserved.
-  - Add tools/wxss-compat-audit.mjs: derives the border-box requirement from the
-    stylesheet (fail-closed on unresolvable insets) and checks the documented WXSS
-    selector exceptions, supported at-rules and media conditions. It is a curated
-    subset check, not the compiler, and says so in its output.
-  - tests/ui02r1.test.mjs gains four WXSS compatibility tests with negative controls
-    that reintroduce the universal selector, drop the border-box declarations and
-    inject an attribute selector, a parameterised pseudo-class, an unsupported
-    at-rule, an unsupported media condition and position: sticky.
-  - Scope base-tree checks by pinned base file counts, with a narrow self-checking
-    exclusion for the three files WeChat DevTools generates on open. Those three files
-    (default project settings and the stock empty page template) were moved out of the
-    worktree into the git-excluded .b2base/devtools-artifacts/ with a sha256 manifest;
-    tests/ui02.test.mjs is not excluded-aware and needs a .gitignore entry or a scoping
-    fix in a follow-up.
-  - Document the root cause, the border-box rule and the DevTools artifacts in
-    docs/UI02_PREVIEW.md, and make "confirm it compiles" step 0 of the manual QA list.
+  - New generated artifact miniprogram/pages/v2-preview/v2-fixtures.js
+    (module.exports = <payload>) and the writer tools/ui02-preview-fixture-module.mjs
+    that emits it from the existing buildPreviewFixtures(). No second source of truth:
+    the writer imports only node:fs, node:path and tools/ui02-preview-fixtures.mjs, and
+    serializes exactly the same canonical payload as the JSON writer.
+  - tests/ui02r1.test.mjs asserts the committed module, the committed JSON and a fresh
+    generator run are equal, that the module payload is the canonical serialization and
+    loads to the same object, that the page requires the module and never a .json, and
+    that no fixture value is inlined in the page.
+  - Load failures now produce an explicit staged diagnostic (module / shape / view) with
+    a sanitized one-line summary (paths redacted, whitespace collapsed, 160-char cap),
+    the module specifier and a CLI hint — never fixture content, raw state or
+    environment detail. An absent view reports the view stage plus the fixture's key
+    names instead of rendering a blank page; the "missing file" wording is gone.
+  - A behavioural test extracts and runs the page's own sanitizer to prove redaction,
+    collapsing and the cap, rather than trusting a regex over the source.
+  - Base-tree pins upgraded from counts to exact file lists so the digest fails closed
+    on any unreviewed addition while tolerating the three documented DevTools scratch
+    paths. DevTools also rewrote the root project.config.json /
+    project.private.config.json and created miniprogram/.vscode/; none are committed.
 
-  No rule, contract, server, shell, controller, Core/Content, legacy 1.0 or route
-  change. Layout audit budget numbers are unchanged (412.6 px at the 320x500 baseline).
+  No rule, contract, server, shell, controller, Core/Content, legacy 1.0 or route change.
+  Fixture generation chain, server projection and UI03 scope are untouched.
 
-  Verification: 304/304 npm test, 22/22 ui02r1, 96/96 layout audit, 14/14 WXSS
-  compatibility audit, 18/18 ui02, 6/6 viewmodel-ui, typecheck/lint/content-lint/
-  content01-lint/secret-scan green. Manual visual QA on the viewport matrix, starting
-  with a successful DevTools compile, is still required and is documented as not
-  performed.
+  Verification: 310/310 npm test, 28/28 ui02r1, 96/96 layout audit, 14/14 WXSS
+  compatibility audit, fixture-module freshness check green, 18/18 ui02, 6/6
+  viewmodel-ui, typecheck/lint/content-lint/content01-lint/secret-scan green. Manual
+  visual QA in DevTools — starting with "the page enters RUN_HOME, not the failure
+  panel" — is still required and is documented as not performed.

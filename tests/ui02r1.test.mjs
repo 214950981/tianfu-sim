@@ -3,8 +3,18 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import test from "node:test";
+import vm from "node:vm";
 
 import { mapCoreActionIntents, mapSpecialActionIntents } from "../packages/wechat-shell/src/index.ts";
+import { FIXTURE_PATH as FIXTURE_JSON_PATH, buildPreviewFixtures } from "../tools/ui02-preview-fixtures.mjs";
+import {
+  FIXTURE_JSON_SPECIFIER,
+  FIXTURE_MODULE_PATH,
+  FIXTURE_MODULE_SPECIFIER,
+  buildFixtureJsonSource,
+  buildFixtureModuleSource,
+  fixturePayload
+} from "../tools/ui02-preview-fixture-module.mjs";
 import {
   MIN_FONT_SIZE_RPX,
   PAGE_JSON_PATH,
@@ -38,38 +48,139 @@ const read = (relative) => fs.readFileSync(path.join(ROOT, relative), "utf8");
 const readJson = (relative) => JSON.parse(read(relative));
 
 /**
- * Frozen UI02R1 base-tree digests (task base = remote source HEAD dc5675d6).
+ * Frozen UI02R1 base trees (task base = remote source HEAD dc5675d6).
  *
  * They pin, without needing git at test time, that this presentation-only task touched nothing but
  * the 2.0 dev preview surface. A later task that is legitimately allowed to change one of these trees
- * must update the digest and the file count on purpose.
+ * must update the digest and the file list on purpose.
  *
- * `files` is the base file count: it makes the digest non-forgeable by deletion/addition, because the
- * hashed set must have exactly that cardinality after DEVTOOLS_ARTIFACTS is excluded.
+ * `files` is the exact base file list (derived from `git ls-tree -r HEAD`). Pinning the list, not just
+ * a count, is what makes the digest fail closed on any addition inside a pinned tree while still
+ * tolerating the DevTools scratch files listed in DEVTOOLS_ARTIFACTS.
  */
 const BASE_TREE = {
-  "miniprogram/pages/start": { files: 2, digest: "60e0cc693eb8849d74a23b56cca97b7a154e18ad2167013109efb534f1dfbcba" },
-  "miniprogram/pages/game": { files: 2, digest: "c04c015e9ea8e37c3ea9d817377cf010a07e618a35d7b84a00f61b816d991cfe" },
-  "miniprogram/pages/rank": { files: 4, digest: "3171b3fbbb94368e7ed3df556b1cfb58379911e1bf2d617e19554c37c5c0d605" },
-  "miniprogram/app.json": { files: 1, digest: "222ff69299f6e8c800a4e9a5ef334cfeb67a28ace5e55405cee050105e3fb47f" },
-  "miniprogram/app.wxss": { files: 1, digest: "50d3287504a6112527997fbbf85678724c457bb90513467609895c936da370fe" },
-  pages: { files: 9, digest: "19cdc6c90862f1fc12572bdbf2b394a3dc2119ff75d69840b739f555a0b88700" },
-  "packages/core/src": { files: 17, digest: "247b0b9e650aab642824491fc36186fbef552e62dddf9a75cc0ebeaaa92ef80d" },
-  "packages/content/src": { files: 18, digest: "3a290c9b6fbf03969990857544709acebaea57d22fe5f864fa9c197b65bfec67" },
-  "packages/wechat-shell/src": { files: 1, digest: "f821d3de163d1cb8e9b47e694fc4a73d92e8230c89e9221693962b9cd3582e9c" },
-  "packages/application-ui/src": { files: 1, digest: "9548718c649769adcf8b825115c93657ee902a03883dfc2076a528f0688cabd9" },
-  "packages/platform-contract/src": { files: 1, digest: "c1b057b87f4fc75554334fce767ca2a46a64e83785ae9dbeca8daf74d8a42bc1" },
-  "server/src": { files: 4, digest: "71df0d6e33d0ef815fe6072c701ab53f090508da4f1c31e9a18c2023a3b343a5" },
-  "tools/ui02-preview-fixtures.mjs": { files: 1, digest: "9327e7018f256735860d21efbd92f35bfbc1367486f26e011a15d94a8d662c48" },
-  "miniprogram/pages/v2-preview/v2-fixtures.json": { files: 1, digest: "af40f19c015a3a00855fa9e031eb7fe15700b0f61af0fd9a96ccd7ad3c869a7d" }
+  "miniprogram/pages/start": {
+    files: ["miniprogram/pages/start/start.js", "miniprogram/pages/start/start.wxml"],
+    digest: "60e0cc693eb8849d74a23b56cca97b7a154e18ad2167013109efb534f1dfbcba"
+  },
+  "miniprogram/pages/game": {
+    files: ["miniprogram/pages/game/game.wxml", "miniprogram/pages/game/game_data.js"],
+    digest: "c04c015e9ea8e37c3ea9d817377cf010a07e618a35d7b84a00f61b816d991cfe"
+  },
+  "miniprogram/pages/rank": {
+    files: [
+      "miniprogram/pages/rank/rank.js",
+      "miniprogram/pages/rank/rank.json",
+      "miniprogram/pages/rank/rank.wxml",
+      "miniprogram/pages/rank/rank.wxss"
+    ],
+    digest: "3171b3fbbb94368e7ed3df556b1cfb58379911e1bf2d617e19554c37c5c0d605"
+  },
+  "miniprogram/app.json": {
+    files: ["miniprogram/app.json"],
+    digest: "222ff69299f6e8c800a4e9a5ef334cfeb67a28ace5e55405cee050105e3fb47f"
+  },
+  "miniprogram/app.wxss": {
+    files: ["miniprogram/app.wxss"],
+    digest: "50d3287504a6112527997fbbf85678724c457bb90513467609895c936da370fe"
+  },
+  pages: {
+    files: [
+      "pages/game/game.js",
+      "pages/game/game.wxml",
+      "pages/game/game.wxss",
+      "pages/game/game_optimized.js",
+      "pages/rank/rank.js",
+      "pages/start/data.js",
+      "pages/start/start.js",
+      "pages/start/start.wxml",
+      "pages/start/start.wxss"
+    ],
+    digest: "19cdc6c90862f1fc12572bdbf2b394a3dc2119ff75d69840b739f555a0b88700"
+  },
+  "packages/core/src": {
+    files: [
+      "packages/core/src/build.ts",
+      "packages/core/src/cause.ts",
+      "packages/core/src/command.ts",
+      "packages/core/src/destiny.ts",
+      "packages/core/src/director.ts",
+      "packages/core/src/event.ts",
+      "packages/core/src/index.ts",
+      "packages/core/src/npc.ts",
+      "packages/core/src/numeric.ts",
+      "packages/core/src/participants.ts",
+      "packages/core/src/persistence.ts",
+      "packages/core/src/progression.ts",
+      "packages/core/src/reducer.ts",
+      "packages/core/src/risk.ts",
+      "packages/core/src/rng.ts",
+      "packages/core/src/sha256.ts",
+      "packages/core/src/state.ts"
+    ],
+    digest: "247b0b9e650aab642824491fc36186fbef552e62dddf9a75cc0ebeaaa92ef80d"
+  },
+  "packages/content/src": {
+    files: [
+      "packages/content/src/build-audit.ts",
+      "packages/content/src/build-v1.ts",
+      "packages/content/src/combo-audit.ts",
+      "packages/content/src/content-playability-audit.ts",
+      "packages/content/src/content-sim.ts",
+      "packages/content/src/content01-v1.ts",
+      "packages/content/src/director-audit.ts",
+      "packages/content/src/director-v1.ts",
+      "packages/content/src/index.ts",
+      "packages/content/src/npc-audit.ts",
+      "packages/content/src/npc-content01-v1.ts",
+      "packages/content/src/npc-v1.ts",
+      "packages/content/src/participant-bridge-audit.ts",
+      "packages/content/src/progression-v1.ts",
+      "packages/content/src/recurrence-audit.ts",
+      "packages/content/src/registry.ts",
+      "packages/content/src/risk-audit.ts",
+      "packages/content/src/risk-v1.ts"
+    ],
+    digest: "3a290c9b6fbf03969990857544709acebaea57d22fe5f864fa9c197b65bfec67"
+  },
+  "packages/wechat-shell/src": {
+    files: ["packages/wechat-shell/src/index.ts"],
+    digest: "f821d3de163d1cb8e9b47e694fc4a73d92e8230c89e9221693962b9cd3582e9c"
+  },
+  "packages/application-ui/src": {
+    files: ["packages/application-ui/src/index.ts"],
+    digest: "9548718c649769adcf8b825115c93657ee902a03883dfc2076a528f0688cabd9"
+  },
+  "packages/platform-contract/src": {
+    files: ["packages/platform-contract/src/index.ts"],
+    digest: "c1b057b87f4fc75554334fce767ca2a46a64e83785ae9dbeca8daf74d8a42bc1"
+  },
+  "server/src": {
+    files: [
+      "server/src/command-gateway.ts",
+      "server/src/destiny-offer.ts",
+      "server/src/index.ts",
+      "server/src/viewmodel.ts"
+    ],
+    digest: "71df0d6e33d0ef815fe6072c701ab53f090508da4f1c31e9a18c2023a3b343a5"
+  },
+  "tools/ui02-preview-fixtures.mjs": {
+    files: ["tools/ui02-preview-fixtures.mjs"],
+    digest: "9327e7018f256735860d21efbd92f35bfbc1367486f26e011a15d94a8d662c48"
+  },
+  "miniprogram/pages/v2-preview/v2-fixtures.json": {
+    files: ["miniprogram/pages/v2-preview/v2-fixtures.json"],
+    digest: "af40f19c015a3a00855fa9e031eb7fe15700b0f61af0fd9a96ccd7ad3c869a7d"
+  }
 };
 
 /**
  * WeChat DevTools writes these into the worktree as soon as the project is opened for manual visual QA
- * (observed during UI02R1: stock page template + default project settings, mtime 2026-09-23 15:06-15:08).
- * They are generated scratch output, not authored content, and none of them exists in the task base.
- * They are excluded from the byte-equivalence claim — but only by exact path, and nothing else may be,
- * so the digest still fails closed on any other addition inside a pinned tree.
+ * (observed twice during UI02R1: a stock empty `Page({})` stub for a page app.json declares without an
+ * implementation, plus default project settings; mtimes 2026-09-23 15:06-15:38). They are generated
+ * scratch output, not authored content, and none of them exists in the task base. They are excluded
+ * from the byte-equivalence claim — but only by exact path, and any *other* addition to a pinned tree
+ * still fails the digest, so the check fails closed rather than open.
  */
 const DEVTOOLS_ARTIFACTS = [
   "miniprogram/project.config.json",
@@ -111,6 +222,7 @@ function treeDigestOf(files) {
 const stripCss = (source) => source.replace(/\/\*[\s\S]*?\*\//g, "");
 /** Rule assertions must inspect code, not prose: the page documents what it avoids computing. */
 const stripJs = (source) => source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|[^:])\/\/[^\n]*/g, "$1");
+const stripMarkup = (source) => source.replace(/<!--[\s\S]*?-->/g, "").replace(/\/\*[\s\S]*?\*\//g, "");
 
 const wxss = read(WXSS_PATH);
 const wxml = read(WXML_PATH);
@@ -300,24 +412,156 @@ test("UI02R1_wxss: the selector whitelist accepts the documented WXSS selector f
   assert.equal(parseStylesheet(wxss).outerRules.some((rule) => rule.selector.includes(",")), false);
 });
 
+// ---------------------------------------------------------------- preview fixture loading
+
+/**
+ * The page used to `require()` the .json fixture. The WeChat runtime cannot require a .json file, the
+ * surrounding catch swallowed the error, and the page showed "缺少 v2-fixtures.json" while the file was
+ * present. The fixture is now the generated static CommonJS module ./v2-fixtures.js, and a load failure
+ * is reported explicitly instead of being blamed on a missing file.
+ */
+test("UI02R1_fixture: the page loads the generated JS module and never requires a .json module", () => {
+  const pageCode = stripJs(pageJs);
+  assert.equal(pageCode.includes(FIXTURE_MODULE_SPECIFIER), true, "the page must reference " + FIXTURE_MODULE_SPECIFIER);
+  assert.equal(
+    /require\s*\(\s*["'][^"']*\.json["']\s*\)/.test(pageCode),
+    false,
+    "the WeChat runtime cannot require a .json module, so no .json require may exist"
+  );
+  assert.equal(pageCode.includes("require(" + "FIXTURE_MODULE_SPECIFIER)"), true, "the page must require the fixture module");
+  assert.equal(
+    fs.existsSync(path.join(ROOT, FIXTURE_MODULE_PATH)),
+    true,
+    FIXTURE_MODULE_PATH + " must be committed; run node tools/ui02-preview-fixture-module.mjs --write"
+  );
+  // The JSON sibling is only ever named as the thing the runtime cannot load.
+  assert.equal(pageCode.includes(FIXTURE_JSON_SPECIFIER), true);
+});
+
+test("UI02R1_fixture: the committed module and JSON are exactly what the real production chain generates", () => {
+  const generated = buildPreviewFixtures();
+  const committedModule = read(FIXTURE_MODULE_PATH);
+  const committedJson = read(FIXTURE_JSON_PATH);
+  assert.equal(
+    committedModule,
+    buildFixtureModuleSource(generated),
+    "stale " + FIXTURE_MODULE_PATH + "; run node tools/ui02-preview-fixture-module.mjs --write"
+  );
+  assert.equal(
+    committedJson,
+    buildFixtureJsonSource(generated),
+    "stale " + FIXTURE_JSON_PATH + "; run node tools/ui02-preview-fixtures.mjs --write"
+  );
+});
+
+test("UI02R1_fixture: the module exports the same public data as the JSON and the generator (no second copy)", () => {
+  const generated = JSON.parse(JSON.stringify(buildPreviewFixtures()));
+  const committedModule = read(FIXTURE_MODULE_PATH);
+
+  // 1. it is a plain CommonJS export, which is what the WeChat runtime loads
+  assert.equal(/^module\.exports = /m.test(committedModule), true);
+  // 2. the payload is byte-identical to the canonical serialization shared with the JSON writer
+  const prefix = "module.exports = ";
+  const payload = committedModule.slice(committedModule.indexOf(prefix) + prefix.length, committedModule.lastIndexOf(";"));
+  assert.equal(payload, fixturePayload(generated), "the module payload must be the generated payload verbatim");
+  // 3. loading it really yields the same object as the committed JSON. `vm` runs in its own realm, so
+  //    the result is re-materialized before a strict comparison (cross-realm prototypes are not equal).
+  const sandbox = { module: { exports: {} } };
+  vm.runInNewContext(committedModule, sandbox);
+  const loaded = JSON.parse(JSON.stringify(sandbox.module.exports));
+  assert.deepEqual(loaded, fixtures, "module export must equal the committed JSON fixture");
+  assert.deepEqual(loaded, generated, "module export must equal a fresh generator run");
+  // 4. and the page renders only from that module, never from inlined fixture values
+  const pageCode = stripJs(pageJs) + stripMarkup(wxml);
+  for (const sample of ["青芜问道", "无名老者", "柳氏药婆", "mortal", "inst-ui02-event"]) {
+    assert.equal(pageCode.includes(sample), false, "fixture value leaked into the page source: " + sample);
+  }
+});
+
+test("UI02R1_fixture: the module writer reuses the production chain instead of re-implementing it", () => {
+  const toolCode = stripJs(read("tools/ui02-preview-fixture-module.mjs"));
+  // its only imports are the Node builtins it needs plus the existing generator: nothing from the
+  // server / shell / core / content layers, so it cannot rebuild the projection itself
+  const specifiers = [...toolCode.matchAll(/from\s+["']([^"']+)["']/g)].map((match) => match[1]).sort();
+  assert.deepEqual(specifiers, ["./ui02-preview-fixtures.mjs", "node:fs", "node:path"]);
+  assert.equal(toolCode.includes("buildPreviewFixtures()"), true, "must call the existing generator");
+});
+
+test("UI02R1_fixture: a load failure is reported with an explicit stage, not swallowed into a missing-file message", () => {
+  const pageCode = stripJs(pageJs);
+  // the misleading wording is gone from both the code and the markup: a load error is never described
+  // as a missing fixture file
+  assert.equal(pageCode.includes("缺少"), false, "the page must not claim the fixture file is missing");
+  assert.equal(wxml.includes("缺少"), false);
+  assert.equal(pageCode.includes("v2-fixtures.json") && /请先运行/.test(pageCode), false, "the old missing-file instruction must be gone");
+  // three distinguishable failure stages, and the catch routes into them
+  for (const stage of ["module", "shape", "view"]) {
+    assert.equal(pageCode.includes('"' + stage + '"'), true, "missing failure stage: " + stage);
+  }
+  assert.equal(
+    /try\s*\{[\s\S]*?require\(FIXTURE_MODULE_SPECIFIER\)[\s\S]*?catch\s*\(error\)\s*\{[\s\S]*?loadFailureOf\(/.test(pageCode),
+    true,
+    "the module load must catch and turn the error into a staged failure"
+  );
+  assert.equal(pageCode.includes("sanitizeDiagnostic"), true, "diagnostics must be sanitized");
+  // a blank page is not an acceptable failure mode: the markup must render the staged diagnostics
+  for (const binding of ["failure.stage", "failure.code", "failure.detail", "failure.specifier", "failure.hint"]) {
+    assert.equal(wxml.includes(binding), true, "failure panel must render " + binding);
+  }
+  // and a view missing from the fixture must raise the view stage rather than rendering nothing
+  assert.equal(/"view"[\s\S]*?fixtureViewKeys/.test(pageCode), true, "absent views must be reported");
+});
+
+test("UI02R1_fixture: the failure diagnostic redacts paths and is length-capped (behavioural)", () => {
+  const extractFunction = (source, name) => {
+    const start = source.indexOf("function " + name + "(");
+    assert.notEqual(start, -1, name + " must exist in the page source");
+    let depth = 0;
+    for (let index = source.indexOf("{", start); index < source.length; index += 1) {
+      if (source[index] === "{") depth += 1;
+      else if (source[index] === "}") {
+        depth -= 1;
+        if (depth === 0) return source.slice(start, index + 1);
+      }
+    }
+    return assert.fail("unbalanced braces while extracting " + name);
+  };
+  const limit = /var DIAGNOSTIC_MAX_CHARS = (\d+);/.exec(pageJs);
+  assert.notEqual(limit, null, "DIAGNOSTIC_MAX_CHARS must be declared");
+  const sanitize = vm.runInNewContext(
+    "var DIAGNOSTIC_MAX_CHARS = " + limit[1] + ";\n" + extractFunction(pageJs, "sanitizeDiagnostic") + "\nsanitizeDiagnostic;",
+    {}
+  );
+
+  const windowsPath = sanitize("Cannot find module 'C:\\Users\\Someone\\repo\\miniprogram\\v2-fixtures.js'");
+  assert.equal(windowsPath.includes("C:\\"), false, "absolute windows paths must be redacted");
+  assert.equal(windowsPath.includes("<path>"), true);
+  const deepPath = sanitize("SyntaxError at miniprogram/pages/v2-preview/v2-fixtures.js:1:1");
+  assert.equal(deepPath.includes("miniprogram/pages"), false, "repo paths must be redacted");
+  assert.equal(deepPath.includes("<path>"), true);
+  assert.equal(sanitize("  spaced\n\nmessage\t "), "spaced message", "whitespace must collapse to one line");
+  assert.equal(sanitize("x".repeat(500)).length, Number(limit[1]), "diagnostics must be length-capped");
+  assert.equal(sanitize(undefined), "");
+  assert.equal(sanitize(null), "");
+  // the sanitizer must not be a filter that hides the error class: a bare message survives intact
+  assert.equal(sanitize("module not found"), "module not found");
+});
+
 // ---------------------------------------------------------------- scope purity
 
 test("UI02R1_scope: server ViewModel, wechat-shell intent mapping, application UI controller, Core/Content gameplay and 1.0 pages are byte-equivalent to the task base", () => {
   for (const relative of Object.keys(BASE_TREE)) {
     const { hashed } = baseTreeFiles(relative);
-    assert.equal(hashed.length, BASE_TREE[relative].files, `${relative} must still contain exactly its base files (got ${hashed.join(", ")})`);
+    assert.deepEqual(hashed, BASE_TREE[relative].files, `${relative} must still contain exactly its base files`);
     assert.equal(treeDigestOf(hashed), BASE_TREE[relative].digest, `${relative} must be byte-equivalent to the task base`);
   }
 });
 
 test("UI02R1_scope: the DevTools-artifact exclusion is narrow and cannot hide a real change", () => {
-  // 1. Every excluded path must be absent from the base tree, or the exclusion would mask a real file.
-  const baseFiles = new Set();
-  for (const relative of Object.keys(BASE_TREE)) {
-    for (const file of baseTreeFiles(relative, []).all) baseFiles.add(file);
-  }
+  // 1. No excluded path may be part of any pinned base tree, or the exclusion would mask real content.
+  const baseFiles = new Set(Object.values(BASE_TREE).flatMap((entry) => entry.files));
   for (const artifact of DEVTOOLS_ARTIFACTS) {
-    assert.equal(baseFiles.has(artifact), false, `${artifact} must not be a base file`);
+    assert.equal(baseFiles.has(artifact), false, artifact + " must not be a base file");
   }
   // 2. The allowlist is exactly the observed generated set — it cannot silently grow.
   assert.deepEqual([...DEVTOOLS_ARTIFACTS].sort(), [
@@ -325,12 +569,12 @@ test("UI02R1_scope: the DevTools-artifact exclusion is narrow and cannot hide a 
     "miniprogram/pages/v2-preview/project.config.json",
     "miniprogram/project.config.json"
   ]);
-  // 3. Across every pinned tree, the exclusion removes nothing that is actually there: the hashed set
-  //    equals the full set. If a future DevTools run drops a *different* artifact, this fails closed.
+  // 3. Fail closed: anything present in a pinned tree that is neither a base file nor an allowlisted
+  //    artifact still breaks the digest, and the message names it.
   for (const relative of Object.keys(BASE_TREE)) {
-    const all = baseTreeFiles(relative, []).all;
-    const hashed = baseTreeFiles(relative).hashed;
-    assert.equal(hashed.length, all.length, `${relative} contains an unreviewed extra file: ${all.filter((file) => !hashed.includes(file)).join(", ")}`);
+    const base = new Set(BASE_TREE[relative].files);
+    const unexpected = baseTreeFiles(relative, []).all.filter((file) => !base.has(file) && !DEVTOOLS_ARTIFACTS.includes(file));
+    assert.deepEqual(unexpected, [], `${relative} contains an unreviewed extra file`);
   }
 });
 
