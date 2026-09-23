@@ -1,0 +1,35 @@
+id: SIM02
+title: SIM02 — Post-LOOPFIX 600-Run Balance / Reachability Verification
+phase: 2
+requiredContracts: [.codex/contracts/director.ref,.codex/contracts/cause.ref,.codex/contracts/npc.ref,.codex/contracts/event.ref,.codex/contracts/state.ref,.codex/contracts/reducer.ref,.codex/contracts/rng.ref,.codex/contracts/crosslayer.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [tools/content-sim.mjs,tests/content-sim.test.mjs,packages/core/src/director.ts,packages/core/src/cause.ts,packages/core/src/reducer.ts,packages/content/src/content01-v1.ts,.codex/control/LAST_RESULT.yaml]
+allowedScope:
+  - execute the existing deterministic CONTENT01 simulation for exactly 600 runs using the repository's established SIM/content-sim path
+  - collect and report Director precedence/slot reachability, especially P3/P4/P5/P6, Cause echo/closure behavior, same-core-NPC repeat-gate observations, event recurrence, terminal/death outcomes, and existing balance metrics emitted by the simulator
+  - run existing test:sim02 plus full regression and required audits
+  - minimal simulation/reporting instrumentation only if existing tooling cannot expose an acceptance metric, with no gameplay semantic change
+  - .codex/control/LAST_RESULT.yaml task result
+forbiddenScope: [gameplay-balance-tuning,Director-precedence-changes,Director-weight-formula-changes,Director-weight-constant-changes,recurrence-rule-changes,CONTENT01-cooldown-rebalance,Cause-semantic-changes,NPC-state-machine-changes,new-RNG,new-persistent-state,Build-Risk-Progression-number-changes,PLAYCHECK02,UI,ITEM01,TECH01,SECT01,WORLD01,CHAL01,source-branch-push]
+design:
+  - This is a verification task after accepted LOOPFIX02B1/B2/B3, not a tuning task.
+  - Run exactly 600 deterministic simulation runs through the existing repository simulation path; record command/seed/configuration precisely enough to reproduce.
+  - Verify P6 is actually reachable in aggregate after B3 rather than merely structurally reachable in unit tests.
+  - Verify P4 no longer forms consecutive selected-scene chains through the same core NPC; different core NPCs remain legal.
+  - Verify P3 Cause echoes and Cause closure remain live and no cause.invalid regression appears.
+  - Report slot/event distribution and any starvation or pathological concentration visible in existing metrics, but do not change balance numbers in this task.
+  - If the existing simulator cannot complete 600 runs, a P0/P1 invariant fails, P6 remains empirically unreachable, same-core-NPC consecutive P4 recurs, Cause closure regresses, or a gameplay change is required, stop BLOCKED with evidence instead of widening scope.
+accept:
+  - exactly-600-runs-completed-deterministically
+  - P6-observed-at-least-once
+  - P3-P4-P5-P6-reachability-counts-reported
+  - no-same-core-NPC-consecutive-P4-selected-scenes
+  - different-core-NPC-P4-not-blanket-suppressed
+  - Cause-echo-and-closure-no-cause-invalid-regression
+  - recurrence-and-terminal-behavior-reported
+  - no-gameplay-balance-or-rule-change
+  - deterministic-replay-regressions-green
+  - test-sim02-green
+  - full-regression-and-audits-green
+tests: [sim02,content01,director,loopfix02b3,loopfix02b2,loopfix02b1,recurrence,reducer,state,replay,content-registry,typecheck,lint,content-lint,content01-lint,secret-scan,director-audit,recurrence-audit,participant-bridge-audit,npc-audit,build-audit,risk-audit,content-playability-audit]
