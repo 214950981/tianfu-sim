@@ -1,0 +1,44 @@
+id: UI02R1
+title: UI02R1 — One-Screen Responsive Gameplay Layout
+phase: 2
+requiredContracts: [.codex/contracts/ui.ref,.codex/contracts/viewmodel.ref,.codex/contracts/page-state.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [docs/UI02R1_RESPONSIVE_LAYOUT.md,docs/UIUX_RULES.md,miniprogram/pages/v2-preview/v2-preview.wxml,miniprogram/pages/v2-preview/v2-preview.wxss,miniprogram/pages/v2-preview/v2-preview.js,miniprogram/pages/v2-preview/v2-preview.json,tests/ui02.test.mjs,docs/UI02_PREVIEW.md]
+allowedScope:
+  - refactor only the 2.0 dev preview presentation/layout so RUN_HOME becomes a one-screen operational surface on the supported portrait viewport matrix
+  - preserve the accepted UI02 paper ink cinnabar restrained-dark-gold design language while reducing vertical information density
+  - move dev preview tabs and debug-only status/lastIntent/interaction diagnostics out of product document flow into a collapsed floating dev trigger plus overlay or equivalent non-layout-consuming debug layer
+  - restructure RUN_HOME into compact identity/lifespan header, core cultivation status, at most 2 to 3 public attention summaries, and bottom action dock
+  - keep exactly four core actions visible at all times in a stable 2x2 or equivalently compact action dock
+  - show a primary breakthrough CTA only when the existing server-projected special intent is enabled; unavailable breakthrough must not reserve a large vertical block
+  - add read-only local detail overlays or drawers for the already-public Build Cause and People collections when needed; these may not mutate gameplay or reveal hidden data
+  - EVENT and SPECIAL_NODE must use a fixed full-screen decision container with bounded internal scroll for long narrative or option regions and no page-level vertical document scroll
+  - LIFE_ARCHIVE remains scrollable read-only and should use an explicit internal scroll viewport
+  - add compact-height responsive treatment for supported small content viewports without shrinking critical text or controls into unusable sizes
+  - respect bottom safe-area/home-indicator spacing for the action dock and decision controls
+  - preserve disabled action slots to avoid layout jump and handle long labels/names/reasons without horizontal overflow
+  - add or extend a structural layout audit and dedicated tests/ui02r1.test.mjs; no new heavy browser or rendering dependency
+  - update docs/UI02_PREVIEW.md with one-screen policy, supported viewport matrix and manual visual QA instructions
+  - .codex/control/LAST_RESULT.yaml task result
+forbiddenScope: [server-viewmodel-changes,wechat-shell-intent-mapping-changes,application-ui-controller-changes,Core-gameplay-rule-changes,Content-gameplay-changes,Director-changes,Cause-semantics,Progression-changes,Risk-resolution-changes,Build-or-NPC-rule-changes,legacy-1.0-start-game-rank-changes,miniprogram-app-route-changes,default-route-changes,real-transport-wiring,UI03-implementation,UI04,CHAL01,ITEM01,TECH01,SECT01,WORLD01,new-heavy-test-dependency,source-branch-push]
+accept:
+  - RUN_HOME-product-surface-has-no-page-level-vertical-scroll-by-structure
+  - supported-portrait-baseline-is-windowWidth-at-least-320-and-windowHeight-at-least-500
+  - viewport-matrix-320x500-360x560-375x603-390x750-414x820-430x850-is-explicitly-covered-by-responsive-rules-or-layout-contract
+  - four-core-actions-are-always-first-screen-visible-and-remain-exactly-four
+  - core-action-touch-targets-are-not-compressed-below-approximately-44-CSS-px
+  - enabled-breakthrough-is-first-screen-reachable-and-unavailable-breakthrough-does-not-consume-a-large-CTA-block
+  - realm-lifespan-cultivation-foundation-and-primary-public-attention-summary-remain-first-screen-readable
+  - full-public-Build-Cause-People-lists-are-not-all-expanded-on-RUN_HOME
+  - dev-preview-controls-and-debug-output-do-not-consume-product-layout-height
+  - bottom-action-and-decision-controls-respect-safe-area-home-indicator-space
+  - EVENT-and-SPECIAL_NODE-use-bounded-internal-scroll-for-overflow-without-page-level-document-scroll
+  - LIFE_ARCHIVE-remains-intentionally-scrollable-read-only
+  - long-public-labels-names-and-risk-copy-do-not-create-horizontal-overflow-or-push-core-actions-off-screen
+  - capability-and-breakthrough-variants-preserve-layout-without-large-jumps
+  - old-1.0-pages-server-viewmodel-wechat-shell-Core-and-Content-are-byte-equivalent-to-task-base
+  - UI02-and-A12-tests-remain-green
+  - dedicated-ui02r1-tests-and-layout-audit-green
+  - LAST_RESULT-distinguishes-automated-structural-proof-from-manual-visual-QA-and-does-not-claim-unperformed-device-testing
+tests: [ui02r1,ui02,viewmodel-ui,typecheck,lint,content-lint,content01-lint,secret-scan]

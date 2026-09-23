@@ -1,11 +1,11 @@
 version: 1
 status: READY
 attempt: 1
-taskId: UI03
-title: UI03 — WeChat 2.0 Live Session Controller / E2E Wiring
-taskDefinition: .codex/tasks/UI03.yaml
+taskId: UI02R1
+title: UI02R1 — One-Screen Responsive Gameplay Layout
+taskDefinition: .codex/tasks/UI02R1.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-UI03
+workBranch: wb-UI02R1
 worktreeRequired: true
 allowSyntheticTreeBase: true
 basePolicy: remote-source-head-at-task-start
@@ -19,24 +19,23 @@ controllerReview:
   previousTask: UI02
   previousStatus: ACCEPTED
   acceptedResultCommit: f091c82f9c2f34a2cef8731feeb1e698a7dce8d8
-  acceptanceBasis:
-    - v2 preview route is last, non-default, and outside tabBar
-    - RUN_HOME EVENT SPECIAL_NODE LIFE_ARCHIVE visual states are implemented
-    - breakthrough availability is server projected and exposes no difficulty odds RNG check spec or hidden modifiers
-    - platform-neutral shell maps four core actions and ATTEMPT_BREAKTHROUGH without local rule calculation
-    - EVENT renders server riskPresentation and unresolved back protection remains intact
-    - legacy 1.0 pages and Core Content gameplay sources are byte-equivalent to the task base
-    - dedicated UI02 tests 18 of 18, A12 viewmodel tests 6 of 6, full suite 282 of 282 passed
+  postAcceptanceFinding:
+    - user visual review found RUN_HOME behaves like a vertical document and requires page-level scrolling on a normal phone preview
+    - dev preview chrome contributes height but is not the root cause; the product information hierarchy itself is too vertically expanded
+    - UI03 has not started and no wb-UI03 branch exists, so layout repair should happen before live controller wiring
 controllerDecision:
-  strategy: controller-before-deployment
-  rationale: prove the entire live in-life interaction loop over the existing ApplicationTransport and CommandGateway before designing any real wx cloud or HTTP deployment boundary
+  strategy: one-screen-before-live-wiring
+  rationale: stabilize responsive information architecture, safe-area behavior and small-screen constraints before binding real session interactions, avoiding controller work against a layout that will immediately be restructured
+  supportedPortraitBaseline: windowWidth>=320 CSS px and windowHeight>=500 CSS px
+  viewportMatrix: [320x500,360x560,375x603,390x750,414x820,430x850]
 controllerIntent:
-  mode: live-e2e-wiring
-  goal: turn the UI02 presentation slice into a reusable authoritative session controller while keeping deployment and legacy route replacement out of scope
-  postTask: if PASS, controller will decide UI04 production WeChat adapter/deployment boundary; do not start UI04 yourself
+  mode: responsive-layout-hardening
+  goal: make RUN_HOME feel like a game control surface rather than a scrollable data sheet, while keeping detailed public information available in read-only secondary views
+  postTask: after automated PASS the controller/user will visually inspect the preview; UI03 remains blocked until UI02R1 is accepted
 notes:
-  - Do not deploy or invent a wx.cloud backend in this task. UI03 ends at a tested ApplicationTransport integration seam.
-  - Reuse CommandSubmissionController. A second command envelope or retry engine is forbidden.
-  - Gameplay navigation is server-driven by refreshed PublicViewModel. LIFE_ARCHIVE may be a local read-only side-page state only.
-  - Use the real CommandGateway plus GatewayApplicationTransport in E2E tests so this is not a mock-only controller.
-  - Do not modify old miniprogram/pages/start, game, or rank business logic, and do not change the default route.
+  - Read docs/UI02R1_RESPONSIVE_LAYOUT.md first. It is the controller-owned responsive layout contract for this repair.
+  - Do not modify server projection or shell intent mapping. The data and authority boundary are already accepted; this is a presentation/layout task.
+  - Do not hide required information by clipping it invisibly. Summarize on RUN_HOME and move public detail to explicit read-only secondary UI.
+  - Do not solve fit by making fonts or touch targets tiny. Preserve readability and approximately 44 CSS px touch targets.
+  - Do not claim real-device coverage you did not execute. Report automated structural evidence separately from manual visual QA still required.
+  - UI03 is deliberately paused and now declares UI02R1 as a blocker.

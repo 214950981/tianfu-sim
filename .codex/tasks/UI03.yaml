@@ -3,8 +3,8 @@ title: UI03 — WeChat 2.0 Live Session Controller / E2E Wiring
 phase: 2
 requiredContracts: [.codex/contracts/ui.ref,.codex/contracts/viewmodel.ref,.codex/contracts/page-state.ref,.codex/contracts/platform.ref,.codex/contracts/command.ref,.codex/contracts/crosslayer.ref]
 optionalContracts: [.codex/contracts/qa.yaml]
-blockers: []
-inspect_first: [packages/application-ui/src/index.ts,packages/wechat-shell/src/index.ts,packages/platform-contract/src/index.ts,server/src/command-gateway.ts,server/src/viewmodel.ts,tests/viewmodel-ui.test.mjs,tests/ui02.test.mjs,docs/UI02_PREVIEW.md,miniprogram/pages/v2-preview/v2-preview.js]
+blockers: [UI02R1]
+inspect_first: [docs/UI02R1_RESPONSIVE_LAYOUT.md,packages/application-ui/src/index.ts,packages/wechat-shell/src/index.ts,packages/platform-contract/src/index.ts,server/src/command-gateway.ts,server/src/viewmodel.ts,tests/viewmodel-ui.test.mjs,tests/ui02.test.mjs,docs/UI02_PREVIEW.md,miniprogram/pages/v2-preview/v2-preview.js]
 allowedScope:
   - wire the accepted UI02 presentation layer to a reusable live-session controller that consumes ApplicationTransport and PlatformStorage without introducing client-side gameplay authority
   - add a WeChatRunController in packages/wechat-shell or application-ui that owns only presentation/session orchestration: load authoritative ViewModel, map shell intents, submit commands, expose pending retry reconfirmation state, and project the next page model

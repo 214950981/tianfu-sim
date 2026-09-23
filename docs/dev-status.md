@@ -9,7 +9,7 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `f091c82f9c2f34a2cef8731feeb1e698a7dce8d8`
+- lastReviewedCommit: `ba648f144b9a0cc3f147ec30d9afecf8e0e541ba`
 - reviewedDate: `2026-09-23`
 
 不要修改 `main` / 1.0，除非未来任务明确要求。
@@ -270,29 +270,32 @@ Full regression：264 / 264 PASS；全部 reported audits PASS。
 
 ## Next
 
-Latest completed: `UI02 PASS`，commit `f091c82f9c2f34a2cef8731feeb1e698a7dce8d8`。
+Latest completed: `UI02 PASS`。
 
-UI02 已完成：
+人工预览新增发现：当前 UI02 的 RUN_HOME 虽然视觉与数据边界正确，但信息结构按 section 纵向铺开，在普通手机内容视口需要页面级下滑；开发预览 tabs 额外占高，但不是根因。
 
-- 新增独立 2.0 dev preview route，未替换旧 1.0 默认页面。
-- RUN_HOME / EVENT / SPECIAL_NODE / LIFE_ARCHIVE 高保真切片已落地。
-- 新视觉语言为宣纸 / 墨 / 朱砂 / 极少暗金 / 大量留白。
-- 四个核心行动与突破意图已由 platform-neutral shell 映射。
-- 突破 availability 由 server ViewModel 投影，客户端不计算概率或隐藏规则。
-- 18/18 UI02 tests、6/6 A12 ViewModel tests、282/282 full suite PASS。
+UI03 已暂停且尚未开工。下一任务改为：
 
-下一任务：`UI03` — WeChat 2.0 Live Session Controller / E2E Wiring。
+`UI02R1` — One-Screen Responsive Gameplay Layout。
 
-目标：
+核心要求：
 
-- 不部署真实 wx.cloud / HTTP backend，先把客户端会话控制器接完整。
-- 复用现有 CommandSubmissionController 作为唯一提交 / pending / retry / reconfirm owner。
-- 用 ApplicationTransport 驱动 RUN_HOME → EVENT → choice → server-directed next state，以及服务端授权后的 ATTEMPT_BREAKTHROUGH。
-- LIFE_ARCHIVE 只做本地只读侧页，所有玩法 pageState 仍由 server ViewModel 决定。
-- 使用真实 CommandGateway + GatewayApplicationTransport 做端到端测试，而不是只写 mock。
-- UI03 PASS 后再决定 UI04 的真正微信 transport / deployment boundary。
+- RUN_HOME 在支持的常见竖屏内容视口内不依赖页面级纵向滚动。
+- 支持基线：windowWidth >= 320 CSS px、windowHeight >= 500 CSS px。
+- 代表矩阵：320×500、360×560、375×603、390×750、414×820、430×850。
+- 四行动始终首屏可见；available=true 的突破也首屏可达。
+- 不能靠缩小字体/按钮硬塞，核心触控目标约 44 CSS px。
+- Build / Cause / People 主页做摘要，完整公开详情进入只读二级 overlay / side view。
+- EVENT / SPECIAL_NODE 页面不做纵向文档，长内容只在受控区域内部滚动。
+- LIFE_ARCHIVE 保持可滚动。
+- dev tabs / debug 信息脱离产品文档流，默认收起或悬浮。
+- 底部操作区考虑 Home Indicator / safe-area。
+- 长名称、长 labelKey、多条件、多人物、多 Cause、突破可用/不可用、capability 开关都要做布局压力考虑。
+- 不修改 server projection、shell intents、Core/Content 或旧 1.0 页面。
 
-不要提前修改旧 1.0 页面、部署云函数、做 CHAL01 / ITEM01 / TECH01 / SECT01 / WORLD01。
+详细要求已冻结在 `docs/UI02R1_RESPONSIVE_LAYOUT.md`。
+
+UI02R1 自动验收通过后，还需要用户在微信开发者工具做一次肉眼视觉确认；随后才解锁 UI03。
 
 ## 新 Codex 会话 / 账号接手步骤
 
