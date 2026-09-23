@@ -1,4 +1,4 @@
-# Tianfu Agent Handoff Protocol v1
+# Tianfu Agent Handoff Protocol v1.1
 
 This directory is the Git-based handoff bus between the controller (ChatGPT) and the implementer (WorkBuddy).
 
@@ -35,18 +35,34 @@ LAST_RESULT.status:
 
 For every READY task:
 
-1. Fetch origin.
-2. Read .codex/control/NEXT_TASK.yaml from the current source branch.
+1. Fetch origin when the sandbox permits it.
+2. Read .codex/control/NEXT_TASK.yaml from the current remote source branch. If normal git fetch is blocked but the repository API is reachable, the remote source branch is authoritative.
 3. Verify taskDefinition and run `node .codex/context.mjs <taskId>` once.
 4. Work only in the isolated Worktree. Never edit or push the source branch directly.
-5. Base the task on the current remote source branch HEAD at task start.
-6. Do not create a nested local branch name solely for the task. The local Worktree may stay on its tool-managed branch/detached HEAD.
-7. Commit the completed task locally, then push the resulting HEAD to the exact flat remote branch named by NEXT_TASK.workBranch:
+5. Record the exact remote source HEAD at task start as baseCommit.
+6. Prefer an exact local ancestry rooted at baseCommit.
+7. Do not create a nested local branch name solely for the task. The local Worktree may stay on its tool-managed branch/detached HEAD.
+8. Commit the completed task locally, then push the resulting HEAD to the exact flat remote branch named by NEXT_TASK.workBranch:
    `git push origin HEAD:refs/heads/<workBranch>`
-8. Do not merge, fast-forward, rebase, or push the source branch.
-9. Do not begin another task.
+9. Do not merge, fast-forward, rebase, or push the source branch.
+10. Do not begin another task.
 
 The flat work-branch naming rule avoids the known sandbox issue with nested local refs.
+
+### Synthetic-tree fallback
+
+The sandbox is known to sometimes block fetching the exact remote commit object while still allowing repository-API reads and work-branch pushes.
+
+Synthetic-tree fallback is allowed only when NEXT_TASK explicitly sets `allowSyntheticTreeBase: true`.
+
+In that mode the implementer must:
+- verify the remote source HEAD by repository API;
+- verify the complete working tree is byte-identical to the remote source tree before editing;
+- record `historyMode: synthetic-tree-base` and `baseTreeSha` in LAST_RESULT;
+- never claim the work branch is a descendant of sourceBranch unless Git proves it;
+- never merge/rebase/fast-forward the source branch.
+
+A synthetic-tree work branch is evidence only. The controller reviews the tree/file diff and, if accepted, transplants the reviewed changes onto the unchanged source HEAD as a new controller-created commit. If source HEAD moved, acceptance stops and the task must be rebased/re-reviewed.
 
 ## Result contract
 
@@ -67,6 +83,11 @@ Required fields:
 - blockers
 - recommendedCommitMessage
 
+When synthetic-tree fallback is used, also include:
+- historyMode: synthetic-tree-base
+- baseTreeSha
+- sourceHeadVerifiedBy
+
 Rules:
 - baseCommit is the remote source-branch HEAD observed at task start.
 - changedFiles lists actual task changes, excluding generated temp files.
@@ -80,27 +101,33 @@ Rules:
 The controller reviews:
 - remote source HEAD
 - remote workBranch HEAD
-- compare source...workBranch
+- compare/tree diff
 - LAST_RESULT.yaml
 - task definition / contracts / relevant tests
 
-If accepted:
-- controller may fast-forward source branch to the reviewed workBranch HEAD only if source HEAD has not drifted from LAST_RESULT.baseCommit
-- controller then dispatches the next task by updating NEXT_TASK on source
-- workBranch may be retained temporarily for audit
+If accepted with exact ancestry:
+- controller may fast-forward source branch to the reviewed workBranch HEAD only if source HEAD has not drifted from LAST_RESULT.baseCommit.
+
+If accepted from synthetic-tree fallback:
+- controller must not merge or fast-forward the divergent work branch;
+- controller creates a new commit on the unchanged source HEAD containing only the reviewed accepted diff.
+
+After acceptance:
+- controller dispatches the next task by updating NEXT_TASK on source;
+- workBranch may be retained temporarily for audit.
 
 If rejected or blocked:
-- source branch is not advanced
-- controller writes a repair/replacement NEXT_TASK
-- implementer waits for the next READY task
+- source gameplay code is not advanced;
+- controller writes a repair/replacement NEXT_TASK;
+- implementer waits for the next READY task.
 
 ## Stop conditions
 
 Implementer must stop and return BLOCKED instead of widening scope when:
-- Core/contracts/Director changes are required but task forbids them
-- source branch moved after baseCommit
-- deterministic/replay/idempotency invariants would be violated
-- task contracts conflict
-- a P0/P1 issue appears
+- Core/contracts/Director changes are required but task forbids them;
+- source branch moved after baseCommit;
+- deterministic/replay/idempotency invariants would be violated;
+- task contracts conflict;
+- a P0/P1 issue appears.
 
 This protocol deliberately favors safe serialized work over autonomous breadth.
