@@ -1,25 +1,44 @@
 version: 1
 status: READY
+attempt: 2
 taskId: LOOPFIX02B2
-title: LOOPFIX02B2 — Cause Closure / Lifecycle
+title: LOOPFIX02B2 — Cause Closure / Lifecycle repair
 taskDefinition: .codex/tasks/LOOPFIX02B2.yaml
 sourceBranch: dev/tianfu-2.0
 workBranch: wb-LOOPFIX02B2
 worktreeRequired: true
-basePolicy: remote-source-head-at-task-start
+allowSyntheticTreeBase: true
+basePolicy: remote-source-head-at-repair-start
+resumeResultCommit: 407f64b8bcd0d545d59726ad2f88895c050bfbca
 execution:
   readProtocolFirst: true
   commitTaskResult: true
   pushWorkBranch: true
   updateSourceBranch: false
   startNextTask: false
+controllerDecision:
+  blocker: B2-TESTFIXTURE-CONFLICT
+  decision: authorize-test-fixture-repair
+  rationale: Cause-linked echo Events are P3-owned; direct fixture entry without triggeringCauseId is no longer a legal execution fixture.
+  allowedTestChanges:
+    - tests/content01.test.mjs CONTENT01-016 reachability fixture only
+    - tests/content01.test.mjs CONTENT01-019 build-route fixture only
+  forbiddenDecision:
+    - do not relax triggeringCause fail-closed semantics
+    - do not alter R1 runtime binding
 controllerIntent:
   mode: content-first
-  goal: authorize terminal player-facing closure for every CONTENT01 Cause echo
+  goal: terminal player-facing closure for every CONTENT01 Cause echo
   closurePolicy: engage-and-consider-resolve; leave-expires
   requireAllChoicesTerminal: true
   forbidZeroBudgetZombiePath: true
+  removePerEventLeaveResolveExceptions: true
+  requireDedicatedB2TestFile: tests/loopfix02b2.test.mjs
 notes:
-  - LOOPFIX02B2_R1 is PASS and must not be reimplemented.
-  - Cause-linked Events are reserved from ordinary Director indexes; closure choices may safely use triggeringCause:true.
+  - Continue from the prior B2 implementation as evidence, but conform it exactly to the task definition.
+  - Remove the xu/other special-case leave-resolves behavior. For all 10 Cause-linked echo Events, leave must EXPIRE_CAUSE.
+  - The current Closure enum/helper is overcomplicated if its variants do not change behavior; simplify to the smallest declarative flag/helper.
+  - No current Cause-linked echo Event uses the risk-choice branch. Do not modify generic risk-choice behavior merely to support B2.
+  - Add the required targeted tests/loopfix02b2.test.mjs; the previous attempt did not add it.
+  - CONTENT01-016/019 must respect real P3 provenance for Cause-linked echoes instead of force-entering them unbound.
   - If Core/contracts/Director changes appear necessary, stop and return BLOCKED.
