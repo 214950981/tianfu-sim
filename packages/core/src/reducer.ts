@@ -53,6 +53,19 @@ export class ReducerError extends Error {
   }
 }
 
+// The actor ids a selected P3 Cause echo was bound to, read from the exact selected CauseInstance that
+// selectCauseEcho already returned (its causeId is the one persisted as events.current.triggeringCauseId).
+// This is authoritative provenance, not a lookup: no templateId/role/salience/uniqueness heuristic, and no
+// dependency on any other active Cause or on the current NpcInstance role index. A P3 DirectorSceneRecord
+// therefore stores the actors the echo actually carried, which is what makes the P4 repeat gate exact even
+// when several active core NPC instances share one role. Returns undefined when no causeId is available so
+// the caller can record the scene without actorIds, exactly as before.
+function selectedCauseActorIds(state: GameState, causeId: string | undefined): string[] | undefined {
+  if (causeId === undefined) return undefined;
+  const cause = state.run.causes.byId[causeId]; if (cause === undefined) return undefined;
+  return [...new Set(Object.values(cause.actorIdsByRole))];
+}
+
 export interface OfferedRunFixture {
   offerId: string;
   destinyIds: readonly [string, string, string];
@@ -279,7 +292,8 @@ function chooseAction(state: GameState, command: Extract<GameCommand, { type: "C
       const causeSelection = selectCauseEcho(provisional, causeContent, context.contentVersion, causeContextWithNpcState(provisional, context));
       provisional = causeSelection.state; rngDraws.push(...causeSelection.rngDraws); selectorTrace.push(...causeSelection.trace);
       const causeTrace = causeSelection.trace[0];
-      if (provisional.run.events.current !== undefined) provisional = recordDirectorScene(provisional, provisional.run.events.current.eventId, directorContent, "P3", { causeId: typeof causeTrace?.causeId === "string" ? causeTrace.causeId : undefined });
+      const selectedCauseId = typeof causeTrace?.causeId === "string" ? causeTrace.causeId : undefined;
+      if (provisional.run.events.current !== undefined) provisional = recordDirectorScene(provisional, provisional.run.events.current.eventId, directorContent, "P3", { causeId: selectedCauseId, ...(selectedCauseActorIds(provisional, selectedCauseId) === undefined ? {} : { actorIds: selectedCauseActorIds(provisional, selectedCauseId) }) });
     }
     if (provisional.run.events.current === undefined) {
       const directorSelection = selectDirectorEvent(provisional, command.actionId, directorContent, ["P4", "P5", "P6"]);
@@ -400,7 +414,11 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
   if (provisional.run.status === "active" && provisional.run.events.current === undefined) {
     const selected = selectCauseEcho(provisional, causeContent, context.contentVersion); provisional = selected.state; causeTrace = selected.trace; causeRngDraws = selected.rngDraws;
     const selectedTrace = selected.trace[0];
-    if (provisional.run.events.current !== undefined) provisional = recordDirectorScene(provisional, provisional.run.events.current.eventId, context.content as unknown as DirectorContentAccess, "P3", { causeId: typeof selectedTrace?.causeId === "string" ? selectedTrace.causeId : undefined });
+    if (provisional.run.events.current !== undefined) {
+      const selectedCauseId = typeof selectedTrace?.causeId === "string" ? selectedTrace.causeId : undefined;
+      const causeActorIds = selectedCauseActorIds(provisional, selectedCauseId);
+      provisional = recordDirectorScene(provisional, provisional.run.events.current.eventId, context.content as unknown as DirectorContentAccess, "P3", { causeId: selectedCauseId, ...(causeActorIds === undefined ? {} : { actorIds: causeActorIds }) });
+    }
   }
   if (provisional.run.status === "active" && provisional.run.events.current !== undefined) {
     try { const eventId = provisional.run.events.current.eventId; const materialized = materializeEventParticipants(provisional, context.content as unknown as ParticipantContentAccess, eventId, eventInstanceId(context.commandId, eventId)); provisional = recordEventOccurrence(materialized.state, eventId); participantRngDraws = materialized.rngDraws; participantFacts = materialized.facts.map((fact) => ({ ...fact })); }

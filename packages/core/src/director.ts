@@ -42,6 +42,16 @@ export function normalizedDirectorHints(event: DirectorEvent, rules: DirectorRul
 
 function roleTagsFor(state: GameState, originKind: NpcInstance["originKind"]): string[] { const roles: string[] = []; for (const role of Object.keys(state.run.npcs.roleIndex).sort()) if (state.run.npcs.roleIndex[role].some((id) => { const npc = state.run.npcs.byId[id]; return npc?.originKind === originKind && npc.actualStatus === "active" && npc.knowledge.met; })) roles.push(role); return roles; }
 function matchingActorIds(state: GameState, roles: readonly string[], originKind?: NpcInstance["originKind"]): string[] { const ids: string[] = []; for (const role of canonical(roles)) { const id = [...(state.run.npcs.roleIndex[role] ?? [])].sort().find((candidate) => { const npc = state.run.npcs.byId[candidate]; return npc !== undefined && npc.actualStatus === "active" && npc.knowledge.met && (originKind === undefined || npc.originKind === originKind); }); if (id !== undefined) ids.push(id); } return canonical(ids); }
+// Same-core-NPC consecutive-scene gate (DIRECTOR01). A core NPC that carried the immediately preceding scene
+// must not carry this one as well. Only the single most recent record is consulted, so one intervening scene
+// with no matching core actor clears the gate on its own - no counter, timer, or state field is needed.
+// This reads DirectorSceneRecord.actorIds verbatim and nothing else: no content lookup, no role re-derivation.
+// Every recorded scene carries the actors it was actually bound to (the reducer persists the selected Cause's
+// actorIdsByRole on P3 records), so the intersection is exact and cannot rebind a same-role sibling.
+function coreNpcRepeatGate(state: GameState, coreActorIds: readonly string[]): boolean {
+  const previous = state.run.director.recentScenes.at(-1); if (previous === undefined) return false;
+  return coreActorIds.some((id) => previous.actorIds.includes(id));
+}
 function riskPreview(state: GameState, event: DirectorEvent, content: DirectorContentAccess, contentVersion: string): "low" | "caution" | "dangerous" | "lethal" { const severity = { low: 0, caution: 1, dangerous: 2, lethal: 3 } as const; let result: keyof typeof severity = "low"; for (const choice of event.choices ?? []) { if (choice.threatId === undefined) continue; if (content.getRisk === undefined) throw new TypeError("Director risk preview requires locked RiskPack"); const preview = buildRiskPresentation(state, threatDefinition(content.getRisk(contentVersion), choice.threatId)); if (severity[preview.tier] > severity[result]) result = preview.tier; } return result; }
 function stageBonus(stage: BuildStage, rules: DirectorRules): number { return stage === "refined" ? rules.buildRefinedBonus : stage === "formed" ? rules.buildFormedBonus : stage === "emerging" ? rules.buildEmergingBonus : 0; }
 function increment(counts: Record<string, number>, reason: string): void { counts[reason] = (counts[reason] ?? 0) + 1; }
@@ -52,6 +62,7 @@ export function scoreDirectorEvent(state: GameState, eventValue: unknown, action
   if (!isEventEligible(event, state)) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "event-ineligible" };
   if (slot === "P2" && !(state.run.director.profileId === "first_run" && state.run.nodeIndex <= rules.firstRunWindowNodes && hints.onboardingEligible === true)) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "not-onboarding" };
   const coreActorIds = matchingActorIds(state, hints.npcRoleAffinityTags, "core"); if (slot === "P4" && coreActorIds.length === 0) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "no-core-npc" };
+  if (slot === "P4" && coreNpcRepeatGate(state, coreActorIds)) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "core-npc-repeat-gate" };
   if ((slot === "P5" || slot === "P6") && hints.salience >= rules.majorSalienceThreshold && recentWithin(state, rules.majorGapNodes, (scene) => scene.salience >= rules.majorSalienceThreshold && scene.slot !== "P3" && scene.slot !== "CONTINUATION")) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "major-gap" };
   if ((slot === "P5" || slot === "P6") && (riskTier === "dangerous" || riskTier === "lethal") && recentWithin(state, rules.randomDangerGapNodes, (scene) => scene.riskTier === "dangerous" || scene.riskTier === "lethal")) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "danger-gap" };
   let weight = hints.baseWeight; const reasons: string[] = [];

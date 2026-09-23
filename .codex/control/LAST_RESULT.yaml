@@ -1,65 +1,92 @@
 version: 1
-taskId: LOOPFIX02B2
-attempt: 3
+taskId: LOOPFIX02B3
+attempt: 2
 status: PASS
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-LOOPFIX02B2
-baseCommit: 3ca1cab0159af2417483da02c4bcbb9a7fe08e10
+workBranch: wb-LOOPFIX02B3
+baseCommit: 733a45ab7b62681a6509c7eb195c3186f8eb6074
 historyMode: synthetic-tree-base
-baseTreeSha: b9c06ca4ec94ecde4755c4f71464bf0c094dc542
-sourceHeadVerifiedBy: repository API read of refs/heads/dev/tianfu-2.0 (HEAD = 3ca1cab0); full working tree verified byte-identical to the remote source tree before editing (tree SHA match)
+baseTreeSha: 01a81653de9fe59af9cd1be7cfd7f8c8a95f3ed9
+sourceHeadVerifiedBy: repository API read of refs/heads/dev/tianfu-2.0 (HEAD = 733a45ab7b62681a6509c7eb195c3186f8eb6074); full working tree verified byte-identical to the remote source tree before editing (tree SHA equality, 01a81653de9fe59af9cd1be7cfd7f8c8a95f3ed9)
 summary: >-
-  LOOPFIX02B2 attempt 3. Cause terminal closure on all 10 CONTENT01 Cause-linked echo
-  Events, plus the two required final micro-repairs. SCOPE DISCLOSURE: the remote source
-  HEAD 3ca1cab0 does NOT contain attempt 2's B2 work (verified by live repository-API
-  reads: closure:true = 0, closureEffect = 0, RESOLVE_CAUSE = 0, EXPIRE_CAUSE = 0,
-  triggeringCause = 0; tests/loopfix02b2.test.mjs = 404; the commit chain
-  26b63e40 -> 072a1f6f -> 3ca1cab0 touches only .codex/ metadata). The transplant
-  described in PROTOCOL never reached the source branch, so attempt 2's result exists
-  only on wb-LOOPFIX02B2 = 88b3061a. Attempt 3 therefore re-applied the accepted B2 end
-  state onto base 3ca1cab0 rather than a literal two-line delta. Both micro-repairs are
-  satisfied: (1) the generic risk-choice branch is byte-identical to the pre-B2 base;
-  (2) B2-L and B2-M query only the real DirectorIndexQuery slot names coreNpc /
-  contextual / ordinary and prove non-vacuous, slot-correct reservation.
+  LOOPFIX02B3 attempt 2 provenance repair. Attempt 1 (commit 038cadb on wb-LOOPFIX02B3)
+  was CONDITIONALLY_REJECTED: its P4 repeat gate was correct in shape, scope, precedence
+  and reporting, but sceneCoreActorIds re-derived a missing P3 actor identity from the
+  current Event npcRoleAffinityTags via matchingActorIds. That is a content lookup
+  heuristic and can bind the wrong actor when several active core NPC instances share one
+  role. The repair removes that helper entirely and makes provenance exact:
+  (1) The P4 gate now reads DirectorSceneRecord.actorIds verbatim and nothing else.
+  coreNpcRepeatGate(state, coreActorIds) takes no content handle; its body contains no
+  getEvent / getCauseTemplate / npcRoleAffinityTags / matchingActorIds / roleIndex /
+  templateId reference. It consults only recentScenes.at(-1), so one intervening scene
+  with no matching core actor still clears it. Eligibility only; precedence, weights,
+  scoring, ordering and RNG are untouched.
+  (2) Provenance is written at record time, not re-derived at read time. When the reducer
+  records a selected P3 Cause echo it persists actorIds from the exact selected
+  CauseInstance.actorIdsByRole, resolved by the causeId already returned by selectCauseEcho
+  and already persisted as events.current.triggeringCauseId. The resolve is
+  state.run.causes.byId[causeId]; there is no templateId, role, salience or
+  unique-active-Cause lookup. Both P3 record sites (chooseAction and chooseEventOption)
+  pass it. No new state field, no schema change.
+  (3) .codex/contracts/director.ref now states the exact P3 actorIds provenance instead of
+  leaving re-derivation implicit.
+  Because a P3 echo record now carries the actors it was actually bound to, the gate stays
+  exact when two active core NPC instances share a role: the echo's own actor is gated, a
+  same-role sibling is neither gated nor mis-bound. B3-P/Q/R/S prove this against the real
+  fixture (content01.npc.pei-zhaochuan and content01.npc.cen-bugui both declare roleTags
+  ["wanderer"]; a cause bound to pei records [pei] and never cen).
+  SCOPE NOTE: the remote source HEAD moved e0e758be -> 733a45ab during this attempt. The
+  delta touches only .codex/control/NEXT_TASK.yaml (the controller's dispatch commit);
+  no gameplay, core, content or test file changed. The synthetic base was rebuilt against
+  733a45ab and the working tree was proven byte-identical to it (tree SHA match) before
+  editing, then attempt 1 and attempt 2 changes were re-applied. This attempt is evidence
+  only; the controller transplants accepted changes onto the unchanged source HEAD.
 changedFiles:
-  - packages/content/src/content01-v1.ts
-  - tests/content01.test.mjs
-  - tests/loopfix02b2.test.mjs
+  - .codex/contracts/director.ref
+  - packages/core/src/director.ts
+  - packages/core/src/reducer.ts
+  - tests/director.test.mjs
+  - tests/loopfix02b3.test.mjs
   - package.json
   - .codex/control/LAST_RESULT.yaml
 changes:
-  content01-v1.ts:
-    - Added "closure?: true" and "cooldown?: NonNullable<EventDefinition[\"cooldown\"]>" to the local Spec type.
-    - Added the closureEffect helper and the close(op) guard inside choices(spec).
-    - engage -> [...safePrimary, ...npcEffect, ...close("RESOLVE_CAUSE")]
-    - consider -> [...declare([{op:"ADD_CULTIVATION",amount:150}]), ...close("RESOLVE_CAUSE")]
-    - leave -> [...declare([{op:"ADD_RESOURCE",key:"spiritStone",amount:1}]), ...close("EXPIRE_CAUSE")]
-    - "closure: true" set on exactly 10 Cause-linked echo Events.
-    - Closure reference is always {op: <RESOLVE|EXPIRE>_CAUSE, triggeringCause: true}; no authored causeId anywhere.
-    - The generic risk-choice branch (take-risk / read-signs / turn-away) left byte-identical to the pre-B2 base.
-  content01.test.mjs:
-    - Repaired CONTENT01-016 and CONTENT01-019 via the withCauseProvenance helper so Cause-linked Events carry real triggeringCause provenance.
-  loopfix02b2.test.mjs:
-    - New dedicated suite, 13 tests (B2-A..B2-M).
-    - B2-L queries only valid slots coreNpc / contextual / ordinary, derives probes from the index keys the echoes actually declare, and asserts each probe is non-vacuous.
-    - B2-M exercises P3 at the real reducer seam and proves the echoed Event is unreachable from P4/P5/P6.
+  director.ts:
+    - Removed the sceneCoreActorIds content/role re-derivation helper completely.
+    - Added coreNpcRepeatGate(state: GameState, coreActorIds: readonly string[]): boolean; reads only state.run.director.recentScenes.at(-1).actorIds.
+    - Added one early return in scoreDirectorEvent immediately after the existing no-core-npc check; P4 only, exclusionReason "core-npc-repeat-gate".
+    - Net +11 -0. No weight, constant, precedence, scoring, ordering or RNG change.
+  reducer.ts:
+    - Added selectedCauseActorIds(state, causeId); resolves state.run.causes.byId[causeId] and returns the deduped Object.values(cause.actorIdsByRole), or undefined when no causeId is available.
+    - Both P3 recordDirectorScene call sites now pass causeId plus actorIds when resolvable, and omit actorIds exactly as before when not.
+    - Net +20 -2. No Cause lifecycle/selection semantic change and no triggeringCause binding change.
+  director.ref:
+    - P4 additionally excludes a candidate whose matched core actor ids intersect the core actor ids of the single most recent DirectorSceneRecord ("core-npc-repeat-gate").
+    - States plainly that the gate reads DirectorSceneRecord.actorIds verbatim and nothing else, that it consults only that one record, that it changes eligibility only, and that P3 echo provenance is the exact selected CauseInstance.actorIdsByRole rather than a templateId/role/salience/uniqueness lookup or a re-derivation from Event tags.
+  director.test.mjs:
+    - Updated the stale "recent NPC continuity contributes score without mutating NPC" test to assert exclusionReason "core-npc-repeat-gate".
+    - Added coverage that the gate is P4-only (never P5/P6) and that an intervening non-matching scene reopens it. Now 47 tests.
+  loopfix02b3.test.mjs:
+    - Dedicated suite, 19 tests (B3-A..B3-S).
+    - Added echoViaReducer, which drives the real reducer to a P3 echo by injecting an eligible CauseInstance with an explicit actorIdsByRole, so provenance is exercised at the real seam.
+    - B3-F/B3-G rewritten to use echoViaReducer; the prior hand-built P3 scene with actorIds [] genuinely carried no actors under the corrected design.
+    - B3-P proves two active core NPCs share a role and the role index holds both (wanderer[0] is the sorted-first instance the old heuristic would have bound).
+    - B3-Q/R prove the recorded actor is the cause-bound one and that a same-role sibling is neither gated nor mis-bound.
+    - B3-S is a source-level assertion that sceneCoreActorIds is gone, the gate takes no content handle, the gate reads previous.actorIds, and neither the gate nor the reducer helper contains a content lookup.
   package.json:
-    - Added "test:loopfix02b2": "node --test tests/loopfix02b2.test.mjs".
-    - Appended tests/loopfix02b2.test.mjs to the aggregate "test" script file list.
+    - Added "test:loopfix02b3": "node --test tests/loopfix02b3.test.mjs".
+    - Appended tests/loopfix02b3.test.mjs to the aggregate "test" script file list.
 tests:
-  test:loopfix02b2: { run: true, files: 1, pass: 13, fail: 0 }
-  test:loopfix02b1: { run: true, pass: 13, fail: 0 }
-  test:content01: { run: true, pass: 32, fail: 0 }
-  test:a09_cause: { run: true, pass: 6, fail: 0 }
-  test:director01: { run: true, pass: 45, fail: 0 }
+  test:loopfix02b3: { run: true, files: 1, pass: 19, fail: 0 }
+  test:director01: { run: true, pass: 47, fail: 0 }
   test:a05_reducer: { run: true, pass: 10, fail: 0 }
   test:a03_state: { run: true, pass: 5, fail: 0 }
-  test:a08_event-dsl: { run: true, pass: 9, fail: 0 }
-  test:a06_content-registry: { run: true, pass: 7, fail: 0 }
-  recurrence: { run: true, pass: 18, fail: 0 }
-  participant-bridge: { run: true, pass: 39, fail: 0 }
   replay: { run: true, pass: 6, fail: 0 }
-  npm_test_aggregate: { run: true, tests: 228, pass: 228, fail: 0 }
+  test:a06_content-registry: { run: true, pass: 7, fail: 0 }
+  test:content01: { run: true, pass: 32, fail: 0 }
+  test:loopfix02b2: { run: true, pass: 13, fail: 0 }
+  test:loopfix02b1: { run: true, pass: 13, fail: 0 }
+  recurrence: { run: true, pass: 18, fail: 0 }
+  npm_test_aggregate: { run: true, tests: 249, pass: 249, fail: 0 }
 gates:
   typecheck: { run: true, result: PASS }
   lint: { run: true, result: PASS }
@@ -75,9 +102,18 @@ gates:
   director-audit: { run: true, result: PASS }
   content-playability-audit: { run: true, result: PASS }
 scope:
-  coreChanged: false
-  contractsChanged: false
-  directorChanged: false
-  contentChanged: true
+  coreChanged: true
+  contractsChanged: true
+  directorChanged: true
+  contentChanged: false
+  persistentStateAdded: false
+  newStateFieldAdded: false
+  directorPrecedenceChanged: false
+  directorWeightsChanged: false
+  rngChanged: false
+  causeSemanticsChanged: false
+  balanceChanged: false
+  devSimulation600Run: false
+  sourceBranchPushed: false
 blockers: []
-recommendedCommitMessage: "LOOPFIX02B2 attempt 3: Cause terminal closure on all 10 echo Events; restore byte-identical risk-choice branch; real-slot Director reservation coverage (P4 coreNpc / P5 contextual / P6 ordinary)"
+recommendedCommitMessage: "LOOPFIX02B3 attempt 2: remove P3 content/role re-derivation; make P4 core-NPC repeat gate actorIds-only and persist exact selected-Cause actor provenance"
