@@ -924,3 +924,199 @@ test("UI02R1_archive: LIFE_ARCHIVE stays intentionally scrollable read-only insi
   // hidden Causes still never surface in the new layout
   assert.equal(JSON.stringify(fixtures).includes("hidden_cause"), false);
 });
+
+// ---------------------------------------------------------------- product page discriminator
+
+/**
+ * Regression for the blank-product-surface failure that manual DevTools QA found after attempt 2.
+ *
+ * present() returned a base object carrying `pageState` but no top-level `kind`, while every product
+ * branch in the WXML switches on `vm.kind`. So `vm` was non-null and fully populated — the debug panel
+ * even read a real `gatedEntries` list — and yet RUN_HOME / EVENT / SPECIAL_NODE / LIFE_ARCHIVE all
+ * evaluated false: a blank product surface with no error, which no layout, scope or structural
+ * assertion could see. The previous suite asserted that the markup *contains* `vm.kind === ...`
+ * branches, but never that present() could satisfy one of them.
+ *
+ * This guard is behavioural, not textual: it runs the real committed fixture module through the real
+ * present() and drives the real page handlers, then compares the discriminator they produce with the
+ * discriminator the committed markup actually tests. It fails closed on the exact defect (missing
+ * kind), on the server vocabulary leaking in (`ENDING`), on a fixture variant key used as a kind, on a
+ * projection that is absent, and on a WXML branch no fixture page can reach.
+ */
+
+/** Runs the preview page module in a sandbox, exposing its own present() and its Page options. */
+function loadPreviewPage(source = read(PAGE_JS_PATH)) {
+  const sandbox = {
+    module: { exports: {} },
+    Page: (options) => { sandbox.pageOptions = options; },
+    require: (specifier) => {
+      assert.equal(specifier, FIXTURE_MODULE_SPECIFIER, "the page may only load the generated fixture module");
+      const fixtureSandbox = { module: { exports: {} } };
+      vm.runInNewContext(read(FIXTURE_MODULE_PATH), fixtureSandbox);
+      return fixtureSandbox.module.exports;
+    }
+  };
+  vm.createContext(sandbox);
+  vm.runInContext(source, sandbox);
+  return sandbox;
+}
+
+/** The distinct product page kinds the committed markup switches on, as written in the WXML. */
+function wxmlKindDiscriminators(markup) {
+  const occurrences = [...stripMarkup(markup).matchAll(/vm\.kind\s*===\s*'([^']+)'/g)].map((match) => match[1]);
+  // the markup names SPECIAL_NODE twice (the branch condition and the decision eyebrow), so this is the
+  // vocabulary the guard compares against, not a count of how often a kind is written
+  return [...new Set(occurrences)].sort();
+}
+
+/** The guard itself, factored out so the negative controls below can prove it is not vacuous. */
+function kindAlignmentProblems(views, markupKinds) {
+  const problems = [];
+  const branches = new Set(markupKinds);
+  const emitted = new Set();
+  for (const [key, view] of views) {
+    if (view === null || view === undefined) {
+      problems.push(`${key}: present() produced no projection at all`);
+      continue;
+    }
+    if (typeof view.kind !== "string" || view.kind.length === 0) {
+      problems.push(`${key}: vm.kind is ${JSON.stringify(view.kind)} — no WXML branch can be true, the surface is blank`);
+      continue;
+    }
+    emitted.add(view.kind);
+    if (!branches.has(view.kind)) problems.push(`${key}: vm.kind ${JSON.stringify(view.kind)} matches no WXML branch`);
+  }
+  for (const branch of branches) {
+    if (!emitted.has(branch)) problems.push(`WXML branch ${JSON.stringify(branch)} is unreachable from the fixture`);
+  }
+  return problems;
+}
+
+/** A page instance with a captured setData, so the page's own handlers can be driven. */
+function pageInstance(pageOptions) {
+  const page = Object.create(pageOptions);
+  page.data = Object.assign({}, pageOptions.data);
+  page.setData = (patch) => { Object.assign(page.data, patch); };
+  return page;
+}
+
+const ALL_FIXTURE_KEYS = [...Object.keys(fixtures.states), ...Object.keys(fixtures.variants)];
+
+test("UI02R1_kind: every generated fixture page projects the discriminator the WXML switches on", () => {
+  const sandbox = loadPreviewPage();
+  const branches = wxmlKindDiscriminators(wxml);
+  // the markup discriminates on a small explicit vocabulary — this is the set the guard compares against
+  assert.deepEqual(branches, ["EVENT", "LIFE_ARCHIVE", "RUN_HOME", "SPECIAL_NODE"]);
+  // the markup reads the product kind, never the raw server page state
+  assert.equal(/vm\.pageState\b/.test(stripMarkup(wxml)), false, "the markup must discriminate on vm.kind");
+
+  const views = ALL_FIXTURE_KEYS.map((key) => [key, sandbox.present(key)]);
+  assert.deepEqual(kindAlignmentProblems(views, branches), [], "the product surface would render blank");
+
+  // the discriminator is a projection of the authoritative page state, not a copy of the fixture key
+  for (const [key, view] of views) {
+    const entry = fixtures.states[key] || fixtures.variants[key];
+    assert.equal(view.pageState, entry.pageState, `${key} must report the server page state verbatim`);
+  }
+  assert.equal(sandbox.present("LIFE_ARCHIVE").pageState, "ENDING", "an ended run is projected as ENDING");
+  assert.equal(sandbox.present("LIFE_ARCHIVE").kind, "LIFE_ARCHIVE", "the ended run still renders the LIFE_ARCHIVE page");
+  // one server page state => one product page, which is exactly what keeps the RUN_HOME variants on RUN_HOME
+  const byPageState = new Map();
+  for (const [key, view] of views) {
+    if (byPageState.has(view.pageState)) {
+      assert.equal(byPageState.get(view.pageState), view.kind, `${key} must not fork the product page for pageState ${view.pageState}`);
+    } else byPageState.set(view.pageState, view.kind);
+  }
+  // the four canonical pages land on their own kind...
+  for (const key of Object.keys(fixtures.states)) {
+    assert.equal(sandbox.present(key).kind, key, `${key} must render as ${key}`);
+  }
+  // ...and a variant keeps the RUN_HOME page, kind and payload alike, without its key becoming a kind
+  for (const variant of Object.keys(fixtures.variants)) {
+    const view = sandbox.present(variant);
+    assert.equal(view.kind, "RUN_HOME", `${variant} must still render the RUN_HOME product page`);
+    assert.notEqual(view.kind, variant, "a fixture variant key must never be used as a kind");
+    assert.notEqual(view.runHome, undefined, `${variant} must carry the RUN_HOME projection, not just the kind`);
+  }
+});
+
+test("UI02R1_kind: the page's own tab handlers render every view without falling back to a failure panel", () => {
+  const sandbox = loadPreviewPage();
+  const branches = wxmlKindDiscriminators(wxml);
+  const page = pageInstance(sandbox.pageOptions);
+  page.onLoad();
+  assert.equal(page.data.failure, null, "the committed fixture must load without a failure panel");
+  assert.equal(Array.isArray(sandbox.present("RUN_HOME").gatedEntries), true);
+  // the page's own onLoad builds the tab list inside the sandbox realm, so it is re-materialized before
+  // a strict comparison (cross-realm prototypes are never equal)
+  assert.deepEqual(Array.from(page.data.tabs, (tab) => tab.key), ALL_FIXTURE_KEYS, "every fixture page must be reachable from the dev tabs");
+  const rendered = new Set();
+  for (const tab of page.data.tabs) {
+    page.onSelectTab({ currentTarget: { dataset: { key: tab.key } } });
+    assert.equal(page.data.failure, null, `${tab.key} must render, not report a failure`);
+    assert.notEqual(page.data.vm, null, `${tab.key} must produce a vm`);
+    assert.equal(
+      branches.includes(page.data.vm.kind),
+      true,
+      `${tab.key} rendered vm.kind=${JSON.stringify(page.data.vm.kind)}, which no WXML branch matches`
+    );
+    rendered.add(page.data.vm.kind);
+  }
+  // the page holds exactly the markup's discriminator vocabulary: nothing missing, nothing extra
+  assert.deepEqual([...rendered].sort(), branches);
+});
+
+test("UI02R1_kind: the discriminator guard fails closed on every way the blank surface could come back", () => {
+  const sandbox = loadPreviewPage();
+  const branches = wxmlKindDiscriminators(wxml);
+  const views = ALL_FIXTURE_KEYS.map((key) => [key, sandbox.present(key)]);
+  const mutate = (change) => views.map(([key, view]) => [key, change(key, view)]);
+
+  // 1. the exact shipped defect: a fully populated projection with no top-level kind
+  const noKind = mutate((key, view) => Object.assign({}, view, { kind: undefined }));
+  assert.equal(kindAlignmentProblems(noKind, branches).some((problem) => /surface is blank/.test(problem)), true);
+
+  // 2. the raw server page state leaking into the discriminator (the ended run rendered as ENDING)
+  const leaked = mutate((key, view) => Object.assign({}, view, { kind: view.pageState }));
+  const leakedProblems = kindAlignmentProblems(leaked, branches);
+  assert.equal(leakedProblems.some((problem) => problem.includes("ENDING")), true);
+  assert.equal(leakedProblems.some((problem) => problem.includes("LIFE_ARCHIVE") && problem.includes("unreachable")), true);
+
+  // 3. a fixture variant key used as a kind
+  const variantAsKind = mutate((key, view) => (key.startsWith("RUN_HOME_") ? Object.assign({}, view, { kind: key }) : view));
+  assert.equal(
+    kindAlignmentProblems(variantAsKind, branches).some((problem) => problem.includes("RUN_HOME_BREAKTHROUGH_BLOCKED")),
+    true
+  );
+
+  // 4. a projection that is absent entirely degrades to a blank surface just as silently
+  const dropped = mutate((key, view) => (key === "EVENT" ? null : view));
+  assert.equal(kindAlignmentProblems(dropped, branches).some((problem) => problem.includes("no projection")), true);
+
+  // 5. the other direction of the same mismatch: a markup branch no fixture page can reach
+  const missingPage = views.filter(([key]) => key !== "SPECIAL_NODE");
+  assert.equal(kindAlignmentProblems(missingPage, branches).some((problem) => problem.includes("unreachable")), true);
+
+  // 6. the shipped implementation itself, not just synthetic data: deleting the discriminator assignment
+  //    from the committed page source reproduces attempt 2 exactly, and the guard must reject it
+  const kindAssignment = "    kind: kind,\n";
+  assert.equal(pageJs.includes(kindAssignment), true, "present() must assign the product kind");
+  const regressedSource = pageJs.replace(kindAssignment, "");
+  assert.notEqual(regressedSource, pageJs, "the negative control must actually change the page source");
+  const regressed = loadPreviewPage(regressedSource);
+  const regressedProblems = kindAlignmentProblems(ALL_FIXTURE_KEYS.map((key) => [key, regressed.present(key)]), branches);
+  assert.equal(
+    regressedProblems.filter((problem) => /surface is blank/.test(problem)).length,
+    ALL_FIXTURE_KEYS.length,
+    "every shipped page must be reported as blank"
+  );
+  assert.equal(
+    regressedProblems.filter((problem) => problem.includes("unreachable")).length,
+    branches.length,
+    "every markup branch must be reported as unreachable"
+  );
+
+  // the real projection is untouched by any of the above (the guard does not mutate what it inspects)
+  assert.deepEqual(kindAlignmentProblems(views, branches), []);
+  assert.deepEqual(views.map(([key, view]) => view.kind), ["RUN_HOME", "EVENT", "SPECIAL_NODE", "LIFE_ARCHIVE", "RUN_HOME", "RUN_HOME"]);
+});

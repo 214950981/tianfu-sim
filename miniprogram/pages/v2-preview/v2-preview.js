@@ -125,6 +125,33 @@ var VARIANT_LABELS = {
   RUN_HOME_NO_PLATFORM_CAPABILITY: "能力缺省"
 };
 
+/**
+ * The product page kind the markup switches on, derived from the server-authoritative page state.
+ *
+ * `vm.kind` is the ONLY discriminator the product surface reads: RUN_HOME / EVENT / SPECIAL_NODE /
+ * LIFE_ARCHIVE each render from `vm.kind === "<product page kind>"`. present() reported `pageState` but
+ * no `kind`, so every product branch evaluated false and the surface stayed blank while `vm` held a
+ * complete projection — a blank page with no error, which no structural or layout assertion could see.
+ *
+ * The two vocabularies are deliberately not identical, which is why the translation is explicit here
+ * instead of implicit in the markup: the server reports a terminated run as `pageState: "ENDING"`
+ * (page-state.ref), while the page that renders it is LIFE_ARCHIVE. The RUN_HOME variants
+ * (RUN_HOME_BREAKTHROUGH_BLOCKED / RUN_HOME_NO_PLATFORM_CAPABILITY) carry `pageState: "RUN_HOME"` and
+ * therefore stay RUN_HOME — a fixture key is never used as a kind.
+ *
+ * A page state absent from this table has no product page yet, and present() fails closed instead of
+ * emitting a view the markup would silently drop.
+ *
+ * tests/ui02r1.test.mjs runs the real generated fixture through this function and the real markup, and
+ * asserts the emitted kinds and the markup's branches agree exactly.
+ */
+var PAGE_KIND_BY_PAGE_STATE = {
+  RUN_HOME: "RUN_HOME",
+  EVENT: "EVENT",
+  SPECIAL_NODE: "SPECIAL_NODE",
+  ENDING: "LIFE_ARCHIVE"
+};
+
 var ACTION_LABELS = { cultivate: "闭关", travel: "游历", worldly: "入世", pursuit: "追索" };
 var RISK_TIER_CLASS = { low: "", caution: "is-caution", dangerous: "is-dangerous", lethal: "is-lethal" };
 
@@ -424,8 +451,13 @@ function present(key) {
   if (fixtures === null) return null;
   var entry = fixtures.states[key] || fixtures.variants[key];
   if (entry === undefined || entry === null) return null;
+  var kind = PAGE_KIND_BY_PAGE_STATE[entry.pageState];
+  if (kind === undefined) return null;
   var base = {
     key: key,
+    // The product page kind the markup switches on. Never the fixture key and never the raw server
+    // page state: see PAGE_KIND_BY_PAGE_STATE.
+    kind: kind,
     label: STATE_LABELS[key] || VARIANT_LABELS[key] || key,
     pageState: entry.pageState,
     shell: entry.shell,
@@ -480,14 +512,16 @@ Page({
     }
     var view = present(key);
     if (view === null) {
+      // Two causes, both reported explicitly: the fixture has no such view, or its server page state has
+      // no product page in PAGE_KIND_BY_PAGE_STATE. Neither degrades to a blank product surface.
       this.setData({
         activeKey: key,
         vm: null,
         failure: loadFailureOf(
           "view",
           key,
-          "预览数据中没有该视图；已有：" + fixtureViewKeys(),
-          "检查 STATE_KEYS / VARIANT_KEYS 与 fixture 的 states / variants 是否一致"
+          "预览数据中没有该视图，或该视图的服务端页面状态没有对应的产品页面；已有：" + fixtureViewKeys(),
+          "检查 STATE_KEYS / VARIANT_KEYS 与 fixture 的 states / variants 是否一致，以及 PAGE_KIND_BY_PAGE_STATE 是否覆盖该 pageState"
         )
       });
       return;

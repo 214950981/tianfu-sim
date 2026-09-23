@@ -176,16 +176,68 @@ summary: >-
   The fixture generation chain, the payload and the module contents are untouched: the module is still
   byte-equal to a fresh generator run and still equal to the committed JSON.
 
+  FOURTH REPAIR (this commit) — the fixture loaded but the product surface rendered nothing. With the
+  WXSS compiling and the fixture loading, the manual DevTools review of attempt 3 showed the failure
+  panel gone and the debug overlay reading a real vm.gatedEntries list, while RUN_HOME / EVENT /
+  SPECIAL_NODE / LIFE_ARCHIVE were all completely blank. Root cause, stated by the controller and
+  confirmed here: a shape mismatch between what present() produced and what the WXML tested. present()
+  returned a base object carrying `pageState` but no top-level `kind`, while every product branch in the
+  WXML switches on `vm.kind`. `vm` was therefore non-null and fully populated and all four product
+  branches still evaluated false — a blank product surface with NO error, and no failure panel to
+  complain, because nothing had actually failed.
+
+  This is a third member of the same family as T4/T5: the previous suite asserted that the markup
+  CONTAINS `vm.kind === 'RUN_HOME'` / `'EVENT'` / `'SPECIAL_NODE'` / `'LIFE_ARCHIVE'` branches, but never
+  that present() could satisfy one of them, so text-level assertions about both halves passed while the
+  contract between them was broken.
+
+  Fix (smallest consistent one). A single presentation map, PAGE_KIND_BY_PAGE_STATE, translates the
+  server-authoritative `pageState` into the product page kind the markup switches on, and present() now
+  emits it as the top-level `vm.kind` alongside the untouched `pageState`. The two vocabularies are not
+  identical — page-state.ref lists both ENDING and LIFE_ARCHIVE as distinct page states, and the
+  generated fixture's ended run carries `pageState: "ENDING"` — so the translation is explicit and
+  documented rather than implicit in the markup, which is why using `entry.pageState` directly would
+  itself have been wrong: LIFE_ARCHIVE would have rendered blank instead of RUN_HOME becoming visible.
+  The RUN_HOME variants (RUN_HOME_BREAKTHROUGH_BLOCKED / RUN_HOME_NO_PLATFORM_CAPABILITY) carry
+  `pageState: "RUN_HOME"`, so they project kind RUN_HOME and therefore render the RUN_HOME page with the
+  RUN_HOME projection — a fixture key is never used as a kind, which is asserted. A fixture entry whose
+  page state has no product page now fails closed (present() returns null) and the view stage diagnostic
+  says so explicitly, instead of silently emitting a view the markup would drop.
+
+  Guard. tests/ui02r1.test.mjs gains a dedicated `UI02R1_kind` group that is behavioural rather than
+  textual: it loads the page module in a vm sandbox with its require shimmed to the real generated
+  fixture module, extracts the discriminator vocabulary from the committed WXML, and compares the two.
+  (1) It runs the real fixture through the real present() for all four states and both variants and
+  requires every emitted kind to match a WXML branch, and every WXML branch to be reachable — the exact
+  defect (kind undefined) is reported as "no WXML branch can be true, the surface is blank".
+  (2) It asserts `pageState` is still reported verbatim, that the ended run keeps kind LIFE_ARCHIVE
+  despite pageState ENDING, that one page state never forks into two product pages, and that the variants
+  project kind RUN_HOME with a RUN_HOME payload. (3) It drives the page's own onLoad/onSelectTab handlers
+  for every dev tab and requires failure === null and a vm.kind matching a WXML branch, which is the
+  closest automated reproduction of what the human saw. (4) Six negative controls prove the guard is not
+  vacuous: a missing kind, the raw server vocabulary leaking in (ENDING), a variant key used as a kind,
+  an absent projection, an unreachable WXML branch, and — most importantly — the same defect reproduced
+  by deleting the kind assignment from the COMMITTED page source, which the guard must reject on the real
+  fixture. The guard compares cross-realm values, so the page's own tab list is re-materialized before
+  the strict comparison.
+
+  No gameplay, projection, contract, Core, Content, Director or transport code was touched, and UI03 was
+  not started. No new dependency was added; the guard reuses node:vm and the existing fixture module.
+
 tests:
   - name: ui02r1
     command: node --test tests/ui02r1.test.mjs
-    result: PASS (29/29)
+    result: PASS (32/32; 29 before this repair, plus the three new UI02R1_kind discriminator tests)
   - name: ui02r1-layout-audit
     command: node tools/ui02r1-layout-audit.mjs
     result: PASS (96/96 structural checks, exit 0)
   - name: wxss-compat-audit
     command: node tools/wxss-compat-audit.mjs
-    result: PASS (14/14 checks, exit 0; 112 selectors, at-rules [media], 6 media bands, 15 border-box boxes matching the 15 derived)
+    result: >-
+      PASS (14/14 checks, exit 0; 118 selectors, at-rules [media], 6 media bands, 15 border-box boxes
+      matching the 15 derived). The stylesheet and this tool are byte-identical to the previous result
+      commit, so the earlier record's "112 selectors" was a transcription error rather than a change;
+      118 is what the tool actually prints and was re-read from this run.
   - name: fixture-module-freshness
     command: node tools/ui02-preview-fixture-module.mjs
     result: PASS (exit 0; module 78230 bytes and the JSON sibling both up to date, and the entry point requires "./v2-fixtures.js" with a static literal with no miniprogram module using a non-literal require)
@@ -212,7 +264,7 @@ tests:
     result: "PASS (Secret scan: PASS)"
   - name: full-suite
     command: npm test (all 27 registered test files)
-    result: PASS (311/311, 0 fail; 282 before this task, 299 before the WXSS repair, 304 before the fixture repair, 310 before the literal-require repair)
+    result: PASS (314/314, 0 fail; 282 before this task, 299 before the WXSS repair, 304 before the fixture repair, 310 before the literal-require repair, 311 before the discriminator repair)
 
 gates:
   total: 12
@@ -221,7 +273,8 @@ gates:
   note: >-
     All eight task-required verifications are green, plus the dedicated layout audit, the WXSS
     compatibility audit, the fixture-module freshness + require-contract check and the complete npm
-    test suite as regression guards.
+    test suite as regression guards. Every count in this section was read from the executed run, not
+    inferred.
 
 changedFiles:
   - .codex/control/LAST_RESULT.yaml
@@ -293,7 +346,16 @@ changes:
       statically analysable literal argument and the variable form died at runtime with
       "module '<path>' is not defined". FIXTURE_MODULE_SPECIFIER is retained purely as the failure
       panel's label and is never an argument to require(); a doc comment states the constraint and warns
-      against "cleaning it up" back into a variable.
+      against "cleaning it up" back into a variable. REPAIR 4: present() now emits the top-level
+      `kind` the WXML switches on. It previously emitted only `pageState`, so every product branch tested
+      against an undefined `vm.kind` and the whole product surface rendered blank while `vm` held a
+      complete projection — with no failure panel, because nothing had failed. `kind` is derived from the
+      authoritative page state through the new PAGE_KIND_BY_PAGE_STATE table (RUN_HOME / EVENT /
+      SPECIAL_NODE / ENDING -> LIFE_ARCHIVE) rather than from the fixture key, since page-state.ref keeps
+      ENDING and LIFE_ARCHIVE distinct and an ended run is projected as ENDING; `pageState` is still
+      reported verbatim. The RUN_HOME variants carry pageState RUN_HOME and therefore keep kind RUN_HOME.
+      A page state with no product page fails closed and is reported by the view-stage diagnostic, which
+      was reworded to cover that second cause explicitly.
   - file: miniprogram/pages/v2-preview/v2-preview.json
     what: "disableScroll set to false -> true so the preview route cannot page-scroll even outside RUN_HOME."
   - file: tools/ui02r1-layout-audit.mjs
@@ -336,7 +398,16 @@ changes:
       using a non-literal require argument — with four positive and seven negative controls proving the
       checker rejects variables, concatenation, template literals, indexed and called arguments, and a
       mutation applied at the real call site's offsets (the file documents the literal in a comment, so
-      a naive string replace would have mutated the comment instead of the call).
+      a naive string replace would have mutated the comment instead of the call). REPAIR 4 adds the
+      UI02R1_kind group, three tests that are behavioural rather than textual: it runs the page module in
+      a vm sandbox whose require returns the real generated fixture module, extracts the WXML's
+      discriminator vocabulary, and requires (a) every kind present() emits to match a WXML branch and
+      every WXML branch to be reachable, (b) pageState still reported verbatim, the ended run keeping
+      kind LIFE_ARCHIVE despite pageState ENDING, one page state never forking into two product pages,
+      and the variants projecting kind RUN_HOME with a RUN_HOME payload, (c) the page's own
+      onLoad/onSelectTab handlers to render every dev tab with failure === null and a matching kind. Six
+      negative controls keep it non-vacuous, including one that deletes the kind assignment from the
+      committed page source and requires the guard to reject the result on the real fixture.
   - file: docs/UI02_PREVIEW.md
     what: >-
       Documented the one-screen scrolling policy per page state, the supported baseline and the full
@@ -374,8 +445,12 @@ verification:
         that the fixture is loaded with a statically analysable literal require and that no miniprogram
         module uses a non-literal require (syntactic guard with its own positive and negative controls,
         including one that rewrites the real call site), that a load failure is reported with a
-        sanitized staged diagnostic (behaviourally tested by running the page's own sanitizer), and
-        byte-equivalence of every out-of-scope tree to the task base.
+        sanitized staged diagnostic (behaviourally tested by running the page's own sanitizer), that
+        every page the fixture can load projects a discriminator the committed markup actually tests
+        (executed, not text-matched: the page module is loaded in a vm with the real fixture module and
+        its own onLoad/onSelectTab handlers are driven, with six negative controls including the
+        committed source with the kind assignment deleted), and byte-equivalence of every out-of-scope
+        tree to the task base.
     - command: node tools/ui02-preview-fixture-module.mjs
       proves: >-
         The committed fixture module and its JSON sibling are exactly what the real generator produces
@@ -383,7 +458,7 @@ verification:
         diagnostics constant equals that literal, and that no miniprogram module uses a non-literal
         require argument.
     - command: npm test
-      proves: "No regression anywhere else in the repository (311/311)."
+      proves: "No regression anywhere else in the repository (314/314)."
   structuralInference:
     - >-
       The first-screen budget is a box-model computation over the committed token values, not a
@@ -410,26 +485,36 @@ verification:
       The guard is also fail-closed beyond the bug it was written for: concatenation, template literals
       and computed arguments are all rejected, even though only the variable form has been observed to
       fail.
+    - >-
+      The discriminator guard proves that the value present() produces is one the committed markup
+      tests, by executing both. It does not prove the WeChat template engine evaluates those wx:if
+      expressions the way Node evaluates the equivalent JavaScript, nor that the matching branch renders
+      correctly once it is reached — it removes the "no branch can ever be true" failure mode, which is
+      the one observed, and leaves rendered pixels to the manual pass. The PAGE_KIND_BY_PAGE_STATE table
+      is exhaustive for the page states the current fixture uses; a future page state that is not added
+      to it fails closed (present() returns null and the view-stage diagnostic reports it) rather than
+      rendering a blank surface.
   manualVisualQaRequired:
     status: NOT PERFORMED
     statement: >-
       No device or simulator rendering was executed in this sandbox. The automated results above are
-      structural only and must NOT be read as "verified on all phones". The DevTools compile attempt
-      that prompted this repair was performed by the controller/user, not here. A human must still
-      confirm the following in WeChat DevTools / on a real device before UI02R1 is treated as visually
-      accepted.
+      structural only and must NOT be read as "verified on all phones". The three DevTools attempts that
+      prompted the repairs in this branch were performed by the controller/user, not here, and each
+      failed differently (WXSS compile; fixture load; blank product surface). A human must still confirm
+      the following in WeChat DevTools / on a real device before UI02R1 is treated as visually accepted.
     items:
-      - "Compile once in WeChat DevTools, confirm the WXSS error is gone and no new WXSS syntax error appears, and confirm the preview page enters RUN_HOME rather than the failure panel. This is the authoritative check for the WXSS subset audit, the fixture load path and the static require; none of the tools can prove the runtime behaviour."
+      - "Compile once in WeChat DevTools, confirm no WXSS syntax error appears, and confirm the preview page enters RUN_HOME with VISIBLE product content — identity/lifespan header, cultivation status, attention summaries and the four-action dock. This is the authoritative check for the WXSS subset audit, the fixture load path, the static require and, now, the product page discriminator; none of the tools can prove the rendered result."
+      - "Switch through all four views (修行主页 / 事件 / 特殊节点 / 命书) and confirm each renders its own page with content rather than an empty surface. A blank surface with no failure panel is the shape of the defect this commit fixes, so report it immediately if it reappears."
+      - "Switch to 突破未成·变体 and 能力缺省·变体 and confirm both render the 修行主页 layout (not a blank surface) and that the four actions keep exactly the same position as the normal RUN_HOME."
       - "If the failure panel does appear, report its 阶段 / 代码 / 详情 / 模块 / 提示 verbatim — it is bounded and sanitized by design, so it contains no secrets and is the intended rework input. If the error is still a module-resolution error, note the exact wording: that distinguishes a packager dependency problem from a genuine throw inside the fixture module."
       - "Open the preview route and confirm RUN_HOME cannot scroll vertically at all (no page displacement on drag)."
       - "Step through 320x500, 360x560, 375x603, 390x750, 414x820 and 430x850 in the device simulator; confirm core status and all four actions are first-screen visible with no horizontal scrollbar, and that removing the blanket border-box reset did not change the expected box heights."
       - "Confirm the four core action blocks and the breakthrough CTA still feel >= 44 CSS px and that text was not shrunk to fit."
       - "Tap each summary row and confirm the read-only drawer opens from the bottom, scrolls internally, closes on 收起, and changes nothing about the product layout behind it."
       - "Open the dev overlay and confirm it overlays the product without moving it; switch views and confirm the overlay collapses."
-      - "Enter 事件 and confirm long body copy scrolls only inside the decision viewport while the headline stays pinned."
+      - "Enter 事件 / 特殊节点 and confirm long body copy scrolls only inside the decision viewport while the headline stays pinned."
       - "Enter 命书 and confirm it scrolls internally without moving the page."
       - "On a device with a home indicator, confirm the action dock and the event options are not covered by the indicator."
-      - "Switch to 突破未成·变体 and confirm the four actions keep exactly the same position as the normal RUN_HOME."
     docs: docs/UI02_PREVIEW.md sections 4.6, 4.7 and 6
 
 acceptance:
@@ -477,13 +562,24 @@ acceptance:
     evidence: "The layout never branches on the variant key (asserted: the wxml contains neither variant name); the dock is bottom-anchored and non-shrinking, and disabled slots keep their cell."
   - id: old-1.0-pages-server-viewmodel-wechat-shell-Core-and-Content-are-byte-equivalent-to-task-base
     covered: true
-    evidence: "Tree digests pinned in tests/ui02r1.test.mjs for miniprogram/pages/start|game|rank, pages, miniprogram/app.json, miniprogram/app.wxss, server/src, packages/wechat-shell/src, packages/application-ui/src, packages/platform-contract/src, packages/core/src, packages/content/src, tools/ui02-preview-fixtures.mjs and the committed fixture, each with a pinned base file count."
+    evidence: "Tree digests pinned in tests/ui02r1.test.mjs for miniprogram/pages/start|game|rank, pages, miniprogram/app.json, miniprogram/app.wxss, server/src, packages/wechat-shell/src, packages/application-ui/src, packages/platform-contract/src, packages/core/src, packages/content/src, tools/ui02-preview-fixtures.mjs and the committed fixture, each with a pinned base file list. Re-run green in the fourth repair, which additionally touched nothing outside the preview page and its own test file."
   - id: UI02-and-A12-tests-remain-green
     covered: true
     evidence: "tests/ui02.test.mjs 18/18 and tests/viewmodel-ui.test.mjs 6/6 (ui02 required quarantining the three DevTools-generated files first; see toolingObservations T3)."
   - id: dedicated-ui02r1-tests-and-layout-audit-green
     covered: true
-    evidence: "tests/ui02r1.test.mjs 29/29, tools/ui02r1-layout-audit.mjs 96/96 exit 0, tools/wxss-compat-audit.mjs 14/14 exit 0, tools/ui02-preview-fixture-module.mjs freshness + require-contract check exit 0."
+    evidence: "tests/ui02r1.test.mjs 32/32, tools/ui02r1-layout-audit.mjs 96/96 exit 0, tools/wxss-compat-audit.mjs 14/14 exit 0, tools/ui02-preview-fixture-module.mjs freshness + require-contract check exit 0."
+  - id: every-product-page-the-fixture-can-load-projects-the-discriminator-the-markup-switches-on
+    covered: true
+    evidence: >-
+      Added in the fourth repair. present() emits a top-level kind derived from the authoritative
+      pageState through PAGE_KIND_BY_PAGE_STATE, and tests/ui02r1.test.mjs proves by execution that for
+      all four states and both variants the emitted kind matches a WXML branch and every WXML branch is
+      reachable, that the ended run keeps kind LIFE_ARCHIVE despite pageState ENDING, that RUN_HOME
+      variants still render the RUN_HOME page with the RUN_HOME projection (their key is never used as a
+      kind), and that the page's own tab handlers drive each view to failure === null plus a matching
+      kind. Six negative controls, one of them the committed source with the kind assignment deleted,
+      show the guard fails closed on the original defect.
   - id: preview-fixture-is-loaded-with-a-statically-analysable-literal-require
     covered: true
     evidence: >-
@@ -525,8 +621,15 @@ scope:
     fixture generation chain, the canonical payload, the generated module's contents, the server
     projection, Core/Content, the shell intents and UI03 were not touched:
     tools/ui02-preview-fixtures.mjs is byte-identical to the base (pinned by digest) and the writer only
-    calls it. No 600-run simulation was executed. No source-branch push. .gitignore was NOT changed, and
-    the DevTools-rewritten root project.config.json / project.private.config.json were NOT committed.
+    calls it. The fourth repair is the narrowest so far and touches exactly TWO files: the presentation
+    entry point miniprogram/pages/v2-preview/v2-preview.js (the discriminator table, the kind field in
+    present(), the present() fail-closed guard, and the reworded view-stage diagnostic) and its own suite
+    tests/ui02r1.test.mjs, plus this result file. The WXML, WXSS, JSON config, generated fixture module
+    and JSON, both audit tools, the fixture generator and package.json are byte-identical to the previous
+    result commit. No new dependency, no new require, no new schema field, no new fixture, no RNG draw,
+    no gameplay or projection semantics. No 600-run simulation was executed. No source-branch push.
+    .gitignore was NOT changed, and the DevTools-rewritten root project.config.json /
+    project.private.config.json were NOT committed.
 
 toolingObservations:
   - id: T1
@@ -611,6 +714,27 @@ toolingObservations:
       anything that only the WeChat compiler or runtime evaluates (WXSS syntax, module resolution,
       require analysability) is outside the reach of the automated suite, so each such rule needs either
       a DevTools pass or a deliberately curated source-level guard with its own negative controls.
+  - id: T6
+    severity: PROCESS
+    title: >-
+      a projection whose shape the markup silently rejects renders a blank surface with no error, and
+      text-level assertions about both halves cannot see it
+    evidence: >-
+      Attempt 3 shipped a page whose present() returned `pageState` while every WXML branch tested
+      `vm.kind`. `vm` was non-null and complete, the fixture loaded, the failure panel never appeared
+      and every product branch was false, so the surface was blank. Nothing had failed, so no diagnostic
+      fired; the previous suite asserted that the markup contains `vm.kind === '...'` branches and
+      separately that present() builds runHome/decision/archive, and both assertions were true — the
+      contract BETWEEN them was the untested part. This is the third consecutive defect on this page that
+      the Node suite could not see (T4 runtime require, T5 packager require analysis, T6 projection/markup
+      shape agreement).
+    impact: >-
+      Fixed by making the discriminator explicit and derived from the authoritative page state, and by
+      adding an execution-level guard that compares the produced discriminator with the branch the markup
+      actually tests, with a negative control built from the committed source. The durable rule for this
+      repo: whenever one module produces a value that another module switches on, assert the two agree by
+      running both, not by grepping for both. A generated presentation vocabulary is a contract and
+      belongs in a table with a test, not inline in the markup.
 
 blockers: []
 
@@ -619,12 +743,19 @@ backlog:
     severity: BACKLOG
     title: manual visual QA on the viewport matrix has not been performed
     evidence: >-
-      No device or simulator rendering was executed here; the single DevTools compile attempt was run
-      by the controller/user and failed on the WXSS syntax error this repair fixes. Only structural
-      proof exists: two audit tools and the source-level test assertions.
+      No device or simulator rendering was executed here. The DevTools passes that were run (by the
+      controller/user, not here) have so far produced three failures in a row — the WXSS universal
+      selector aborting the build, then "缺少 v2-fixtures.json"/module-not-defined from the .json and
+      variable requires, and now a blank product surface from the pageState/kind mismatch — and each is
+      fixed on this branch, but no run has yet reported a rendered product surface. Only structural proof
+      exists here: two audit tools, the source-level assertions and the new UI02R1_kind execution guard,
+      and none of them can see real layout, font metrics, ellipsis behaviour or safe-area insets.
     impact: >-
-      UI02R1 must not be treated as visually accepted, and UI03 must stay blocked, until the items in
-      verification.manualVisualQaRequired are confirmed by a human on the repaired commit.
+      UI02R1 must not be treated as visually accepted, and UI03 must stay blocked, until a human confirms
+      on this commit's pushed HEAD that the preview enters RUN_HOME with visible product content (hero,
+      vitals, attention summaries, four-action dock), that EVENT / SPECIAL_NODE / LIFE_ARCHIVE render,
+      that both RUN_HOME variants render as RUN_HOME, that there is no page-level vertical scrolling on
+      RUN_HOME / EVENT / SPECIAL_NODE, and that the bottom dock clears the home indicator.
     suggestedOwner: controller / user review before UI03
   - id: U5
     severity: BACKLOG
@@ -667,38 +798,52 @@ backlog:
     suggestedOwner: UI03 or a build-step task
 
 recommendedCommitMessage: |-
-  fix(ui02r1): load the fixture with a static literal require the packager can resolve
+  fix(ui02r1): project the product page kind the WXML actually switches on
 
-  Third repair on this page, and the same class of bug as the previous one. After the
-  WXSS and .json fixes, DevTools still failed the manual review with
-  "module '<path>' is not defined, require args is './v2-fixtures.js'": the load point was
-  require(FIXTURE_MODULE_SPECIFIER). The WeChat packager builds the dependency graph by
-  statically analysing the source, so only a plain string literal registers the dependency;
-  a variable argument is never bundled and dies at runtime. Node accepts a computed require,
-  which is why the existing suite could not see it.
+  Fourth repair on this page, and the first one that was not a compile or load
+  failure. Manual DevTools review of the previous commit showed the fixture
+  loading, the failure panel gone and the debug overlay reading a real
+  vm.gatedEntries — and every product page completely blank.
 
-  - The load point is now require("./v2-fixtures.js").
-  - FIXTURE_MODULE_SPECIFIER is retained for the failure panel only, is never an argument to
-    require(), and is asserted equal to the literal actually required so a diagnostic can
-    never name a module the page does not load. A comment states the constraint.
-  - tools/ui02-preview-fixture-module.mjs gains a comment- and string-aware scanner that
-    rejects any non-literal require argument (variables, concatenation, template literals,
-    computed arguments) across every miniprogram module, and the CLI now runs freshness AND
-    that require-contract check.
-  - tests/ui02r1.test.mjs: the substring assertion on the load point is replaced by the
-    static-require regression test — exactly one require() in the entry point, its argument a
-    literal equal to the diagnostics constant, that literal resolving to the committed module,
-    and no non-literal require anywhere in miniprogram — with 4 positive and 7 negative
-    controls, one of which rewrites the real call site using the scanner's offsets (the file
-    documents the literal in a comment, so a naive string replace would have mutated the
-    comment instead of the call).
+  Root cause, a shape mismatch between the projection and the markup: present()
+  returned a base object with `pageState` but no top-level `kind`, while all
+  four product branches in the WXML test `vm.kind`. vm was non-null and fully
+  populated and every branch was still false, so the surface rendered nothing
+  and — because nothing had actually failed — no diagnostic fired.
 
-  Fixture generation chain, canonical payload, generated module contents, server projection,
-  shell intents, Core/Content and UI03 are untouched; the module remains byte-equal to a fresh
-  generator run and to the committed JSON.
+  The fix is the smallest consistent one:
 
-  Verification: 311/311 npm test, 29/29 ui02r1, 96/96 layout audit, 14/14 WXSS compatibility
-  audit, fixture freshness + require-contract check green, 18/18 ui02, 6/6 viewmodel-ui,
-  typecheck/lint/content-lint/content01-lint/secret-scan green. Manual visual QA in DevTools —
-  starting with "compiles, and the page enters RUN_HOME rather than the failure panel" — is
-  still required and is documented as not performed.
+  - New PAGE_KIND_BY_PAGE_STATE translates the server-authoritative pageState
+    into the product page kind the markup switches on, and present() emits it
+    as the top-level `kind` next to the untouched `pageState`.
+  - The translation is explicit rather than implicit because the two
+    vocabularies are not identical: page-state.ref keeps ENDING and
+    LIFE_ARCHIVE distinct and the fixture's ended run projects ENDING, so using
+    pageState directly would have left LIFE_ARCHIVE blank.
+  - RUN_HOME variants carry pageState RUN_HOME and so keep kind RUN_HOME, which
+    is asserted; a fixture key is never used as a kind.
+  - A page state with no product page now fails closed and is named by the
+    reworded view-stage diagnostic instead of rendering a blank surface.
+
+  The guard is behavioural, not textual. tests/ui02r1.test.mjs loads the page
+  module in a vm whose require returns the real generated fixture module,
+  extracts the discriminator vocabulary from the committed WXML, and requires
+  every emitted kind to match a WXML branch and every branch to be reachable.
+  It also drives the page's own onLoad/onSelectTab handlers for every dev tab
+  and requires failure === null plus a matching kind — the closest automated
+  reproduction of what the human saw. Six negative controls keep it honest,
+  including one that deletes the kind assignment from the COMMITTED page
+  source and requires the guard to reject the resulting blank surface.
+
+  Scope: two files. miniprogram/pages/v2-preview/v2-preview.js and its own
+  suite. WXML, WXSS, page json, generated fixture module and JSON, both audit
+  tools, the fixture generator and package.json are unchanged. No server
+  projection, wechat-shell intent mapping, Core, Content, Director, contract or
+  route change; no transport wiring, no new dependency, no RNG draw. UI03 was
+  not started.
+
+  Verification: 314/314 npm test, 32/32 ui02r1, 96/96 layout audit, 14/14 WXSS
+  compatibility audit, fixture freshness + require-contract check green,
+  18/18 ui02, 6/6 viewmodel-ui,
+  typecheck/lint/content-lint/content01-lint/secret-scan green. Manual visual QA
+  in DevTools is still required and is documented as not performed here.
