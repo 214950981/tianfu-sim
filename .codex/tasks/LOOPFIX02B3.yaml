@@ -1,0 +1,37 @@
+id: LOOPFIX02B3
+title: LOOPFIX02B3 — Core NPC Repeat Gating / P6 Reachability
+phase: 2
+requiredContracts: [.codex/contracts/director.ref,.codex/contracts/npc.ref,.codex/contracts/event.ref,.codex/contracts/state.ref,.codex/contracts/reducer.ref,.codex/contracts/rng.ref,.codex/contracts/crosslayer.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [packages/core/src/director.ts,packages/content/src/director-v1.ts,packages/content/src/registry.ts,packages/content/src/content01-v1.ts,tests/director.test.mjs,tools/content-sim.mjs]
+allowedScope:
+  - minimal Director contract clarification for same-core-NPC consecutive-scene P4 eligibility gating
+  - deterministic P4 eligibility gate in packages/core/src/director.ts using existing recentScenes.actorIds only
+  - dedicated tests/loopfix02b3.test.mjs and minimal director test additions
+  - package.json test script registration for LOOPFIX02B3
+  - .codex/control/LAST_RESULT.yaml task result
+forbiddenScope: [Director-strict-precedence-changes,P1-P6-reordering,Director-weight-formula-changes,Director-weight-constant-changes,new-RNG,new-persistent-state,recurrence-schema-changes,CONTENT01-cooldown-rebalance,Cause-changes,NPC-state-machine-changes,Build-Risk-Progression-number-changes,600-run-balance-simulation,PLAYCHECK02,UI,ITEM01,TECH01,SECT01,WORLD01,CHAL01,source-branch-push]
+design:
+  - P4 still requires an indexed role binding to a met active core NPC.
+  - Before scoring a P4 candidate, compute its matched core actor ids exactly as today.
+  - If the most recent DirectorSceneRecord actorIds intersects those matched core actor ids, that P4 candidate is ineligible with exclusionReason core-npc-repeat-gate.
+  - The gate applies regardless of the previous scene slot; a Cause echo involving that same core NPC therefore also prevents an immediate P4 rebound.
+  - One intervening scene with no matching core actor clears the consecutive gate naturally.
+  - Use only existing bounded recentScenes; add no counter, timer, state field, RNG draw, or content lookup heuristic.
+  - The gate changes candidate eligibility only and therefore remains within G17.
+accept:
+  - strict-P1-through-P6-precedence-byte-equivalent-except-P4-eligibility-filter
+  - same-core-NPC-cannot-drive-two-consecutive-selected-scenes-via-P4
+  - same-core-NPC-P3-echo-prevents-immediate-P4-rebound
+  - different-core-NPC-remains-eligible
+  - one-intervening-nonmatching-scene-allows-core-NPC-to-return
+  - gated-P4-with-no-P5-candidate-allows-P6-selection
+  - ungated-P4-still-precedes-P5-and-P6
+  - gate-consumes-zero-RNG
+  - no-new-persistent-state
+  - no-Director-weight-or-number-change
+  - Cause-and-recurrence-unchanged
+  - deterministic-replay-and-hash-regressions-green
+  - full-regression-and-audits-green
+tests: [loopfix02b3,director,reducer,state,replay,content-registry,content01,loopfix02b2,loopfix02b1,recurrence,typecheck,lint,content-lint,secret-scan,director-audit,recurrence-audit,participant-bridge-audit,npc-audit,build-audit,risk-audit,content-playability-audit]
