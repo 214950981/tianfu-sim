@@ -1,0 +1,41 @@
+id: UI03
+title: UI03 — WeChat 2.0 Live Session Controller / E2E Wiring
+phase: 2
+requiredContracts: [.codex/contracts/ui.ref,.codex/contracts/viewmodel.ref,.codex/contracts/page-state.ref,.codex/contracts/platform.ref,.codex/contracts/command.ref,.codex/contracts/crosslayer.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [packages/application-ui/src/index.ts,packages/wechat-shell/src/index.ts,packages/platform-contract/src/index.ts,server/src/command-gateway.ts,server/src/viewmodel.ts,tests/viewmodel-ui.test.mjs,tests/ui02.test.mjs,docs/UI02_PREVIEW.md,miniprogram/pages/v2-preview/v2-preview.js]
+allowedScope:
+  - wire the accepted UI02 presentation layer to a reusable live-session controller that consumes ApplicationTransport and PlatformStorage without introducing client-side gameplay authority
+  - add a WeChatRunController in packages/wechat-shell or application-ui that owns only presentation/session orchestration: load authoritative ViewModel, map shell intents, submit commands, expose pending retry reconfirmation state, and project the next page model
+  - support the in-life UI02 loop only: RUN_HOME core action intents, EVENT option submission, ATTEMPT_BREAKTHROUGH special action, SPECIAL_NODE option submission when present, LIFE_ARCHIVE read-only open close navigation state
+  - use CommandSubmissionController as the sole command submission mechanism; do not duplicate command envelope, commandId persistence, retry, or STATE_CONFLICT logic
+  - add explicit mapping from a PublicOption to CHOOSE_EVENT_OPTION using the authoritative currentInteraction only; never fabricate eventId, option eligibility, risk, or outcome
+  - preserve server-driven pageState: controller may open LIFE_ARCHIVE as a local read-only side-page overlay over RUN_HOME, but all gameplay page transitions come from refreshed PublicViewModel
+  - add an injected WeChat PlatformStorage adapter boundary suitable for wx storage without importing wx into Core or platform-neutral ViewModel code
+  - add end-to-end tests using the real CommandGateway plus GatewayApplicationTransport and real ServerViewModelBuilder, proving a seeded active run can execute core action -> EVENT -> event choice -> refreshed RUN_HOME/P3 or other server-directed state, plus breakthrough submission when projected available
+  - test retry after transient failure reuses the exact commandId and payload, and STATE_CONFLICT requires explicit reconfirmation with a fresh commandId and latest stateVersion
+  - test unresolved EVENT and SPECIAL_NODE ordinary-back protection through the live controller
+  - add docs/UI03_LIVE_CONTROLLER.md describing controller responsibilities, integration seam for an eventual real WeChat transport, and what still belongs to UI04
+  - add tests/ui03.test.mjs and package test registration
+  - .codex/control/LAST_RESULT.yaml task result
+forbiddenScope: [client-side-Core-or-reducer,local-outcome-calculation,local-risk-or-breakthrough-eligibility-calculation,duplicate-command-envelope-or-idempotency-engine,server-gateway-rule-change,Core-gameplay-rule-changes,Director-changes,Cause-semantics,Progression-numbers,Risk-resolution,Build-or-NPC-rule-changes,CONTENT01-rebalance,legacy-1.0-page-rewrite,replace-default-route,real-cloud-backend-deployment,cloudfunction-persistence-design,wx-request-or-wx-cloud-production-endpoint,UI04,CHAL01,leaderboard,commerce-or-ad-SDK,ITEM01,TECH01,SECT01,WORLD01,source-branch-push]
+accept:
+  - live-controller-consumes-only-PublicViewModel-ApplicationTransport-PlatformStorage-and-shell-mappers
+  - CommandSubmissionController-remains-the-single-owner-of-envelope-commandId-pending-retry-and-reconfirm-semantics
+  - RUN_HOME-core-action-submission-refreshes-authoritative-ViewModel
+  - EVENT-option-command-is-derived-only-from-currentInteraction-and-selected-optionId
+  - ATTEMPT_BREAKTHROUGH-is-submitted-only-from-enabled-server-projected-special-intent
+  - SPECIAL_NODE-option-flow-uses-the-same-authoritative-interaction-boundary-as-EVENT
+  - LIFE_ARCHIVE-is-local-read-only-navigation-and-never-mutates-or-submits-gameplay-state
+  - unresolved-EVENT-and-SPECIAL_NODE-cannot-be-ordinarily-backed-out
+  - transient-retry-reuses-identical-commandId-and-envelope
+  - STATE_CONFLICT-refreshes-latest-ViewModel-and-requires-explicit-reconfirmation
+  - real-CommandGateway-E2E-proves-at-least-one-core-action-and-one-event-choice-roundtrip
+  - real-CommandGateway-E2E-proves-breakthrough-roundtrip-from-server-projected-available-state
+  - no-server-secret-or-hidden-state-is-added-to-client-models
+  - no-Core-Content-gameplay-or-legacy-1.0-page-change
+  - UI02-and-A12-tests-remain-green
+  - dedicated-ui03-tests-green
+  - typecheck-lint-content-lint-secret-scan-green
+tests: [ui03,ui02,viewmodel-ui,server-gateway,reducer,replay,typecheck,lint,content-lint,content01-lint,secret-scan]

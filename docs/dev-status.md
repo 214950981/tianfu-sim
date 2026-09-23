@@ -9,7 +9,7 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `3d3dc03a9d951dacd3cedfa0df9046cdaef2b109`
+- lastReviewedCommit: `f091c82f9c2f34a2cef8731feeb1e698a7dce8d8`
 - reviewedDate: `2026-09-23`
 
 不要修改 `main` / 1.0，除非未来任务明确要求。
@@ -57,6 +57,7 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - Post-LOOPFIX SIM02 verification: BLOCKED（历史：P6 reachability only）
 - LOOPFIX02C: PASS
 - PLAYCHECK02: PASS
+- UI02: PASS
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
 
@@ -269,23 +270,29 @@ Full regression：264 / 264 PASS；全部 reported audits PASS。
 
 ## Next
 
-Latest completed: `PLAYCHECK02 PASS`，commit `3d3dc03a9d951dacd3cedfa0df9046cdaef2b109`。
+Latest completed: `UI02 PASS`，commit `f091c82f9c2f34a2cef8731feeb1e698a7dce8d8`。
 
-下一任务：`UI02` — WeChat 2.0 Core-Loop High-Fidelity Visual Slice。
+UI02 已完成：
+
+- 新增独立 2.0 dev preview route，未替换旧 1.0 默认页面。
+- RUN_HOME / EVENT / SPECIAL_NODE / LIFE_ARCHIVE 高保真切片已落地。
+- 新视觉语言为宣纸 / 墨 / 朱砂 / 极少暗金 / 大量留白。
+- 四个核心行动与突破意图已由 platform-neutral shell 映射。
+- 突破 availability 由 server ViewModel 投影，客户端不计算概率或隐藏规则。
+- 18/18 UI02 tests、6/6 A12 ViewModel tests、282/282 full suite PASS。
+
+下一任务：`UI03` — WeChat 2.0 Live Session Controller / E2E Wiring。
 
 目标：
 
-- 不再继续玩法调参。
-- 在现有微信 1.0 页面旁新增独立 2.0 dev preview route，不覆盖旧页面、不设为默认入口。
-- 首批高保真覆盖 RUN_HOME / EVENT / SPECIAL_NODE / LIFE_ARCHIVE。
-- 视觉语言：宣纸、墨、朱砂、极少暗金、大量留白、克制动画。
-- RUN_HOME 保持四个核心行动：闭关 / 游历 / 入世 / 追索。
-- 增加服务端控制的公开“可突破”入口，仅投影 availability / target display，不泄露概率、difficulty、RNG 或隐藏 modifier。
-- EVENT 只渲染服务端 riskPresentation；客户端不算胜率。
-- 命书只显示公开历史、公开 Cause、已知人物与 Build identity。
-- 产出可在微信开发者工具中直接打开检查的 2.0 视觉预览页。
+- 不部署真实 wx.cloud / HTTP backend，先把客户端会话控制器接完整。
+- 复用现有 CommandSubmissionController 作为唯一提交 / pending / retry / reconfirm owner。
+- 用 ApplicationTransport 驱动 RUN_HOME → EVENT → choice → server-directed next state，以及服务端授权后的 ATTEMPT_BREAKTHROUGH。
+- LIFE_ARCHIVE 只做本地只读侧页，所有玩法 pageState 仍由 server ViewModel 决定。
+- 使用真实 CommandGateway + GatewayApplicationTransport 做端到端测试，而不是只写 mock。
+- UI03 PASS 后再决定 UI04 的真正微信 transport / deployment boundary。
 
-UI02 PASS 后，再决定 UI03 的生产 transport / page wiring，不提前开发 ITEM01 / TECH01 / SECT01 / WORLD01 / CHAL01。
+不要提前修改旧 1.0 页面、部署云函数、做 CHAL01 / ITEM01 / TECH01 / SECT01 / WORLD01。
 
 ## 新 Codex 会话 / 账号接手步骤
 
