@@ -1,41 +1,26 @@
 version: 1
 status: READY
-attempt: 3
-taskId: LOOPFIX02B2
-title: LOOPFIX02B2 — Cause Closure / Lifecycle final micro-repair
-taskDefinition: .codex/tasks/LOOPFIX02B2.yaml
+attempt: 1
+taskId: LOOPFIX02B3
+title: LOOPFIX02B3 — Core NPC Repeat Gating / P6 Reachability
+taskDefinition: .codex/tasks/LOOPFIX02B3.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-LOOPFIX02B2
+workBranch: wb-LOOPFIX02B3
 worktreeRequired: true
 allowSyntheticTreeBase: true
-basePolicy: remote-source-head-at-repair-start
-resumeResultCommit: 88b3061aaceb0af2684734980fee7ce87d0e5fd4
+basePolicy: remote-source-head-at-task-start
 execution:
   readProtocolFirst: true
   commitTaskResult: true
   pushWorkBranch: true
   updateSourceBranch: false
   startNextTask: false
-controllerReview:
-  previousAttemptStatus: CONDITIONAL_REJECT
-  acceptedParts:
-    - closure true on all 10 Cause-linked echoes
-    - engage/consider RESOLVE and leave EXPIRE with no exception
-    - CONTENT01-016/019 fixture repair
-    - dedicated B2 test file and all reported test/gate results
-  microRepairsRequired:
-    - Revert the generic risk-choice branch in choices(spec) to its exact pre-B2 behavior. No current Cause-linked echo uses spec.risk, so B2 must not edit that generic branch.
-    - Fix B2-L so Director reservation is actually tested for P4=coreNpc, P5=contextual, and P6=ordinary. The string fallback is not a valid DirectorIndexQuery slot and does not test P6.
-  testExpectation:
-    - Keep all existing B2 coverage.
-    - B2-L must query valid slot names only and demonstrate no Cause-linked echo appears in P4/P5/P6 candidate indexes.
-    - Run dedicated B2 tests, affected content/director tests, then all tests and existing gates.
 controllerIntent:
-  closurePolicy: engage-and-consider-resolve; leave-expires
-  noOtherBehaviorChange: true
-  coreContractsDirectorMustRemainUnchanged: true
+  mode: smallest-deterministic-eligibility-fix
+  goal: break same-core-NPC consecutive P4 chains without changing strict precedence
+  postTask: do not run 600-run SIM02 or PLAYCHECK02 yet; controller will dispatch those after B3 acceptance
 notes:
-  - This is a micro-repair, not a redesign.
-  - Do not change the accepted CONTENT01-016/019 fixture approach unless a new failure proves it necessary.
-  - Do not modify PROTOCOL/NEXT_TASK/task definition on the work branch; consume the latest source versions.
-  - If these two repairs uncover a Core/contracts/Director requirement, stop BLOCKED.
+  - LOOPFIX02B2 is PASS and already transplanted onto dev/tianfu-2.0. Do not reimplement B2.
+  - This task may change Director eligibility only as specified in the task design.
+  - Do not change scoring weights, precedence, recurrence, content cooldowns, Cause, NPC state, or balance numbers.
+  - If P6 still appears structurally unreachable even after the specified gate, stop BLOCKED and report evidence instead of widening scope.
