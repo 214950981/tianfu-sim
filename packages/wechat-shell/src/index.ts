@@ -252,6 +252,7 @@ export class WeChatRunController {
   readonly #transport: ApplicationTransport;
   readonly #storage: PlatformStorage;
   readonly #session: WeChatRunSession;
+  #currentRunId: string;
   readonly #commandIdFactory: () => string;
   #submission: CommandSubmissionController;
   #archiveOpen = false;
@@ -260,6 +261,7 @@ export class WeChatRunController {
     this.#transport = options.transport;
     this.#storage = options.storage;
     this.#session = options.session;
+    this.#currentRunId = options.session.runId;
     this.#commandIdFactory = options.commandIdFactory;
     this.#submission = this.#newSubmission(options.initialView);
   }
@@ -277,7 +279,7 @@ export class WeChatRunController {
   /** Loads the authoritative ViewModel. The client's only source of a page state. */
   async load(): Promise<PublicViewModel> {
     if (this.#submission.snapshot().mutuallyExclusiveLocked) throw new SubmissionLockedError();
-    const view = (await this.#transport.fetchView(this.#session.runId)) as PublicViewModel;
+    const view = (await this.#transport.fetchView(this.#currentRunId)) as PublicViewModel;
     this.#submission = this.#newSubmission(view);
     this.#archiveOpen = false;
     return view;
@@ -341,6 +343,72 @@ export class WeChatRunController {
 
   /** Retry of a transient failure: the identical envelope (same commandId and payload) is re-sent. */
   async retry(): Promise<CommandResult> { return await this.#submission.retry(); }
+
+  /**
+   * UI04E — advances the terminal presentation flow by one edge.
+   *
+   * Distinct from `submit`: terminal navigation is **not** a `GameCommand`, so it does not go through
+   * `CommandSubmissionController` (no commandId, no `STATE_CONFLICT`, no reducer). The shell derives the
+   * `expectedTerminalStage` from the authoritative `view.state.pageState`, refuses the call if the
+   * controller has no view yet, and lets the caller supply the `terminalTransitionId` (the
+   * exactly-once idempotency key the server enforces).
+   *
+   * On success the controller refreshes its view by `fetchView`, so the next `pageModel()` reflects
+   * the new authoritative stage.
+   */
+  async advanceTerminal(input: {
+    terminalTransitionId: string;
+    action: "advance-to-life-book" | "advance-to-rebirth-result" | "advance-to-next-life";
+  }): Promise<AdvanceTerminalResult> {
+    const view = this.#requireView();
+    const expectedTerminalStage = view.state.pageState as "ENDING" | "LIFE_BOOK" | "REBIRTH_RESULT" | "RUN_HOME" | "DESTINY_OFFER" | "EVENT" | "SPECIAL_NODE" | "NEXT_LIFE" | "START" | "MODE_SELECT" | "RUN_OPENING" | "LIFE_ARCHIVE";
+    if (expectedTerminalStage !== "ENDING" && expectedTerminalStage !== "LIFE_BOOK" && expectedTerminalStage !== "REBIRTH_RESULT") {
+      throw new TerminalUnavailableError(expectedTerminalStage, "the authoritative page state is not a terminal stage");
+    }
+    const terminalTransitionId = input.terminalTransitionId;
+    if (typeof terminalTransitionId !== "string" || terminalTransitionId.length === 0 || terminalTransitionId.length > 128) {
+      throw new TerminalUnavailableError(expectedTerminalStage, "terminalTransitionId is missing or too long");
+    }
+    const result = await this.#transport.advanceTerminal({
+      runId: this.#currentRunId,
+      terminalTransitionId,
+      expectedTerminalStage,
+      action: input.action
+    });
+    if (result.ok === true) {
+      // Re-read the authoritative view so the next pageModel() reflects the new terminal stage and
+      // (for NEXT_LIFE) the next-life bootstrap key. A failed re-fetch is surfaced as a typed
+      // exception — never silently swallowed — because the controller must know the local view is stale.
+      const refreshed = await this.#transport.fetchView(this.#currentRunId);
+      this.#submission = this.#newSubmission(parsePublicViewModel(refreshed));
+    }
+    return result;
+  }
+
+/**
+ * UI04E-R1 — the explicit "start next life" action invoked by the NEXT_LIFE page CTA.
+ *
+ * The caller (typically the v2-live page) supplies the *persisted* next-life bootstrap id. The page
+ * is responsible for:
+ *   - persisting that id to a dedicated `pending` storage key BEFORE invoking this method;
+ *   - reusing an existing pending id on retry/reload instead of minting a new one;
+ *   - promoting the pending id to the current bootstrap key AND clearing the pending key only AFTER
+ *     this method returns successfully.
+ *
+ * Internally this method only invokes the already-accepted `createRunOffer({ bootstrapId })` RPC
+ * (UI04D bootstrap idempotency) and, on success, switches the controller's runId / view to the
+ * returned run. The prior run is kept immutable by the server.
+ */
+async startNextLife(nextBootstrapId: string): Promise<PublicViewModel> {
+  if (typeof nextBootstrapId !== "string" || nextBootstrapId.length === 0) throw new Error("nextBootstrapId must be a non-empty string");
+  if (nextBootstrapId.length > 128) throw new Error("nextBootstrapId is too long");
+  const offer = (await this.#transport.createRunOffer({ bootstrapId: nextBootstrapId })) as { runId: string; playerId: string; rulesVersion: string; contentVersion: string; view: PublicViewModel };
+  if (offer.playerId !== this.#session.playerId) throw new Error("the next-life bootstrap returned a foreign playerId");
+  if (offer.runId === this.#currentRunId) throw new Error("the next-life bootstrap returned the same runId as the previous run");
+  this.#currentRunId = offer.runId;
+  this.#submission = this.#newSubmission(offer.view);
+  return offer.view;
+}
 
   #requireView(): PublicViewModel {
     const view = this.#submission.snapshot().view;
@@ -466,8 +534,35 @@ function offerCandidateFor(body: PublicJson, optionId: string): OfferCandidateId
  * PublicViewModel — there is no second, client-side source of run truth. See docs/UI04C_LIVE_CLIENT.md.
  * ============================================================================================== */
 
-export const CLOUD_RPC_OPERATIONS = ["createRunOffer", "fetchView", "sendCommand"] as const;
+export const CLOUD_RPC_OPERATIONS = ["createRunOffer", "fetchView", "sendCommand", "advanceTerminal"] as const;
 export type CloudRpcOperation = (typeof CLOUD_RPC_OPERATIONS)[number];
+
+/**
+ * UI04E — a successful `advanceTerminal` settlement the shell can hand to its session controller.
+ *
+ * Terminal navigation is not a `GameCommand`, so commandId / pending / retry / STATE_CONFLICT semantics
+ * do not apply. The shell keeps this separate from `CommandResult`: the only thing the client needs
+ * from the server is the authoritative next stage plus the next-life bootstrap key (only present on
+ * the `REBIRTH_RESULT -> NEXT_LIFE` edge).
+ */
+export interface AdvanceTerminalSettlement {
+  ok: true;
+  terminalTransitionId: string;
+  stage: "ENDING" | "LIFE_BOOK" | "REBIRTH_RESULT" | "NEXT_LIFE";
+  version: number;
+}
+export interface AdvanceTerminalRejection {
+  ok: false;
+  terminalTransitionId: string;
+  error: { code: string; messageKey: string; retryable: boolean };
+}
+export type AdvanceTerminalResult = AdvanceTerminalSettlement | AdvanceTerminalRejection;
+
+/** Raised when the controller refuses a terminal advance because the authoritative stage forbids it. */
+export class TerminalUnavailableError extends Error {
+  readonly stage: string;
+  constructor(stage: string, reason: string) { super(`terminal stage ${stage} cannot be advanced: ${reason}`); this.name = "TerminalUnavailableError"; this.stage = stage; }
+}
 
 /** The cloud function the page binds by default when it does not name one. */
 export const DEFAULT_CLOUD_FUNCTION_NAME = "tianfu2";
@@ -655,6 +750,34 @@ export function parseRunOfferResult(value: unknown): WeChatRunOfferResult {
   return { runId, playerId, rulesVersion, contentVersion, view };
 }
 
+/**
+ * UI04E-R1 — parses the response of the `advanceTerminal` RPC.
+ *
+ * The success branch mirrors the `CommandResult` shape but is *not* a command: there is no
+ * `stateVersion` and no `commandId`, and — unlike the rejected UI04E shape — the success branch
+ * NEVER carries next-bootstrap / next-run identifiers. Arriving at NEXT_LIFE is a pure presentation
+ * transition; the next life is created by a separate, explicit `createRunOffer` call. A failure
+ * branch carries the same application error code vocabulary a `sendCommand` settlement does.
+ */
+export function parseAdvanceTerminalResult(value: unknown): AdvanceTerminalResult {
+  const record = rpcRecord(value, "advanceTerminal result");
+  assertNoServerSecrets(record, "advanceTerminal result");
+  const terminalTransitionId = rpcString(record.terminalTransitionId, "advanceTerminal result.terminalTransitionId");
+  if (record.ok === true) {
+    const stage = rpcEnum(record.stage, ["ENDING", "LIFE_BOOK", "REBIRTH_RESULT", "NEXT_LIFE"], "advanceTerminal result.stage") as "ENDING" | "LIFE_BOOK" | "REBIRTH_RESULT" | "NEXT_LIFE";
+    const version = rpcInteger(record.version, "advanceTerminal result.version");
+    // UI04E-R1: server must never publish nextBootstrapId / nextRunId in this envelope; if a hostile
+    // server tries to inject them, drop them silently rather than reject — the contract is "this RPC
+    // does not own next-run creation", not "this RPC must reject next-run identifiers if present".
+    return { ok: true, terminalTransitionId, stage, version };
+  }
+  const error = rpcRecord(record.error, "advanceTerminal result.error");
+  const code = rpcString(error.code, "advanceTerminal result.error.code");
+  const messageKey = rpcString(error.messageKey, "advanceTerminal result.error.messageKey");
+  if (typeof error.retryable !== "boolean") throw new TransportProtocolError("advanceTerminal result.error.retryable must be a boolean");
+  return { ok: false, terminalTransitionId, error: { code, messageKey, retryable: error.retryable } };
+}
+
 /** Unwraps the host's `{ result, errMsg }` response. A missing result is a transport failure, not a payload. */
 async function callCloud(api: WeChatCloudCallApi, name: string, data: Record<string, unknown>): Promise<unknown> {
   const response = await api.callFunction({ name, data });
@@ -689,6 +812,14 @@ export function createWeChatCloudTransport(options: WeChatCloudTransportOptions)
       const bootstrapId = typeof options?.bootstrapId === "string" && options.bootstrapId.length > 0 ? options.bootstrapId : undefined;
       const data = bootstrapId === undefined ? { operation: "createRunOffer" } : { operation: "createRunOffer", bootstrapId };
       return parseRunOfferResult(await callCloud(api, name, data));
+    },
+    async advanceTerminal(request: {
+      runId: string;
+      terminalTransitionId: string;
+      expectedTerminalStage: "ENDING" | "LIFE_BOOK" | "REBIRTH_RESULT" | "NEXT_LIFE";
+      action: "advance-to-life-book" | "advance-to-rebirth-result" | "advance-to-next-life";
+    }): Promise<AdvanceTerminalResult> {
+      return parseAdvanceTerminalResult(await callCloud(api, name, { operation: "advanceTerminal", request }));
     }
   };
 }

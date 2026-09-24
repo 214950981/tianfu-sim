@@ -1,7 +1,7 @@
 // GENERATED FILE — DO NOT HAND-EDIT.
 //
 // Source of truth: server/src/viewmodel.ts
-// Source sha256:   e7d4bdeaf9cb22d8ce01949813f4c752864b267749205481ca003d466af80147
+// Source sha256:   d30d48f2ce6752859ffda6ec723d07b036fc09c264c998bde594de55ed2c3e37
 // Generator:       tools/ui04d-cloud-runtime-artifact.mjs
 // Regenerate:      node tools/ui04d-cloud-runtime-artifact.mjs --write
 //
@@ -31,6 +31,7 @@ var { affinitySemantic, buildRiskPresentation, buildStage, debtSemantic, evaluat
                    
                 
                                                        
+                                                                     
 
 const capabilityNames                    = ["DailyChallengeCapability", "AdCapability", "RewardedAdCapability", "CommerceCapability", "ShareCapability", "AiNarrativeCapability", "PlatformCapability"];
 const specialKinds = new Set(["combat", "breakthrough"]);
@@ -91,14 +92,88 @@ function sanitizeRisk(value                              )                      
   return { tier: value.tier, canBeFatal: value.canBeFatal, reasons: [...value.reasons], ...(value.level !== undefined && riskLevels.has(value.level) ? { level: value.level } : {}), ...(typeof value.labelKey === "string" ? { labelKey: value.labelKey } : {}), ...(typeof value.detailKey === "string" ? { detailKey: value.detailKey } : {}) };
 }
 
-function derivePageState(state           )            {
+function derivePageState(state           , terminal                  )            {
   if (state.run.status === "offered") return "DESTINY_OFFER";
+  // UI04E — terminal sidecar is authoritative when present: a run that has reached `LIFE_BOOK`,
+  // `REBIRTH_RESULT` or `NEXT_LIFE` projects those exact pages, never the gameplay-derived fallback.
+  // This is the only place terminal state may reach the public projection.
+  if (terminal !== undefined) {
+    if (terminal.stage === "LIFE_BOOK") return "LIFE_BOOK";
+    if (terminal.stage === "REBIRTH_RESULT") return "REBIRTH_RESULT";
+    if (terminal.stage === "NEXT_LIFE") return "NEXT_LIFE";
+    if (terminal.stage === "ENDING") return "ENDING";
+  }
+  // A dying or ended run without an ENDING sidecar is an empty SPECIAL_NODE dead-end — never allowed:
+  // the sidecar is created the moment authoritative gameplay declares end-of-life. Falling back to
+  // ENDING here keeps the projection non-empty even on a legacy run that has no sidecar yet.
   if (state.run.status === "ended") return "ENDING";
   if (state.run.status === "abandoned") return "NEXT_LIFE";
-  if (state.run.status === "dying") return "SPECIAL_NODE";
+  if (state.run.status === "dying") return "ENDING";
   const current = state.run.events.current; if (current === undefined) return "RUN_HOME";
   if (current.kind === "ending") return "ENDING";
   return specialKinds.has(current.kind) ? "SPECIAL_NODE" : "EVENT";
+}
+
+/** UI04E — minimal terminal projection: the authoritative stage plus already-public life/rebirth facts. */
+                                           
+                                                                 
+                  
+                                                                                                                
+                                        
+                                                                                                                
+                                             
+                                                                                                          
+                                        
+ 
+
+function buildPublicTerminal(state           , content                 , terminal                             , stage           )                                       {
+  if (terminal === undefined) return undefined;
+  const death = state.run.deathRecord; const ending = state.run.ending; const causeRelatedDeath = (() => { if (death?.sourceCauseId === undefined) return false; const knownCause = state.run.causes.byId[death.sourceCauseId]; return knownCause !== undefined && knownCause.visibility !== "hidden"; })();
+  const locked = content.get(state.contentVersion);
+  const publicMilestones = new Set(["firstEncounter", "majorRelationChange", "debtCreated", "debtResolved", "promotedToA", "statusRevealed", "causeLinked", "importantPromise", "majorConflict", "majorAid"]);
+  const buildPack = locked.buildPackId === undefined ? undefined : content.getBuild(state.contentVersion); const npcPack = locked.npcPackId === undefined ? undefined : content.getNpc(state.contentVersion);
+  const publicBuilds               = buildPack === undefined ? [] : Object.values(state.run.build.affinities ?? {}).sort((left, right) => left.buildId.localeCompare(right.buildId)).map((affinity)             => { const definition = buildPack.definitions.find((candidate) => candidate.id === affinity.buildId); if (definition === undefined) return { buildId: affinity.buildId, stage: "latent", labelKey: "build.unknown" }; const bStage = buildStage(buildPack.rules, affinity.affinityBps); return { buildId: affinity.buildId, displayName: definition.displayName, stage: bStage, labelKey: definition.stages.find((candidate) => candidate.stage === bStage)?.labelKey ?? `build.${affinity.buildId}.${bStage}`, dominant: state.run.build.dominantBuildId === affinity.buildId }; });
+  const publicPeople               = npcPack === undefined ? [] : Object.values(state.run.npcs.byId).filter((npc) => npc.knowledge.met).sort((left, right) => left.npcId.localeCompare(right.npcId)).map((npc)             => ({ npcId: npc.npcId, displayName: npc.displayName, knownRoles: [...npc.roleTags], knownStatus: npc.knowledge.knownStatus ?? "unknown" }));
+  const publicEvents = state.run.events.history.map((entry, index) => ({ entryId: `event:${index}`, eventId: entry.eventId, nodeIndex: entry.nodeIndex, ...(entry.resultTier === undefined ? {} : { resultTier: entry.resultTier }) }));
+  const publicCauses = Object.values(state.run.causes.byId).filter((cause) => cause.visibility !== "hidden").sort((left, right) => left.causeId.localeCompare(right.causeId)).map((cause)             => ({ publicId: cause.causeId, level: cause.visibility === "journal" ? "explicit" : "hinted", ...(cause.visibility === "journal" ? { titleKey: `${cause.templateId}.title`, summaryKey: `${cause.templateId}.summary` } : { summaryKey: "cause.hinted.summary" }) }));
+
+  const lifeBook                             = {
+    runName: state.run.identity.runName,
+    age: state.run.age,
+    maxAge: state.run.maxAge,
+    realm: { id: state.run.realm.id, order: state.run.realm.order, cultivation: state.run.realm.cultivation, ...(state.run.realm.cultivationBps === undefined ? {} : { cultivationBps: state.run.realm.cultivationBps }) },
+    builds: publicBuilds,
+    people: publicPeople,
+    events: publicEvents,
+    causes: publicCauses,
+    ...(ending === undefined ? {} : { ending: { endingId: ending.endingId, age: ending.age, ...(ending.deathCause === undefined ? {} : { deathCause: ending.deathCause }) } }),
+    ...(death === undefined ? {} : { death: { deathCauseId: death.deathCauseId, age: death.age, realmId: death.realmId, directCause: death.immediateSource, wasWarned: death.warningFacts.length > 0, causeRelatedDeath, category: death.category } })
+  };
+
+  const rebirthResult                             = {
+    completedRunId: state.run.runId,
+    runName: state.run.identity.runName,
+    finalAge: state.run.age,
+    finalRealm: { id: state.run.realm.id, order: state.run.realm.order },
+    ...(ending?.endingId !== undefined ? { endingId: ending.endingId } : {}),
+    ...(ending?.deathCause !== undefined ? { deathCause: ending.deathCause } : {}),
+    peopleMet: publicPeople.length,
+    buildsFormed: publicBuilds.filter((value) => value !== null && typeof value === "object" && (value                              ).dominant === true).length,
+    eventsExperienced: publicEvents.length,
+    nextLifeAffordance: stage === "REBIRTH_RESULT" || stage === "NEXT_LIFE"
+  };
+
+  const nextLife                             = {
+    completedRunId: state.run.runId,
+    terminalStage: "NEXT_LIFE",
+    terminalVersion: terminal.version
+  };
+
+  if (stage === "ENDING") return { stage: "ENDING", version: terminal.version, lifeBook };
+  if (stage === "LIFE_BOOK") return { stage: "LIFE_BOOK", version: terminal.version, lifeBook };
+  if (stage === "REBIRTH_RESULT") return { stage: "REBIRTH_RESULT", version: terminal.version, lifeBook, rebirthResult };
+  if (stage === "NEXT_LIFE") return { stage: "NEXT_LIFE", version: terminal.version, lifeBook, rebirthResult, nextLife };
+  return undefined;
 }
 
 function publicCauses(state           )                {
@@ -180,10 +255,33 @@ class ServerViewModelBuilder {
            #riskPolicy                  ;
   constructor(content                 , options                                = {}) { this.content = content; this.#capabilities = capabilities(options.capabilities); this.#riskPolicy = options.riskPolicy ?? (({ state, choice }) => { if (choice.threatId === undefined) return { tier: "low", canBeFatal: false, reasons: [] }; const riskPack = content.getRisk(state.contentVersion); const projected = buildRiskPresentation(state, threatDefinition(riskPack, choice.threatId)); const level = projected.tier === "low" ? "safe" : projected.tier === "caution" ? "guarded" : "dangerous"; return { ...projected, level, labelKey: `risk.${projected.tier}` }; }); }
   build(value         , interactionState                   = "idle")                  {
-    const state = validateGameState(value); const pageState = derivePageState(state);
-    const publicState              = { schemaVersion: state.schemaVersion, rulesVersion: state.rulesVersion, contentVersion: state.contentVersion, stateVersion: state.stateVersion, runId: state.run.runId, pageState, runStatus: state.run.status, publicRun: publicRun(state, this.content), capabilities: { ...this.#capabilities }, publicCauses: publicCauses(state) };
+    return this.buildWithTerminal(value, undefined, interactionState);
+  }
+  /**
+   * UI04E — the terminal-aware overload.
+   *
+   * The live service passes the terminal sidecar in. Tests and other callers that already have a
+   * `StoredRun` (or a plain state) can pass it directly; callers that only have a `GameState` keep
+   * the simple overload above.
+   */
+  buildWithTerminal(value         , terminal                             , interactionState                   = "idle")                  {
+    // Accept either a `StoredRun` (state + commandLog + sidecar) or a bare `GameState`. A `StoredRun`
+    // is a thin wrapper whose own `state` field is the real game state.
+    const state            = value !== null && typeof value === "object" && "state" in (value                           ) && typeof (value                       ).state === "object"
+      ? validateGameState((value                      ).state)
+      : validateGameState(value);
+    const pageState = derivePageState(state, terminal);
+    const terminalProjection = buildPublicTerminal(state, this.content, terminal, pageState);
+    const publicState              = { schemaVersion: state.schemaVersion, rulesVersion: state.rulesVersion, contentVersion: state.contentVersion, stateVersion: state.stateVersion, runId: state.run.runId, pageState, runStatus: state.run.status, publicRun: publicRun(state, this.content), capabilities: { ...this.#capabilities }, publicCauses: publicCauses(state), ...(terminalProjection === undefined ? {} : { terminal: terminalProjection }) };
     const currentInteraction = pageState === "DESTINY_OFFER" ? offeredInteraction(state, this.content, interactionState) : pageState === "EVENT" || pageState === "SPECIAL_NODE" || pageState === "ENDING" ? eventInteraction(state, this.content, interactionState, this.#riskPolicy) : undefined;
     return { state: publicState, ...(currentInteraction === undefined ? {} : { currentInteraction }), history: history(state), share: share(state) };
+  }
+  /**
+   * Convenience for the live service: build directly from a `StoredRun` so the terminal sidecar is
+   * automatically attached.
+   */
+  buildFromStoredRun(stored           , interactionState                   = "idle")                  {
+    return this.buildWithTerminal(stored, stored.terminal, interactionState);
   }
 }
 

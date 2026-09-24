@@ -120,6 +120,7 @@ export const FACADE_EXPORTS = [
   { name: "RetryUnavailableError", from: "./wechat-shell.js" },
   { name: "SubmissionLockedError", from: "./wechat-shell.js" },
   { name: "TransportProtocolError", from: "./wechat-shell.js" },
+  { name: "TerminalUnavailableError", from: "./wechat-shell.js" },
   { name: "WeChatRunController", from: "./wechat-shell.js" },
   { name: "bootstrapWeChatRun", from: "./wechat-shell.js" },
   { name: "createWeChatCloudTransport", from: "./wechat-shell.js" },

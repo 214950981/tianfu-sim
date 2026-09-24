@@ -1,532 +1,112 @@
 version: 1
-taskId: UI04D
-attempt: 1
 status: PASS
-verificationProfile: fast-lane
+taskId: UI04E_R1
+title: UI04E-R1 — Explicit NEXT_LIFE Start Boundary
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-UI04D
-baseCommit: 22cc6b2338000b88156c30630165c9a9b58545be
-baseTreeSha: 2a3d4f1a60db109c1b130cad6c55540f875f3d44
-historyMode: real-ancestry
-sourceHeadVerifiedBy: >-
-  NEXT_TASK.yaml sets sourceBranch to dev/tianfu-2.0, workBranch to wb-UI04D, attempt 1, status READY,
-  basePolicy remote-source-head-at-task-start, allowSyntheticTreeBase true, taskDefinition
-  .codex/tasks/UI04D.yaml, verificationProfile fast-lane, previousTask UI04C ACCEPTED at
-  badb88e3a49cba239e93e0c6dd43fa96479bffa3. The dispatch commit 22cc6b2338000b88156c30630165c9a9b58545be
-  was positioned into this worktree with "git read-tree -u --reset <sha>" and the worktree HEAD file
-  written directly, because this sandbox silently discards ref writes; no synthetic tree base was needed.
-  Verified now, not recalled: "git rev-parse HEAD" is 22cc6b23..., whose parent is badb88e3 (the
-  controller's accepted UI04C result), and "git write-tree" and "git rev-parse HEAD^{tree}" both return
-  2a3d4f1a60db109c1b130cad6c55540f875f3d44, byte-identical to "refs/heads/probe-dev-remote^{tree}". The
-  result commit therefore has baseCommit as its real parent: historyMode real-ancestry.
-  "node .codex/context.mjs UI04D" runs clean - the controller fixed the loader's verificationProfile field
-  in this dispatch commit - and prints the task definition plus all seven required contracts.
-
-summary: >-
-  UI04D puts a real, deployable, authoritative cloud backend behind the UI04C RPC boundary: a thin WeChat
-  cloud function over a mechanically derived CommonJS runtime, a CloudBase document store that keeps every
-  accepted CommandGateway semantic under a real server-side transaction, and OPENID-derived identity with
-  bootstrap-idempotent run creation. No gameplay was written: every state transition still comes from the
-  accepted reducer through the accepted CommandGateway, and every response still comes out of the accepted
-  ServerViewModelBuilder.
-
-  IDENTITY. cloud.getWXContext().OPENID is the only trusted fact about the caller. The host converts it
-  once into an opaque playerId ("p-" plus a domain-separated sha256 prefix) and then discards it:
-  serviceFor() reads no field of event at all, so a client-sent playerId, OPENID or rootSeed is not
-  sanitised, it is never looked at. Raw OPENID never reaches the client, RuleState, a command envelope or
-  a public ViewModel. fetchView and sendCommand compare the run's stored owner against the trusted id; a
-  foreign run and a non-existent run produce the identical UNAUTHORIZED / run.not_owned answer, and the
-  refusal does not echo the run id, so the endpoint cannot be used to probe existence.
-
-  SERVICE. TianfuLiveService owns exactly the three operations the live client already speaks:
-  createRunOffer, fetchView, sendCommand. createRunOffer builds the real CONTENT01 registry (pack plus the
-  CONTENT01 NPC pack, over progression/risk/build/director v1), calls generateServerDestinyOffer with a
-  server-only entropy provider for runId and rootSeed, and returns
-  { runId, playerId, rulesVersion, contentVersion, view } - a shape the UI04C fail-closed parser already
-  validates, including the recursive refusal of rootSeed, rngState, checkSpec, hiddenCause and friends.
-
-  BOOTSTRAP IDEMPOTENCY. createRunOffer takes a client-generated, locally persisted bootstrapId. The
-  mapping (playerId, bootstrapId) -> runId is written inside the SAME transaction that creates the run, so
-  a retry after a lost response, a page reload, or a cold handler instance recovers the same offered run
-  instead of manufacturing another life. A different bootstrapId starts a new run. v2-live persists
-  "tianfu2:bootstrap-id" and no longer stores the UI04C dev-local player id; the session's playerId is now
-  the server's.
-
-  STORE PORT. CommandGateway was given a persistence port, GatewayStore / GatewayTransactionView, whose
-  reads may be asynchronous; reads are awaited and InMemoryGatewayStore keeps its synchronous surface for
-  the existing tests. Nothing else moved: idempotency fingerprints, STATE_CONFLICT, ownership, snapshot
-  cadence, replay and the failure envelope are still decided inside CommandGateway, and
-  tests/server-gateway.test.mjs is 6/6 without a single assertion change.
-
-  CLOUDBASE STORE. CloudBaseGatewayStore addresses three collections - tianfu2_runs, tianfu2_commands,
-  tianfu2_bootstraps - by deterministic 32-hex document ids derived from the logical key, so the
-  transactional path never queries: there is no ".where(" in the module at all, and the harness's fake
-  database throws if one is attempted inside a transaction. Writes are staged in the view and flushed after
-  the operation resolves but still inside runTransaction, so the transaction is read-your-writes and a
-  thrown operation commits nothing. Nothing is cached across requests, which is what makes a cold start
-  settle against the same documents as the instance that timed out.
-
-  DEPLOYABLE ARTIFACT. cloudfunctions/tianfu2/index.js is a thin host - identity, database handle,
-  server-only entropy, dispatch, and a structuredClone shim installed BEFORE the runtime is required
-  because the generated modules clone content at load time. It contains no reducer, no gateway, no
-  ViewModel builder and no content. Everything it calls lives in cloudfunctions/tianfu2/runtime/: 34
-  modules plus a bounded facade, generated by tools/ui04d-cloud-runtime-artifact.mjs from the accepted
-  server + Core + Content TypeScript closure using Node's own built-in type stripper. No bundler, no new
-  dependency. The generator fails closed on a bare or "node:" specifier, on any module heading it does not
-  fully understand, and on a facade export the owning module no longer publishes. wx-server-sdk is confined
-  to cloudfunctions/tianfu2/package.json; no client manifest depends on it.
-
-  PROOF. tests/ui04d.test.mjs loads the COMMITTED host itself as CommonJS in a fresh node:vm realm per
-  call (a cold start), with a fake wx-server-sdk whose getWXContext().OPENID is the identity source, a
-  CloudBase-like database with real runTransaction semantics, and deterministic crypto. The request payload
-  is serialised into the handler's realm and the response back out, so a cross-realm prototype cannot
-  satisfy a validator by accident. A post-commit timeout is modelled by throwing after the writes landed,
-  and the exact retry is proven not to double-settle state, RNG, time or the command log.
-
-files:
-  - file: server/src/gateway-store.ts
-    kind: added
-    note: >-
-      The extracted persistence port: StoredRun / IdempotencyRecord / BootstrapRecord,
-      GatewayTransactionView (getRun, setRun, getIdempotency, setIdempotency, getBootstrap, setBootstrap)
-      whose reads may be promises, and GatewayStore (readRun, transact). InMemoryGatewayStore moved here
-      unchanged in behaviour and keeps its synchronous surface plus seedRun / readBootstrap, so the
-      existing suites are untouched. 5897 bytes.
-  - file: server/src/identity.ts
-    kind: added
-    note: >-
-      derivePlayerId (domain-separated sha256 -> "p-" plus 40 hex), assertTrustedOpenid, bootstrapKeyFor and
-      runIdSeedFor. 3910 bytes. No OPENID is ever stored or returned.
-  - file: server/src/live-content.ts
-    kind: added
-    note: >-
-      Builds the live registry from the real CONTENT01 pack over the CONTENT01 NPC pack and the existing
-      progression/risk/build/director v1 packs, and publishes LIVE_CONTENT_VERSION "content01.v1" and
-      LIVE_RULES_VERSION "2.0.0". 1847 bytes.
-  - file: server/src/cloudbase-store.ts
-    kind: added
-    note: >-
-      The CloudBase port: RUNS_COLLECTION / COMMANDS_COLLECTION / BOOTSTRAPS_COLLECTION, documentIdFor
-      (32 hex), and transact() over runTransaction with staged writes. 8042 bytes. Contains no ".where(".
-  - file: server/src/live-service.ts
-    kind: added
-    note: >-
-      The authoritative service: createRunOffer (bootstrap mapping, offer generation and the run write, all
-      in one transaction), fetchView (RunUnavailableError for missing OR foreign), sendCommand. 9891 bytes.
-  - file: server/src/command-gateway.ts
-    kind: modified
-    note: >-
-      Imports the port instead of the concrete store, awaits the store read and the transaction reads, and
-      createRunOffer gained an optional { bootstrapId } parameter. No settlement rule, error code, version
-      check or snapshot decision changed.
-  - file: server/src/destiny-offer.ts, server/src/viewmodel.ts
-    kind: modified
-    note: >-
-      One-line import narrowing each: ContentRegistry now comes from packages/content/src/registry.ts
-      instead of the content barrel, because the barrel also re-exports the audit and simulation tooling,
-      which must not ship in the cloud closure. No logic changed.
-  - file: server/src/index.ts
-    kind: modified
-    note: Re-exports the five new modules. No existing export removed or redefined.
-  - file: packages/platform-contract/src/index.ts
-    kind: modified
-    note: >-
-      ApplicationTransport.createRunOffer gained one optional argument, { bootstrapId? }. It is a widening
-      only: a zero-argument implementation still satisfies it, and no other member changed. Required for
-      typecheck to pass once the shell passes the bootstrap id through.
-  - file: packages/wechat-shell/src/index.ts
-    kind: modified
-    note: >-
-      createRunOffer takes an optional { bootstrapId } and forwards it only when present;
-      parseRunOfferResult validates and returns the server playerId; bootstrapWeChatRun adopts that playerId
-      instead of a caller-supplied one; the OPENID / openId / OPENID spellings joined the recursive
-      FORBIDDEN_RESPONSE_KEYS refusal. No intent mapping, decision view or existing validator was redefined.
-  - file: miniprogram/pages/v2-live/v2-live.js
-    kind: modified
-    note: >-
-      Replaces the UI04C dev-local player id ("tianfu2:dev-player-id") with a generated, locally persisted
-      bootstrap key ("tianfu2:bootstrap-id") and passes { transport, bootstrapId, clientBuild } to
-      bootstrapWeChatRun. The page still computes no gameplay.
-  - file: miniprogram/runtime/wechat-shell.js
-    kind: modified
-    note: >-
-      Regenerated with "npm run ui04b:artifact:write". 43484 bytes, source sha256
-      58aae4e17991202b864f13de8247a055607f5388c6cc1c5c8e5dc6cf9eecb85b. The facade is unchanged (1553
-      bytes) because no export was added.
-  - file: cloudfunctions/tianfu2/index.js
-    kind: added
-    note: >-
-      The thin host. 5750 bytes. Requires only wx-server-sdk, crypto and ./runtime/index.js; installs a JSON
-      round-trip structuredClone shim BEFORE requiring the runtime; maps RunUnavailableError to
-      UNAUTHORIZED / run.not_owned; logs and bounds everything else.
-  - file: cloudfunctions/tianfu2/package.json
-    kind: added
-    note: >-
-      name tianfu2, main index.js, dependencies { wx-server-sdk: ~3.0.4 }, plus runtime:check /
-      runtime:write scripts. The audit proves no client manifest depends on wx-server-sdk.
-  - file: cloudfunctions/tianfu2/runtime/
-    kind: added
-    note: >-
-      35 generated CommonJS files (34 modules plus the facade index.js), each with a provenance header naming
-      its source path and sha256. Closure: 18 Core modules, 8 Content modules, 8 server modules.
-  - file: tools/ui04d-cloud-runtime-artifact.mjs
-    kind: added
-    note: >-
-      The generator and freshness check. Pins the 34-module closure and the 19-name facade, strips types with
-      Node's built-in stripTypeScriptTypes (mode "strip"), rewrites ES module syntax to CommonJS, and fails
-      closed on any bare or "node:" specifier, unsupported heading, surviving import/export token, leftover
-      TypeScript syntax, non-literal require, or facade export the owner does not publish. --write
-      regenerates; plain invocation is the freshness gate.
-  - file: tools/ui04d-cloud-runtime-audit.mjs
-    kind: added
-    note: >-
-      Checks A-H: committed file set, require edges, closure completeness, content policy (no audit or
-      simulation tooling), JS-only, provenance digests, bounded facade, and the dependency policy that
-      wx-server-sdk may appear only in the cloud function package.
-  - file: tools/ui04d-cloud-harness.mjs
-    kind: added
-    note: >-
-      Fake wx-server-sdk (getWXContext().OPENID), a CloudBase-like document database with runTransaction,
-      read-your-writes staging, a where() that throws inside a transaction, and armPostCommitTimeout(); plus
-      deterministic crypto and loadCloudFunction(), which evaluates the committed host in a fresh vm realm
-      and JSON-round-trips the payload across it.
-  - file: tools/ui04d-cloud-runtime-smoke.mjs
-    kind: added
-    note: >-
-      15 CLI checks: offer, bootstrap idempotency, cold start, a different bootstrap, START_RUN, fetchView,
-      cross-player fetch and command rejection, no where(), deterministic document ids.
-  - file: tests/ui04d.test.mjs
-    kind: added
-    note: >-
-      20 tests (547 lines): identity derivation, offer shape and CONTENT01 version, bootstrap idempotency
-      across a cold start, CloudBase store semantics (idempotency, idempotency_conflict, STATE_CONFLICT,
-      ownership, replay hash), deterministic ids with no where(), the host full chain, the post-commit
-      timeout retry, ignored client fields, cross-player rejection, unknown operation, artifact freshness
-      and determinism plus two fail-closed negative controls, the audit plus its negative controls, the
-      smoke, source-level no-gameplay and no-client-source scope assertions, the client bootstrap contract,
-      v2-live's persisted key, the route guard and registration.
-  - file: tests/ui04c.test.mjs
-    kind: modified
-    note: >-
-      The fake cloud createRunOffer now returns the UI04D result shape { runId, playerId, rulesVersion,
-      contentVersion, view }, the live client passes bootstrapId "boot:ui04c", and the page harness seeds
-      "tianfu2:bootstrap-id". 18/18 with no assertion weakened.
-  - file: tests/ui02r1.test.mjs
-    kind: modified
-    note: >-
-      THREE base-tree pins updated on purpose and disclosed in that file's header comment, in the house style
-      UI03 / UI04A / UI04C used: packages/platform-contract/src (95afe1f8...), packages/wechat-shell/src
-      (d7db6a24...) and server/src (five modules added, 0a22969c...). The file-list half of each pin is
-      unchanged in kind and still fails closed on any further addition.
-  - file: tests/ui04b.test.mjs
-    kind: modified
-    note: >-
-      TWO pins updated on purpose and disclosed inline: cloudfunctions (fdb405ec... - the deployable host and
-      its generated runtime now live there; the 1.0 syncPlayerData is byte-unchanged) and the server/src
-      cross-check (0a22969c...). Its treeDigestOf now skips node_modules, because UI04D's own documented
-      deployment step is "npm install" inside cloudfunctions/tianfu2 and dependency output is not source; no
-      pinned tree currently contains a node_modules directory, so this moved no digest.
-  - file: package.json
-    kind: modified
-    note: >-
-      Added test:ui04d, ui04d:artifact, ui04d:artifact:write, ui04d:audit, ui04d:smoke, and appended
-      tests/ui04d.test.mjs to the aggregate test script. devDependencies is still exactly typescript 5.9.3
-      and there is still no dependencies key.
-  - file: docs/UI04D_CLOUD_BACKEND.md
-    kind: added
-    note: >-
-      Identity mapping, the three RPC shapes, bootstrap idempotency, the collection and document-id data
-      model, the transactional invariants, exact deployment steps and the cloud-side setup that is still
-      manual.
-  - file: .codex/control/LAST_RESULT.yaml
-    kind: modified
-    note: This result file.
-
+workBranch: wb-UI04E-R1
+baseCommit: 96870759194620d552ab9084c899d29f3710220a
+summary: |
+  Carry forward the valid UI04E terminal sidecar / public projection / advanceTerminal exactly-once /
+  ownership / cloud runtime / four-stage rendering work, and repair the single lifecycle invariant
+  the Controller rejected: REBIRTH_RESULT -> NEXT_LIFE is now a sidecar-only presentation
+  transition. advanceTerminal never creates a next-run document, never writes a bootstrap mapping,
+  and never carries nextBootstrapId / nextRunId on the success envelope or on the receipt. The
+  next life is created only by an explicit, client-driven createRunOffer call from the NEXT_LIFE
+  page's "开启下一世" CTA. The page persists a dedicated pending next-life bootstrap id BEFORE the
+  server call, reuses the same id on retry/reload, and only promotes it to the current bootstrap
+  key after a successful createRunOffer. The OLD run's canonical gameplay bytes are byte-identical
+  before and after the NEXT_LIFE advance.
+changedFiles:
+  - server/src/gateway-store.ts
+  - server/src/terminal-flow.ts
+  - server/src/live-service.ts
+  - packages/platform-contract/src/index.ts
+  - packages/wechat-shell/src/index.ts
+  - miniprogram/pages/v2-live/v2-live.js
+  - miniprogram/pages/v2-live/v2-live.wxml
+  - tests/ui04e.test.mjs
+  - tests/ui04e-r1.test.mjs (new)
+  - docs/UI04E_TERMINAL_LIFECYCLE.md
+  - package.json
+  - cloudfunctions/tianfu2/runtime/index.js
+  - cloudfunctions/tianfu2/runtime/server-cloudbase-store.js
+  - cloudfunctions/tianfu2/runtime/server-gateway-store.js
+  - cloudfunctions/tianfu2/runtime/server-live-service.js
+  - cloudfunctions/tianfu2/runtime/server-terminal-flow.js
+  - cloudfunctions/tianfu2/runtime/server-viewmodel.js
+  - miniprogram/runtime/index.js
+  - miniprogram/runtime/wechat-shell.js
 tests:
-  - name: ui04d
-    command: npm run test:ui04d
-    result: "20/20 PASS"
-    detail: >-
-      Dedicated UI04D suite at three levels: the TypeScript server modules, the COMMITTED cloud host loaded
-      as CommonJS in its own vm realm, and the generated artifact. Includes the full chain (createRunOffer ->
-      START_RUN -> core action -> event option -> fetchView), the post-commit timeout that proves an exact
-      retry settles once while a changed payload under the same commandId is refused without mutating state,
-      RNG, time or the log, and cross-player rejection that leaks neither the run id nor any state.
-  - name: server-gateway
-    command: node --test tests/server-gateway.test.mjs
-    result: "6/6 PASS"
-    detail: >-
-      Unchanged assertions, which is the point: the store-port refactor is infrastructure, so idempotency,
-      STATE_CONFLICT, ownership, snapshot and replay still behave exactly as accepted.
-  - name: destiny-offer
-    command: node --test tests/destiny-offer.test.mjs
-    result: "6/6 PASS"
-  - name: viewmodel-ui
-    command: node --test tests/viewmodel-ui.test.mjs
-    result: "6/6 PASS"
-    detail: Not on the fast-lane list; run because server/src/viewmodel.ts changed.
-  - name: ui04c
+  - name: tests/ui04e-r1.test.mjs
+    command: node --test tests/ui04e-r1.test.mjs
+    result: 9/9 PASS (R1 server invariants, cloud-host invariants, client invariants, page invariants, stage-skip refusal)
+  - name: tests/ui04e.test.mjs
+    command: node --test tests/ui04e.test.mjs
+    result: 26/26 PASS (updated to assert R1 semantics: no nextBootstrapId/nextRunId in success envelope or receipt, no new run document on NEXT_LIFE advance, controller does not auto-switch on NEXT_LIFE, v2-live exposes explicit CTA + pending-bootstrap helpers)
+  - name: tests/ui04d.test.mjs
+    command: node --test tests/ui04d.test.mjs
+    result: PASS (OPENID authoritative identity + bootstrap idempotency unchanged)
+  - name: tests/ui04c.test.mjs
     command: node --test tests/ui04c.test.mjs
-    result: "18/18 PASS"
-    detail: Updated for the new createRunOffer result shape and the bootstrapId call; no assertion weakened.
-  - name: ui04b
-    command: node --test tests/ui04b.test.mjs
-    result: "16/16 PASS"
-    detail: Client runtime regenerated after the shell change; freshness included.
-  - name: ui04a
-    command: node --test tests/ui04a.test.mjs
-    result: "16/16 PASS"
-    detail: Not on the fast-lane list; run because UI04D edits packages/wechat-shell/src.
-  - name: ui03
-    command: node --test tests/ui03.test.mjs
-    result: "18/18 PASS"
-    detail: Not on the fast-lane list; run for the same reason.
-  - name: ui02-ui02r1-ui02r2-ui02r2a2-ui02entry-ui02copy
-    command: node --test tests/<suite>.test.mjs
-    result: "18/18, 32/32, 15/15, 15/15, 20/20, 11/11 PASS"
-    detail: >-
-      Not on the fast-lane list; run because UI04D re-bases three ui02r1 pins and edits the wechat-shell and
-      platform-contract trees. All six green after the disclosed pin updates.
-  - name: context-loader
-    command: node --test tests/context-loader.test.mjs
-    result: "17/17 PASS"
+    result: PASS (live client RPC boundary unchanged)
+  - name: tests/server-gateway.test.mjs
+    command: node --test tests/server-gateway.test.mjs
+    result: PASS (transactional store unchanged)
+  - name: tests/viewmodel-ui.test.mjs
+    command: node --test tests/viewmodel-ui.test.mjs
+    result: PASS (terminal projection unchanged)
+gates:
   - name: cloud-runtime-artifact-freshness
     command: node tools/ui04d-cloud-runtime-artifact.mjs
-    result: "exit 0, printed 'UI04D cloud runtime artifact: PASS (deterministic regeneration matches the committed bytes)'"
-    detail: >-
-      34 sources, 35 artifacts. Largest: content-registry.js 60890, core-state.js 37825,
-      content-content01-v1.js 35999, core-reducer.js 34822 bytes. Facade 1965 bytes.
+    result: PASS (deterministic regeneration matches the committed bytes)
   - name: cloud-runtime-dependency-audit
     command: node tools/ui04d-cloud-runtime-audit.mjs
-    result: "exit 0, printed 'UI04D cloud runtime audit: PASS'"
-    detail: >-
-      Exactly 35 generated files, 35 modules reachable from the facade, 34 provenance digests, the facade
-      publishes exactly the 19 pinned names, the host requires only [./runtime/index.js, crypto,
-      wx-server-sdk], and wx-server-sdk is confined to the cloud function package.
+    result: PASS
   - name: cloud-runtime-smoke
     command: node tools/ui04d-cloud-runtime-smoke.mjs
-    result: "exit 0, 15 checks passed, 0 failed"
-  - name: ui04b-artifact-freshness
+    result: PASS (15 checks; every document addressed by deterministic id; no where() issued)
+  - name: wechat-runtime-artifact
     command: node tools/ui04b-wechat-runtime-artifact.mjs
-    result: "exit 0, printed 'UI04B WeChat runtime artifact: PASS (deterministic regeneration matches the committed bytes)'"
-    detail: >-
-      wechat-shell source sha256 58aae4e17991202b864f13de8247a055607f5388c6cc1c5c8e5dc6cf9eecb85b (42239
-      bytes); artifacts 10915 / 6961 / 43484 / 1553 bytes.
+    result: PASS (deterministic regeneration matches the committed bytes)
   - name: typecheck
     command: npx --yes --package typescript@5.9.3 tsc --noEmit
-    result: "exit 0, no output"
+    result: clean
   - name: lint
     command: node tools/check-import-boundaries.mjs
-    result: "exit 0, printed 'Core import boundary: PASS'"
+    result: PASS
   - name: secret-scan
     command: node tools/scan-secrets.mjs
-    result: "exit 0, printed 'Secret scan: PASS'"
+    result: PASS
   - name: content01-lint
     command: node tools/content01-lint.mjs
-    result: "exit 0, PASS"
-  - name: context-loader-cli
-    command: node .codex/context.mjs UI04D
-    result: "exit 0, prints the task definition and all seven required contracts"
-    detail: >-
-      The controller's fix landed: unlike UI04C, verificationProfile is now accepted by the loader, so no
-      fallback read of the task file was needed.
-
-gates:
-  - gate: ui04d
     result: PASS
-  - gate: server-gateway
-    result: PASS
-  - gate: destiny-offer
-    result: PASS
-  - gate: ui04c
-    result: PASS
-  - gate: ui04b
-    result: PASS
-  - gate: cloud-runtime-artifact-freshness
-    result: PASS
-  - gate: cloud-runtime-dependency-audit
-    result: PASS
-  - gate: cloud-runtime-smoke
-    result: PASS
-  - gate: context-loader
-    result: PASS
-  - gate: typecheck
-    result: PASS
-  - gate: lint
-    result: PASS
-  - gate: secret-scan
-    result: PASS
-  - gate: content01-lint
-    result: PASS
-  - gate: aggregate-npm-test
-    result: NOT_RUN_BY_PROFILE
-    detail: >-
-      fast-lane explicitly waives it. Gameplay semantics are unchanged - packages/core and packages/content
-      are byte-identical to the task base, and no Core or Content test was touched - so the profile's waiver
-      applies. Every suite likely to be affected was run individually instead and is green.
-  - gate: gameplay-simulation-600-run
-    result: NOT_REQUIRED
-    detail: >-
-      No gameplay, Content, reducer, RNG, Director, Cause, Progression, Risk or Build code changed; the
-      accept criterion waives it in that case.
-  - gate: manual-visual-QA
-    result: NOT_RUN
-    detail: >-
-      No DevTools run, no real-device run and no real cloud deployment (forbiddenScope names
-      real-production-deployment). The host is exercised through the committed-file harness instead, which
-      loads the same index.js a human would upload.
-
+  - name: route-guard
+    command: node tools/route-guard.mjs
+    result: PASS (1.0 pages and tabBar untouched)
 scope:
   coreChanged: false
   contractsChanged: false
-  contractFilesChanged: false
-  contractFilesDetail: >-
-    .codex/contracts/** is untouched. packages/platform-contract/src is a neutral TypeScript type package,
-    not a .codex contract; only its createRunOffer member was widened by one optional argument.
   directorChanged: false
   contentChanged: false
-  serverViewmodelChanged: false
-  serverGatewaySemanticsChanged: false
-  serverGatewaySemanticsDetail: >-
-    command-gateway.ts now reads through an injected port and awaits it, and destiny-offer.ts /
-    viewmodel.ts narrowed one import each to avoid the content barrel. No error code, no version check, no
-    idempotency fingerprint, no snapshot cadence and no ownership rule changed; server-gateway 6/6 passes
-    with its assertions untouched.
-  miniprogramPagesChanged: true
-  miniprogramPagesDetail: >-
-    Only miniprogram/pages/v2-live/v2-live.js changed (dev player id -> persisted bootstrap key). No page
-    was added or removed; app.json, tabBar and the default route are byte-identical.
-  defaultRouteChanged: false
-  legacyPagesChanged: false
-  tabBarChanged: false
-  gameplayRuleSemanticsChanged: false
-  clientSourceChanged: true
-  clientSourceDetail: >-
-    packages/wechat-shell/src (RPC shape and bootstrap) and packages/platform-contract/src (one widened
-    member). The client runtime closure is unchanged as a set.
-  newMiniprogramRootArtifact: false
-  newRuntimeDependency: false
-  newRuntimeDependencyDetail: >-
-    No new dependency in the root package.json: devDependencies is still exactly typescript 5.9.3 and there
-    is no dependencies key. cloudfunctions/tianfu2/package.json declares wx-server-sdk ~3.0.4, which the
-    task explicitly allows inside that package only, and the dependency audit proves no client manifest
-    depends on it.
-  newCloudFunction: true
-  newCloudFunctionDetail: >-
-    cloudfunctions/tianfu2 (host + generated runtime + package.json). The accepted 1.0
-    cloudfunctions/syncPlayerData is byte-unchanged.
-
-contractExtension:
-  required: false
-  detail: >-
-    No .codex contract and no PublicViewModel field changed. The three RPC operations and the
-    { runId, playerId, rulesVersion, contentVersion, view } result shape are the transport surface UI04C
-    already specified and already validates fail-closed; UI04D implements the server side of it and adds one
-    optional request field, bootstrapId, which carries no gameplay semantics.
-
+  serverChanged: true
+  shellChanged: true
+  runtimeChanged: true
+  pageChanged: true
+  testChanged: true
+  docsChanged: true
 blockers: []
-
-disclosedScopeNotes:
-  - >-
-    No real cloud deployment was performed - it is explicitly forbidden by the task. What exists is a
-    deployable artifact plus exact manual deployment steps (docs/UI04D_CLOUD_BACKEND.md section 6) and the
-    list of cloud-side setup that is still manual (section 7: environment binding, the three collections
-    and their security rules, timeout/memory configuration, and multi-user acceptance under a real OPENID).
-  - >-
-    THREE ui02r1 base-tree pins and TWO ui04b pins were updated, not weakened. Every one still fails
-    closed: ui02r1 pins the exact file list as well as the digest, so another addition inside server/src
-    breaks it; ui04b's cloudfunctions pin covers the whole tree including the new host and all 35 generated
-    files. The reason for each is recorded in the file it lives in, in the style the three previous tasks
-    used.
-  - >-
-    ui04b's treeDigestOf now skips node_modules. Without it, following UI04D's own documented deployment
-    step ("npm install" inside cloudfunctions/tianfu2) would break that suite. No pinned tree currently
-    contains a node_modules directory, so this changed no digest; it only removes a trap.
-  - >-
-    packages/platform-contract/src was touched only to widen ApplicationTransport.createRunOffer by one
-    optional argument, which is what makes the shell's bootstrapId call typecheck. The alternative - a
-    redeclaring sub-interface inside wechat-shell - would have left the shared contract describing an RPC
-    surface the shell no longer calls that way.
-  - >-
-    The generated cloud runtime is Node-version sensitive: module.stripTypeScriptTypes is used with mode
-    "strip" and its whitespace is Node's own. Freshness therefore compares bytes strictly and the committed
-    provenance header records the source digests, so a Node upgrade surfaces as a freshness failure with an
-    obvious cause rather than a silent drift.
-  - >-
-    The harness models the post-commit timeout in the fake database, not in a real CloudBase instance. That
-    is the honest limit of the proof: it shows the service and the store settle exactly once when the
-    platform commits and then drops the response; it does not prove how CloudBase behaves on a genuine
-    network failure. The transaction shape it exercises (doc reads and writes only, no query) is the one
-    the platform documents as supported.
-  - >-
-    docs/dev-status.md was NOT updated. It is the controller's bookkeeping and updating it is outside this
-    task's allowedScope; docs/UI04D_CLOUD_BACKEND.md carries the task documentation.
-  - >-
-    "No gameplay was added" is asserted by source inspection - the closure is exactly the pinned Core /
-    Content / server modules and the host contains no reducer, gateway or ViewModel of its own - plus
-    behaviour: every page state, action and option the tests drive comes out of the accepted reducer and
-    ServerViewModelBuilder. It is not proven by enumerating every expression in the reducer.
-
 toolingObservations:
-  - topic: A generated CommonJS module can call structuredClone at load time, so a Node 16 shim must be installed before the require
-    observation: >-
-      The cloud host installed a structuredClone shim after requiring wx-server-sdk but before requiring
-      ./runtime/index.js, and it still failed. The generated content module clones CONTENT01 cause templates
-      while it is being EVALUATED, not when it is called, so a shim placed anywhere after the require is too
-      late.
-    evidence: >-
-      The harness surfaced "ReferenceError: structuredClone is not defined" from
-      cloudfunctions/tianfu2/runtime/content-content01-v1.js during module evaluation. Moving the shim above
-      the require fixed it.
-    impact: >-
-      CloudBase may run a cloud function on Node 16, which has no structuredClone, so any generated module
-      that clones at load time fails on cold start with a message that names neither the shim nor the host.
-    workaround: >-
-      Install the shim before the first require of the derived runtime, and say so in a comment - the
-      ordering looks arbitrary otherwise, and a later tidy-up will turn it back into a bug.
-  - topic: A cross-realm object does not satisfy a validator that checks prototypes, so a host harness must serialise the payload
-    observation: >-
-      Loading a CommonJS host in node:vm and handing it an object built outside the realm lets an "is this a
-      plain object" check pass or fail for the wrong reason, which hides exactly the class of bug a cloud
-      boundary must catch.
-    evidence: >-
-      Injecting host intrinsics into the vm context produced "TypeError: npcPack: must be a plain object";
-      the real fix was a bare context (console, TextEncoder, setTimeout, clearTimeout, Buffer) plus JSON
-      round-tripping the request into the realm and the response back out.
-    impact: >-
-      A harness that skips the round trip can report green for a payload the real platform would reject, or
-      red for one it would accept.
-    workaround: >-
-      Use vm.createContext with only the globals the host needs, re-parse the request string inside the
-      realm, and load once per call - that is what a cold start is.
-  - topic: A post-commit timeout must be armed per transaction, not at database construction
-    observation: >-
-      createFakeCloudDatabase({ throwAfterCommitOnce: true }) armed the failure on the first transaction of
-      the database, which is createRunOffer, so the test lost the OFFER instead of the command and failed
-      with "Cannot read properties of undefined (reading 'currentInteraction')" - a symptom that points at
-      the assertion rather than at the harness.
-    evidence: >-
-      tests/ui04d.test.mjs case 9 before the fix; after replacing the option with an explicit
-      armPostCommitTimeout() called between the offer and the command, the case proves the intended property.
-    impact: >-
-      A mis-armed failure mode silently tests the wrong operation, and the error message misleads.
-    workaround: >-
-      Expose an explicit arm and call it at the point the test is actually about.
-  - topic: A drifted source can still be a perfectly derivable artifact, so a fail-closed control must drift the right thing
-    observation: >-
-      Appending "export const drift = 1;" to a source is a legal module transformation and the generator
-      correctly derives it, so the control asserted an exception that could never occur and only looked like
-      a control.
-    evidence: >-
-      tests/ui04d.test.mjs case 13 reported "Missing expected exception" until the control was changed to the
-      two drifts the generator genuinely refuses: a bare specifier reaching outside the pinned closure, and a
-      source that stops publishing a facade export.
-    impact: >-
-      A negative control that cannot fail is worse than none, because it reads as coverage.
-    workaround: >-
-      Drift the property the generator actually enforces - the closure boundary and the facade surface - not
-      the source's content in general. Freshness, not the generator, is what catches a plain content edit.
-
-recommendedCommitMessage: >-
-  UI04D: give the live client a real cloud authority - deployable tianfu2 cloud function, CloudBase
-  transactional store, OPENID identity and bootstrap-idempotent run creation
+  - finding: ".codex/context.mjs strict allowlist rejects the new task-definition metadata fields (executionProfile, executionBudget). The loader sees them as MALFORMED_TASK: unknown field. The fields are purely informational (no loader semantics); the task contract is otherwise well-formed and the implementer reads the file directly. No source code change to the loader is required today; the implementer recommends the loader add the two names to ALLOWED_FIELDS in a future maintenance pass so future tasks do not need the workaround."
+    impact: low
+    workaround: read the task file directly; loader is optional
+  - finding: "Server-side advanceTerminal no longer needs entropy / metaView / offerFixture / schemaVersion. Dropping these from AdvanceTerminalContext made the sidecar-only boundary explicit at the type level."
+    impact: informational
+    workaround: n/a
+  - finding: "parseAdvanceTerminalResult silently drops any nextBootstrapId / nextRunId a hostile or legacy server injects. The contract is this RPC does not own next-run creation, not this RPC must reject next-run identifiers."
+    impact: informational
+    workaround: n/a
+  - finding: "WeChatRunController.startNextLife requires a caller-supplied bootstrap id (the persisted pending id) — it no longer auto-generates one. A future helper that mints the id inside the controller would silently break the retry/reload semantics; the source-level UI04E_R1 test enforces the page-side persistence."
+    impact: informational
+    workaround: n/a
+recommendedCommitMessage: |
+  UI04E-R1: separate terminal arrival at NEXT_LIFE from the explicit start-next-life action — advanceTerminal becomes a pure sidecar-only presentation transition, the page exposes a 开启下一世 CTA backed by a persisted pending-bootstrap lifecycle, and the rejected UI04E premature next-run creation is removed end-to-end
