@@ -1,0 +1,36 @@
+id: UI04E_R3
+title: UI04E-R3 — Preserve Terminal Sidecar on Bootstrap Recovery
+phase: 2
+verificationProfile: fast-lane
+executionProfile: credit-efficient
+requiredContracts: [.codex/contracts/platform.ref,.codex/contracts/viewmodel.ref,.codex/contracts/ui.ref,.codex/contracts/crosslayer.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [.codex/tasks/UI04E_R2.yaml,server/src/live-service.ts,server/src/viewmodel.ts,server/src/gateway-store.ts,tests/ui04e-r2.test.mjs,tests/ui04e-r1.test.mjs,tests/ui04e.test.mjs,tools/ui04d-cloud-runtime-artifact.mjs]
+allowedScope:
+  - use blocked R2 commit 83c4882bd9e087208cba0492350f48e736cd8cf9 as a one-time transplant source, excluding non-task memory/log artifacts
+  - preserve the R1/R2 terminal lifecycle and page-level proof exactly; do not redesign the flow
+  - fix TianfuLiveService.createRunOffer so every existing-run recovery path retains the complete StoredRun including terminal sidecar rather than reducing it to GameState
+  - project createRunOffer responses through the same terminal-aware StoredRun projection used by fetchView; bootstrap recovery and fetchView for the same run must agree on pageState and terminal projection
+  - newly generated offered runs may be represented as a StoredRun immediately and projected through the same unified path so the code has one projection rule
+  - keep bootstrap idempotency ownership OPENID-derived player identity runId derivation and server entropy semantics unchanged
+  - the existing ui04e-r2 functional page test must pass without any diagnostic controller.load workaround: old current bootstrap recovers NEXT_LIFE, first explicit CTA persists pending, server commits new run then response is lost, reload recovers old NEXT_LIFE, retry reuses same pending id, and success recovers the same new run
+  - after the fix update the R2 test comments/result text from diagnostic BLOCKED wording to the accepted behavior, without weakening assertions
+  - regenerate only cloudfunctions/tianfu2 runtime/artifact required by the live-service source change and verify freshness/dependency/smoke
+  - do not regenerate miniprogram runtime unless client source actually changes due to a newly discovered bug
+  - run ui04e-r2 once after the fix is believed complete; if red, use the smallest failing test during diagnosis; run ui04e-r1 once and ui04e once only after R2 is green
+  - run ui04d once because createRunOffer recovery semantics are touched, plus one typecheck and the cloud runtime audits
+  - update LAST_RESULT with concise resourceUsage counts and no .workbuddy paths
+forbiddenScope: [terminal-flow-redesign,next-life-lifecycle-redesign,client-page-change-without-newly-proven-bug,GameState-change,reducer-change,RNG-change,Content-change,Director-change,database-schema-change,new-cloud-RPC,default-route-change,legacy-1.0-change,tabBar-change,production-deployment,miniprogram-runtime-regeneration-without-client-source-change,aggregate-npm-test,600-run,unbounded-push-retry,.workbuddy-commit,UI04FINAL,source-branch-push]
+accept:
+  - createRunOffer-recovery-of-an-existing-terminal-run-preserves-terminal-sidecar-and-projects-the-same-pageState-as-fetchView
+  - reloading-the-old-current-bootstrap-at-terminal-NEXT_LIFE-renders-NEXT_LIFE-without-an-extra-controller-load
+  - ui04e-r2-real-page-level-response-loss-reload-proof-passes-end-to-end-without-workaround
+  - same-pending-bootstrap-after-lost-response-recovers-one-already-created-new-run-and-never-creates-a-third-run
+  - ui04e-r1-and-ui04e-terminal-invariants-remain-green
+  - ui04d-bootstrap-idempotency-and-authoritative-identity-regression-remains-green
+  - cloud-runtime-generated-artifact-is-fresh-dependency-audit-green-and-load-smoke-green
+  - typecheck-is-clean
+  - no-client-gameplay-content-database-schema-or-default-route-change
+  - resourceUsage-shows-pushAttempts-at-most-2-no-unbounded-retry-loop-and-no-.workbuddy-path
+tests: [ui04e-r3,ui04e-r2,ui04e-r1,ui04e,ui04d,cloud-runtime-artifact-freshness,cloud-runtime-dependency-audit,cloud-runtime-smoke,typecheck]

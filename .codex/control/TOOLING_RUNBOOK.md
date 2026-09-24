@@ -154,3 +154,9 @@ Protocol v1.4 makes bounded tool use the default.
 - Never use an unbounded shell/network retry loop.
 - LAST_RESULT records concise evidence, not command transcripts or duplicated logs.
 - If the same symptom survives 3 attempts, stop looping and reassess or BLOCK.
+
+## Bootstrap recovery must preserve presentation sidecars
+
+UI04E_R2 exposed a general server projection rule: if a bootstrap/recovery endpoint returns an already-persisted run, it must project the complete stored run, not only its canonical gameplay state. Otherwise server-side presentation/session sidecars can disappear on reload even though fetchView is correct.
+
+For terminal runs specifically, `createRunOffer` recovery and `fetchView` must agree on the same terminal-aware ViewModel projection.

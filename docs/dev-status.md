@@ -281,24 +281,22 @@ Full regression：264 / 264 PASS；全部 reported audits PASS。
 
 ## Next
 
-UI04E_R1 result `fcb930b64cecc5c13e3eb8c784af72f44978c1b8` is **NOT YET ACCEPTED** and was not merged.
+UI04E_R2 result `83c4882bd9e087208cba0492350f48e736cd8cf9` is BLOCKED and was NOT merged into `dev/tianfu-2.0`.
 
-The product correction is materially right: REBIRTH_RESULT -> NEXT_LIFE is now sidecar-only, NEXT_LIFE has an explicit CTA, and createRunOffer owns next-run creation. However the task's strongest acceptance proof is still missing: the dedicated R1 suite does not actually simulate 'server created the next run, response was lost, page reloaded, same pending bootstrap was reused'. It only proves a second createRunOffer with the same bootstrap returns the same run.
+R2 successfully added the real page-level response-loss/reload proof and exposed a single production defect: `TianfuLiveService.createRunOffer` recovers an existing terminal run as `{ runId, state }` and projects it with `builder.build(state)`, dropping the persisted terminal sidecar. `fetchView` correctly projects the same run as NEXT_LIFE via `buildFromStoredRun`, so a reload through bootstrap shows ENDING instead of NEXT_LIFE and strands the player.
 
-The R1 branch also violated credit-efficient execution: its own local memory says push retried 7 times although NEXT_TASK capped push attempts at 2, and it accidentally committed `.workbuddy/memory/...` outside changedFiles. Neither artifact will be accepted into dev.
+Repair task: `UI04E_R3` — Preserve Terminal Sidecar on Bootstrap Recovery.
 
-Correction/proof task: `UI04E_R2` — Response-Loss Reload Proof + Submission Hygiene.
+R3 is a narrow product fix:
+- transplant R2 once, excluding any non-task memory/log paths;
+- in createRunOffer, preserve the complete StoredRun for mapped-existing and deterministic-existing recovery paths, and project through the terminal-aware builder; newly generated offered runs should use the same StoredRun-shaped path;
+- do not change terminal-flow graph, next-life pending-bootstrap logic, database schema, gameplay state, reducer, Content or client UI semantics;
+- regenerate only the cloud runtime because server source changes; miniprogram runtime is unchanged unless a real client bug is discovered;
+- the existing R2 page-level test must pass without the diagnostic controller.load() workaround, including server-commit + lost-response + reload + same-pending recovery;
+- run R1 and UI04E targeted regressions, UI04D bootstrap regression, cloud artifact freshness/audit/smoke, and one typecheck;
+- remain credit-efficient and max two push attempts.
 
-R2 is intentionally tiny:
-- transplant the R1 implementation once, excluding `.workbuddy/**`;
-- add one functional test that persists pending bootstrap before the first createRunOffer, lets the real fake-cloud handler commit the new run, then loses the response client-side;
-- recreate/reload the page/controller with the same local storage; it must return to the old NEXT_LIFE run, reuse the same pending bootstrap on the explicit CTA, and recover the already-created new run;
-- prove only two run documents exist (old + one new), current bootstrap remains old until success, pending remains after the lost response, then success promotes current/clears pending and renders new DESTINY_OFFER under the same playerId;
-- if that test passes without product changes, do not edit product code, regenerate artifacts, rerun typecheck, or rerun unrelated suites;
-- run ui04e-r1 once as regression plus context-loader once; no aggregate npm test / 600-run.
-
-Controller also fixed context.mjs to accept scalar executionProfile and added `.workbuddy/` to .gitignore. Complex execution budgets remain in NEXT_TASK/protocol, not task YAML.
-## 新 Codex 会话 / 账号接手步骤
+If R3 passes, Controller should accept the entire UI04E chain and dispatch `UI04FINAL` final-audit.## 新 Codex 会话 / 账号接手步骤
 
 1. 确认当前 branch = `dev/tianfu-2.0`。
 2. 查看 `git status`。

@@ -1,11 +1,11 @@
 version: 1
 status: READY
 attempt: 1
-taskId: UI04E_R2
-title: UI04E-R2 — Response-Loss Reload Proof + Submission Hygiene
-taskDefinition: .codex/tasks/UI04E_R2.yaml
+taskId: UI04E_R3
+title: UI04E-R3 — Preserve Terminal Sidecar on Bootstrap Recovery
+taskDefinition: .codex/tasks/UI04E_R3.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-UI04E-R2
+workBranch: wb-UI04E-R3
 worktreeRequired: true
 allowSyntheticTreeBase: true
 basePolicy: remote-source-head-at-task-start
@@ -20,32 +20,30 @@ execution:
   runAggregateNpmTest: false
   rerunKnownSandboxBaseline: false
   run600Simulation: false
-  maxFullDedicatedSuiteRuns: 1
-  maxTypecheckRuns: 0
-  maxArtifactRegenerationRounds: 0
+  maxFullDedicatedSuiteRuns: 2
+  maxTypecheckRuns: 1
+  maxArtifactRegenerationRounds: 1
   maxPushAttempts: 2
   preferTargetedTestNamePattern: true
   prohibitUnboundedRetryLoops: true
 controllerReview:
-  previousTask: UI04E_R1
-  previousStatus: REJECTED_PROOF_GAP
-  rejectedResultCommit: fcb930b64cecc5c13e3eb8c784af72f44978c1b8
-  rejectionReason:
-    - R1 product semantics are materially correct but the required response-loss plus reload proof is not actually executed
-    - R1 committed an undeclared .workbuddy memory artifact
-    - R1 local record reports seven push retries despite the hard maxPushAttempts 2
+  previousTask: UI04E_R2
+  previousStatus: BLOCKED
+  blockedResultCommit: 83c4882bd9e087208cba0492350f48e736cd8cf9
+  blocker:
+    - createRunOffer drops the persisted terminal sidecar on existing-run recovery, so reload projects ENDING while fetchView correctly projects NEXT_LIFE
 controllerDecision:
-  strategy: proof-only-no-rewrite
-  rationale: do not spend another implementation cycle; transplant the reviewed R1 candidate once, add the missing behavioral proof, and remove submission/tooling pollution
+  strategy: single-projection-fix
+  rationale: R2 proved the terminal and pending-bootstrap design is otherwise sound; fix the one server projection gap and then proceed to final audit
 controllerIntent:
-  mode: FAST_LANE_PROOF
-  goal: close the last acceptance-evidence gap with minimal tool use
-  postTask: controller reviews wb-UI04E-R2; if accepted dispatch UI04FINAL
+  mode: FAST_LANE_REPAIR
+  goal: make bootstrap recovery and fetchView project the same complete StoredRun
+  postTask: controller reviews wb-UI04E-R3; if accepted dispatch UI04FINAL final-audit
 notes:
-  - Run node .codex/context.mjs UI04E_R2 once. It should now accept executionProfile.
-  - Transplant fcb930b64cecc5c13e3eb8c784af72f44978c1b8 once, preferably cherry-pick --no-commit or equivalent, and explicitly exclude .workbuddy/** before the final commit.
-  - If the new functional proof passes against the transplanted R1 product tree, do not touch product code, do not regenerate runtime artifacts, and do not run typecheck or unrelated gates.
-  - Run the new ui04e-r2 test while developing; run ui04e-r1 exactly once after it is green.
-  - Hard push limit is 2 attempts. After two transient failures stop PUSH_BLOCKED with the local commit SHA. Do not loop.
-  - LAST_RESULT must include resourceUsage with actual fullDedicatedSuiteRuns, typecheckRuns, artifactRegenerationRounds, pushAttempts.
-  - Do not create or commit .workbuddy memory/log files.
+  - Run node .codex/context.mjs UI04E_R3 once.
+  - Transplant R2 once; do not rebuild R1/R2 manually.
+  - The intended fix is narrow: preserve StoredRun including terminal sidecar through createRunOffer recovery and use terminal-aware projection.
+  - Do not change client code unless the R2 proof remains red for a second independently demonstrated bug.
+  - Regenerate cloud runtime once after source stabilizes. Do not regenerate miniprogram runtime if client source is unchanged.
+  - Hard push limit is 2 attempts. If both fail, stop PUSH_BLOCKED with local commit SHA.
+  - LAST_RESULT must include resourceUsage. Do not commit .workbuddy paths.
