@@ -1,0 +1,33 @@
+id: UI02COPY
+title: UI02COPY — Chinese Player-Facing Copy / Raw-Key Cleanup
+phase: 2
+requiredContracts: [.codex/contracts/ui.ref,.codex/contracts/viewmodel.ref,.codex/contracts/page-state.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [docs/UI02_PREVIEW.md,docs/UIUX_RULES.md,miniprogram/pages/v2-preview/v2-preview.js,miniprogram/pages/v2-preview/v2-preview.wxml,tools/ui02-preview-fixtures.mjs,packages/content/dev-fixtures/minimal-pack.json,server/src/viewmodel.ts,tests/ui02entry.test.mjs,tests/ui02r2a2.test.mjs]
+allowedScope:
+  - polish only player-facing presentation copy in the 2.0 dev preview on top of the visually accepted UI02ENTRY result; keep layout, gameplay authority and routing unchanged
+  - remove raw implementation-facing keys and capability identifiers from every currently reviewable product screen: START, MODE_SELECT, DESTINY_OFFER, RUN_OPENING, RUN_HOME, EVENT, SPECIAL_NODE and LIFE_ARCHIVE
+  - add a bounded zh-CN presentation catalog for the public label/title/body/history/reason keys actually reachable in the committed preview fixtures; unknown future keys must still fail visibly or fall back verbatim rather than silently inventing gameplay meaning
+  - EVENT and SPECIAL_NODE must render readable Chinese scene titles, body text and option labels for the current preview fixtures while preserving all option ids, riskPresentation and submission semantics
+  - LIFE_ARCHIVE must render readable Chinese history/build transition titles and summaries for the current preview fixtures instead of dot-separated content keys
+  - MODE_SELECT must not expose internal capability enum names such as DailyChallengeCapability or CommerceCapability; unavailable entries use concise player-facing states such as 暂未开放 without leaking implementation vocabulary
+  - START and entry-flow copy may be lightly polished for natural Chinese if the meaning remains identical to the documented product positioning and no lore, reward promise or gameplay benefit is invented
+  - keep the existing presentation-label fallback policy for unknown structural enum ids and add an explicit no-raw-key visual guard for all committed preview fixtures
+  - keep all accepted UI02R2A2/UI02ENTRY one-screen, safe-area, viewport, touch-target and scroll-boundary contracts unchanged
+  - add dedicated tests/ui02copy.test.mjs and only run the targeted UI fast-lane suites listed by this task
+  - update docs/UI02_PREVIEW.md with the copy policy and manual visual checklist
+  - .codex/control/LAST_RESULT.yaml task result
+forbiddenScope: [Core-gameplay-rule-changes,Content-rule-or-balance-changes,Director-changes,Cause-semantics,Progression-changes,Risk-resolution-changes,Build-or-NPC-rule-changes,server-viewmodel-semantics-change,wechat-shell-live-controller-wiring,application-ui-live-controller-wiring,client-side-RNG,client-side-offer-eligibility,hidden-data-projection,new-game-mode,new-gameplay-benefit,new-lore-branch,legacy-1.0-page-rewrite,replace-default-route,real-cloud-backend-deployment,UI03-implementation,UI04,CHAL01,ITEM01,TECH01,SECT01,WORLD01,new-heavy-test-dependency,source-branch-push]
+accept:
+  - no-current-preview-product-screen-renders-dot-separated-dev-content-keys-or-internal-Capability-enum-names-to-the-player
+  - EVENT-current-preview-renders-readable-Chinese-title-body-and-all-option-labels-with-riskPresentation-unchanged
+  - SPECIAL_NODE-current-preview-renders-readable-Chinese-title-body-and-option-labels-with-decision-locking-and-risk-semantics-unchanged
+  - LIFE_ARCHIVE-current-preview-renders-readable-Chinese-history-and-build-transition-copy-without-changing-public-history-data
+  - MODE_SELECT-unavailable-items-use-player-facing-copy-and-do-not-leak-implementation-capability-names
+  - START-Destiny-Opening-copy-remains-consistent-with-documented-product-positioning-and-adds-no-invented-lore-or-benefit
+  - all-eight-product-screens-remain-visually-reviewable-and-existing-one-screen-safe-area-scroll-contracts-do-not-regress
+  - UI02ENTRY-UI02R2A2-UI02R2-UI02R1-UI02-and-viewmodel-ui-tests-remain-green
+  - dedicated-ui02copy-test-layout-audit-wxss-compat-audit-fixture-freshness-and-typecheck-green
+  - full-npm-regression-remains-deferred-until-human-visual-acceptance-of-this-final-UI02-copy-pass
+tests: [ui02copy,ui02entry,ui02r2a2,ui02r2,ui02r1,ui02,viewmodel-ui,layout-audit,wxss-compat-audit,fixture-freshness,typecheck]
