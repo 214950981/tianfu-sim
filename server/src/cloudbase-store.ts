@@ -25,7 +25,7 @@
  */
 
 import { sha256Utf8 } from "../../packages/core/src/sha256.ts";
-import type { BootstrapRecord, GatewayStore, GatewayTransactionView, IdempotencyRecord, StoredRun } from "./gateway-store.ts";
+import type { BootstrapRecord, GatewayStore, GatewayTransactionView, IdempotencyRecord, StoredRun, TerminalTransitionRecord } from "./gateway-store.ts";
 
 /** The minimal CloudBase document-database surface this store uses. */
 export interface CloudDocumentSnapshot { data?: Record<string, unknown> | null }
@@ -48,6 +48,8 @@ export interface CloudDatabase {
 export const RUNS_COLLECTION = "tianfu2_runs";
 export const COMMANDS_COLLECTION = "tianfu2_commands";
 export const BOOTSTRAPS_COLLECTION = "tianfu2_bootstraps";
+/** UI04E — exactly-once terminal transition receipts, addressed by `terminalTransitionId`. */
+export const TERMINAL_TRANSITIONS_COLLECTION = "tianfu2_terminal_transitions";
 
 const ID_LENGTH = 32;
 
@@ -73,13 +75,14 @@ function asStoredRun(data: unknown): StoredRun | undefined {
   return record as unknown as StoredRun;
 }
 
-export interface CloudBaseGatewayStoreOptions { database: CloudDatabase; collections?: { runs?: string; commands?: string; bootstraps?: string } }
+export interface CloudBaseGatewayStoreOptions { database: CloudDatabase; collections?: { runs?: string; commands?: string; bootstraps?: string; terminalTransitions?: string } }
 
 export class CloudBaseGatewayStore implements GatewayStore {
   readonly #database: CloudDatabase;
   readonly #runs: string;
   readonly #commands: string;
   readonly #bootstraps: string;
+  readonly #terminalTransitions: string;
 
   constructor(options: CloudBaseGatewayStoreOptions) {
     if (options === null || typeof options !== "object" || options.database === undefined) throw new RangeError("a CloudBase database handle is required");
@@ -87,6 +90,7 @@ export class CloudBaseGatewayStore implements GatewayStore {
     this.#runs = options.collections?.runs ?? RUNS_COLLECTION;
     this.#commands = options.collections?.commands ?? COMMANDS_COLLECTION;
     this.#bootstraps = options.collections?.bootstraps ?? BOOTSTRAPS_COLLECTION;
+    this.#terminalTransitions = options.collections?.terminalTransitions ?? TERMINAL_TRANSITIONS_COLLECTION;
   }
 
   async readRun(runId: string): Promise<StoredRun | undefined> {
@@ -106,6 +110,7 @@ export class CloudBaseGatewayStore implements GatewayStore {
       const stagedRuns = new Map<string, StoredRun>();
       const stagedIdempotency = new Map<string, IdempotencyRecord>();
       const stagedBootstraps = new Map<string, BootstrapRecord>();
+      const stagedTerminalTransitions = new Map<string, TerminalTransitionRecord>();
 
       const read = async (collection: string, kind: string, key: string): Promise<unknown> => {
         const snapshot = await transaction.collection(collection).doc(documentIdFor(kind, key)).get();
@@ -129,13 +134,20 @@ export class CloudBaseGatewayStore implements GatewayStore {
           if (staged !== undefined) return staged;
           return fromDocument<BootstrapRecord>(await read(this.#bootstraps, "bootstrap", bootstrapKey));
         },
-        setBootstrap: (bootstrapKey, value) => { stagedBootstraps.set(bootstrapKey, value); }
+        setBootstrap: (bootstrapKey, value) => { stagedBootstraps.set(bootstrapKey, value); },
+        getTerminalTransition: async (terminalTransitionId) => {
+          const staged = stagedTerminalTransitions.get(terminalTransitionId);
+          if (staged !== undefined) return staged;
+          return fromDocument<TerminalTransitionRecord>(await read(this.#terminalTransitions, "terminal-transition", terminalTransitionId));
+        },
+        setTerminalTransition: (terminalTransitionId, value) => { stagedTerminalTransitions.set(terminalTransitionId, value); }
       };
 
       const result = await operation(view);
       for (const [runId, value] of stagedRuns) await transaction.collection(this.#runs).doc(documentIdFor("run", runId)).set({ data: toDocument(value) });
       for (const [commandId, value] of stagedIdempotency) await transaction.collection(this.#commands).doc(documentIdFor("command", commandId)).set({ data: { ...toDocument(value), commandId } });
       for (const [bootstrapKey, value] of stagedBootstraps) await transaction.collection(this.#bootstraps).doc(documentIdFor("bootstrap", bootstrapKey)).set({ data: { ...toDocument(value), bootstrapKey } });
+      for (const [terminalTransitionId, value] of stagedTerminalTransitions) await transaction.collection(this.#terminalTransitions).doc(documentIdFor("terminal-transition", terminalTransitionId)).set({ data: { ...toDocument(value), terminalTransitionId } });
       return result;
     });
   }

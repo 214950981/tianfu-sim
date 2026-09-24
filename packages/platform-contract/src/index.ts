@@ -17,10 +17,26 @@ export type KnownCapability = "DailyChallengeCapability" | "AdCapability" | "Rew
 export type CapabilitySet = Readonly<Record<KnownCapability, boolean>>;
 
 export interface PublicCause { publicId: string; level: "explicit" | "hinted"; titleKey?: string; summaryKey: string }
+/**
+ * UI04E — minimal terminal projection attached to `PublicState` for the four terminal pages
+ * `ENDING -> LIFE_BOOK -> REBIRTH_RESULT -> NEXT_LIFE`. It carries only data already public in the
+ * canonical projection: the authoritative stage/version, an already-public LIFE_BOOK slice, an
+ * already-public REBIRTH_RESULT summary, and a NEXT_LIFE confirmation. Hidden Causes, rootSeed, RNG
+ * state, internal traces and unrevealed NPC data are never reachable from here.
+ */
+export interface PublicTerminalProjection {
+  stage: "ENDING" | "LIFE_BOOK" | "REBIRTH_RESULT" | "NEXT_LIFE";
+  version: number;
+  lifeBook?: Record<string, PublicJson>;
+  rebirthResult?: Record<string, PublicJson>;
+  nextLife?: Record<string, PublicJson>;
+}
 export interface PublicState {
   schemaVersion: number; rulesVersion: string; contentVersion: string; stateVersion: number; runId: string;
   pageState: PageState; runStatus: "offered" | "active" | "dying" | "ended" | "abandoned";
   publicRun: Record<string, PublicJson>; capabilities: CapabilitySet; publicCauses: PublicCause[];
+  /** UI04E — present only on `ENDING | LIFE_BOOK | REBIRTH_RESULT | NEXT_LIFE`. Absent on every other page. */
+  terminal?: PublicTerminalProjection;
 }
 export interface PublicOption { optionId: string; labelKey: string; riskPresentation?: RiskPresentation }
 export interface CurrentInteraction {
@@ -42,6 +58,26 @@ export interface PublicHistory { entries: PublicHistoryEntry[] }
 export interface ShareViewModel { title: string; summary: string; imageKey?: string; facts: Array<{ label: string; value: string }> }
 export interface PublicViewModel { state: PublicState; currentInteraction?: CurrentInteraction; history: PublicHistory; share: ShareViewModel }
 
+/**
+ * UI04E-R1 — settles one terminal presentation transition. The RPC carries a `terminalTransitionId`
+ * (the exactly-once key), the `expectedTerminalStage` (a guard against stale clients), and an
+ * `action` naming the forward edge. The success shape carries ONLY stage/version for the OLD run;
+ * it does NOT mint or carry next-run identifiers. The next life is created by an explicit,
+ * client-driven `createRunOffer` call from the NEXT_LIFE page.
+ */
+export interface AdvanceTerminalOk {
+  ok: true;
+  terminalTransitionId: string;
+  stage: "ENDING" | "LIFE_BOOK" | "REBIRTH_RESULT" | "NEXT_LIFE";
+  version: number;
+}
+export interface AdvanceTerminalError {
+  ok: false;
+  terminalTransitionId: string;
+  error: { code: string; messageKey: string; retryable: boolean };
+}
+export type AdvanceTerminalResult = AdvanceTerminalOk | AdvanceTerminalError;
+
 export interface ApplicationTransport {
   sendCommand(command: CommandEnvelope<GameCommand>): Promise<CommandResult>;
   fetchView(runId: string): Promise<unknown>;
@@ -52,7 +88,26 @@ export interface ApplicationTransport {
    * persisted recovery key, so the same trusted identity plus the same id recovers the same run after a
    * retry or a reload instead of manufacturing another life. It is *not* an identity — the server still
    * derives the player from the trusted OPENID and ignores anything else it is sent.
+   *
+   * UI04E-R1: `createRunOffer` is ALSO the entry point for the explicit "start next life" action the
+   * NEXT_LIFE page exposes. The client first persists a dedicated pending next-life bootstrap id
+   * (reusing any existing pending key on retry/reload), then calls `createRunOffer({ bootstrapId })`;
+   * only on success does it promote the pending id to the current bootstrap key, clear the pending
+   * key, and switch the controller session to the returned run.
    */
   createRunOffer(options?: { bootstrapId?: string }): Promise<unknown>;
+  /**
+   * UI04E-R1 — settles one terminal presentation transition. The RPC carries a `terminalTransitionId`
+   * (the exactly-once key), the `expectedTerminalStage` (a guard against stale clients), and an
+   * `action` naming the forward edge. The success shape does NOT create or return any next-run
+   * identifiers — arriving at NEXT_LIFE is a pure presentation transition over the OLD run. The
+   * result is a discriminated union so the controller can branch on `ok` without an extra type cast.
+   */
+  advanceTerminal(request: {
+    runId: string;
+    terminalTransitionId: string;
+    expectedTerminalStage: "ENDING" | "LIFE_BOOK" | "REBIRTH_RESULT" | "NEXT_LIFE";
+    action: "advance-to-life-book" | "advance-to-rebirth-result" | "advance-to-next-life";
+  }): Promise<AdvanceTerminalResult>;
 }
 export interface PlatformStorage { getLocal(key: string): Promise<string | null>; setLocal(key: string, value: string): Promise<void> }

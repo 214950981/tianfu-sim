@@ -49,7 +49,7 @@ export interface CommandGatewayOptions {
   resolveContext?: (envelope: CommandEnvelope) => ReplayContext;
   beforeCommit?: (envelope: CommandEnvelope) => void | Promise<void>;
   afterCommit?: (envelope: CommandEnvelope) => void | Promise<void>;
-  projectView?: (state: GameState) => unknown;
+  projectView?: (state: GameState, stored?: StoredRun) => unknown;
 }
 
 export class CommandGateway {
@@ -63,7 +63,7 @@ export class CommandGateway {
 
   async fetchView(auth: TrustedAuthContext, runId: string): Promise<unknown> {
     const stored = await this.#store.readRun(runId); if (stored === undefined || stored.state.run.playerId !== auth.playerId) throw new Error("UNAUTHORIZED");
-    if (this.#projectView === undefined) throw new Error("ViewModel builder is not configured"); return this.#projectView(stored.state);
+    if (this.#projectView === undefined) throw new Error("ViewModel builder is not configured"); return this.#projectView(stored.state, stored);
   }
 
   async sendCommand(auth: TrustedAuthContext, envelopeValue: unknown): Promise<CommandResult> {

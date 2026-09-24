@@ -43,6 +43,18 @@ var DIAGNOSTIC_MAX_CHARS = 160;
  * -> authoritative opaque playerId); the page never stores, guesses or transmits a player id of its own.
  */
 var BOOTSTRAP_ID_KEY = "tianfu2:bootstrap-id";
+/** UI04E-R1 — the PENDING next-life bootstrap key.
+ *
+ *  Persisted *before* the explicit NEXT_LIFE "开启下一世" CTA calls `createRunOffer`, so:
+ *    - retry/reload on the NEXT_LIFE page reuses the same pending id rather than minting a new one;
+ *    - if `createRunOffer` succeeds but the response is lost, the next retry/reload reuses the same
+ *      pending id and recovers the same new run through UI04D bootstrap idempotency;
+ *    - the previous-life bootstrap id under `BOOTSTRAP_ID_KEY` is left untouched until the explicit
+ *      start-next-life call succeeds, at which point the pending id is promoted to the current key
+ *      and the pending key is cleared.
+ *  Storage failures degrade silently — the page still works, it just cannot guarantee retry-recovery
+ *  after a hard crash, exactly like the original bootstrap key. */
+var NEXT_LIFE_BOOTSTRAP_KEY = "tianfu2:next-life-bootstrap-id";
 var CLIENT_BUILD = "v2-live-dev";
 var RPC_FUNCTION_NAME = "tianfu2";
 
@@ -75,7 +87,7 @@ function describeFailure(stage, error) {
 }
 
 /**
- * The generated runtime must actually publish the UI04C surface. A stale or partial artifact would
+ * The generated runtime must actually publish the UI04E surface. A stale or partial artifact would
  * otherwise fail later as a confusing `undefined is not a function`; naming the stage and the
  * regenerate command here is the difference between a diagnosable defect and a blank page.
  */
@@ -85,6 +97,7 @@ function runtimeSurfaceProblem() {
   if (typeof runtime.createWeChatPlatformStorage !== "function") missing.push("createWeChatPlatformStorage");
   if (typeof runtime.createWeChatCloudTransport !== "function") missing.push("createWeChatCloudTransport");
   if (typeof runtime.bootstrapWeChatRun !== "function") missing.push("bootstrapWeChatRun");
+  if (typeof runtime.TerminalUnavailableError !== "function") missing.push("TerminalUnavailableError");
   return missing.length === 0 ? null : missing;
 }
 
@@ -267,6 +280,7 @@ function buildRenderModel(controller, notice) {
   var run = record(view === undefined ? null : view.state.publicRun);
   var interaction = model.interaction === undefined ? null : model.interaction;
   var realm = record(run.realm);
+  var terminal = record(view === undefined ? null : view.state.terminal);
   var submission = controller.submission();
   var pageState = model.pageState;
 
@@ -307,8 +321,67 @@ function buildRenderModel(controller, notice) {
     decisionBody: interaction === null ? "" : presentLabel(CONTENT_COPY, str(record(interaction.body).bodyKey)),
     decisionEventId: interaction === null ? "" : str(interaction.eventId),
     options: buildInteractionOptions(interaction),
-    isTerminal: pageState === "ENDING" || pageState === "LIFE_BOOK" || pageState === "REBIRTH_RESULT" || pageState === "NEXT_LIFE"
+    isTerminal: pageState === "ENDING" || pageState === "LIFE_BOOK" || pageState === "REBIRTH_RESULT" || pageState === "NEXT_LIFE",
+    terminal: buildTerminal(terminal, pageState),
+    terminalCta: buildTerminalCta(terminal, pageState)
   };
+}
+
+/** UI04E — projects the server-published terminal slice to a render model. Never invents a field:
+ *  a value the server did not publish is omitted, so a missing sidecar renders as an empty block. */
+function buildTerminal(terminal, pageState) {
+  if (terminal === null) return null;
+  var lifeBook = record(terminal.lifeBook);
+  var rebirth = record(terminal.rebirthResult);
+  var nextLife = record(terminal.nextLife);
+  return {
+    stage: str(terminal.stage),
+    version: num(terminal.version, 0),
+    isEnding: pageState === "ENDING",
+    isLifeBook: pageState === "LIFE_BOOK",
+    isRebirthResult: pageState === "REBIRTH_RESULT",
+    isNextLife: pageState === "NEXT_LIFE",
+    lifeBook: {
+      runName: str(lifeBook.runName),
+      age: num(lifeBook.age, 0),
+      maxAge: num(lifeBook.maxAge, 0),
+      realm: str(record(lifeBook.realm).id),
+      buildsCount: Array.isArray(lifeBook.builds) ? lifeBook.builds.length : 0,
+      peopleCount: Array.isArray(lifeBook.people) ? lifeBook.people.length : 0,
+      eventsCount: Array.isArray(lifeBook.events) ? lifeBook.events.length : 0,
+      causesCount: Array.isArray(lifeBook.causes) ? lifeBook.causes.length : 0,
+      hasEnding: typeof lifeBook.ending === "object" && lifeBook.ending !== null,
+      hasDeath: typeof lifeBook.death === "object" && lifeBook.death !== null,
+      endingId: str(record(lifeBook.ending).endingId),
+      deathCause: str(record(lifeBook.death).directCause)
+    },
+    rebirth: {
+      completedRunId: str(rebirth.completedRunId),
+      runName: str(rebirth.runName),
+      finalAge: num(rebirth.finalAge, 0),
+      finalRealm: str(record(rebirth.finalRealm).id),
+      endingId: str(rebirth.endingId),
+      deathCause: str(rebirth.deathCause),
+      peopleMet: num(rebirth.peopleMet, 0),
+      buildsFormed: num(rebirth.buildsFormed, 0),
+      eventsExperienced: num(rebirth.eventsExperienced, 0),
+      nextLifeAffordance: rebirth.nextLifeAffordance === true
+    },
+    nextLife: {
+      completedRunId: str(nextLife.completedRunId),
+      terminalStage: str(nextLife.terminalStage),
+      terminalVersion: num(nextLife.terminalVersion, 0)
+    }
+  };
+}
+
+/** UI04E — one CTA per terminal stage. A stage without a CTA (NEXT_LIFE's confirmation) renders nothing. */
+function buildTerminalCta(terminal, pageState) {
+  if (terminal === null) return null;
+  if (pageState === "ENDING") return { label: "翻阅人生书", action: "advance-to-life-book" };
+  if (pageState === "LIFE_BOOK") return { label: "转生结果", action: "advance-to-rebirth-result" };
+  if (pageState === "REBIRTH_RESULT") return { label: "迎来世", action: "advance-to-next-life" };
+  return null;
 }
 
 // ---------------------------------------------------------------- page
@@ -498,6 +571,116 @@ Page({
     if (this.controller === null || this.controller === undefined) return;
     this.controller.closeArchive();
     this.refresh();
+  },
+
+  /**
+   * UI04E-R1 — terminal advance. The controller refuses any advance whose authoritative
+   * `expectedTerminalStage` does not match the current view, so the page can only ever submit a
+   * forward edge the server itself has put on screen. The `terminalTransitionId` is generated locally
+   * and persists for the duration of the install so an exact retry after a lost response recovers the
+   * same settled stage.
+   *
+   * UI04E-R1: arriving at NEXT_LIFE is a *sidecar-only* transition. The controller does NOT
+   * auto-start the next life; that happens only when the user presses the explicit "开启下一世" CTA
+   * (`onStartNextLife`). This handler therefore only advances presentation stages.
+   */
+  onTerminalAdvance: function (event) {
+    var self = this;
+    if (this.controller === null || this.controller === undefined) return;
+    var action = event.currentTarget.dataset.action;
+    if (typeof action !== "string") { this.refresh(); return; }
+    if (typeof this.terminalTransitionId !== "string" || this.terminalTransitionId.length === 0) {
+      this.terminalSequence = (this.terminalSequence || 0) + 1;
+      this.terminalTransitionId = "term:" + Date.now().toString(36) + ":" + this.terminalSequence;
+    }
+    var transitionId = this.terminalTransitionId;
+    Promise.resolve()
+      .then(function () { return self.controller.advanceTerminal({ terminalTransitionId: transitionId, action: action }); })
+      .then(function (result) {
+        if (result === undefined || result === null) { self.refresh(); return; }
+        if (result.ok === true) {
+          // UI04E-R1 — advanceTerminal never returns next-run identifiers. The controller already
+          // refreshed the view inside advanceTerminal; NEXT_LIFE is a real, authoritative page now,
+          // and the user must press the explicit CTA to start the next life.
+          self.terminalTransitionId = result.terminalTransitionId;
+        }
+        self.refresh();
+        return undefined;
+      })
+      .then(function () { self.refresh(); })
+      .catch(function (error) {
+        if (error !== undefined && error !== null && error.name === "TerminalUnavailableError") self.notice = "此终局阶段无法前进：" + sanitizeDiagnostic(error.message);
+        else self.notice = "终局前进失败：" + sanitizeDiagnostic(error === null || error === undefined ? "" : error.message);
+        self.refresh();
+      });
+  },
+
+  /**
+   * UI04E-R1 — explicit "开启下一世" CTA, fired from the NEXT_LIFE page.
+   *
+   * Three-stage local lifecycle so retry/reload always reuses the same pending bootstrap id:
+   *   1. BEFORE the server call: read the pending key; if absent, mint a new one and persist it.
+   *      The OLD bootstrap id under `BOOTSTRAP_ID_KEY` is left untouched.
+   *   2. CALL `controller.startNextLife(pendingId)`. On success: promote pendingId to the current
+   *      bootstrap key, clear the pending key, and let the controller's internal state swap to the
+   *      returned run (which renders DESTINY_OFFER).
+   *   3. ON FAILURE: leave the pending key untouched so the next retry/reload calls
+   *      `createRunOffer` with the SAME id. The server's UI04D bootstrap idempotency then returns
+   *      either the same new run (if the previous attempt committed) or a fresh one (if it didn't),
+   *      never a second new run on top of an already-committed one.
+   */
+  onStartNextLife: function () {
+    var self = this;
+    if (this.controller === null || this.controller === undefined) return;
+    var pendingId = this.readNextLifePendingBootstrap();
+    if (typeof pendingId !== "string" || pendingId.length === 0) {
+      pendingId = this.mintNextLifePendingBootstrap();
+      this.persistNextLifePendingBootstrap(pendingId);
+    }
+    var startedPendingId = pendingId;
+    Promise.resolve()
+      .then(function () { return self.controller.startNextLife(startedPendingId); })
+      .then(function () {
+        // Promote pending -> current and clear the pending key, exactly once per successful life start.
+        self.promoteNextLifeBootstrap(startedPendingId);
+        self.terminalTransitionId = "";
+        self.refresh();
+        return undefined;
+      })
+      .catch(function (error) {
+        // Pending key stays put so the next press / page reload retries with the same id.
+        if (error !== undefined && error !== null && error.name === "TerminalUnavailableError") self.notice = "无法开启下一世：" + sanitizeDiagnostic(error.message);
+        else self.notice = "开启下一世失败：" + sanitizeDiagnostic(error === null || error === undefined ? "" : error.message);
+        self.refresh();
+      });
+  },
+
+  /** UI04E-R1 — reads the pending next-life bootstrap id from local storage, if any. */
+  readNextLifePendingBootstrap: function () {
+    try {
+      var value = wx.getStorageSync(NEXT_LIFE_BOOTSTRAP_KEY);
+      if (typeof value === "string" && value.length > 0) return value;
+    } catch (error) { /* ignored */ }
+    return null;
+  },
+
+  /** UI04E-R1 — mints a fresh next-life bootstrap id. Local-only, never the current run's id. */
+  mintNextLifePendingBootstrap: function () {
+    this.nextLifeSequence = (this.nextLifeSequence || 0) + 1;
+    return "next-life:" + Date.now().toString(36) + ":" + this.nextLifeSequence;
+  },
+
+  /** UI04E-R1 — persists the pending next-life bootstrap id under the dedicated pending key. */
+  persistNextLifePendingBootstrap: function (pendingId) {
+    if (typeof pendingId !== "string" || pendingId.length === 0) return;
+    try { wx.setStorageSync(NEXT_LIFE_BOOTSTRAP_KEY, pendingId); } catch (error) { /* ignored */ }
+  },
+
+  /** UI04E-R1 — called once startNextLife has succeeded: promote pending -> current, clear pending. */
+  promoteNextLifeBootstrap: function (pendingId) {
+    if (typeof pendingId !== "string" || pendingId.length === 0) return;
+    try { wx.setStorageSync(BOOTSTRAP_ID_KEY, pendingId); } catch (error) { /* ignored */ }
+    try { wx.removeStorageSync(NEXT_LIFE_BOOTSTRAP_KEY); } catch (error) { /* ignored */ }
   },
 
   onReload: function () {

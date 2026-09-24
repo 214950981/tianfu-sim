@@ -108,6 +108,7 @@ export const CLOUD_RUNTIME_MODULES = [
   { source: "server/src/destiny-offer.ts" },
   { source: "server/src/command-gateway.ts" },
   { source: "server/src/viewmodel.ts" },
+  { source: "server/src/terminal-flow.ts" },
   { source: "server/src/live-service.ts" }
 ].map((entry) => ({ ...entry, artifact: artifactPathFor(entry.source), specifier: specifierFor(entry.source) }));
 
@@ -139,6 +140,7 @@ export const CLOUD_FACADE_EXPORTS = [
   { name: "RUNS_COLLECTION", from: specifierFor("server/src/cloudbase-store.ts") },
   { name: "COMMANDS_COLLECTION", from: specifierFor("server/src/cloudbase-store.ts") },
   { name: "BOOTSTRAPS_COLLECTION", from: specifierFor("server/src/cloudbase-store.ts") },
+  { name: "TERMINAL_TRANSITIONS_COLLECTION", from: specifierFor("server/src/cloudbase-store.ts") },
   { name: "createLiveContentRegistry", from: specifierFor("server/src/live-content.ts") },
   { name: "LIVE_CONTENT_VERSION", from: specifierFor("server/src/live-content.ts") },
   { name: "LIVE_RULES_VERSION", from: specifierFor("server/src/live-content.ts") },
@@ -149,7 +151,9 @@ export const CLOUD_FACADE_EXPORTS = [
   { name: "CommandGateway", from: specifierFor("server/src/command-gateway.ts") },
   { name: "InMemoryGatewayStore", from: specifierFor("server/src/gateway-store.ts") },
   { name: "ServerViewModelBuilder", from: specifierFor("server/src/viewmodel.ts") },
-  { name: "generateServerDestinyOffer", from: specifierFor("server/src/destiny-offer.ts") }
+  { name: "generateServerDestinyOffer", from: specifierFor("server/src/destiny-offer.ts") },
+  { name: "TerminalFlowError", from: specifierFor("server/src/terminal-flow.ts") },
+  { name: "parseAdvanceTerminalRequest", from: specifierFor("server/src/terminal-flow.ts") }
 ];
 
 /** Every artifact path this tool owns, in emit order (facade last). */
