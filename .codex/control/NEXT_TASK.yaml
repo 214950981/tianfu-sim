@@ -1,14 +1,14 @@
 version: 1
 status: READY
-attempt: 1
-taskId: UI02R2
-title: UI02R2 — RUN_HOME Visual Polish / Layout Refinement
-taskDefinition: .codex/tasks/UI02R2.yaml
-sourceBranch: dev/tianfu-2.0
-workBranch: wb-UI02R2
+attempt: 2
+taskId: UI02R2A2
+title: UI02R2A2 — RUN_HOME Visual Recomposition / Fast UI Iteration
+taskDefinition: .codex/tasks/UI02R2A2.yaml
+sourceBranch: wb-UI02R2
+workBranch: wb-UI02R2A2
 worktreeRequired: true
 allowSyntheticTreeBase: true
-basePolicy: ui02r1-result-head-at-task-start
+basePolicy: explicit-ui02r2-result-head
 execution:
   readProtocolFirst: true
   commitTaskResult: true
@@ -16,32 +16,23 @@ execution:
   updateSourceBranch: false
   startNextTask: false
 controllerReview:
-  previousTask: UI02R1
-  previousStatus: PASS_ON_WORK_BRANCH_PENDING_ACCEPTANCE
-  previousResultCommit: 9ecb7d1c3ef61725d624c80e6a2f136fcf1b7e16
-  postAcceptanceFinding:
-    - user visual review accepts the one-screen structure but finds the presentation still reads like a form/table rather than a refined game interface
-    - buttons feel stiff and their hierarchy is unclear; the breakthrough CTA does not read as the primary control versus the four core actions
-    - the attention region reads as a plain list instead of a "current priorities" panel; section rhythm and breathing room are weak
-    - raw structural enum ids (realm ids, build stages, condition kinds, affinity/trust semantics, risk tiers) render as English keys, which breaks the Chinese presentation without changing gameplay
+  previousTask: UI02R2
+  previousStatus: TECHNICAL_PASS_VISUAL_REJECT
+  previousResultCommit: b5b2ab2e14b22c5b8ff847a369a65abdaee112d4
+  userVisualFinding:
+    - current RUN_HOME is functional and one-screen, but still visually too plain and document-like
+    - button hierarchy and grouping improved but still do not feel polished enough for a released mini-game
+    - tall-screen composition leaves too much dead space between information and the action area
+    - the legacy 1.0 start screen feels substantially more game-like; the 2.0 START -> MODE_SELECT -> DESTINY_OFFER -> RUN_OPENING visual flow has not yet been implemented
 controllerDecision:
-  strategy: polish-before-live-wiring
-  rationale: with UI02R1 the information architecture, viewport matrix and safe-area contract are accepted as structure; refine presentation quality and Chinese-facing labels now, before UI03 binds live interactions, so controller wiring lands on a visually stable surface
-  baseChain: dc5675d6 (remote dev/tianfu-2.0 HEAD at dispatch) -> f091c82 (UI02) -> UI02R1 result commits -> 9ecb7d1 (UI02R1 result HEAD, PASS, pending controller acceptance)
-  baseCommit: 9ecb7d1c3ef61725d624c80e6a2f136fcf1b7e16
+  strategy: one-more-focused-home-visual-pass-before-propagating-style
+  rationale: lock a convincing 2.0 visual system on RUN_HOME first, then reuse it for the still-unbuilt start flow; do not multiply an unsatisfactory style across five pages
 controllerIntent:
-  mode: presentation-only-polish
-  goal: make RUN_HOME feel like a refined small-game interface (hierarchy, breathing room, button grouping, primary CTA, attention panel) and stop rendering raw structural enum ids as English, while preserving every UI02R1 structural contract
-  hardConstraints:
-    - no Core / Content / Director / server projection / shell intent / gameplay rule change
-    - no change to the one-screen contract, viewport matrix, safe-area policy, or scroll ownership boundaries
-    - touch targets stay at or above approximately 44 CSS px; readability floor 20rpx unchanged
-    - detail stays summarized on RUN_HOME with read-only drawers; no detail expansion back onto the home surface
-    - presentation labels mirror contract enums only; unknown values fall back verbatim; no narrative content keys (titleKey/bodyKey/labelKey/summaryKey prose) are translated; no invented lore or fake gameplay
-    - UI03 remains blocked and must not be started
-  postTask: controller reviews tree diff and LAST_RESULT, then visually inspects in DevTools; UI03 stays blocked until UI02R2 is accepted
+  mode: UI_FAST_LANE
+  goal: produce a materially more game-like, comfortable RUN_HOME without touching authority/gameplay and without paying a full-repo regression cost for every visual iteration
+  postTask: controller/user performs immediate DevTools visual review; if accepted, run one final full regression before merging the accumulated UI02 chain, then schedule the 2.0 entry-flow visual task and only afterwards resume UI03 live wiring
 notes:
-  - Read .codex/tasks/UI02R2.yaml and docs/UI02_PREVIEW.md first. docs/UI02R1_RESPONSIVE_LAYOUT.md is the controller-owned one-screen contract and must not be edited.
-  - UI02R2 builds on the UI02R1 result branch head because UI02R1 is PASS but not yet accepted onto dev/tianfu-2.0. If the controller instead accepts UI02R1 onto source and moves this base, re-dispatch with an updated baseCommit.
-  - The UI02R1 leak-sample test lists "mortal" as a forbidden inlined fixture value; the presentation label table now legitimately contains the six contract realm ids as keys. Update that sample list to per-run fixture values and add a dedicated UI02R2 test pinning exactly which contract enum keys may appear.
-  - The dev overlay and debug floating trigger may remain; they must stay outside the product layout flow.
+  - Full npm regression is intentionally NOT required for this presentation-only iteration unless shared/non-preview code is touched.
+  - Use the required targeted UI tests/audits in UI02R2A2.yaml. The final full suite is deferred until human visual acceptance, once, before merge.
+  - Do not implement START/MODE_SELECT/DESTINY_OFFER/RUN_OPENING in this task. Those pages exist in the UI contract but high-fidelity 2.0 visuals have not been built yet.
+  - Open this task in a fresh WorkBuddy conversation. Do not rely on the previous long UI repair chat.
