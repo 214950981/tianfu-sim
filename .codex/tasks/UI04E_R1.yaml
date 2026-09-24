@@ -1,0 +1,43 @@
+id: UI04E_R1
+title: UI04E-R1 — Explicit NEXT_LIFE Start Boundary
+phase: 2
+verificationProfile: fast-lane
+requiredContracts: [.codex/contracts/state.ref,.codex/contracts/command.ref,.codex/contracts/platform.ref,.codex/contracts/viewmodel.ref,.codex/contracts/ui.ref,.codex/contracts/crosslayer.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [.codex/tasks/UI04E.yaml,server/src/terminal-flow.ts,server/src/gateway-store.ts,server/src/live-service.ts,server/src/viewmodel.ts,packages/platform-contract/src/index.ts,packages/wechat-shell/src/index.ts,miniprogram/pages/v2-live/v2-live.js,miniprogram/pages/v2-live/v2-live.wxml,tests/ui04e.test.mjs,docs/UI04E_TERMINAL_LIFECYCLE.md]
+allowedScope:
+  - use rejected UI04E result commit e978ac0619a1c71d25454eb1705d75c7543d33b7 only as implementation reference or transplant source; it is not accepted and must not be treated as source truth over this task
+  - carry forward the valid UI04E terminal sidecar, public projection, advanceTerminal exactly-once, ownership, cloud runtime and four-stage rendering work while correcting the NEXT_LIFE start boundary below
+  - REBIRTH_RESULT -> NEXT_LIFE must be a pure terminal presentation transition only: update the old run terminal sidecar/receipt and nothing else
+  - remove next-life run/bootstrap creation from server/src/terminal-flow.ts and from the advanceTerminal transaction path
+  - advanceTerminal success for NEXT_LIFE must not create or return nextBootstrapId or nextRunId and terminal transition receipts must not own next-life creation data
+  - NEXT_LIFE must remain an authoritative visible page after the transition and expose an explicit user CTA labelled/semantically equivalent to 开启下一世
+  - implement the explicit next-life action on the client by using the already-accepted createRunOffer RPC rather than inventing a fifth cloud RPC or a fake GameCommand
+  - before calling createRunOffer from NEXT_LIFE, create a new pending next-life bootstrapId exactly once and persist it under a dedicated pending key; if the pending key already exists after a retry/reload, reuse it rather than rotate again
+  - keep the current/old bootstrapId unchanged while the createRunOffer request is pending or fails; if the server commits but the response is lost, the next user retry/reload must reuse the pending next-life bootstrapId and recover the same new run through UI04D bootstrap idempotency
+  - only after createRunOffer succeeds may the client promote the pending bootstrapId to the current bootstrap key, clear the pending key, switch controller session/runId to the returned authoritative new run, and render DESTINY_OFFER
+  - preserve the authoritative playerId from the server; next life must have a different runId and the same playerId
+  - old terminal run must remain byte-identical in canonical gameplay state and stay persisted at terminal stage NEXT_LIFE after the new run is created
+  - update WeChatRunController startNextLife semantics so it calls createRunOffer with the supplied persisted bootstrapId and does not depend on advanceTerminal carrying next-run identifiers
+  - update v2-live rendering/handlers so REBIRTH_RESULT CTA only advances to NEXT_LIFE, and NEXT_LIFE CTA performs the explicit start-next-life action
+  - update terminal-flow/viewmodel/client contracts and tests to remove the rejected premature nextBootstrapId/nextRunId coupling
+  - add a dedicated UI04E-R1 regression proving no next run exists before explicit NEXT_LIFE CTA, response-loss retry reuses one pending bootstrapId, reload reuses it, success promotes/clears keys, and stage order cannot be skipped
+  - regenerate and verify miniprogram/runtime and cloudfunctions/tianfu2/runtime after source changes
+  - preserve all valid UI04E acceptance properties: sidecar outside RuleState, pure-stage zero gameplay diff, terminalTransitionId exactly-once, stale/conflicting reuse fail-closed, public-only LIFE_BOOK, no meta reward semantics, cross-player refusal
+  - update docs/UI04E_TERMINAL_LIFECYCLE.md to describe the corrected two-step boundary and update LAST_RESULT
+forbiddenScope: [next-run-creation-inside-advanceTerminal,nextBootstrapId-or-nextRunId-in-advanceTerminal-success,automatic-run-switch-on-REBIRTH_RESULT-to-NEXT_LIFE,terminal-stage-in-RuleState,terminal-navigation-as-GameCommand,new-fifth-cloud-RPC,reducer-gameplay-change,RNG-algorithm-change,Director-policy-change,Cause-semantics-change,Progression-balance-change,Risk-balance-change,Build-or-NPC-rule-change,CONTENT01-rebalance,new-metaCurrency,new-permanent-power,new-rebirth-reward-system,daily-challenge,monetization,raw-OPENID-to-client,client-trusted-playerId,default-route-replacement,legacy-1.0-page-change,tabBar-change,real-production-deployment,UI04FINAL,source-branch-push]
+accept:
+  - REBIRTH_RESULT-to-NEXT_LIFE-advance-is-sidecar-only-and-creates-no-new-run-bootstrap-document-or-mapping
+  - advanceTerminal-NEXT_LIFE-result-and-receipt-contain-no-nextBootstrapId-or-nextRunId
+  - NEXT_LIFE-is-rendered-as-a-real-authoritative-page-with-an-explicit-start-next-life-CTA
+  - explicit-start-next-life-persists-one-pending-bootstrapId-before-createRunOffer-and-reuses-the-same-key-across-failure-retry-and-reload
+  - current-bootstrapId-remains-the-old-run-key-until-createRunOffer-succeeds
+  - successful-createRunOffer-promotes-the-pending-key-clears-the-pending-key-and-switches-to-a-distinct-runId-with-the-same-authoritative-playerId
+  - simulated-response-loss-after-server-create-does-not-create-a-second-new-run-on-retry
+  - old-run-canonical-GameState-commandLog-RNG-snapshot-and-gameplay-history-remain-byte-identical-and-old-terminal-stage-remains-NEXT_LIFE
+  - original-UI04E-terminal-order-exactly-once-cross-player-public-data-and-zero-gameplay-diff-proofs-remain-green
+  - committed-cloud-and-miniprogram-runtime-artifacts-are-fresh-audited-and-smoke-green
+  - ui04e-r1-ui04e-ui04d-server-gateway-ui04c-viewmodel-ui-targeted-tests-typecheck-lint-secret-scan-content01-lint-and-route-guard-are-green
+  - no-aggregate-npm-test-untouched-base-EBUSY-reproof-or-600-run-is-required-under-fast-lane
+tests: [ui04e-r1,ui04e,ui04d,server-gateway,ui04c,viewmodel-ui,cloud-runtime-artifact-freshness,cloud-runtime-dependency-audit,cloud-runtime-smoke,ui04b-artifact-freshness,ui04b-artifact-audit,ui04b-smoke,typecheck,lint,secret-scan,content01-lint,route-guard]

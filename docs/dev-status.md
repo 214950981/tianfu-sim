@@ -281,28 +281,22 @@ Full regression：264 / 264 PASS；全部 reported audits PASS。
 
 ## Next
 
-Latest accepted: `UI04D PASS`，result commit `e91530f866b850de6c2de8cee4dc76ad5afa7d01`。
+UI04E attempt 1 (`wb-UI04E` result `e978ac0619a1c71d25454eb1705d75c7543d33b7`) was **REJECTED by Controller** and was NOT merged into `dev/tianfu-2.0`.
 
-UI04D 已完成真正的云权威闭环：OPENID → opaque playerId、bootstrapId 幂等开局、真实 CONTENT01 offer、CloudBase 事务持久化、跨冷启动 command idempotency、跨玩家隔离，以及由单一源码机械生成的 `cloudfunctions/tianfu2` 可部署 runtime。
+Most of the terminal sidecar/exactly-once implementation is sound, but one lifecycle invariant is wrong: the rejected implementation creates the next run during `REBIRTH_RESULT -> NEXT_LIFE` and immediately switches the client into that run. The dispatched UI04E task explicitly requires NEXT_LIFE to be a real authoritative page first, and only an explicit user action on NEXT_LIFE may rotate/persist a new bootstrapId and call the already-accepted `createRunOffer`.
 
-当前最明显的产品断点已经不是云后端，而是终局：Core 在寿命/致死风险时会进入 `dying` 并留下 authoritative ending/deathRecord，但现有 ViewModel 仍把 dying 映射成 SPECIAL_NODE，仓库没有实现 UI 合同冻结的 `ENDING → LIFE_BOOK → REBIRTH_RESULT → NEXT_LIFE`。
+Correction task: `UI04E_R1` — Explicit NEXT_LIFE Start Boundary.
 
-下一任务：`UI04E` — Terminal Lifecycle / Multi-Life Vertical Slice（FAST_LANE）。
+Required correction:
+- keep ENDING -> LIFE_BOOK -> REBIRTH_RESULT -> NEXT_LIFE as sidecar-only presentation transitions;
+- `advanceTerminal` must never create a next run/bootstrap mapping and must not return nextBootstrapId/nextRunId;
+- NEXT_LIFE must render an explicit “开启下一世” CTA;
+- on that CTA, the client creates/reuses a persisted pending next-life bootstrapId BEFORE calling `createRunOffer`; response loss/reload must reuse the same pending key;
+- only after successful createRunOffer should the current bootstrap key/session switch to the new run; then clear the pending key;
+- prove no next run exists before the explicit NEXT_LIFE action, and prove retry after response loss recovers the same new run;
+- preserve all accepted UI04E terminal sidecar exactly-once / gameplay-zero-diff behavior.
 
-本轮一次完成：
-- 在服务端持久化 run presentation sidecar 的 terminal stage，严格放在 RuleState 之外；终局翻页绝不推进 RNG、age、stateVersion、commandLog 或 gameplay state。
-- 当 authoritative RuleState 进入 dying/ended 且已有 ending/deathRecord 时，live service 对外首先投影 ENDING，而不是无交互的 SPECIAL_NODE。
-- 新增 `advanceTerminal` RPC，服务器权威推进 ENDING → LIFE_BOOK → REBIRTH_RESULT → NEXT_LIFE；每次 transition 带 terminalTransitionId 并在 run 文档事务内 exactly-once，响应丢失后同 id retry 不能跨两页。
-- LIFE_BOOK 只由现有 PublicViewModel 中已经公开的历史、Build、人物、可见 Cause、ending/death 事实组成；不得读取 hidden Cause / rootSeed / internal trace。
-- REBIRTH_RESULT 只做公开人生总结/展示，不新增 metaCurrency、永久战力、付费优势或尚未定义的轮回奖励。
-- NEXT_LIFE 页由用户明确触发“开启下一世”；客户端原子旋转并持久化新的 bootstrapId，再调用已验收 createRunOffer，获得不同 runId、相同 authoritative playerId；旧 run 保持不可变。
-- v2-live 真正渲染四个终局页面及 retry/error 状态，仍不切默认路由。
-- 云函数 runtime 与 miniprogram runtime 都随源码重新生成并通过 freshness/audit/smoke。
-- 用真实 reducer 通过可控寿命 fixture 走到 dying，再从 live service/cloud harness 跑完整终局和第二世 bootstrap，证明 RuleState/hash/RNG/commandLog 在纯终局翻页期间完全不变。
-- 不做真实生产部署；不做 Daily Challenge / monetization / 新 meta 奖励；不改 gameplay balance。
-
-UI04E 仍是 fast-lane。通过后下一棒应进入 `UI04FINAL` final-audit，一次支付完整 regression / packaging / merge-readiness 成本。
-## 新 Codex 会话 / 账号接手步骤
+Use the rejected UI04E result as implementation reference, not as accepted source truth. Source remains `dev/tianfu-2.0`. FAST_LANE applies. If UI04E_R1 passes, Controller will dispatch UI04FINAL.## 新 Codex 会话 / 账号接手步骤
 
 1. 确认当前 branch = `dev/tianfu-2.0`。
 2. 查看 `git status`。

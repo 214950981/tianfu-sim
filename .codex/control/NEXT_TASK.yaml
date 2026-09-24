@@ -1,11 +1,11 @@
 version: 1
 status: READY
 attempt: 1
-taskId: UI04E
-title: UI04E — Terminal Lifecycle / Multi-Life Vertical Slice
-taskDefinition: .codex/tasks/UI04E.yaml
+taskId: UI04E_R1
+title: UI04E-R1 — Explicit NEXT_LIFE Start Boundary
+taskDefinition: .codex/tasks/UI04E_R1.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-UI04E
+workBranch: wb-UI04E-R1
 worktreeRequired: true
 allowSyntheticTreeBase: true
 basePolicy: remote-source-head-at-task-start
@@ -20,29 +20,24 @@ execution:
   rerunKnownSandboxBaseline: false
   run600Simulation: false
 controllerReview:
-  previousTask: UI04D
-  previousStatus: ACCEPTED
-  acceptedResultCommit: e91530f866b850de6c2de8cee4dc76ad5afa7d01
-  acceptanceBasis:
-    - wb-UI04D is a real single-commit descendant of the dispatched dev head
-    - UI04D dedicated 20/20 plus unchanged server-gateway 6/6 prove authenticated persistent cloud settlement idempotency timeout recovery and ownership isolation
-    - raw OPENID stays in the thin host identity boundary while public/bootstrap identity is authoritative opaque playerId
-    - CloudBase transactional path uses deterministic doc access with no where query and the generated cloud runtime is derived from the single source server/Core/Content closure
-    - client bootstrap now persists bootstrapId and no longer mints a dev playerId
+  previousTask: UI04E
+  previousStatus: REJECTED
+  rejectedResultCommit: e978ac0619a1c71d25454eb1705d75c7543d33b7
+  rejectionReason:
+    - the rejected implementation created the new run during REBIRTH_RESULT -> NEXT_LIFE
+    - the task requires NEXT_LIFE to be rendered first and a separate explicit user action to rotate/persist bootstrapId and call createRunOffer
+    - v2-live therefore had no explicit NEXT_LIFE start CTA and auto-switched the run too early
 controllerDecision:
-  strategy: fast-lane-complete-terminal-multi-life-loop
-  rationale: authenticated cloud play is implemented; the remaining product dead-end is the frozen terminal UI sequence, which currently has no real transition path after RuleState enters dying
+  strategy: targeted-lifecycle-boundary-repair
+  rationale: the UI04E sidecar/exactly-once/public-projection work is otherwise sound; repair the one semantic boundary without widening scope or paying final-audit cost yet
 controllerIntent:
-  mode: FAST_LANE_IMPLEMENTATION
-  goal: complete one full life through death/life-book/rebirth/next-life back to a fresh destiny offer without changing gameplay RuleState semantics
-  postTask: controller reviews wb-UI04E; if accepted the next task should be UI04FINAL final-audit, not another implementation slice unless a real blocker is discovered
+  mode: FAST_LANE_REPAIR
+  goal: preserve UI04E implementation while separating terminal arrival at NEXT_LIFE from explicit user creation of the next run
+  postTask: controller reviews wb-UI04E-R1; if accepted dispatch UI04FINAL final-audit
 notes:
-  - PROTOCOL v1.3 fast-lane applies. Do NOT run aggregate npm test, 600-run simulation, or re-prove known nested-process sandbox failures.
-  - Read the UI04E task and contracts through node .codex/context.mjs UI04E.
-  - Terminal lifecycle state is presentation/session authority and must live outside RuleState. Do not add a terminalStage field to GameState and do not mutate gameplay state to turn pages.
-  - Do not add fake GameCommand variants merely to navigate terminal screens. Use the explicit advanceTerminal RPC and a separate exactly-once terminal transition receipt.
-  - A pure terminal transition must be demonstrably zero-diff on canonical gameplay state and command log.
-  - REBIRTH_RESULT in this task is a public summary, not a new meta-progression design. Do not invent permanent rewards or currencies.
-  - NEXT_LIFE creates a fresh run via a newly persisted bootstrapId; never recycle/reset the previous run.
-  - No real cloud deployment and no default-route switch in UI04E. Those are held until UI04FINAL passes.
+  - Source truth remains dev/tianfu-2.0. The rejected wb-UI04E commit is reference material only.
+  - You may cherry-pick or transplant e978ac0619a1c71d25454eb1705d75c7543d33b7 onto the new work branch if useful, but the final result must satisfy UI04E_R1 and LAST_RESULT must describe the corrected semantics.
+  - Do not merge or push dev/tianfu-2.0 and do not modify main.
+  - Keep FAST_LANE. Do not run aggregate npm test, 600-run, or known sandbox-baseline reproof.
+  - The central invariant is simple: arriving at NEXT_LIFE is not the same operation as starting the next life.
   - Record only genuinely new tooling observations.
