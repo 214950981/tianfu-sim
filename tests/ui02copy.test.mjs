@@ -534,5 +534,8 @@ test("UI02COPY_boundary: the copy pass changes no projected value, no route and 
   // the route registration and the default page are untouched
   const app = readJson("miniprogram/app.json");
   assert.equal(app.pages[0], "pages/start/start");
-  assert.equal(app.pages[app.pages.length - 1], "pages/v2-preview/v2-preview");
+  // UI04C appends its dev-only live page LAST, behind the accepted preview, so the preview stays
+  // registered but is no longer the final entry.
+  assert.equal(app.pages.slice(0, -1).includes("pages/v2-preview/v2-preview"), true, "the preview must stay registered");
+  assert.equal(app.pages[app.pages.length - 1], "pages/v2-live/v2-live");
 });

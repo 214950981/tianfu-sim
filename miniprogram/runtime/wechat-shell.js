@@ -1,7 +1,7 @@
 // GENERATED FILE — DO NOT HAND-EDIT.
 //
 // Source of truth: packages/wechat-shell/src/index.ts
-// Source sha256:   1e73f1cccd6e63037a3032bbcaadc91ace7fd051c7b6424403c57b54d5e67949
+// Source sha256:   caa9b6b801318f4f862cc51ffbdf26f93f9916aca9ca81a078ad84ed54d3c220
 // Generator:       tools/ui04b-wechat-runtime-artifact.mjs
 // Regenerate:      node tools/ui04b-wechat-runtime-artifact.mjs --write
 //
@@ -19,7 +19,11 @@
 // dependency. See docs/UI04B_WECHAT_RUNTIME_ARTIFACT.md.
 // UI04A: even the *type-only* command surface is taken from the client-safe wire boundary, so the
 // shell package has no import of any kind — runtime or type — into gameplay Core.
-                                                                                  
+//
+// UI04C adds the first *value* import from that boundary: the application error-code vocabulary. The
+// cloud RPC adapter validates a server error code against the one canonical list rather than keeping a
+// second copy of it, so the two layers cannot drift.
+var { APP_ERROR_CODES } = require("./command-wire.js");
 var { CommandSubmissionController, RetryUnavailableError, SubmissionLockedError, canOrdinaryBack } = require("./application-ui.js");
              
                        
@@ -227,6 +231,17 @@ class ArchiveUnavailableError extends Error {
                                                                                                                
                    
                    
+     
+                                                                                       
+    
+                                                                                                   
+                                                                                                    
+                                                                                                   
+                                                                                                      
+                                                                                                 
+                                                                                                        
+     
+                   
                           
                                      
  
@@ -314,6 +329,7 @@ class WeChatRunController {
           kind: interaction.kind,
           ...(interaction.eventId === undefined ? {} : { eventId: interaction.eventId }),
           titleKey: interaction.titleKey,
+          body: interaction.body,
           options: interaction.options.map((option) => ({
             ...option,
             ...(option.riskPresentation === undefined ? {} : { riskPresentation: { ...option.riskPresentation, reasons: [...option.riskPresentation.reasons] } })
@@ -389,13 +405,303 @@ class WeChatRunController {
       return entry.command;
     }
     const pageState = view.state.pageState;
-    if (pageState !== "EVENT" && pageState !== "SPECIAL_NODE") throw new IntentUnavailableError("interactionOption", `the authoritative page state is ${pageState}, which carries no submittable interaction`);
     const interaction = view.currentInteraction;
+    // UI04C — DESTINY_OFFER selection. The offer is *pre-run*: the server publishes the offer as the
+    // authoritative `currentInteraction` (interactionId === the run's offerId), with one option per
+    // offered candidate. START_RUN is therefore derived strictly from that projection: the chosen
+    // option must be one the server offered, and the candidate that owns it supplies the id the
+    // reducer expects (innate offers key on `selectionId`, legacy offers on `destinyId`). A candidate
+    // is never invented, and an ambiguous or unpublished body fails closed.
+    if (pageState === "DESTINY_OFFER") {
+      if (interaction === undefined || interaction.kind !== "destinyOffer") throw new IntentUnavailableError("interactionOption", "the authoritative DESTINY_OFFER page state carries no destiny offer");
+      if (!interaction.options.some((option) => option.optionId === intent.optionId)) throw new IntentUnavailableError(intent.optionId, "the authoritative destiny offer does not offer this selection");
+      const candidate = offerCandidateFor(interaction.body, intent.optionId);
+      if (candidate === undefined) throw new IntentUnavailableError(intent.optionId, "the authoritative destiny offer does not publish exactly one candidate for this selection");
+      if (candidate.selectionId !== undefined) return { type: "START_RUN", offerId: interaction.interactionId, selectionId: candidate.selectionId };
+      if (candidate.destinyId !== undefined) return { type: "START_RUN", offerId: interaction.interactionId, destinyId: candidate.destinyId };
+      throw new IntentUnavailableError(intent.optionId, "the authoritative destiny candidate publishes neither a selectionId nor a destinyId");
+    }
+    if (pageState !== "EVENT" && pageState !== "SPECIAL_NODE") throw new IntentUnavailableError("interactionOption", `the authoritative page state is ${pageState}, which carries no submittable interaction`);
     if (interaction === undefined) throw new IntentUnavailableError("interactionOption", "the authoritative page state carries no current interaction");
     if (interaction.eventId === undefined) throw new IntentUnavailableError("interactionOption", "the server did not publish the authoritative event id for this interaction");
     if (!interaction.options.some((option) => option.optionId === intent.optionId)) throw new IntentUnavailableError(intent.optionId, "the authoritative current interaction does not offer this option");
     return { type: "CHOOSE_EVENT_OPTION", eventId: interaction.eventId, optionId: intent.optionId };
   }
+}
+
+/** One authoritative destiny-offer candidate, reduced to the two ids a START_RUN may be derived from. */
+                                                                        
+
+/**
+ * Finds the single authoritative candidate that owns `optionId` in a destiny-offer body.
+ *
+ * The server publishes one option per offered candidate and the option id *is* that candidate's public
+ * id: a PROG01 innate offer keys on `selectionId`, a legacy offer keys on the destiny `id`. Exactly one
+ * candidate may own the selection — zero (a selection the offer does not publish) or more than one (an
+ * ambiguous body) both fail closed, and a candidate that published both ids is refused rather than
+ * guessed at. Nothing here invents an id or reads a rule value.
+ */
+function offerCandidateFor(body            , optionId        )                                {
+  if (typeof body !== "object" || body === null || Array.isArray(body)) return undefined;
+  const candidates = (body                              ).candidates;
+  if (!Array.isArray(candidates)) return undefined;
+  const matches                      = [];
+  for (const candidate of candidates) {
+    if (typeof candidate !== "object" || candidate === null || Array.isArray(candidate)) continue;
+    const record = candidate                              ;
+    const selectionId = typeof record.selectionId === "string" ? record.selectionId : undefined;
+    const destinyId = typeof record.id === "string" ? record.id : undefined;
+    if (selectionId !== optionId && destinyId !== optionId) continue;
+    matches.push({ ...(selectionId === undefined ? {} : { selectionId }), ...(destinyId === undefined ? {} : { destinyId }) });
+  }
+  if (matches.length !== 1) return undefined;
+  const only = matches[0];
+  if (only.selectionId !== undefined && only.destinyId !== undefined) return undefined;
+  return only;
+}
+
+/* ================================================================================================
+ * UI04C — WeChat cloud RPC transport boundary, strict response validation and run bootstrap
+ *
+ * The live client reaches the authoritative server through the *injected* cloud-call API the host
+ * page supplies, exactly as `createWeChatPlatformStorage` takes the host's synchronous storage
+ * functions. This module therefore still references no platform global: it never names a `wx`/`tt`
+ * object, it only calls the function it was handed. That is what lets a real page bind the WeChat
+ * cloud host while the neutral package stays platform-free.
+ *
+ * The RPC surface is small and strict, and the adapter is fail-closed. Nothing the server returns is
+ * trusted before it has been validated:
+ *
+ *   operation "createRunOffer"  -> { runId, rulesVersion, contentVersion, view: PublicViewModel }
+ *   operation "fetchView"       -> { view: PublicViewModel }
+ *   operation "sendCommand"     -> CommandResult
+ *
+ * A response that is not exactly one of those shapes is rejected with `TransportProtocolError` rather
+ * than passed on, and a response that carries server-only state (`rootSeed`, RNG state, a hidden
+ * Cause, a check spec, difficulty, an internal trace, ...) is refused outright. The bootstrap the
+ * client keeps is therefore only the authoritative public session metadata plus the authoritative
+ * PublicViewModel — there is no second, client-side source of run truth. See docs/UI04C_LIVE_CLIENT.md.
+ * ============================================================================================== */
+
+const CLOUD_RPC_OPERATIONS = ["createRunOffer", "fetchView", "sendCommand"]         ;
+                                                                      
+
+/** The cloud function the page binds by default when it does not name one. */
+const DEFAULT_CLOUD_FUNCTION_NAME = "tianfu2";
+
+/** Raised when an RPC response is not the documented public shape, or carries server-only state. */
+class TransportProtocolError extends Error {
+  constructor(message        ) { super(`rpc protocol violation: ${message}`); this.name = "TransportProtocolError"; }
+}
+
+/**
+ * The injected cloud-call API. A WeChat host binds its own cloud function caller here; tests inject a
+ * fake. Only `callFunction` is required, and only the `{ name, data }` request and a `result`-bearing
+ * response are used, so the adapter does not depend on any host-specific extra field.
+ */
+                                     
+                                                                                         
+ 
+
+                                              
+                          
+                             
+ 
+
+/** The validated result of the `createRunOffer` bootstrap RPC. Public session metadata only. */
+                                       
+                
+                       
+                         
+                        
+ 
+
+/** The client-side identity a page supplies. Never taken from the server. */
+                                          
+                                  
+                   
+                      
+ 
+
+/** What a live page needs to construct `WeChatRunController`: the session plus the authoritative view. */
+                                     
+                            
+                        
+ 
+
+const PAGE_STATES                    = ["START", "MODE_SELECT", "DESTINY_OFFER", "RUN_OPENING", "RUN_HOME", "EVENT", "SPECIAL_NODE", "LIFE_ARCHIVE", "ENDING", "LIFE_BOOK", "REBIRTH_RESULT", "NEXT_LIFE"];
+const RUN_STATUSES                    = ["offered", "active", "dying", "ended", "abandoned"];
+const INTERACTION_STATES                    = ["idle", "submitting", "confirmed", "retryableError", "fatalError"];
+const INTERACTION_KINDS                    = ["destinyOffer", "event", "specialNode", "ending", "rebirth"];
+const applicationErrorCodes                    = APP_ERROR_CODES;
+
+/**
+ * Server-only keys that must never reach the client. The ViewModel contract names these explicitly
+ * (rootSeed / RNG state / hidden Causes / check spec / difficulty / internal trace / ...); none of them
+ * is a legitimate member of the public projection, so finding one means the boundary is broken and the
+ * response is refused rather than partially trusted.
+ */
+const FORBIDDEN_RESPONSE_KEYS                    = [
+  "rootSeed", "rng", "rngState", "drawIndex", "echoBudget", "salience", "selectorWeights",
+  "futureEventIds", "checkSpec", "difficulty", "effectSpec", "internalTrace", "antiCheat",
+  "hiddenCause", "hiddenCauses", "specialNotes", "serverSecret"
+];
+const MAX_RESPONSE_DEPTH = 64;
+
+function rpcRecord(value         , path        )                          {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) throw new TransportProtocolError(`${path} must be an object`);
+  return value                           ;
+}
+function rpcString(value         , path        )         {
+  if (typeof value !== "string" || value.length === 0) throw new TransportProtocolError(`${path} must be a non-empty string`);
+  return value;
+}
+function rpcInteger(value         , path        )         {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value < 0) throw new TransportProtocolError(`${path} must be a non-negative safe integer`);
+  return value;
+}
+function rpcEnum(value         , allowed                   , path        )         {
+  if (typeof value !== "string" || !allowed.includes(value)) throw new TransportProtocolError(`${path} is missing or not one of ${allowed.join("/")}`);
+  return value;
+}
+function rpcArray(value         , path        )            {
+  if (!Array.isArray(value)) throw new TransportProtocolError(`${path} must be an array`);
+  return value;
+}
+
+/** Walks a response and refuses any server-only key. Depth-capped so a hostile payload cannot hang the client. */
+function assertNoServerSecrets(value         , path        , depth = 0)       {
+  if (depth > MAX_RESPONSE_DEPTH) throw new TransportProtocolError(`${path} is nested deeper than ${MAX_RESPONSE_DEPTH} levels`);
+  if (Array.isArray(value)) { for (let index = 0; index < value.length; index += 1) assertNoServerSecrets(value[index], `${path}[${index}]`, depth + 1); return; }
+  if (typeof value !== "object" || value === null) return;
+  for (const key of Object.keys(value                           )) {
+    if (FORBIDDEN_RESPONSE_KEYS.includes(key)) throw new TransportProtocolError(`${path}.${key} carries server-only state and is refused`);
+    assertNoServerSecrets((value                           )[key], `${path}.${key}`, depth + 1);
+  }
+}
+
+/** Validates an authoritative PublicViewModel. Structural only: it never computes or re-derives a value. */
+function parsePublicViewModel(value         , path = "PublicViewModel")                  {
+  const view = rpcRecord(value, path);
+  assertNoServerSecrets(view, path);
+  const state = rpcRecord(view.state, `${path}.state`);
+  rpcInteger(state.schemaVersion, `${path}.state.schemaVersion`);
+  rpcString(state.rulesVersion, `${path}.state.rulesVersion`);
+  rpcString(state.contentVersion, `${path}.state.contentVersion`);
+  rpcInteger(state.stateVersion, `${path}.state.stateVersion`);
+  rpcString(state.runId, `${path}.state.runId`);
+  rpcEnum(state.pageState, PAGE_STATES, `${path}.state.pageState`);
+  rpcEnum(state.runStatus, RUN_STATUSES, `${path}.state.runStatus`);
+  rpcRecord(state.publicRun, `${path}.state.publicRun`);
+  rpcRecord(state.capabilities, `${path}.state.capabilities`);
+  rpcArray(state.publicCauses, `${path}.state.publicCauses`);
+  const history = rpcRecord(view.history, `${path}.history`);
+  rpcArray(history.entries, `${path}.history.entries`);
+  const share = rpcRecord(view.share, `${path}.share`);
+  rpcString(share.title, `${path}.share.title`);
+  if (typeof share.summary !== "string") throw new TransportProtocolError(`${path}.share.summary must be a string`);
+  rpcArray(share.facts, `${path}.share.facts`);
+  if (view.currentInteraction !== undefined) {
+    const interaction = rpcRecord(view.currentInteraction, `${path}.currentInteraction`);
+    rpcString(interaction.interactionId, `${path}.currentInteraction.interactionId`);
+    rpcEnum(interaction.kind, INTERACTION_KINDS, `${path}.currentInteraction.kind`);
+    rpcString(interaction.titleKey, `${path}.currentInteraction.titleKey`);
+    rpcEnum(interaction.interactionState, INTERACTION_STATES, `${path}.currentInteraction.interactionState`);
+    if (interaction.body === undefined) throw new TransportProtocolError(`${path}.currentInteraction.body is required`);
+    if (interaction.eventId !== undefined) rpcString(interaction.eventId, `${path}.currentInteraction.eventId`);
+    for (const option of rpcArray(interaction.options, `${path}.currentInteraction.options`)) {
+      const entry = rpcRecord(option, `${path}.currentInteraction.options[]`);
+      rpcString(entry.optionId, `${path}.currentInteraction.options[].optionId`);
+      rpcString(entry.labelKey, `${path}.currentInteraction.options[].labelKey`);
+    }
+  }
+  return value                   ;
+}
+
+/** Validates a `CommandResult`. The controller never sees an unvalidated settlement wrapper. */
+function parseCommandResult(value         )                {
+  const result = rpcRecord(value, "sendCommand result");
+  if (typeof result.ok !== "boolean") throw new TransportProtocolError("sendCommand result.ok must be a boolean");
+  const commandId = rpcString(result.commandId, "sendCommand result.commandId");
+  const stateVersion = rpcInteger(result.stateVersion, "sendCommand result.stateVersion");
+  if (result.ok === true) return { ok: true, commandId, stateVersion };
+  const error = rpcRecord(result.error, "sendCommand result.error");
+  const code = rpcString(error.code, "sendCommand result.error.code");
+  if (!applicationErrorCodes.includes(code)) throw new TransportProtocolError("sendCommand result.error.code is not an application error code");
+  const messageKey = rpcString(error.messageKey, "sendCommand result.error.messageKey");
+  if (typeof error.retryable !== "boolean") throw new TransportProtocolError("sendCommand result.error.retryable must be a boolean");
+  const applicationCode = code                ;
+  return { ok: false, commandId, stateVersion, error: { code: applicationCode, messageKey, retryable: error.retryable } };
+}
+
+/** Validates the `createRunOffer` bootstrap payload, including that the view describes the same run. */
+function parseRunOfferResult(value         )                       {
+  const record = rpcRecord(value, "createRunOffer result");
+  // The whole payload is scanned, not just the view: a secret smuggled in beside the view would be just
+  // as reachable to the page as one inside it.
+  assertNoServerSecrets(record, "createRunOffer result");
+  const runId = rpcString(record.runId, "createRunOffer result.runId");
+  const rulesVersion = rpcString(record.rulesVersion, "createRunOffer result.rulesVersion");
+  const contentVersion = rpcString(record.contentVersion, "createRunOffer result.contentVersion");
+  const view = parsePublicViewModel(record.view, "createRunOffer result.view");
+  if (view.state.runId !== runId) throw new TransportProtocolError("createRunOffer result.runId does not match the returned ViewModel");
+  if (view.state.rulesVersion !== rulesVersion) throw new TransportProtocolError("createRunOffer result.rulesVersion does not match the returned ViewModel");
+  if (view.state.contentVersion !== contentVersion) throw new TransportProtocolError("createRunOffer result.contentVersion does not match the returned ViewModel");
+  return { runId, rulesVersion, contentVersion, view };
+}
+
+/** Unwraps the host's `{ result, errMsg }` response. A missing result is a transport failure, not a payload. */
+async function callCloud(api                    , name        , data                         )                   {
+  const response = await api.callFunction({ name, data });
+  const record = rpcRecord(response, "cloud call response");
+  if (!Object.hasOwn(record, "result")) throw new TransportProtocolError("cloud call response carries no result");
+  return record.result;
+}
+
+/**
+ * Binds the injected cloud-call API to the platform-neutral `ApplicationTransport` port.
+ *
+ * Every operation validates its payload before returning it: `sendCommand` returns a validated
+ * `CommandResult`, `fetchView` returns a validated `PublicViewModel`, and `createRunOffer` returns the
+ * validated bootstrap payload. A protocol violation throws, which the submission controller classifies
+ * as a retryable transport failure — never as a settled command.
+ */
+function createWeChatCloudTransport(options                             )                       {
+  const api = options.api;
+  if (api === null || typeof api !== "object" || typeof api.callFunction !== "function") throw new TransportProtocolError("the cloud call API must expose callFunction");
+  const name = options.cloudFunctionName === undefined || options.cloudFunctionName.length === 0 ? DEFAULT_CLOUD_FUNCTION_NAME : options.cloudFunctionName;
+  return {
+    async sendCommand(command                              )                         {
+      return parseCommandResult(await callCloud(api, name, { operation: "sendCommand", command }));
+    },
+    async fetchView(runId        )                   {
+      const result = rpcRecord(await callCloud(api, name, { operation: "fetchView", runId: rpcString(runId, "fetchView runId") }), "fetchView result");
+      return parsePublicViewModel(result.view, "fetchView result.view");
+    },
+    async createRunOffer()                   {
+      return parseRunOfferResult(await callCloud(api, name, { operation: "createRunOffer" }));
+    }
+  };
+}
+
+/**
+ * Creates the session and authoritative starting view for a live client.
+ *
+ * The bootstrap is the client's only source of run truth: the run id, the locked rules/content
+ * versions and the initial PublicViewModel all come from the authoritative `createRunOffer` response.
+ * The player identity and client build are *client* facts and are injected by the caller, never read
+ * from the server. The response is validated (twice, deliberately: the cloud adapter refuses a bad RPC
+ * payload at the boundary, and this function refuses a bad payload from any transport implementation),
+ * so an unvalidated or secret-bearing response can never become the client's session.
+ */
+async function bootstrapWeChatRun(input                         )                              {
+  const playerId = rpcString(input.playerId, "bootstrap playerId");
+  const clientBuild = rpcString(input.clientBuild, "bootstrap clientBuild");
+  const offer = parseRunOfferResult(await input.transport.createRunOffer());
+  return {
+    session: { playerId, runId: offer.runId, rulesVersion: offer.rulesVersion, contentVersion: offer.contentVersion, clientBuild },
+    view: offer.view
+  };
 }
 
 module.exports = {
@@ -409,5 +715,12 @@ module.exports = {
   createWeChatPlatformStorage,
   IntentUnavailableError,
   ArchiveUnavailableError,
-  WeChatRunController
+  WeChatRunController,
+  CLOUD_RPC_OPERATIONS,
+  DEFAULT_CLOUD_FUNCTION_NAME,
+  TransportProtocolError,
+  parsePublicViewModel,
+  parseRunOfferResult,
+  createWeChatCloudTransport,
+  bootstrapWeChatRun
 };

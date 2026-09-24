@@ -1,0 +1,451 @@
+/* UI04C — dev-only live client (miniprogram/pages/v2-live).
+
+ * Reuses the accepted UI02 visual language verbatim — 宣纸 + 墨 + 朱砂 + 极少暗金 + 大量留白 — through the
+ * same HEX tokens the preview page uses, so the live surface reads as the same product rather than a
+ * second design. Nothing frozen by UI01/UI02 is redefined: no legacy 1.0 neon value appears here
+ * (no #FFD700 glow, no #050508 pure-black panel, no #55ff55 / #55ccff / #dd55ff accents).
+ *
+ * WXSS compatibility, same rules the preview stylesheet follows (the DevTools WXSS compiler is not
+ * CSS): no universal `*` selector, no attribute selectors, no parameterised pseudo-classes, no
+ * child/sibling combinators, no `display: grid`, no `position: sticky`. Every box that has a definite
+ * size *and* vertical padding/border declares `box-sizing: border-box` itself; app.wxss supplies the
+ * global reset, but the arithmetic here does not depend on it.
+ *
+ * Layout: `.screen` bounds one viewport, `.surface` is the product area, `.bounded` / `.overlay-body`
+ * are the only scroll regions, so a long candidate or option list scrolls inside its own box instead of
+ * growing the document. */
+
+page {
+  /* 宣纸 */
+  --paper: #F5F1E8;
+  --paper-sunk: #EDE6D6;
+  --paper-raised: #FBF8F1;
+  /* 墨 */
+  --ink: #1C1A17;
+  --ink-soft: #3A3630;
+  --ink-muted: #6B655C;
+  --ink-faint: #9A9287;
+  /* 朱砂 */
+  --cinnabar: #A8342A;
+  /* 暗金 */
+  --gold: #8A6B2F;
+  /* rules */
+  --rule: #D8D0BE;
+  --rule-strong: #C3B79E;
+
+  --space-1: 8rpx;
+  --space-2: 16rpx;
+  --space-3: 24rpx;
+  --space-4: 40rpx;
+  --space-5: 64rpx;
+
+  --radius: 4rpx;
+  --radius-card: 8rpx;
+  --hairline: 1rpx;
+
+  background-color: var(--paper);
+  color: var(--ink);
+}
+
+.screen {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4) var(--space-4) var(--space-3);
+  background-color: var(--paper);
+  box-sizing: border-box;
+}
+
+.surface {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ---------------------------------------------------------------- chrome */
+
+.topline {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding-bottom: var(--space-2);
+  border-bottom: var(--hairline) solid var(--rule);
+}
+
+.topline-name {
+  font-size: 34rpx;
+  color: var(--ink);
+}
+
+.topline-meta {
+  font-size: 22rpx;
+  color: var(--ink-muted);
+}
+
+.banner {
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: var(--hairline) solid var(--rule-strong);
+  border-radius: var(--radius);
+  background-color: var(--paper-raised);
+  box-sizing: border-box;
+}
+
+.banner-retry {
+  border-left: 4rpx solid var(--gold);
+}
+
+.banner-conflict {
+  border-left: 4rpx solid var(--cinnabar);
+}
+
+.banner-fatal {
+  border-left: 4rpx solid var(--cinnabar);
+}
+
+.banner-notice {
+  border-left: 4rpx solid var(--ink-faint);
+}
+
+.banner-text {
+  font-size: 24rpx;
+  color: var(--ink-soft);
+}
+
+.banner-actions {
+  display: flex;
+  flex-direction: row;
+  margin-top: var(--space-2);
+}
+
+.banner-action {
+  min-height: 104rpx;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  margin-right: var(--space-2);
+  border: var(--hairline) solid var(--rule-strong);
+  border-radius: var(--radius);
+  font-size: 26rpx;
+  color: var(--ink);
+  box-sizing: border-box;
+}
+
+/* ---------------------------------------------------------------- panels */
+
+.panel {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding-top: var(--space-5);
+}
+
+.panel-title {
+  font-size: 34rpx;
+  color: var(--ink);
+}
+
+.panel-note {
+  margin-top: var(--space-2);
+  font-size: 24rpx;
+  color: var(--ink-muted);
+}
+
+.fail-row {
+  display: flex;
+  flex-direction: row;
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: var(--hairline) solid var(--rule);
+  box-sizing: border-box;
+}
+
+.fail-key {
+  width: 140rpx;
+  font-size: 22rpx;
+  color: var(--ink-muted);
+}
+
+.fail-value {
+  flex: 1;
+  font-size: 24rpx;
+  color: var(--ink-soft);
+  word-break: break-all;
+}
+
+/* ---------------------------------------------------------------- blocks */
+
+.block {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-top: var(--space-3);
+}
+
+.block-title {
+  font-size: 30rpx;
+  color: var(--ink);
+}
+
+.body-text {
+  margin-top: var(--space-2);
+  font-size: 26rpx;
+  line-height: 1.7;
+  color: var(--ink-soft);
+}
+
+.bounded {
+  flex: 1;
+  min-height: 0;
+  margin-top: var(--space-2);
+}
+
+.card {
+  padding: var(--space-3);
+  margin-bottom: var(--space-2);
+  border: var(--hairline) solid var(--rule-strong);
+  border-radius: var(--radius-card);
+  background-color: var(--paper-raised);
+  box-sizing: border-box;
+}
+
+.card-main {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.card-title {
+  font-size: 28rpx;
+  color: var(--ink);
+}
+
+.card-row {
+  display: flex;
+  flex-direction: row;
+  margin-top: var(--space-2);
+}
+
+.card-key {
+  width: 120rpx;
+  font-size: 22rpx;
+  color: var(--ink-muted);
+}
+
+.card-value {
+  flex: 1;
+  font-size: 24rpx;
+  color: var(--ink-soft);
+}
+
+/* ---------------------------------------------------------------- run home */
+
+.vitals {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  padding: var(--space-2) 0;
+  border-top: var(--hairline) solid var(--rule);
+  border-bottom: var(--hairline) solid var(--rule);
+  box-sizing: border-box;
+}
+
+.vital {
+  width: 50%;
+  padding: var(--space-1) 0;
+}
+
+.vital-key {
+  font-size: 22rpx;
+  color: var(--ink-muted);
+}
+
+.vital-value {
+  font-size: 30rpx;
+  color: var(--ink);
+}
+
+.actions {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  margin-top: var(--space-3);
+}
+
+.action {
+  width: 48%;
+  margin-right: 4%;
+  margin-bottom: var(--space-2);
+  min-height: 104rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--hairline) solid var(--rule-strong);
+  border-radius: var(--radius-card);
+  font-size: 28rpx;
+  color: var(--ink);
+  box-sizing: border-box;
+}
+
+.action.is-off {
+  color: var(--ink-faint);
+  border-color: var(--rule);
+}
+
+.actions-note {
+  font-size: 22rpx;
+  color: var(--ink-faint);
+}
+
+/* ---------------------------------------------------------------- cta */
+
+.cta {
+  min-height: 104rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: var(--space-3);
+  padding: 0 var(--space-3);
+  border: var(--hairline) solid var(--ink);
+  border-radius: var(--radius-card);
+  background-color: var(--ink);
+  color: var(--paper-raised);
+  font-size: 28rpx;
+  box-sizing: border-box;
+}
+
+.cta.ghost {
+  background-color: transparent;
+  color: var(--ink);
+}
+
+.cta.is-off {
+  background-color: transparent;
+  color: var(--ink-faint);
+  border-color: var(--rule);
+}
+
+/* ---------------------------------------------------------------- risk */
+
+.risk {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+
+.risk-label {
+  font-size: 22rpx;
+  color: var(--ink-muted);
+}
+
+.risk-fatal {
+  margin-left: var(--space-2);
+  font-size: 22rpx;
+  color: var(--cinnabar);
+}
+
+.risk-dangerous .risk-label {
+  color: var(--cinnabar);
+}
+
+.risk-lethal .risk-label {
+  color: var(--cinnabar);
+}
+
+.busy {
+  margin-top: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border: var(--hairline) solid var(--rule);
+  border-radius: var(--radius);
+  font-size: 24rpx;
+  color: var(--ink-muted);
+  box-sizing: border-box;
+}
+
+/* ---------------------------------------------------------------- archive overlay */
+
+.overlay {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4);
+  background-color: var(--paper);
+  box-sizing: border-box;
+}
+
+.overlay-head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: var(--space-2);
+  border-bottom: var(--hairline) solid var(--rule-strong);
+}
+
+.overlay-title {
+  font-size: 32rpx;
+  color: var(--ink);
+}
+
+.overlay-close {
+  min-height: 104rpx;
+  display: flex;
+  align-items: center;
+  padding: 0 var(--space-3);
+  border: var(--hairline) solid var(--rule-strong);
+  border-radius: var(--radius);
+  font-size: 26rpx;
+  color: var(--ink);
+  box-sizing: border-box;
+}
+
+.overlay-body {
+  flex: 1;
+  min-height: 0;
+  margin-top: var(--space-3);
+}
+
+.archive-section {
+  margin-bottom: var(--space-4);
+}
+
+.archive-section-title {
+  font-size: 24rpx;
+  color: var(--gold);
+}
+
+.archive-row {
+  display: flex;
+  flex-direction: row;
+  padding: var(--space-2) 0;
+  border-bottom: var(--hairline) solid var(--rule);
+  box-sizing: border-box;
+}
+
+.archive-kind {
+  width: 120rpx;
+  font-size: 22rpx;
+  color: var(--ink-muted);
+}
+
+.archive-main {
+  flex: 1;
+}
+
+.archive-title {
+  font-size: 26rpx;
+  color: var(--ink);
+}
+
+.archive-summary {
+  font-size: 22rpx;
+  color: var(--ink-muted);
+}

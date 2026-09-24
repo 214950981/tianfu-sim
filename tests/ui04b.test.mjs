@@ -109,7 +109,6 @@ function violationsFor(files) {
  * and focused on UI04B's own risk.
  */
 const UNTOUCHED_DIGESTS = {
-  "miniprogram/app.json": "d22f149f3cc1fe06bec63a3f20cab78ecb64a5f9df9d0bba1e738ad54e5cb27f",
   "miniprogram/app.js": "cbf5be0fc91dd5ec1dfb69fff38b266edb508b9c884aaf84607f50ee1f08f1c0",
   "miniprogram/pages/v2-preview/v2-preview.js": "3ec078953ca4d369f43d371201c0bb69ff87cf6dfaf309b306a2824351406d5d",
   "miniprogram/pages/v2-preview/v2-preview.wxml": "b0f17f715a8fb58b6003d100c7e16a9c6ea1a148158c6f8da79ef22ebe81c97a",
@@ -306,12 +305,15 @@ test("UI04B_artifact_audit: the audit detects unreachable modules, extra files, 
   const shellPath = RUNTIME_DIR + "/wechat-shell.js";
   const facadePath = FACADE_PATH;
 
-  // Cut both incoming edges to the lower two modules: they stay in the directory but become unreachable,
-  // which only a real closure walk from the facade can notice.
+  // Cut every incoming edge to the lower two modules: they stay in the directory but become unreachable,
+  // which only a real closure walk from the facade can notice. UI04C gives `wechat-shell` a *value* edge
+  // into `command-wire` (it validates an application error code), so command-wire now has two incoming
+  // edges and both have to be cut; cutting only the facade's would leave the module reachable and the
+  // control green for the wrong reason.
   const unreachable = violationsFor(
     artifactWith({
       [facadePath]: withoutRequire(committed[facadePath], "./command-wire.js"),
-      [shellPath]: withoutRequire(committed[shellPath], "./application-ui.js")
+      [shellPath]: withoutRequire(withoutRequire(committed[shellPath], "./command-wire.js"), "./application-ui.js")
     })
   );
   assert.equal(unreachable.some((entry) => entry.includes("does not reach " + wirePath)), true, unreachable.join("\n"));
@@ -433,18 +435,30 @@ test("UI04B_smoke: the smoke can fail — the loadability and surface assertions
 
 test("UI04B_smoke: the fixture-driven preview still renders from fixtures, not from the runtime", () => {
   // UI04B must not turn the dev preview into live gameplay. Nothing outside the generated directory may
-  // require the runtime; when UI04C wires a page it will have to say so on purpose, in its own task.
+  // require the runtime except the one page UI04C registered on purpose — and that page is `v2-live`, not
+  // the fixture-driven preview. Anything else appearing here is scope creep, so the list is exact.
   const consumers = listRuntimeModules(ROOT)
     .filter((relative) => !relative.startsWith(RUNTIME_DIR + "/"))
     .filter((relative) => {
       const source = read(relative);
       return source.includes("runtime/index.js") || source.includes("./runtime/") || source.includes("WeChatRunController");
     });
-  assert.deepEqual(consumers, [], "no miniprogram page may load the runtime in UI04B");
+  assert.deepEqual(consumers, ["miniprogram/pages/v2-live/v2-live.js"], "only the UI04C dev-only live page may load the runtime");
 
   for (const [relative, digest] of Object.entries(UNTOUCHED_DIGESTS)) {
     assert.equal(sha256Of(read(relative)), digest, relative + " must be byte-identical to the UI04B task base");
   }
+  // UI04C registers its dev-only live page last, so `app.json` is expected to change *by exactly one
+  // appended route*. Removing that one route must restore the UI04B bytes — stronger than re-listing the
+  // fields, because it pins `window`, `tabBar`, `style`, `sitemapLocation` and every future key too.
+  const appSource = read("miniprogram/app.json");
+  const stripped = appSource.replace(',\n    "pages/v2-live/v2-live"', "");
+  assert.notEqual(stripped, appSource, "the strip must really remove the appended live route");
+  assert.equal(
+    sha256Of(stripped),
+    "d22f149f3cc1fe06bec63a3f20cab78ecb64a5f9df9d0bba1e738ad54e5cb27f",
+    "miniprogram/app.json must differ from the UI04B task base only by the appended v2-live route"
+  );
   const preview = read("miniprogram/pages/v2-preview/v2-preview.js");
   assert.equal(preview.includes("v2-fixtures.js"), true, "the preview must still be fixture-driven");
 });
@@ -499,14 +513,22 @@ test("UI04B_scope: no new dependency, no bundler, no route change and no page wi
 
   const app = readJson("miniprogram/app.json");
   assert.equal(app.pages[0], "pages/start/start", "the default route must not move");
-  assert.equal(app.pages[app.pages.length - 1], "pages/v2-preview/v2-preview");
+  // UI04C registers the dev-only live page LAST, behind the accepted preview, and must not displace it.
+  assert.equal(app.pages.includes("pages/v2-preview/v2-preview"), true, "UI04B's dev preview must stay registered");
+  assert.equal(app.pages[app.pages.length - 1], "pages/v2-live/v2-live");
+  assert.deepEqual(app.pages.filter((page) => page.includes("v2-")), ["pages/v2-preview/v2-preview", "pages/v2-live/v2-live"]);
   assert.deepEqual(app.tabBar.list.map((entry) => entry.pagePath), ["pages/game/game", "pages/rank/rank"]);
-  assert.equal(app.pages.some((page) => page.includes("runtime")), false, "UI04B must not register a page");
+  assert.equal(app.pages.some((page) => page.includes("runtime")), false, "no page may be registered inside the generated runtime");
 
+  // The artifact reaches the cloud only through an *injected* call API. UI04B's original pin forbade the
+  // token `callFunction` outright; UI04C deliberately names the injected method that way (it is the WeChat
+  // cloud API's own name), so the pin is now about the thing that actually matters: no platform global and
+  // no cloud/environment specifier may be named in the artifact's code.
   const artifactCode = ARTIFACT_PATHS.map((artifactPath) => read(artifactPath)).join("\n");
-  for (const forbidden of ["wx.request", "wx.cloud", "callFunction", "cloudfunctions"]) {
+  for (const forbidden of ["wx.request", "wx.cloud", "wx.cloud.callFunction", "cloudfunctions"]) {
     assert.equal(artifactCode.includes(forbidden), false, "the artifact must not reference " + forbidden);
   }
+  assert.equal(/\b(?:wx|tt|my|swan)\s*\./.test(artifactCode.replace(/^\s*\*.*$/gm, "").replace(/\/\/.*$/gm, "")), false, "the artifact must name no platform global");
   assert.equal(artifactCode.includes("v2-preview"), false, "the artifact must not depend on the dev preview");
   assert.equal(read(FIXTURE_PATH).includes("rootSeed"), false, "the public fixture must stay public-only");
 });

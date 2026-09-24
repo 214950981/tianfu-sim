@@ -414,7 +414,10 @@ test("UI04A_docs: the boundary, the compat shim and the remaining UI04B work are
 test("UI04A_scope: no default route, legacy 1.0 page or gameplay surface moved", () => {
   const app = readJson("miniprogram/app.json");
   assert.equal(app.pages[0], "pages/start/start");
-  assert.equal(app.pages[app.pages.length - 1], "pages/v2-preview/v2-preview");
+  // UI04C appends its dev-only live page LAST, behind the accepted preview, so the preview stays
+  // registered but is no longer the final entry.
+  assert.equal(app.pages.slice(0, -1).includes("pages/v2-preview/v2-preview"), true, "the preview must stay registered");
+  assert.equal(app.pages[app.pages.length - 1], "pages/v2-live/v2-live");
   assert.deepEqual(app.tabBar.list.map((entry) => entry.pagePath), ["pages/game/game", "pages/rank/rank"]);
   // no transport/platform global entered the neutral layers
   for (const file of ["packages/command-wire/src/index.ts", "packages/application-ui/src/index.ts", "packages/wechat-shell/src/index.ts"]) {

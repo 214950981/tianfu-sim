@@ -1,370 +1,288 @@
 version: 1
-taskId: UI04B
+taskId: UI04C
 attempt: 1
 status: PASS
+verificationProfile: fast-lane
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-UI04B
-baseCommit: 4bad4707b4f2e6eddb1a568f25fb03edb8d9a67e
-baseTreeSha: 1c259d9e0f217d2a72a4bdcdf0125e63063bb406
+workBranch: wb-UI04C
+baseCommit: 9c1d57504910ec913be542a0e1802a994a9afb8e
+baseTreeSha: 0fea66a8e920511f9dc0974cd73db1c62d68428d
 historyMode: real-ancestry
 sourceHeadVerifiedBy: >-
-  NEXT_TASK.yaml sets sourceBranch to dev/tianfu-2.0, workBranch to wb-UI04B, attempt 1, status READY,
-  basePolicy remote-source-head-at-task-start, taskDefinition .codex/tasks/UI04B.yaml,
-  allowSyntheticTreeBase true. The remote source HEAD was read over the network, not from cache:
-  "git ls-remote origin refs/heads/dev/tianfu-2.0 refs/heads/wb-UI04B refs/heads/wb-UI04A" returned
-  4bad4707b4f2e6eddb1a568f25fb03edb8d9a67e for dev/tianfu-2.0 (exactly the SHA the dispatch named) and
-  NOTHING for wb-UI04B, so this task starts a brand-new work branch; wb-UI04A is still present at
-  d75201b87a9108a2671d91a52f8be6ff75145da9, the controller's accepted UI04A result commit, which
-  NEXT_TASK.controllerReview.acceptedResultCommit also names. "git fetch origin
-  refs/heads/dev/tianfu-2.0" succeeded on the first attempt and FETCH_HEAD resolved to the same
-  4bad4707b4f2e6eddb1a568f25fb03edb8d9a67e. PROTOCOL.md, NEXT_TASK.yaml, LAST_RESULT.yaml,
-  TOOLING_RUNBOOK.md, .codex/tasks/UI04B.yaml, docs/dev-status.md, docs/UI04A_CLIENT_WIRE_BOUNDARY.md,
-  project.config.json, tsconfig.json, package.json and the task's inspect_first sources were all read
-  straight out of that fetched commit with "git show 4bad4707:<path>", never from a cached worktree
-  state. The worktree was positioned with "git read-tree -u --reset 4bad4707..." plus a self-written
-  worktree HEAD file (no ref write through git); "git write-tree" over the untouched tree returned
-  1c259d9e0f217d2a72a4bdcdf0125e63063bb406, byte-identical to "4bad4707^{tree}". That equality is the
-  byte-identity proof, and because the local HEAD is exactly baseCommit the result commit has baseCommit
-  as its real parent, so historyMode is real-ancestry and no synthetic tree was needed.
-  "node .codex/context.mjs UI04B" was NOT run, and that is disclosed rather than skipped silently: the
-  repository has no node_modules and no npm install was performed for this task, so the dispatch's task
-  definition and the contracts it lists were read directly from the fetched commit instead.
+  NEXT_TASK.yaml sets sourceBranch to dev/tianfu-2.0, workBranch to wb-UI04C, attempt 1, status READY,
+  basePolicy remote-source-head-at-task-start, taskDefinition .codex/tasks/UI04C.yaml,
+  verificationProfile fast-lane. The remote source HEAD was read over the network, not from cache, but NOT
+  with "git fetch": this session's proxy rejected git's TLS handshake to github.com (eleven consecutive
+  502s on "git ls-remote", and "http.sslBackend=openssl" made no difference) while curl to api.github.com
+  and raw.githubusercontent.com succeeded normally. "git ls-remote origin refs/heads/dev/tianfu-2.0" did
+  eventually return 9c1d57504910ec913be542a0e1802a994a9afb8e on attempt 18, which is exactly the SHA the
+  dispatch named, so the remote HEAD is confirmed by ls-remote itself. The tree was obtained through the
+  GitHub API instead of a pack: "api.github.com/repos/214950981/tianfu-sim/commits/9c1d575..." reported
+  tree 0fea66a8e920511f9dc0974cd73db1c62d68428d and parent 282030872a83434fdb2cd4b2be67b36f060b3700 (the
+  controller's accepted UI04B result, present locally); "compare/2820308...9c1d575" reported 7 changed
+  files, all under .codex/control, .codex/tasks and docs - no product code - and each was fetched from
+  raw.githubusercontent.com (PROTOCOL.md and docs/UI04B_WECHAT_RUNTIME_ARTIFACT.md through the contents
+  API after a raw 404). Those 7 files were applied over a "git read-tree -u --reset 2820308" checkout and
+  "git write-tree" then returned 0fea66a8e920511f9dc0974cd73db1c62d68428d, byte-identical to the API's
+  tree SHA; that equality is the byte-identity proof. The base commit object was then rebuilt by hand
+  (tree + parent 2820308 + the API's author/committer name, email and epoch with "+0000") and written with
+  "git hash-object -t commit -w"; one candidate hashed to 9c1d57504910ec913be542a0e1802a994a9afb8e, i.e.
+  the reconstructed commit is bit-for-bit the remote commit. Local HEAD is exactly baseCommit, so the
+  result commit has baseCommit as its real parent: historyMode real-ancestry, no synthetic tree.
+  "node .codex/context.mjs UI04C" was attempted and FAILED with "MALFORMED_TASK:
+  .codex/tasks/UI04C.yaml:4 unknown field verificationProfile" - the loader's schema predates the
+  fast-lane profile. The task definition and the five required contracts were therefore read directly out
+  of the reconstructed commit, which is the same fallback the runbook documents for a missing node_modules.
 
 summary: >-
-  UI04B makes the accepted UI03/UI04A client-safe controller physically loadable by the WeChat packager
-  without creating a second implementation of anything.
+  UI04C wires the accepted UI03/UI04A/UI04B client runtime to a real RPC boundary for the first time, as
+  one complete vertical slice, and proves the whole round trip with an injected cloud-call API instead of
+  a deployed backend.
 
-  PROBLEM. project.config.json sets miniprogramRoot to miniprogram/, while the accepted client runtime
-  lives outside that root in TypeScript packages. "Node can import the source path" is not the same claim
-  as "the WeChat packager can load it": the packager reads the files under miniprogramRoot as JavaScript,
-  resolves require("./x.js") by static analysis, and cannot execute TypeScript.
+  TRANSPORT. packages/wechat-shell gains createWeChatCloudTransport({ api, cloudFunctionName }) over an
+  injected "callFunction", exactly the way createWeChatPlatformStorage binds an injected storage API. The
+  neutral package still names no platform global: it never mentions wx, it only calls the function it was
+  handed. Three operations - createRunOffer, fetchView, sendCommand - and every response is validated
+  before it is returned: structural checks, contract-enum checks, cross-field consistency (the offered
+  runId/rulesVersion/contentVersion must equal the returned ViewModel's), and a recursive, depth-capped
+  refusal of any server-only key (rootSeed, rngState, drawIndex, echoBudget, salience, selectorWeights,
+  futureEventIds, checkSpec, difficulty, effectSpec, internalTrace, antiCheat, hiddenCause(s),
+  specialNotes, serverSecret). Anything else raises TransportProtocolError instead of being handed on, so
+  the controller never sees an unvalidated settlement wrapper.
 
-  SOLUTION. A deterministic, repository-local generator (tools/ui04b-wechat-runtime-artifact.mjs) derives
-  four committed CommonJS files under miniprogram/runtime/ from the three accepted client-safe source
-  modules: command-wire.js, application-ui.js, wechat-shell.js, and the bounded facade index.js. The
-  transform is: normalise newlines to LF; erase TypeScript type syntax with Node's BUILT-IN
-  module.stripTypeScriptTypes (mode "strip"); rewrite the remaining ES module syntax to plain CommonJS
-  (named import becomes var destructuring require, export becomes module.exports); prepend a header
-  recording the source path and its sha256. No bundler, compiler or runtime dependency was added:
-  devDependencies is still exactly the pinned typescript, there is no dependencies key, and no
-  esbuild/webpack/rollup/vite config exists. The accepted packages remain the single source of truth;
-  there is exactly ONE WeChatRunController, ONE CommandSubmissionController and ONE command codec in the
-  repository, and the generated files are byte-derivable from them.
+  BOOTSTRAP. bootstrapWeChatRun() returns session { playerId, runId, rulesVersion, contentVersion,
+  clientBuild } plus the authoritative PublicViewModel. runId and the locked versions come from the server;
+  playerId and clientBuild are client facts supplied by the caller. There is no second source of run truth
+  and no secret crosses the boundary.
 
-  BOUNDED SURFACE. miniprogram/runtime/index.js publishes exactly eight names, hard-coded in the
-  generator's allow-list and re-asserted by an independent literal in the smoke: WeChatRunController,
-  createWeChatPlatformStorage, CommandValidationError, APP_ERROR_CODES, SubmissionLockedError,
-  RetryUnavailableError, IntentUnavailableError, ArchiveUnavailableError. WeChatRunController.pageModel()
-  already returns the projected shell, core/special intents and archive view, so those builders need no
-  facade entry. Widening the surface requires editing the allow-list, which fails both the audit and the
-  dedicated suite - a reviewable act, not an import side effect.
+  DESTINY_OFFER -> START_RUN. The server already publishes the authoritative offer as currentInteraction
+  (interactionId === the run's offerId, one option per offered candidate), so the client derives START_RUN
+  from it and nothing else: the chosen option must be one the server offered, exactly one published
+  candidate may own it, innate offers key on selectionId, legacy offers on destinyId, and a candidate that
+  publishes both is refused rather than guessed at. START_RUN still goes through
+  CommandSubmissionController, so commandId / pending / retry / conflict semantics are unchanged.
 
-  FAIL-CLOSED. An unsupported import form, an unsupported export form, a non-relative specifier (bare,
-  "node:", any npm package), a specifier that resolves outside the pinned source modules (that is, a grown
-  runtime closure), a leftover import/export statement, output that does not parse as JavaScript (checked
-  with vm.Script, compile only), a non-literal require argument, a require outside the pinned sibling set,
-  or a facade entry the source no longer exports - each one stops generation with a named diagnosis
-  instead of emitting something loadable-but-wrong.
+  PAGE. miniprogram/pages/v2-live/ (js, wxml, wxss, json) is registered LAST in app.json;
+  pages/start/start stays first and the tabBar is byte-identical. It loads the generated artifact through
+  the static literal require("../../runtime/index.js") and imports nothing outside miniprogramRoot. One
+  coherent chain: bootstrap -> 择命 -> START_RUN -> RUN_HOME -> core action -> EVENT/SPECIAL_NODE -> option
+  -> authoritative refresh, plus server-projected breakthrough, LIFE_ARCHIVE open/close, loading and
+  submitting, transient retry, STATE_CONFLICT refresh with explicit reconfirmation and a fresh commandId,
+  and a bounded fatal / bootstrap error state. Every page state, action, option, risk tier, breakthrough
+  flag and archive row is read out of the PublicViewModel; the page computes no outcome, risk,
+  eligibility, odds, RNG, RuleState, Director or Cause resolution - it only formats.
 
-  DETERMINISM AND FRESHNESS. buildRuntimeArtifact() is a pure function of the source bytes: no timestamps,
-  no absolute paths, no environment reads, no version stamps, fixed ordering, LF endings. Repeated
-  generation is byte-identical, a CRLF checkout produces the same bytes, and --write is idempotent. Three
-  complementary checks fail on drift: byte regeneration (npm run ui04b:artifact), the committed artifact
-  audit (npm run ui04b:audit), and the load and behaviour smoke (npm run ui04b:smoke).
+  PROOF. tests/ui04c.test.mjs contains one fake, the injected callFunction, and it only forwards
+  { name, data } to the REAL CommandGateway, ServerViewModelBuilder and reducer, so every ViewModel the
+  client sees is authoritative. The page harness loads the committed v2-live.js itself - as CommonJS in a
+  node:vm realm with Page and wx stubbed - so the code under test is the code WeChat will run.
 
-  GENERATED-ARTIFACT AUDIT. tools/ui04b-wechat-runtime-audit.mjs audits the COMMITTED bytes as an
-  adversary rather than trusting the generator's own report: exact file set; every require argument a plain
-  string literal pointing at a pinned sibling (the mechanical meaning of "no Node-only runtime dependency
-  in miniprogram"); the real require graph walked from the facade must reach exactly the four pinned
-  modules, so neither an unreachable module nor a hidden dependency can hide; comment-masked code must not
-  reference packages/core, packages/content, server, cloudfunctions, wx.request, wx.cloud or a Node
-  runtime global; comment-masked code must contain no TypeScript-only syntax; each module must record its
-  pinned source path and that source's CURRENT sha256; and the facade's statically parsed published names
-  (both the module.exports literal and any later module.exports.x assignment) must equal the allow-list.
-  Content policy is scanned on code characters only, because the generated modules deliberately keep the
-  accepted sources' doc comments and packages/command-wire documents packages/core precisely because that
-  is the boundary it owns.
+  ARTIFACT. Client-safe source changed, so miniprogram/runtime/ was regenerated with
+  "npm run ui04b:artifact:write"; freshness, audit and smoke are green, the UI04A closure audit is green,
+  and the facade grew by exactly the three names the live seam needs (createWeChatCloudTransport,
+  bootstrapWeChatRun, TransportProtocolError), which the generator allow-list, the smoke's independent
+  literal and tests/ui04b.test.mjs all pin.
 
-  NEGATIVE CONTROLS. tests/ui04b.test.mjs drives every audit check to failure with a real mutation: an
-  injected gameplay-Core edge, an injected Content edge, an injected require("fs"),
-  require("node:child_process"), a computed require argument, cut edges that make modules unreachable, an
-  extra unreviewed file, a removed provenance line, a tampered provenance digest, injected "as const",
-  injected "packages/core/" text, a grown facade and a shrunk facade. Every surgical mutation asserts its
-  anchor exists first, so no control can pass because it silently changed nothing. The smoke has its own
-  controls: a temp-dir copy of the artifact with a grown public surface must be visible to the surface
-  assertion, require("fs") must be refused as a non-relative specifier, and a require that escapes the
-  artifact directory must be refused.
-
-  NODE COMMONJS SMOKE. tools/ui04b-wechat-runtime-smoke.mjs executes miniprogram/runtime/index.js in a
-  fresh node:vm context as CommonJS, supplying exports/module/require and nothing else - no wx, tt, Page,
-  Component, getApp, process, Buffer or setTimeout - so a successful load is itself the proof that loading
-  this artifact neither needs a platform host nor runs server code. Eight checks pass, including a
-  differential proof: over every committed public fixture entry, buildWeChatPageShell /
-  mapCoreActionIntents / mapSpecialActionIntents / buildArchiveView / canOrdinaryBack return values deeply
-  equal to the accepted TypeScript sources; the wire codec produces identical canonical bytes for four
-  representative commands and identical error text and error class for eight malformed envelopes; and the
-  generated controller drives load / pageModel / openArchive / closeArchive / submit identically to the
-  TypeScript controller, handing its transport a byte-identical envelope with the same commandId. The
-  transform also loses no export of any accepted module.
-
-  PACKAGER SEAM - DELIBERATELY NOT USED. The task allows a side-effect-free static literal require from the
-  v2-preview dev page only "if v2-preview is touched". It was not touched, because the accepted
-  tools/ui02-preview-fixture-module.mjs checkFixtureRequire requires EXACTLY ONE require() call in
-  miniprogram/pages/v2-preview/v2-preview.js and tests/ui02r1.test.mjs asserts checkFixtureRequire(ROOT).ok
-  directly (tests/ui02entry.test.mjs also parses that file's require arguments), so adding a second require
-  would mean weakening an accepted guard - out of this task's scope, and not how a guard should be made
-  green. UI04B therefore delivers the three mechanical properties that "the packager can load it" actually
-  means: the artifact is inside miniprogramRoot, it is CommonJS, and every dependency is a static string
-  literal. A positive assertion locks the other direction too: no module under miniprogram/ outside
-  runtime/ may reference the runtime, so UI04C's page wiring cannot happen silently.
-
-  SCOPE. No page wiring, no wx.request, no 2.0 wx.cloud.callFunction, no cloud persistence, no
-  cloudfunction deployment, no default-route change, no legacy 1.0 page change, no UI04C work, no ending
-  orchestration, and no Core, Content, Director, Cause, Progression, Risk, Build, NPC or server semantics
-  change. miniprogram/pages/v2-preview/*, miniprogram/app.json and miniprogram/app.js are byte-identical to
-  the task base. Source branch dev/tianfu-2.0 was not pushed and main was not touched.
-
-changedFiles:
-  - .codex/control/LAST_RESULT.yaml
-  - docs/UI04B_WECHAT_RUNTIME_ARTIFACT.md
-  - package.json
-  - miniprogram/runtime/application-ui.js
-  - miniprogram/runtime/command-wire.js
-  - miniprogram/runtime/index.js
-  - miniprogram/runtime/wechat-shell.js
-  - tests/ui04b.test.mjs
-  - tools/ui04b-wechat-runtime-artifact.mjs
-  - tools/ui04b-wechat-runtime-audit.mjs
-  - tools/ui04b-wechat-runtime-smoke.mjs
-
-changes:
-  - file: tools/ui04b-wechat-runtime-artifact.mjs
-    kind: added
-    note: >-
-      The generator and freshness check, 615 lines. Exports the pinned RUNTIME_MODULES table (source ->
-      artifact -> sibling specifier), the bounded FACADE_EXPORTS allow-list, buildRuntimeArtifact({ read })
-      as a pure source-bytes to artifact-bytes function, checkRuntimeArtifact({ root, read, files }) and
-      writeRuntimeArtifact(). Contains the ESM to CommonJS transform, a comment/string mask used for
-      statement detection, the per-file provenance header, and assertCommonJs() which compiles every
-      emitted file with vm.Script and rejects leftover module statements, non-literal requires, requires
-      outside the pinned sibling set and any TypeScript-only syntax marker. CLI: the default is a freshness
-      check that exits 1; --write regenerates and is idempotent. Uses only node:crypto, node:fs,
-      node:module and node:vm.
-  - file: miniprogram/runtime/command-wire.js
-    kind: added
-    note: >-
-      GENERATED, 10915 bytes. Derived from packages/command-wire/src/index.ts (sha256
-      402d9316ed1878d53705aba8e5f8a5f3dfcccb51739b927f28b725ac3edaa602). Publishes the same names the
-      accepted module exports and has zero require edges, because the accepted module has zero imports.
-  - file: miniprogram/runtime/application-ui.js
-    kind: added
-    note: >-
-      GENERATED, 6961 bytes. Derived from packages/application-ui/src/index.ts (sha256
-      58d8d44f092eb9731a5b4f6816c5d52432a241a1ee9bd7312e163cf33929b529). Its single runtime import of the
-      wire codec became require("./command-wire.js"); its type-only platform-contract import was erased by
-      the stripper and creates no runtime edge.
-  - file: miniprogram/runtime/wechat-shell.js
-    kind: added
-    note: >-
-      GENERATED, 21180 bytes. Derived from packages/wechat-shell/src/index.ts (sha256
-      1e73f1cccd6e63037a3032bbcaadc91ace7fd051c7b6424403c57b54d5e67949). Its named import of application-ui
-      became require("./application-ui.js"); its type-only imports of command-wire and platform-contract
-      create no runtime edge; its named re-export was folded into module.exports.
-  - file: miniprogram/runtime/index.js
-    kind: added
-    note: >-
-      GENERATED bounded facade, 1388 bytes. The only entry point a page should load. Requires exactly
-      ./command-wire.js and ./wechat-shell.js with static string literals and re-publishes the eight pinned
-      names verbatim. Generated from FACADE_EXPORTS, not from whatever the modules happen to export.
-  - file: tools/ui04b-wechat-runtime-audit.mjs
-    kind: added
-    note: >-
-      Generated-artifact audit, 275 lines. Pure auditWeChatRuntimeArtifact({ root, files, read }) so a test
-      can drive every check to failure against an in-memory mutation without touching the worktree; exports
-      facadeExportKeys() which parses both the module.exports literal and later direct assignments. Reuses
-      the accepted requireArguments / nonLiteralRequireArguments from tools/ui02-preview-fixture-module.mjs
-      rather than duplicating the code mask, which is also what keeps comment prose from being read as a
-      call. CLI exits 1 on any violation.
-  - file: tools/ui04b-wechat-runtime-smoke.mjs
-    kind: added
-    note: >-
-      Node-executable CommonJS smoke, 442 lines. loadRuntimeArtifact() compiles each committed artifact file
-      inside ONE shared node:vm context through a CommonJS module wrapper, so top-level var/function
-      declarations stay module-scoped; the shim refuses non-relative specifiers and any specifier that
-      escapes the artifact directory. runSmoke() performs the eight checks described in summary, including
-      the differential comparison against the accepted TypeScript sources and the end-to-end controller
-      parity with byte-identical submitted envelopes. Exports runSmoke(), loadRuntimeArtifact() and
-      fixtureViews() so the dedicated suite consumes the same code path instead of a second implementation.
-      CLI exits 1 on failure.
-  - file: tests/ui04b.test.mjs
-    kind: added
-    note: >-
-      16-test dedicated suite, 530 lines: derivation provenance, determinism including CRLF-independence and
-      idempotent write, freshness for source drift / artifact drift / extra files, six generation
-      fail-closed cases, one facade-completeness fail-closed case, the audit green plus eleven negative
-      controls, the literal-require sweep over every miniprogram module, the smoke green plus three loader
-      negative controls in a temp dir, doc pinning, package registration, and scope guards (no new
-      dependency, no bundler config, miniprogramRoot containment, default route and tabBar unchanged, no
-      page wiring, preview still fixture-driven, and scope digests for the four trees UI02R1 does not
-      already pin).
-  - file: package.json
+files:
+  - file: packages/wechat-shell/src/index.ts
     kind: modified
     note: >-
-      Added test:ui04b, ui04b:artifact, ui04b:artifact:write, ui04b:audit and ui04b:smoke, and appended
-      tests/ui04b.test.mjs to the aggregate test script - the same one-line registration UI04A performed.
-      No dependency was added or changed.
-  - file: docs/UI04B_WECHAT_RUNTIME_ARTIFACT.md
+      Added CLOUD_RPC_OPERATIONS / DEFAULT_CLOUD_FUNCTION_NAME / TransportProtocolError /
+      parsePublicViewModel / parseRunOfferResult / createWeChatCloudTransport / bootstrapWeChatRun, the
+      DESTINY_OFFER branch of #commandFor and its fail-closed offerCandidateFor helper, and passed the
+      authoritative interaction body through WeChatDecisionView. Nothing existing was redefined; the only
+      new runtime edge is a value import of APP_ERROR_CODES from command-wire, which was already inside the
+      approved closure.
+  - file: miniprogram/app.json
+    kind: modified
+    note: >-
+      Appended "pages/v2-live/v2-live" as the LAST entry. pages/start/start is still first, the tabBar is
+      byte-identical, and pages/v2-preview/v2-preview is still registered. Verified by the new route guard
+      and by byte-level "strip the one added route and the base bytes come back" pins in four suites.
+  - file: miniprogram/pages/v2-live/v2-live.js
     kind: added
     note: >-
-      Documents the problem, the artifact layout, the exact transform, fail-closed behaviour, determinism,
-      the freshness / audit / smoke contract with its negative controls, the deliberately unused v2-preview
-      packager seam and why, what UI04B does not do, what remains for UI04C, and the three items a human
-      must confirm in DevTools because this repository has no WeChat packager.
+      Dev-only live page: injected cloud transport, bootstrap, the full interaction chain, archive, retry,
+      conflict reconfirm and bounded failure rendering. Presentation only.
+  - file: miniprogram/pages/v2-live/v2-live.wxml
+    kind: added
+    note: Four surfaces (择命 / 在世 / 抉择 / 终局) plus the client's own transport banner and a bounded staged diagnostic.
+  - file: miniprogram/pages/v2-live/v2-live.wxss
+    kind: added
+    note: Reuses the UI02 ink-and-gold visual language; independent of v2-preview.wxss so the preview's own pins cannot be disturbed.
+  - file: miniprogram/pages/v2-live/v2-live.json
+    kind: added
+    note: Page manifest only.
+  - file: miniprogram/runtime/index.js
+    kind: modified
+    note: Regenerated facade; publishes 11 names (the previous 8 plus the three UI04C live-seam exports).
+  - file: miniprogram/runtime/wechat-shell.js
+    kind: modified
+    note: Regenerated from the edited source; 40845 bytes, source sha256 caa9b6b801318f4f862cc51ffbdf26f93f9916aca9ca81a078ad84ed54d3c220.
+  - file: tools/ui04b-wechat-runtime-artifact.mjs
+    kind: modified
+    note: FACADE_EXPORTS grew by exactly three entries, with the reason recorded in the comment.
+  - file: tools/ui04b-wechat-runtime-smoke.mjs
+    kind: modified
+    note: EXPECTED_PUBLIC_API and the surface assertion grew to match; tests/ui04b.test.mjs imports the same literal.
+  - file: tools/route-guard.mjs
+    kind: added
+    note: >-
+      New route guard: default route, live-page-last position, byte-pinned tabBar, page files, require edges
+      (literal, inside miniprogramRoot, no packages/ server/ .ts), the runtime seam (only v2-live may load
+      the artifact) and the preview's fixture guard.
+  - file: tests/ui04c.test.mjs
+    kind: added
+    note: >-
+      18 tests. Injected-cloud transport contract and fail-closed matrix, bootstrap purity, innate and legacy
+      START_RUN derivation, refusal of a fabricated candidate, the full live chain, server-projected
+      breakthrough, retry identity, STATE_CONFLICT refresh + reconfirmation, fatal, archive, the real page
+      harness, bounded bootstrap failure, no-gameplay source assertions, route guard plus its negative
+      controls, and registration.
+  - file: tests/ui04b.test.mjs
+    kind: modified
+    note: >-
+      Four pins updated for the UI04C consequences, each minimally and each still able to fail: (1) the
+      "no page may load the runtime" pin now names v2-live as the single allowed consumer; (2) app.json is
+      pinned as "strip the one appended route and the UI04B bytes come back"; (3) the artifact content pin
+      forbids any platform global instead of the token callFunction, which UI04C deliberately uses as the
+      injected method name; (4) the unreachable-module negative control now cuts command-wire's two incoming
+      edges, because UI04C gave wechat-shell a value edge into it.
+  - file: tests/ui03.test.mjs
+    kind: modified
+    note: Last-page pin now asserts v2-live is appended after v2-preview and the first four routes are unchanged.
+  - file: tests/ui02.test.mjs, tests/ui02copy.test.mjs, tests/ui02entry.test.mjs, tests/ui02r1.test.mjs, tests/ui04a.test.mjs
+    kind: modified
+    note: >-
+      Same last-page consequence, applied identically. ui02r1 additionally drops the raw app.json byte pin in
+      favour of the strip-one-route proof and re-bases the packages/wechat-shell/src digest, which UI04C
+      changes by design; both are disclosed in that file's header comment, in the same house style UI03 and
+      UI04A used for their own base-tree updates.
+  - file: package.json
+    kind: modified
+    note: Added test:ui04c and ui04c:route, and appended tests/ui04c.test.mjs to the aggregate test script. No dependency added or changed.
+  - file: docs/UI04C_LIVE_CLIENT.md
+    kind: added
+    note: >-
+      RPC contract, fail-closed rules, bootstrap, the START_RUN derivation table, the page state machine, the
+      verification table, the exact backend operations still missing for UI04D, and the changed-file list
+      including every inherited pin that was updated and why.
   - file: .codex/control/LAST_RESULT.yaml
     kind: modified
     note: This result file.
 
 tests:
+  - name: ui04c
+    command: npm run test:ui04c
+    result: "18/18 PASS"
+    detail: >-
+      Dedicated UI04C suite. Includes the injected-cloud round trip (createRunOffer / START_RUN / core action
+      / event option / authoritative refresh / retry / STATE_CONFLICT / reconfirm / exact submitted
+      envelopes), the fail-closed matrix (13 malformed or secret-bearing responses, 4 bad settlement
+      wrappers, every APP_ERROR_CODE accepted), and a harness that loads the real v2-live page in a vm realm.
   - name: ui04b
     command: npm run test:ui04b
     result: "16/16 PASS"
-    detail: Dedicated UI04B suite, all green.
-  - name: ui04a
-    command: node --test tests/ui04a.test.mjs
-    result: "16/16 PASS"
-    detail: Accepted client wire boundary suite unchanged and green with the artifact present.
   - name: ui03
     command: node --test tests/ui03.test.mjs
     result: "18/18 PASS"
-    detail: Accepted live-session controller suite unchanged and green.
-  - name: ui02
-    command: node --test tests/ui02.test.mjs
-    result: "18/18 PASS"
-    detail: Includes the tree digests that prove the preview surface and the 1.0 pages did not move.
-  - name: ui02r1
-    command: node --test tests/ui02r1.test.mjs
-    result: "32/32 PASS"
+  - name: ui04a
+    command: node --test tests/ui04a.test.mjs
+    result: "16/16 PASS"
+    detail: Not on the fast-lane list, but run because UI04C edits the package it guards; green.
+  - name: ui02-ui02r1-ui02r2-ui02r2a2-ui02entry-ui02copy
+    command: node --test tests/<suite>.test.mjs
+    result: "18/18, 32/32, 15/15, 15/15, 20/20, 11/11 PASS"
     detail: >-
-      Includes checkFixtureRequire, which requires exactly one require() call in the preview page - the
-      reason the optional UI04B packager seam was not added.
-  - name: ui02r2
-    command: node --test tests/ui02r2.test.mjs
-    result: "15/15 PASS"
-  - name: ui02r2a2
-    command: node --test tests/ui02r2a2.test.mjs
-    result: "15/15 PASS"
-  - name: ui02entry
-    command: node --test tests/ui02entry.test.mjs
-    result: "20/20 PASS"
-    detail: Also parses the preview page's require arguments; unaffected because the page was not touched.
-  - name: ui02copy
-    command: node --test tests/ui02copy.test.mjs
-    result: "11/11 PASS"
-  - name: viewmodel-ui
-    command: node --test tests/viewmodel-ui.test.mjs
-    result: "6/6 PASS"
-  - name: command
-    command: node --test tests/command.test.mjs
-    result: "4/4 PASS"
-  - name: server-gateway
-    command: node --test tests/server-gateway.test.mjs
-    result: "6/6 PASS"
-  - name: import-boundary
-    command: node --test tests/import-boundary.test.mjs
-    result: "0 tests pass, 2 known sandbox failures"
-    detail: >-
-      Both tests spawn node.exe via spawnSync and fail with the same EBUSY as on the untouched base. The
-      underlying tool is green when invoked directly from the shell - see environmentNoise.
-  - name: replay
-    command: node --test tests/replay.test.mjs
-    result: "5/6 PASS, 1 known sandbox failure"
-    detail: >-
-      Only "replay CLI returns the verified final hash" fails, with the identical spawnSync EBUSY as on the
-      untouched base. Proven environment noise under the runbook two-proof standard - see environmentNoise.
-  - name: full-npm-test
-    command: npm test
-    result: "425 tests, 422 pass, 3 fail (exit 1)"
-    detail: >-
-      Baseline on the untouched base (git archive 4bad4707 into .b2base/base, then npm test inside it) was
-      409 tests, 406 pass, 3 fail - exactly the counts UI04A recorded for the same commit. The delta is
-      exactly the 16 new UI04B tests, all passing. The three failures are the identical known sandbox ones
-      at the identical test numbers 105, 106 and 225 with byte-identical "spawnSync <node.exe> EBUSY" error
-      text as on the base. Green apart from proven environment noise, not plain green.
-  - name: typecheck
-    command: npx --yes --package typescript@5.9.3 tsc --noEmit
-    result: "exit 0, no output"
-    detail: Repo has no node_modules; the pinned typescript 5.9.3 was run through npx as the runbook documents.
-  - name: lint
-    command: node tools/check-import-boundaries.mjs
-    result: "exit 0, printed 'Core import boundary: PASS'"
-    detail: From the shell, directly. Negative control "node tools/check-import-boundaries.mjs --root tests/fixtures/core-forbidden" exits 1 with "forbidden import" on stderr.
-  - name: content-lint
-    command: node tools/content-lint.mjs packages/content/dev-fixtures/minimal-pack.json
-    result: "exit 0, printed 'Content lint: PASS (1 pack)'"
-  - name: content01-lint
-    command: node tools/content01-lint.mjs
-    result: "exit 0, content01.v1 checksum 2e6df6532c3fa38bad7e7d8626faa4ed2ca9bc9d53d8b8bb59b6aaea1c67f06e, 66 events / 10 causeTemplates / 5 npcDefinitions / 8 npcArchetypes"
-    detail: Identical checksum to the untouched base and to UI04A, direct evidence that Content did not move.
-  - name: secret-scan
-    command: node tools/scan-secrets.mjs
-    result: "exit 0, printed 'Secret scan: PASS'"
-    detail: This tool scans tools/ and tests/, so the new generator, audit, smoke and suite are covered.
-  - name: client-runtime-dependency-audit
+      Not on the fast-lane list either; run because UI04C changes app.json, which five of them pin. All six
+      are green after the minimal pin updates listed under files. This is reported as a check, not as the
+      verification profile: fast-lane deliberately waives the aggregate.
+  - name: ui04a-client-runtime-audit
     command: node tools/ui04a-client-runtime-audit.mjs
     result: "exit 0, printed 'UI04A client runtime boundary: PASS'"
     detail: >-
-      application-ui closure = [application-ui/src/index.ts, command-wire/src/index.ts];
       wechat-shell closure = [application-ui, command-wire, wechat-shell]. No packages/core,
-      packages/content or server entry. Unchanged from UI04A.
-  - name: wechat-runtime-artifact-audit
-    command: node tools/ui04b-wechat-runtime-audit.mjs
-    result: "exit 0, printed 'UI04B WeChat runtime artifact: PASS'"
-    detail: >-
-      Committed file set exactly the pinned four; facade requires [command-wire, wechat-shell];
-      application-ui requires [command-wire]; wechat-shell requires [application-ui]; command-wire requires
-      nothing; closure complete; all provenance digests match the current sources; facade publishes exactly
-      the eight pinned names. Eleven negative controls in tests/ui04b.test.mjs drive it to failure.
-  - name: wechat-runtime-artifact-freshness
+      packages/content or server entry, even after the new value import.
+  - name: ui04b-artifact-freshness
     command: node tools/ui04b-wechat-runtime-artifact.mjs
     result: "exit 0, printed 'UI04B WeChat runtime artifact: PASS (deterministic regeneration matches the committed bytes)'"
     detail: >-
-      Source digests: command-wire 402d9316..., application-ui 58d8d44f..., wechat-shell 1e73f1cc....
-      Artifact sizes 10915 / 6961 / 21180 / 1388 bytes. --write from a clean tree writes nothing.
-  - name: wechat-runtime-commonjs-smoke
+      Source digests: command-wire 402d9316..., application-ui 58d8d44f..., wechat-shell
+      caa9b6b801318f4f862cc51ffbdf26f93f9916aca9ca81a078ad84ed54d3c220 (39600 bytes). Artifact sizes
+      10915 / 6961 / 40845 / 1553 bytes.
+  - name: ui04b-artifact-audit
+    command: node tools/ui04b-wechat-runtime-audit.mjs
+    result: "exit 0, printed 'UI04B WeChat runtime artifact: PASS'"
+    detail: >-
+      Committed file set exactly the pinned four; closure complete (wechat-shell now requires command-wire in
+      addition to application-ui, both approved); provenance digests match; facade publishes exactly the 11
+      pinned names.
+  - name: ui04b-smoke
     command: node tools/ui04b-wechat-runtime-smoke.mjs
     result: "exit 0, 8 checks passed, 0 failed"
+  - name: route-guard
+    command: npm run ui04c:route
+    result: "exit 0, printed 'UI04C route guard: PASS'"
+    detail: >-
+      5 registered pages, tabBar pinned, runtime consumers exactly [miniprogram/pages/v2-live/v2-live.js].
+      Three negative controls in tests/ui04c.test.mjs drive it to failure (route order, tabBar, a require
+      that escapes miniprogramRoot).
+  - name: typecheck
+    command: npx --no-install tsc --noEmit
+    result: "exit 0, no output"
+  - name: lint
+    command: node tools/check-import-boundaries.mjs
+    result: "exit 0, printed 'Core import boundary: PASS'"
+  - name: secret-scan
+    command: node tools/scan-secrets.mjs
+    result: "exit 0, printed 'Secret scan: PASS'"
+  - name: wxss-compat-audit
+    command: node tools/wxss-compat-audit.mjs
+    result: "exit 0, PASS - 14 checks green"
+    detail: Not on the fast-lane list; run because v2-live.wxss is new.
+  - name: ui02r1-layout-audit
+    command: node tools/ui02r1-layout-audit.mjs
+    result: "exit 0, PASS - 143 checks green"
+    detail: Not on the fast-lane list; run for the same reason.
 
 gates:
+  - gate: ui04c
+    result: PASS
+  - gate: ui04b
+    result: PASS
+  - gate: ui03
+    result: PASS
+  - gate: ui04a-client-runtime-audit
+    result: PASS
+  - gate: ui04b-artifact-freshness
+    result: PASS
+  - gate: ui04b-artifact-audit
+    result: PASS
+  - gate: ui04b-smoke
+    result: PASS
   - gate: typecheck
     result: PASS
   - gate: lint
     result: PASS
-  - gate: content-lint
-    result: PASS
-  - gate: content01-lint
-    result: PASS
   - gate: secret-scan
     result: PASS
-  - gate: client-runtime-dependency-audit
-    result: PASS
-  - gate: wechat-runtime-artifact-audit
-    result: PASS
-  - gate: wechat-runtime-artifact-freshness
-    result: PASS
-  - gate: wechat-runtime-commonjs-smoke
-    result: PASS
-  - gate: ui04b-ui04a-ui03-ui02-viewmodel-ui
+  - gate: route-guard
     result: PASS
   - gate: aggregate-npm-test
-    result: PASS_EXCEPT_PROVEN_BASE_REPRODUCIBLE_NESTED_PROCESS_FAILURES
+    result: NOT_RUN_BY_PROFILE
+    detail: >-
+      fast-lane explicitly waives it, and gameplay, Content and server semantics are unchanged: packages/core,
+      packages/content, server/src, packages/platform-contract and the 1.0 pages are byte-identical to the
+      task base. The six UI suites most likely to be affected by the app.json change were run individually
+      instead and are green (see tests).
   - gate: gameplay-simulation-600-run
     result: NOT_REQUIRED
+    detail: No gameplay, Content or server code changed; the accept criterion waives it in that case.
+  - gate: manual-visual-QA
+    result: NOT_RUN
     detail: >-
-      No gameplay or balance code changed. Evidence: packages/core/src, packages/content/src,
-      packages/wechat-shell/src, packages/application-ui/src, packages/command-wire/src,
-      packages/platform-contract/src, server/src, the 1.0 pages, miniprogram/app.json, miniprogram/app.js
-      and the whole dev preview surface are byte-identical to the task base, and the content01 checksum is
-      unchanged. The accept criterion explicitly waives the 600-run simulation in that case.
+      No DevTools or real-device run. There is no 2.0 cloud backend yet, so the live page cannot be
+      exercised against a real cloud environment this round; UI04D owns that verification.
 
 scope:
   coreChanged: false
@@ -372,217 +290,117 @@ scope:
   directorChanged: false
   contentChanged: false
   serverViewmodelChanged: false
-  miniprogramPagesChanged: false
+  serverGatewaySemanticsChanged: false
+  miniprogramPagesChanged: true
+  miniprogramPagesDetail: >-
+    One dev-only page added (miniprogram/pages/v2-live) and registered last. No existing page was edited:
+    v2-preview is still fixture-driven and its four files are byte-identical to the base.
   defaultRouteChanged: false
   legacyPagesChanged: false
+  tabBarChanged: false
   gameplayRuleSemanticsChanged: false
-  clientSourceChanged: false
-  newMiniprogramRootArtifact: true
-  packagerSeamAdded: false
+  clientSourceChanged: true
+  clientSourceDetail: >-
+    packages/wechat-shell only, which is the client-safe layer the task names. Its runtime closure is
+    unchanged as a set (application-ui, command-wire, wechat-shell).
+  newMiniprogramRootArtifact: false
   newRuntimeDependency: false
   newRuntimeDependencyDetail: >-
-    No dependency was added. package.json still has exactly one devDependency (typescript 5.9.3) and no
-    dependencies key, and no esbuild/webpack/rollup/vite config exists. The generator uses only node:crypto,
-    node:fs, node:module and node:vm - all built-in - and runs at build time. The artifact itself requires
-    only its sibling modules; its runtime closure is exactly command-wire, application-ui and wechat-shell,
-    none of which imports packages/core, packages/content, server, a Node builtin or any third-party module.
-    That is asserted by the UI04A audit, the UI04B artifact audit, and the smoke's loader.
-  artifactDetail: >-
-    The only new path inside miniprogramRoot is miniprogram/runtime/, which is committed generated output.
-    It is not a hand-managed source tree: its file set, its bytes, its require edges, its closure and its
-    provenance digests are all pinned by tests, and any deviation fails the freshness check.
+    No dependency added. devDependencies is still exactly typescript 5.9.3, there is no dependencies key,
+    and no bundler config exists. The new test uses node:vm only.
 
 contractExtension:
   required: false
-  detail: No contract or public ViewModel field changed; .codex/contracts/** is untouched.
-
-environmentNoise:
-  - suite: import-boundary and replay
-    failures:
-      - "tests/import-boundary.test.mjs: 'clean Core passes the import boundary'"
-      - "tests/import-boundary.test.mjs: 'forbidden Core fixture fails the import boundary'"
-      - "tests/replay.test.mjs: 'replay CLI returns the verified final hash'"
-    error: "spawnSync <node.exe> EBUSY"
-    classification: environment-only
-    proofOne: >-
-      The exact three failures were reproduced on the UNTOUCHED task base. "git archive
-      4bad4707b4f2e6eddb1a568f25fb03edb8d9a67e | tar -x -C .b2base/base" produced a pristine tree with no
-      nested .git; "npm test" inside it returned 409 tests / 406 pass / 3 fail with "not ok 105",
-      "not ok 106" and "not ok 225" and a byte-identical error string
-      "spawnSync C:/Users/Administrator/.workbuddy/binaries/node/versions/22.22.2-3/node.exe EBUSY" at the
-      same log line as in the task tree. The task tree returns the same three failures at the same numbers
-      with the same text.
-    proofTwo: >-
-      Each underlying tool succeeds when invoked directly from the shell. (1) "node
-      tools/check-import-boundaries.mjs" exits 0 printing "Core import boundary: PASS", and its negative
-      control "node tools/check-import-boundaries.mjs --root tests/fixtures/core-forbidden" exits 1
-      printing "forbidden.ts: forbidden import ../../../packages/platform-contract/src/index.ts" on stderr -
-      so the audit is still meaningful. (2) For tools/replay.mjs the blocked in-process call was replaced by
-      a throwaway harness at .b2base/replay-harness.mjs whose contentPack/setup/envelope/journey bodies are
-      copied verbatim from tests/replay.test.mjs; it wrote .b2base/replay/input.json and pack.json, and
-      "node tools/replay.mjs .b2base/replay/input.json .b2base/replay/pack.json" then exited 0 printing
-      finalRuleStateHash 978d3e8b3caa46ced017a8e4d593af8a6f11b34107caafb1c1f871ca3a184534 with two
-      checkpoints. ".b2base/replay-verify.mjs" asserts that hash equals both the in-process
-      ruleStateHash(finalState) and the frozen expectation, and that the checkpoint count is 2. Disclosed
-      as a substitute for the blocked in-process call, not as the original assertion.
-    note: >-
-      The aggregate therefore reports 425 tests / 422 pass / 3 fail. Reported as "green apart from proven
-      environment noise", never as plain green.
+  detail: >-
+    No contract and no PublicViewModel field changed; .codex/contracts/** is untouched. The RPC operations
+    are a client-server transport contract, documented in docs/UI04C_LIVE_CLIENT.md and validated
+    client-side against the existing APP_ERROR_CODES and ViewModel shape; they add no gameplay semantics.
 
 blockers: []
 
 disclosedScopeNotes:
   - >-
-    The optional v2-preview packager seam was NOT used. Adding a second require() to
-    miniprogram/pages/v2-preview/v2-preview.js would break the accepted checkFixtureRequire contract
-    asserted by tests/ui02r1.test.mjs ("must contain exactly one require() call") and would also change
-    what tests/ui02entry.test.mjs parses. Making that guard green would mean weakening an accepted guard,
-    which is outside this task's allowedScope. The parameter is explicitly conditional ("if v2-preview is
-    touched"), so the task is satisfied without it; the doc records the decision and the mechanical
-    properties that are delivered instead.
+    The 2.0 cloud backend does not exist yet. "tests/ui04c.test.mjs" therefore supplies the fake: an
+    injected callFunction that forwards to the real CommandGateway. GatewayApplicationTransport.createRunOffer
+    still rejects with "A11 transport implements sendCommand only", so createRunOffer is implemented inside
+    the fake exactly as docs/UI04C_LIVE_CLIENT.md section 7 specifies - that section is the UI04D spec.
   - >-
-    No miniprogram page loads the runtime after UI04B. That is deliberate - page wiring is UI04C - and it is
-    asserted positively by a test, so UI04C cannot wire a page without changing an explicit assertion.
+    v2-live uses a dev-only local player id ("tianfu2:dev-player-id"). It is a client-side label for the
+    envelope's playerId field; no authentication is implied, and the page says so in a comment. Real
+    identity is a later task.
   - >-
-    docs/dev-status.md was NOT updated. Its lastReviewedCommit is the controller's bookkeeping and updating
-    it is not in this task's allowedScope; docs/UI04B_WECHAT_RUNTIME_ARTIFACT.md carries the task-specific
-    documentation instead.
+    Six inherited assertions outside the fast-lane list were updated, not weakened: the live page is the
+    only runtime consumer, app.json is the base bytes plus exactly one appended route, the artifact must
+    name no platform global (rather than never contain the token callFunction), command-wire's unreachable
+    control must cut both incoming edges, and the wechat-shell base digest is re-based with the reason
+    recorded in tests/ui02r1.test.mjs's header, in the style UI03 and UI04A already used.
   - >-
-    miniprogram/runtime/ is committed generated output inside miniprogramRoot. The repository already
-    commits one such artifact (miniprogram/pages/v2-preview/v2-fixtures.js, generated by
-    tools/ui02-preview-fixture-module.mjs), so this follows an accepted precedent rather than introducing a
-    new policy.
+    docs/dev-status.md was NOT updated. It is the controller's bookkeeping and updating it is outside this
+    task's allowedScope; docs/UI04C_LIVE_CLIENT.md carries the task documentation.
   - >-
-    The generated files are not byte-stable across Node major versions, because Node's type stripper decides
-    how much whitespace replaces erased type syntax. The freshness check treats any such change as STALE,
-    which is the correct conservative behaviour: a Node upgrade requires a reviewed
-    "npm run ui04b:artifact:write". The check's failure message names the first differing line. No Node
-    version is embedded in the artifact bytes, so the artifact does not churn merely because a different
-    Node ran the check.
-  - >-
-    The artifact keeps the accepted sources' ES2022 private class fields and private methods (the transform
-    does not rewrite them). Whether the WeChat DevTools enhanced compiler accepts them cannot be proven in
-    this repository, which has no WeChat packager; it is listed as manual DevTools item 2 in
-    docs/UI04B_WECHAT_RUNTIME_ARTIFACT.md and is NOT claimed as verified.
+    The page computes no gameplay, but "no gameplay" is asserted by source inspection (no Math.random, no
+    arithmetic over a projected gameplay value, no Core/Content/server import) plus behavioural assertions
+    (an unprojected action is refused, a disabled breakthrough is refused, the option list and risk tiers
+    equal the server's). It is not proven by exhaustively enumerating every expression.
 
 toolingObservations:
-  - topic: Node's built-in TypeScript type stripper is usable as a zero-dependency derivation path
+  - topic: When git cannot reach github.com, a remote commit can be reconstructed exactly from the REST API
     observation: >-
-      Node 22.22.2 exposes module.stripTypeScriptTypes(code, { mode: "strip", sourceUrl }) from node:module
-      WITHOUT any CLI flag; it only prints an ExperimentalWarning. It is the same code path Node uses to
-      execute this repository's .ts fixtures directly, so it can derive a JavaScript artifact from accepted
-      TypeScript in a repo that has no node_modules, with no compiler or bundler dependency.
+      This session's proxy blocked git's TLS handshake to github.com (11 straight 502s on ls-remote, and
+      http.sslBackend=openssl did not help) while curl reached api.github.com and raw.githubusercontent.com
+      normally. "ls-remote" eventually succeeded on attempt 18, but no fetch or clone was possible for a long
+      time. The remote commit can still be obtained byte-exactly: read the commit object from
+      /repos/<owner>/<repo>/commits/<sha> (tree SHA, parent, author/committer name+email+epoch), read
+      /compare/<base>...<head> for the changed file list, fetch each file's bytes, apply them over a
+      "git read-tree -u --reset <parent>" checkout, then confirm with "git write-tree".
     evidence: >-
-      A node --no-warnings -e probe on Node v22.22.2 printed "has stripTypeScriptTypes: function" and
-      stripped "export const a = 1 as const;", "import type", "export type", "readonly #p: number;" and a
-      generic class correctly. Verified end to end in tools/ui04b-wechat-runtime-artifact.mjs.
+      write-tree returned 0fea66a8e920511f9dc0974cd73db1c62d68428d, identical to the API's tree SHA. The
+      commit object was then rebuilt by hand and "git hash-object -t commit -w" produced
+      9c1d57504910ec913be542a0e1802a994a9afb8e - the dispatch SHA - after several candidate encodings were
+      tried (the only variables were the trailing newline on the message and the timezone, "+0000").
     impact: >-
-      Any future task that must emit WeChat-loadable JavaScript from TypeScript here can reuse this instead
-      of adding esbuild/webpack/rollup or requiring an npm install.
+      A blocked git transport no longer has to stall a dispatch-driven task, and real-ancestry history is
+      still achievable.
     workaround: >-
-      mode "strip" refuses TypeScript-only syntax that needs real transformation (enums, namespaces,
-      parameter properties); use mode "transform" only when a source genuinely needs it. The stripper also
-      appends a "//# sourceURL=<source path>" marker, which the generator removes because that path does not
-      exist inside the miniprogram package.
-  - topic: stripTypeScriptTypes output is Node-version sensitive, so freshness must be strict
+      Node cannot spawn git in this sandbox (documented EBUSY), so generate candidate commit objects to
+      files with Node and hash them from the shell with "git hash-object -t commit <file>". Keep retrying
+      ls-remote in the background in parallel: it is still the authoritative confirmation.
+  - topic: JSON.stringify(value, Object.keys(value).sort()) is not a canonical form
     observation: >-
-      The amount of whitespace that replaces erased type syntax is an implementation detail of the stripper;
-      two Node versions can produce different bytes from identical input.
+      The second argument to JSON.stringify is a property allow-list, not a sort order, and it applies at
+      every nesting level. Passing a top-level key list therefore silently drops all nested keys, so two
+      different tabBar objects compared EQUAL.
+    evidence: >-
+      tools/route-guard.mjs's "tabBar changed" negative control was green for the wrong reason - it reported
+      no violation for a mutated tabBar - until the comparator was made recursive. The suite caught it
+      because the control asserts the audit can fail.
     impact: >-
-      A Node upgrade makes the committed artifact STALE. That is the desired conservative behaviour, but it
-      must be expected rather than diagnosed as a hand edit.
+      Any future "is this config unchanged" check that uses this shortcut is a fake gate.
     workaround: >-
-      Regenerate with "npm run ui04b:artifact:write" after a Node upgrade and review the whitespace-only
-      diff. The freshness check reports the first differing line, and no Node version or generator hash is
-      embedded in the artifact bytes, so a different Node running the CHECK does not by itself cause churn.
-  - topic: node:vm CommonJS module loading - one context and a wrapper function, not a mutated context
+      Write an explicitly recursive canonicaliser (arrays in order, object keys sorted) - implemented as
+      stable() in tools/route-guard.mjs.
+  - topic: .codex/context.mjs rejects the fast-lane task field
     observation: >-
-      The straightforward recipe of setting context.module / context.exports / context.require and calling
-      vm.runInContext(source) breaks for a module graph: a nested require overwrites the outer module
-      binding, so the parent module's trailing "module.exports = ..." throws ReferenceError.
-    evidence: >-
-      Hit while first implementing tools/ui04b-wechat-runtime-smoke.mjs; the failure surfaced as
-      "ReferenceError: module is not defined".
-    workaround: >-
-      Compile the source once inside the context as "(function (exports, module, require) { ... })" with
-      vm.runInContext, then invoke the returned function with the host module object. Top-level var/function
-      declarations stay module-scoped, instanceof stays consistent within the realm, and no context binding
-      has to be restored. Implemented in loadRuntimeArtifact().
-  - topic: Cross-realm values break prototype-based validation and strict equality in vm-based tests
-    observation: >-
-      A generated CommonJS module validated inside a vm realm rejects host-realm literals when the code
-      checks Object.getPrototypeOf(value) !== Object.prototype - the command wire codec does exactly that
-      for envelopes. Separately, assert.deepStrictEqual fails across realms even for identical contents.
-    evidence: >-
-      Feeding a host-realm envelope to the generated codec produced "envelope: must be a plain object" while
-      the equivalent TS module accepted it.
-    workaround: >-
-      Re-materialise host values INSIDE the realm with vm.runInContext("(JSON.parse(<json>))", context)
-      before feeding them to generated code, and normalise realm values back with
-      JSON.parse(JSON.stringify(x)) before comparing. Both patterns are implemented in
-      tools/ui04b-wechat-runtime-smoke.mjs. Do not conclude the artifact is broken - a real mini program is
-      one realm.
-  - topic: A line-oriented code scanner must compute the first code character per line
-    observation: >-
-      Using a "lineHasCode" flag that is reset when the scanner meets a newline misses every export that
-      follows a block comment, because the block-comment skip consumes up to the newline and the loop then
-      steps past it without resetting the flag. The result was a generated file that still contained
-      "export" statements.
-    evidence: >-
-      The first generator run failed with "miniprogram/runtime/command-wire.js: generated code does not parse
-      as JavaScript (Unexpected token 'export')" on Node v22.22.2; the first module headings after a JSDoc
-      block were miss-detected.
-    workaround: >-
-      Build a comment/string mask over the whole source, then for each line find the first index with
-      mask === 1 and test the token there. Implemented as moduleHeadings() in
-      tools/ui04b-wechat-runtime-artifact.mjs. The general lesson is worth keeping: compile every generated
-      file with vm.Script before writing it.
-  - topic: source.replace() negative controls must assert the anchor exists
-    observation: >-
-      Two negative controls silently did nothing. A mutation targeting the string "var APP_ERROR_CODES"
-      never applied, because the type stripper removes the "export" keyword and the generated declaration is
-      "const APP_ERROR_CODES = [", so the control passed for the wrong reason until the missing anchor was
-      noticed. Separately, a static facade-export parser that matched only the "module.exports = { ... }"
-      literal could not see a later "module.exports.name = ..." assignment, so a grown-surface control was
-      not detected.
-    evidence: >-
-      Both were assert failures inside tests/ui04b.test.mjs during this task's own development, both fixed
-      before the result was written.
-    workaround: >-
-      Every surgical mutation in tests/ui04b.test.mjs goes through replaceOnce()/withoutRequire(), which
-      assert the anchor exists first. facadeExportKeys() in tools/ui04b-wechat-runtime-audit.mjs parses both
-      publication forms. Consider adopting both patterns in future negative-control tasks.
-  - topic: checkFixtureRequire makes the v2-preview packager seam unaddable without weakening a guard
-    observation: >-
-      tools/ui02-preview-fixture-module.mjs checkFixtureRequire requires EXACTLY ONE require() call in
-      miniprogram/pages/v2-preview/v2-preview.js, and tests/ui02r1.test.mjs asserts its ok flag directly;
-      tests/ui02entry.test.mjs also parses that file's require arguments.
+      "node .codex/context.mjs UI04C" fails with "MALFORMED_TASK: .codex/tasks/UI04C.yaml:4 unknown field
+      verificationProfile". The loader's schema predates verificationProfile, so no task that uses the new
+      profile can be loaded through it.
     impact: >-
-      Any future task that wants a second require in that page (for example UI04C wiring the runtime) must
-      update those accepted assertions deliberately and disclose it. It cannot happen as a side effect.
-    workaround: none needed; recorded so the next task does not rediscover it.
-  - topic: .b2base is excluded through .git/info/exclude, not .gitignore
-    observation: >-
-      The shared control directory is excluded by the line ".b2base/" in <common>/.git/info/exclude, and
-      "git check-ignore -v .b2base" confirms it. It therefore never appears in git status and cannot leak
-      into a task commit.
+      Every fast-lane task will hit this until the loader's allow-list grows. It is not a blocker (the task
+      file and its contracts can be read directly), but it must be disclosed rather than silently skipped.
     workaround: >-
-      Keep using .b2base for scratch trees, logs and throwaway harnesses. "git archive <base> | tar -x -C
-      .b2base/base" remains the safest untouched-base reproduction recipe and produced no nested .git.
-  - topic: Environment details observed this session
+      Read .codex/tasks/<id>.yaml and the required contracts directly from the reconstructed commit, as this
+      task did. Adding verificationProfile to the loader's known fields is a one-line tooling fix if the
+      controller wants it.
+  - topic: A route guard must not hold accepted legacy 1.0 pages to the 2.0 file contract
     observation: >-
-      The proxy came from HTTPS_PROXY at 127.0.0.1:49484 (a new port; earlier sessions saw 18036, 23843,
-      46226 and 47905). git ls-remote, git fetch and "npx --yes --package typescript@5.9.3" all succeeded on
-      the first attempt. "npm test" runs fine directly from the Bash tool; no npm.cmd path was needed. Node
-      is v22.22.2. The shared .git lives at C:/Users/Administrator/Documents/GitHub/tianfu-sim/.git and the
-      worktree git dir is .git/worktrees/dev-tianfu-2-0-7436a558. "git read-tree -u --reset <sha>" plus a
-      self-written worktree HEAD file again positioned the tree without any ref write, and "git write-tree"
-      matched "baseCommit^{tree}" exactly.
-  - topic: Baseline aggregate counts are stable across UI04A and UI04B
-    observation: >-
-      On an untouched base tree extracted from 4bad4707, "npm test" reports 409 tests / 406 pass / 3 fail
-      with failures at test numbers 105, 106 and 225 - identical to the counts UI04A recorded for the same
-      commit. Reuse this as the reference when checking whether a new task's delta is exactly its own tests.
+      miniprogram/pages/game has no game.js (only game.wxml and game_data.js) and is still registered, so
+      "every registered page must have a .js" fails on an accepted tree that is explicitly out of scope.
+    impact: >-
+      A naively written route guard reports a pre-existing legacy condition as a violation and blocks every
+      later route change.
+    workaround: >-
+      Require .wxml for every registered page and .js only for the pages this project owns (pages/v2-*) -
+      implemented in tools/route-guard.mjs, with the reason recorded in the check's comment.
 
 recommendedCommitMessage: >-
-  UI04B: generate a deterministic WeChat-loadable client runtime artifact under miniprogram/
+  UI04C: wire the live WeChat client - injected cloud transport, run bootstrap and the dev-only v2-live page

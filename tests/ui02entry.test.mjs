@@ -173,7 +173,10 @@ test("UI02ENTRY_reachable: the flow is walkable inside the preview without chang
   // the app route is untouched: main entry still pages/start/start, preview still registered last
   const app = readJson("miniprogram/app.json");
   assert.equal(app.pages[0], "pages/start/start");
-  assert.equal(app.pages[app.pages.length - 1], "pages/v2-preview/v2-preview");
+  // UI04C appends its dev-only live page LAST, behind the accepted preview, so the preview stays
+  // registered but is no longer the final entry.
+  assert.equal(app.pages.slice(0, -1).includes("pages/v2-preview/v2-preview"), true, "the preview must stay registered");
+  assert.equal(app.pages[app.pages.length - 1], "pages/v2-live/v2-live");
   assert.deepEqual(app.tabBar.list.map((entry) => entry.pagePath), ["pages/game/game", "pages/rank/rank"]);
 });
 
@@ -584,7 +587,16 @@ test("UI02ENTRY_gates: the structural audits are green and the generated fixture
 test("UI02ENTRY_scope: the default route and the 1.0 pages are byte-equivalent to the task base", () => {
   // default route / route registration (the preview is still last and still not the default)
   assert.equal(readJson("miniprogram/app.json").pages[0], "pages/start/start");
-  assert.equal(treeDigestOf(["miniprogram/app.json"]), "222ff69299f6e8c800a4e9a5ef334cfeb67a28ace5e55405cee050105e3fb47f");
+  // UI04C appends its dev-only live page last, so the manifest is expected to change by exactly one
+  // route: stripping that route must restore the accepted bytes.
+  const raw = read("miniprogram/app.json");
+  const stripped = raw.replace(',\n    "pages/v2-live/v2-live"', "");
+  assert.notEqual(stripped, raw, "the strip must really remove the appended live route");
+  assert.equal(
+    createHash("sha256").update("miniprogram/app.json").update(":").update(createHash("sha256").update(stripped).digest("hex")).update("\n").digest("hex"),
+    "222ff69299f6e8c800a4e9a5ef334cfeb67a28ace5e55405cee050105e3fb47f",
+    "miniprogram/app.json must differ from the task base only by the appended v2-live route"
+  );
   // the 1.0 start page is untouched and knows nothing about the 2.0 entry flow
   assert.equal(
     treeDigestOf(["miniprogram/pages/start/start.js", "miniprogram/pages/start/start.wxml"]),

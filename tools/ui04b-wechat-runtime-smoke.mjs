@@ -40,6 +40,10 @@ import { ARTIFACT_PATHS, FACADE_PATH, REPO_ROOT, RUNTIME_DIR } from "./ui04b-wec
 /**
  * The exact public surface the artifact is allowed to publish, hard-coded here so neither the generator
  * nor the test can widen the surface by agreeing with itself.
+ *
+ * UI04C (the live client slice) grows it by the three entries that are the live seam: the injected
+ * cloud transport adapter, the run bootstrap and the transport protocol error. A live page must be able
+ * to reach exactly those three and nothing else.
  */
 export const EXPECTED_PUBLIC_API = [
   "APP_ERROR_CODES",
@@ -48,7 +52,10 @@ export const EXPECTED_PUBLIC_API = [
   "IntentUnavailableError",
   "RetryUnavailableError",
   "SubmissionLockedError",
+  "TransportProtocolError",
   "WeChatRunController",
+  "bootstrapWeChatRun",
+  "createWeChatCloudTransport",
   "createWeChatPlatformStorage"
 ];
 
@@ -228,6 +235,9 @@ export async function runSmoke({ root = REPO_ROOT } = {}) {
     assert.deepEqual([...Object.keys(facade)].sort(), EXPECTED_PUBLIC_API);
     assert.equal(typeof facade.WeChatRunController, "function");
     assert.equal(typeof facade.createWeChatPlatformStorage, "function");
+    assert.equal(typeof facade.createWeChatCloudTransport, "function");
+    assert.equal(typeof facade.bootstrapWeChatRun, "function");
+    assert.equal(typeof facade.TransportProtocolError, "function");
     assert.equal(Array.isArray(facade.APP_ERROR_CODES), true);
     assert.deepEqual(plain(facade.APP_ERROR_CODES), plain(acceptedWire.APP_ERROR_CODES));
     assert.equal(typeof facade.CommandValidationError, "function");

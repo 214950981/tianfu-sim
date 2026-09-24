@@ -3,7 +3,8 @@
     "pages/start/start",
     "pages/game/game",
     "pages/rank/rank",
-    "pages/v2-preview/v2-preview"
+    "pages/v2-preview/v2-preview",
+    "pages/v2-live/v2-live"
   ],
   "window": {
     "navigationBarTextStyle": "white",

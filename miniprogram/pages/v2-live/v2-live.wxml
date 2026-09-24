@@ -1,0 +1,194 @@
+<!-- UI04C dev-only live client.
+
+     One screen, four surfaces read straight out of the authoritative server projection:
+       - 择命   (DESTINY_OFFER)  : the offered candidates, exactly as the server published them
+       - 在世   (RUN_HOME)       : public vitals, the four projected core actions, a projected
+                                   breakthrough action when the server enables one, and the read-only
+                                   LIFE_ARCHIVE side page
+       - 抉择   (EVENT / SPECIAL_NODE) : the current interaction, its public body and its options with
+                                   the server-built riskPresentation
+       - 终局   (ENDING / LIFE_BOOK / REBIRTH_RESULT / NEXT_LIFE) : a bounded note only
+     plus the client's own transport state (loading / submitting / retry / conflict / fatal) and a
+     bounded, staged diagnostic when the session cannot be created.
+
+     No gameplay value is computed here: every label resolves a server-projected key, and every
+     submission is an intent that CommandSubmissionController turns into an envelope. -->
+<view class="screen">
+
+  <view class="surface">
+
+    <view wx:if="{{stage === 'loading'}}" class="panel">
+      <view class="panel-title">正在连接服务器</view>
+      <view class="panel-note">建立此生命局，请稍候…</view>
+    </view>
+
+    <view wx:elif="{{stage === 'error'}}" class="panel">
+      <view class="panel-title">无法进入此世</view>
+      <view class="fail-row">
+        <view class="fail-key">阶段</view>
+        <view class="fail-value">{{failure.stage}}</view>
+      </view>
+      <view class="fail-row">
+        <view class="fail-key">代码</view>
+        <view class="fail-value">{{failure.code}}</view>
+      </view>
+      <view class="fail-row" wx:if="{{failure.detail}}">
+        <view class="fail-key">详情</view>
+        <view class="fail-value">{{failure.detail}}</view>
+      </view>
+      <view class="fail-row">
+        <view class="fail-key">模块</view>
+        <view class="fail-value">{{failure.specifier}}</view>
+      </view>
+      <view class="panel-note">{{failure.hint}}</view>
+      <view class="cta" bindtap="onReload">重新连接</view>
+    </view>
+
+    <block wx:else>
+      <view class="topline">
+        <view class="topline-name">{{vm.runName}}</view>
+        <view class="topline-meta">{{vm.pageStateLabel}} · 第 {{vm.stateVersion}} 版</view>
+      </view>
+
+      <view wx:if="{{vm.banner}}" class="banner banner-{{vm.banner.kind}}">
+        <view class="banner-text">{{vm.banner.text}}</view>
+        <view class="banner-actions">
+          <view wx:if="{{vm.banner.kind === 'retry'}}" class="banner-action" bindtap="onRetry">重试</view>
+          <view wx:if="{{vm.banner.kind === 'conflict'}}" class="banner-action" bindtap="onReconfirm">重新确认</view>
+          <view wx:if="{{vm.banner.kind === 'fatal'}}" class="banner-action" bindtap="onReload">重新连接</view>
+        </view>
+      </view>
+
+      <!-- ------------------------------------------------ 择命 DESTINY_OFFER -->
+      <view wx:if="{{vm.isOffer}}" class="block">
+        <view class="block-title">{{vm.offerTitle}}</view>
+        <scroll-view class="bounded" scroll-y="true">
+          <view wx:for="{{vm.offerCandidates}}" wx:key="optionId" class="card">
+            <view class="card-title">{{item.title}}</view>
+            <view wx:for="{{item.rows}}" wx:for-item="row" wx:key="label" class="card-row">
+              <view class="card-key">{{row.label}}</view>
+              <view class="card-value">{{row.value}}</view>
+            </view>
+            <view class="cta" data-option-id="{{item.optionId}}" bindtap="onOption">择定此命</view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <!-- ------------------------------------------------ 在世 RUN_HOME -->
+      <view wx:elif="{{vm.isHome}}" class="block">
+        <view class="vitals">
+          <view class="vital">
+            <view class="vital-key">寿元</view>
+            <view class="vital-value">{{vm.age}} / {{vm.maxAge}}</view>
+          </view>
+          <view class="vital">
+            <view class="vital-key">境界</view>
+            <view class="vital-value">{{vm.realmLabel}}</view>
+          </view>
+          <view class="vital">
+            <view class="vital-key">修为</view>
+            <view class="vital-value">{{vm.cultivation}} / 10000</view>
+          </view>
+          <view class="vital">
+            <view class="vital-key">灵石</view>
+            <view class="vital-value">{{vm.spiritStone}}</view>
+          </view>
+        </view>
+
+        <view class="actions">
+          <view wx:for="{{vm.coreActions}}" wx:key="intentId" class="action {{item.enabled ? 'is-on' : 'is-off'}}" data-intent-id="{{item.intentId}}" bindtap="onCoreAction">
+            {{item.label}}
+          </view>
+        </view>
+        <view class="actions-note">闭关 · 游历 · 入世 · 追索</view>
+
+        <view wx:if="{{vm.specialActions.length > 0}}" class="actions">
+          <view wx:for="{{vm.specialActions}}" wx:key="intentId" class="cta {{item.enabled ? '' : 'is-off'}}" data-intent-id="{{item.intentId}}" bindtap="onSpecialAction">
+            {{item.label}}
+          </view>
+        </view>
+
+        <view class="cta ghost" bindtap="onOpenArchive">打开生平录</view>
+      </view>
+
+      <!-- ------------------------------------------------ 抉择 EVENT / SPECIAL_NODE -->
+      <view wx:elif="{{vm.isDecision}}" class="block">
+        <view class="block-title">{{vm.decisionTitle}}</view>
+        <view wx:if="{{vm.decisionBody}}" class="body-text">{{vm.decisionBody}}</view>
+        <scroll-view class="bounded" scroll-y="true">
+          <view wx:for="{{vm.options}}" wx:key="optionId" class="card">
+            <view class="card-main">
+              <view class="card-title">{{item.label}}</view>
+              <view wx:if="{{item.riskLabel}}" class="risk {{item.riskClass}}">
+                <text class="risk-label">{{item.riskLabel}}</text>
+                <text wx:if="{{item.fatal}}" class="risk-fatal">可致死</text>
+              </view>
+            </view>
+            <view class="cta" data-option-id="{{item.optionId}}" bindtap="onOption">就此抉择</view>
+          </view>
+        </scroll-view>
+      </view>
+
+      <!-- ------------------------------------------------ 终局 -->
+      <view wx:elif="{{vm.isTerminal}}" class="block">
+        <view class="block-title">{{vm.pageStateLabel}}</view>
+        <view class="body-text">终局链路（人生书 / 转生结果 / 来世）由后续任务实现，本页面只呈现服务器给出的公开状态。</view>
+      </view>
+
+      <view wx:else class="block">
+        <view class="block-title">{{vm.pageStateLabel}}</view>
+        <view class="body-text">当前页面状态由服务器投影给出，本页面不为它提供本地操作。</view>
+      </view>
+
+      <view wx:if="{{vm.locked}}" class="busy">处理中…</view>
+    </block>
+  </view>
+
+  <!-- ------------------------------------------------ 生平录 LIFE_ARCHIVE (本地只读侧页) -->
+  <view wx:if="{{stage === 'ready' && vm.archiveOpen}}" class="overlay">
+    <view class="overlay-head">
+      <view class="overlay-title">生平录</view>
+      <view class="overlay-close" bindtap="onCloseArchive">关闭</view>
+    </view>
+    <scroll-view class="overlay-body" scroll-y="true">
+      <view class="archive-section">
+        <view class="archive-section-title">过往</view>
+        <view wx:for="{{vm.archive.history}}" wx:key="entryId" class="archive-row">
+          <view class="archive-kind">{{item.kindLabel}}</view>
+          <view class="archive-main">
+            <view class="archive-title">{{item.title}}</view>
+            <view class="archive-summary">{{item.summary}}</view>
+          </view>
+        </view>
+      </view>
+      <view class="archive-section">
+        <view class="archive-section-title">因果</view>
+        <view wx:for="{{vm.archive.causes}}" wx:key="publicId" class="archive-row">
+          <view class="archive-kind">{{item.level}}</view>
+          <view class="archive-main">
+            <view class="archive-title">{{item.title}}</view>
+            <view class="archive-summary">{{item.summary}}</view>
+          </view>
+        </view>
+      </view>
+      <view class="archive-section">
+        <view class="archive-section-title">道途</view>
+        <view wx:for="{{vm.archive.builds}}" wx:key="buildId" class="archive-row">
+          <view class="archive-kind">{{item.dominant ? '主' : '次'}}</view>
+          <view class="archive-main">
+            <view class="archive-title">{{item.label}}</view>
+          </view>
+        </view>
+      </view>
+      <view class="archive-section">
+        <view class="archive-section-title">故人</view>
+        <view wx:for="{{vm.archive.people}}" wx:key="npcId" class="archive-row">
+          <view class="archive-kind">{{item.knownStatus}}</view>
+          <view class="archive-main">
+            <view class="archive-title">{{item.displayName}}</view>
+          </view>
+        </view>
+      </view>
+    </scroll-view>
+  </view>
+</view>

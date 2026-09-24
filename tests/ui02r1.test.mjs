@@ -86,6 +86,18 @@ const readJson = (relative) => JSON.parse(read(relative));
  * `packages/platform-contract/src`, `server/src`, Content, the 1.0 pages and the preview surface are
  * byte-identical, which is the evidence that no gameplay, ViewModel or presentation code moved.
  *
+ * UI04C is such a task for TWO entries, both updated on purpose and disclosed in its LAST_RESULT. It
+ * wires the live client: an injected WeChat cloud-call transport, a strict `createRunOffer` bootstrap,
+ * the DESTINY_OFFER -> START_RUN derivation and the dev-only `miniprogram/pages/v2-live` page.
+ *   - `packages/wechat-shell/src` — the transport adapter, the strict RPC response validators, the run
+ *     bootstrap and the START_RUN derivation were added, and `WeChatDecisionView` now passes the
+ *     authoritative interaction body through. Nothing that already existed was redefined: the intent
+ *     mapping in this very suite still holds, and ui03/ui04a/ui04b/ui04c re-pin its behaviour;
+ *   - `miniprogram/app.json` — no longer byte-pinned here, because UI04C appends one route by design.
+ *     `UI02R1_route` instead proves the manifest is the accepted bytes plus exactly that one route.
+ * Core, Content, server ViewModel, application-ui, platform-contract and the 1.0 pages stay
+ * byte-identical, which is what still makes this digest a real scope guard rather than a rubber stamp.
+ *
  * `files` is the exact base file list (derived from `git ls-tree -r HEAD`). Pinning the list, not just
  * a count, is what makes the digest fail closed on any addition inside a pinned tree while still
  * tolerating the DevTools scratch files listed in DEVTOOLS_ARTIFACTS.
@@ -107,10 +119,6 @@ const BASE_TREE = {
       "miniprogram/pages/rank/rank.wxss"
     ],
     digest: "3171b3fbbb94368e7ed3df556b1cfb58379911e1bf2d617e19554c37c5c0d605"
-  },
-  "miniprogram/app.json": {
-    files: ["miniprogram/app.json"],
-    digest: "222ff69299f6e8c800a4e9a5ef334cfeb67a28ace5e55405cee050105e3fb47f"
   },
   "miniprogram/app.wxss": {
     files: ["miniprogram/app.wxss"],
@@ -177,7 +185,7 @@ const BASE_TREE = {
   },
   "packages/wechat-shell/src": {
     files: ["packages/wechat-shell/src/index.ts"],
-    digest: "7977af8d4581fd92dbce318b390cc20654548ee374d1be9f59f0c5c33b544830"
+    digest: "abc04263b6cb4660a7e5595b903df889220db5ee0786659ac15752eb9f4e13b1"
   },
   "packages/application-ui/src": {
     files: ["packages/application-ui/src/index.ts"],
@@ -725,10 +733,23 @@ test("UI02R1_scope: no server / shell / application / core / content vocabulary 
 
 test("UI02R1_route: the preview route registration and default page are untouched", () => {
   const app = readJson("miniprogram/app.json");
-  assert.equal(app.pages[app.pages.length - 1], "pages/v2-preview/v2-preview");
+  // UI04C appends its dev-only live page LAST, behind the accepted preview, so the preview stays
+  // registered but is no longer the final entry.
+  assert.equal(app.pages.slice(0, -1).includes("pages/v2-preview/v2-preview"), true, "the preview must stay registered");
+  assert.equal(app.pages[app.pages.length - 1], "pages/v2-live/v2-live");
   assert.equal(app.pages[0], "pages/start/start");
   assert.equal(app.pages.filter((page) => page.includes("v2-preview")).length, 1);
   assert.deepEqual(app.tabBar.list.map((entry) => entry.pagePath), ["pages/game/game", "pages/rank/rank"]);
+  // The manifest is expected to change by exactly one appended route; stripping it must restore the
+  // accepted UI02R1 bytes, which pins window, tabBar, style and sitemapLocation too.
+  const raw = read("miniprogram/app.json");
+  const stripped = raw.replace(',\n    "pages/v2-live/v2-live"', "");
+  assert.notEqual(stripped, raw, "the strip must really remove the appended live route");
+  assert.equal(
+    createHash("sha256").update("miniprogram/app.json").update(":").update(createHash("sha256").update(stripped).digest("hex")).update("\n").digest("hex"),
+    "222ff69299f6e8c800a4e9a5ef334cfeb67a28ace5e55405cee050105e3fb47f",
+    "miniprogram/app.json must differ from the UI02R1 task base only by the appended v2-live route"
+  );
 });
 
 // ---------------------------------------------------------------- one-screen policy

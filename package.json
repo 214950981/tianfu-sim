@@ -5,7 +5,7 @@
   "scripts": {
     "lint": "node tools/check-import-boundaries.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "node --test tests/core-smoke.test.mjs tests/import-boundary.test.mjs tests/rng-numeric.test.mjs tests/state.test.mjs tests/command.test.mjs tests/reducer.test.mjs tests/content-registry.test.mjs tests/destiny-offer.test.mjs tests/event-dsl.test.mjs tests/cause.test.mjs tests/replay.test.mjs tests/server-gateway.test.mjs tests/viewmodel-ui.test.mjs tests/phase1-repair-e2e.test.mjs tests/progression.test.mjs tests/risk.test.mjs tests/build.test.mjs tests/npc.test.mjs tests/director.test.mjs tests/recurrence.test.mjs tests/loopfix02b2.test.mjs tests/loopfix02b3.test.mjs tests/loopfix02c.test.mjs tests/ui02.test.mjs tests/ui02r1.test.mjs tests/ui02r2.test.mjs tests/ui02r2a2.test.mjs tests/ui02entry.test.mjs tests/ui02copy.test.mjs tests/ui03.test.mjs tests/ui04a.test.mjs tests/ui04b.test.mjs",
+    "test": "node --test tests/core-smoke.test.mjs tests/import-boundary.test.mjs tests/rng-numeric.test.mjs tests/state.test.mjs tests/command.test.mjs tests/reducer.test.mjs tests/content-registry.test.mjs tests/destiny-offer.test.mjs tests/event-dsl.test.mjs tests/cause.test.mjs tests/replay.test.mjs tests/server-gateway.test.mjs tests/viewmodel-ui.test.mjs tests/phase1-repair-e2e.test.mjs tests/progression.test.mjs tests/risk.test.mjs tests/build.test.mjs tests/npc.test.mjs tests/director.test.mjs tests/recurrence.test.mjs tests/loopfix02b2.test.mjs tests/loopfix02b3.test.mjs tests/loopfix02c.test.mjs tests/ui02.test.mjs tests/ui02r1.test.mjs tests/ui02r2.test.mjs tests/ui02r2a2.test.mjs tests/ui02entry.test.mjs tests/ui02copy.test.mjs tests/ui03.test.mjs tests/ui04a.test.mjs tests/ui04b.test.mjs tests/ui04c.test.mjs",
     "test:core": "node --test tests/core-smoke.test.mjs",
     "test:boundaries": "node --test tests/import-boundary.test.mjs",
     "test:a02": "node --test tests/rng-numeric.test.mjs",
@@ -63,6 +63,8 @@
     "test:ui04a": "node --test tests/ui04a.test.mjs",
     "ui04a:audit": "node tools/ui04a-client-runtime-audit.mjs",
     "test:ui04b": "node --test tests/ui04b.test.mjs",
+    "test:ui04c": "node --test tests/ui04c.test.mjs",
+    "ui04c:route": "node tools/route-guard.mjs",
     "ui04b:artifact": "node tools/ui04b-wechat-runtime-artifact.mjs",
     "ui04b:artifact:write": "node tools/ui04b-wechat-runtime-artifact.mjs --write",
     "ui04b:audit": "node tools/ui04b-wechat-runtime-audit.mjs",

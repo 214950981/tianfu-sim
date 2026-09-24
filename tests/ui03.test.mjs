@@ -620,7 +620,10 @@ test("UI03_registration: the dedicated suite is registered and the aggregate npm
 test("UI03_scope: the live controller work did not touch the default route or the legacy 1.0 pages", () => {
   const app = JSON.parse(read("miniprogram/app.json"));
   assert.equal(app.pages[0], "pages/start/start");
-  assert.equal(app.pages[app.pages.length - 1], "pages/v2-preview/v2-preview");
+  // UI04C appends its dev-only live page LAST, behind the accepted preview; the default route, the
+  // preview's own registration and the 1.0 tabBar are all still exactly what UI03 accepted.
+  assert.equal(app.pages.includes("pages/v2-preview/v2-preview"), true, "the accepted dev preview must stay registered");
+  assert.equal(app.pages.slice(0, -1).join("|"), ["pages/start/start", "pages/game/game", "pages/rank/rank", "pages/v2-preview/v2-preview"].join("|"));
   assert.deepEqual(app.tabBar.list.map((entry) => entry.pagePath), ["pages/game/game", "pages/rank/rank"]);
   // the neutral layers stay free of any platform global
   for (const file of ["packages/platform-contract/src/index.ts", "packages/core/src/index.ts"]) {

@@ -98,9 +98,15 @@ export const RUNTIME_MODULES = [
 /**
  * The bounded public surface of the artifact, i.e. everything a later live page (UI04C) is allowed to
  * see. Nothing gameplay-shaped is here: the controller orchestrates, the storage adapter binds an
- * injected platform API, and the rest are error types a caller must be able to catch. Widening this
- * list is a deliberate, reviewable act, and `tests/ui04b.test.mjs` hard-codes the same set so the
- * generator cannot widen the surface by itself.
+ * injected platform API, the cloud transport adapter binds an injected cloud-call API, the bootstrap
+ * turns the authoritative `createRunOffer` payload into a session, and the rest are error types a
+ * caller must be able to catch. Widening this list is a deliberate, reviewable act, and
+ * `tests/ui04b.test.mjs` hard-codes the same set so the generator cannot widen the surface by itself.
+ *
+ * UI04C added exactly three entries — `createWeChatCloudTransport`, `bootstrapWeChatRun` and
+ * `TransportProtocolError` — which is the whole live-client seam the page needs. The payload
+ * validators (`parsePublicViewModel`, `parseRunOfferResult`) stay internal: the page never validates a
+ * raw RPC payload itself, the adapters do it at the boundary.
  *
  * `WeChatRunController` also exposes `pageModel()`, which already returns the projected shell model,
  * the core/special intents and the archive view, so those builders are reachable through the controller
@@ -113,7 +119,10 @@ export const FACADE_EXPORTS = [
   { name: "IntentUnavailableError", from: "./wechat-shell.js" },
   { name: "RetryUnavailableError", from: "./wechat-shell.js" },
   { name: "SubmissionLockedError", from: "./wechat-shell.js" },
+  { name: "TransportProtocolError", from: "./wechat-shell.js" },
   { name: "WeChatRunController", from: "./wechat-shell.js" },
+  { name: "bootstrapWeChatRun", from: "./wechat-shell.js" },
+  { name: "createWeChatCloudTransport", from: "./wechat-shell.js" },
   { name: "createWeChatPlatformStorage", from: "./wechat-shell.js" }
 ];
 

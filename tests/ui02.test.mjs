@@ -85,7 +85,10 @@ const fixtures = readJson(FIXTURE_PATH);
 
 test("UI02_route: v2-preview is registered last, is not the default page and is not a tabBar entry", () => {
   const app = readJson("miniprogram/app.json");
-  assert.equal(app.pages[app.pages.length - 1], "pages/v2-preview/v2-preview");
+  // UI04C appends its dev-only live page LAST, behind the accepted preview, so the preview stays
+  // registered but is no longer the final entry.
+  assert.equal(app.pages.slice(0, -1).includes("pages/v2-preview/v2-preview"), true, "the preview must stay registered");
+  assert.equal(app.pages[app.pages.length - 1], "pages/v2-live/v2-live");
   assert.equal(app.pages[0], "pages/start/start");
   assert.equal(app.pages.filter((page) => page.includes("v2-preview")).length, 1);
   const tabPaths = app.tabBar.list.map((entry) => entry.pagePath);
