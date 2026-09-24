@@ -1,0 +1,46 @@
+id: UI04E
+title: UI04E — Terminal Lifecycle / Multi-Life Vertical Slice
+phase: 2
+verificationProfile: fast-lane
+requiredContracts: [.codex/contracts/state.ref,.codex/contracts/command.ref,.codex/contracts/platform.ref,.codex/contracts/viewmodel.ref,.codex/contracts/ui.ref,.codex/contracts/crosslayer.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [packages/core/src/reducer.ts,packages/core/src/state.ts,packages/core/src/risk.ts,server/src/gateway-store.ts,server/src/cloudbase-store.ts,server/src/live-service.ts,server/src/viewmodel.ts,packages/platform-contract/src/index.ts,packages/wechat-shell/src/index.ts,miniprogram/pages/v2-live/v2-live.js,cloudfunctions/tianfu2/index.js,docs/UI04D_CLOUD_BACKEND.md,tests/ui04d.test.mjs]
+allowedScope:
+  - complete the frozen UI terminal sequence ENDING -> LIFE_BOOK -> REBIRTH_RESULT -> NEXT_LIFE as server-authoritative presentation/session orchestration without moving terminal presentation state into gameplay RuleState
+  - add a bounded terminal sidecar to StoredRun or an equivalent server persistence structure that stores only presentation lifecycle stage/version and exactly-once terminal transition receipts; it must not alter replay/canonical gameplay state
+  - when authoritative RuleState is dying or ended and contains ending/death facts, project the live page as ENDING even though gameplay RuleState remains untouched; no empty SPECIAL_NODE dead-end is allowed
+  - extend the public ViewModel contract with the minimum terminal projection needed by UI: authoritative terminal stage plus public ending/life-book/rebirth summary data derived only from already-public facts
+  - LIFE_BOOK must be constructed only from public history public builds met/known people public causes public ending/death and other fields already legal in PublicViewModel; hidden Causes rootSeed RNG state risk check specs internal traces and unrevealed NPC facts remain impossible to access
+  - REBIRTH_RESULT is presentation-only in UI04E: it may summarize the completed life and carry an explicit next-life affordance but must not create new metaCurrency permanent power paid advantage unlock semantics or other progression rules not already defined
+  - add a fourth cloud RPC operation advanceTerminal with request runId terminalTransitionId expectedTerminalStage and action; accepted actions map only ENDING->LIFE_BOOK LIFE_BOOK->REBIRTH_RESULT REBIRTH_RESULT->NEXT_LIFE
+  - persist terminal transition settlement in the same run-document transaction using terminalTransitionId so an exact retry after a post-commit timeout returns the already-settled stage and cannot advance twice; reused id with a different payload fails closed
+  - terminal transitions must enforce trusted OPENID ownership exactly like fetchView/sendCommand and must not leak run existence to another player
+  - terminal transition processing must not invoke the reducer or mutate GameState stateVersion age nodeIndex RNG streams commandLog snapshots causes NPC state resources builds or gameplay history; prove canonical gameplay bytes/hash are unchanged across every pure terminal transition
+  - extend CloudBase store fake harness and generated cloud runtime/artifact for the new sidecar/RPC while preserving deterministic doc access and no where query on the transaction path
+  - extend the client-safe ApplicationTransport and WeChatRunController with terminal navigation methods and retry handling separate from gameplay command submission; do not route terminal navigation through a fake GameCommand or duplicate gameplay command idempotency
+  - v2-live must render ENDING LIFE_BOOK REBIRTH_RESULT NEXT_LIFE as distinct authoritative views using the accepted visual language and must not locally skip/reorder terminal stages
+  - NEXT_LIFE action must rotate the locally persisted bootstrapId once before calling createRunOffer; retries/reloads of that new bootstrap recover the same new run; successful next-life bootstrap yields a new runId under the same authoritative playerId and returns to DESTINY_OFFER
+  - an old completed/dying run must remain immutable after NEXT_LIFE; starting a new run is a new document, not a reset of the prior RuleState
+  - add server/service and committed cloud-host tests that reach a real dying state through the existing reducer using a bounded test offer fixture (for example age close to maxAge) rather than by inventing a client death
+  - prove full path: offered run -> START_RUN -> real action reaches dying -> ENDING -> LIFE_BOOK -> REBIRTH_RESULT -> NEXT_LIFE -> rotate bootstrap -> new DESTINY_OFFER, including exact terminal retry after simulated post-commit timeout and cross-player refusal
+  - regenerate and verify both miniprogram/runtime and cloudfunctions/tianfu2/runtime after source changes
+  - document terminal sidecar schema RPC contract exactly-once rules public-data boundary next-life bootstrap rotation and what remains for UI04FINAL/manual deployment
+  - update package scripts tests contracts where required and LAST_RESULT
+forbiddenScope: [terminal-stage-in-RuleState,terminal-navigation-as-fake-GameCommand,reducer-gameplay-change,RNG-algorithm-change,Director-policy-change,Cause-semantics-change,Progression-balance-change,Risk-balance-change,Build-or-NPC-rule-change,CONTENT01-rebalance,new-metaCurrency,new-permanent-power,new-rebirth-reward-system,daily-challenge,monetization,raw-OPENID-to-client,client-trusted-playerId,default-route-replacement,legacy-1.0-page-change,tabBar-change,real-production-deployment,UI04FINAL,source-branch-push]
+accept:
+  - a-real-reducer-driven-dying-run-projects-ENDING-and-never-an-empty-SPECIAL_NODE-dead-end
+  - terminal-stage-is-server-persisted-outside-RuleState-and-the-public-terminal-projection-contains-only-already-public-facts
+  - advanceTerminal-enforces-ENDING-to-LIFE_BOOK-to-REBIRTH_RESULT-to-NEXT_LIFE-order-and-trusted-owner
+  - terminalTransitionId-is-exactly-once-across-post-commit-timeout-and-cold-start-and-conflicting-reuse-fails-without-advancing
+  - every-pure-terminal-transition-leaves-canonical-GameState-stateVersion-RNG-age-nodeIndex-commandLog-snapshot-and-gameplay-history-byte-identical
+  - LIFE_BOOK-never-projects-hidden-Causes-server-secrets-or-unrevealed-NPC-data
+  - REBIRTH_RESULT-adds-no-new-gameplay-or-meta-reward-semantics
+  - NEXT_LIFE-rotates-bootstrapId-once-and-creates-a-distinct-run-for-the-same-authoritative-player-with-retry-safe-recovery
+  - prior-run-remains-immutable-after-the-new-life-is-created
+  - v2-live-renders-all-four-terminal-stages-and-never-locally-skips-authoritative-stage-order
+  - committed-cloud-and-miniprogram-runtime-artifacts-are-fresh-audited-and-smoke-green
+  - ui04e-ui04d-server-gateway-ui04c-targeted-tests-viewmodel-ui-runtime-audits-typecheck-lint-secret-scan-and-content01-lint-are-green
+  - no-aggregate-npm-test-untouched-base-EBUSY-reproof-or-600-run-is-required-under-fast-lane-when-gameplay-balance-semantics-remain-unchanged
+  - no-default-route-legacy-1-0-production-deployment-daily-challenge-or-monetization-work
+tests: [ui04e,ui04d,server-gateway,ui04c,viewmodel-ui,cloud-runtime-artifact-freshness,cloud-runtime-dependency-audit,cloud-runtime-smoke,ui04b-artifact-freshness,ui04b-artifact-audit,ui04b-smoke,typecheck,lint,secret-scan,content01-lint]

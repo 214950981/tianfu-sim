@@ -1,11 +1,11 @@
 version: 1
 status: READY
 attempt: 1
-taskId: UI04D
-title: UI04D — WeChat Cloud Authority Backend Vertical Slice
-taskDefinition: .codex/tasks/UI04D.yaml
+taskId: UI04E
+title: UI04E — Terminal Lifecycle / Multi-Life Vertical Slice
+taskDefinition: .codex/tasks/UI04E.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-UI04D
+workBranch: wb-UI04E
 worktreeRequired: true
 allowSyntheticTreeBase: true
 basePolicy: remote-source-head-at-task-start
@@ -20,30 +20,29 @@ execution:
   rerunKnownSandboxBaseline: false
   run600Simulation: false
 controllerReview:
-  previousTask: UI04C
+  previousTask: UI04D
   previousStatus: ACCEPTED
-  acceptedResultCommit: badb88e3a49cba239e93e0c6dd43fa96479bffa3
+  acceptedResultCommit: e91530f866b850de6c2de8cee4dc76ad5afa7d01
   acceptanceBasis:
-    - wb-UI04C is a real single-commit descendant of the dispatched dev head
-    - dedicated UI04C 18/18 proves the injected cloud boundary through real CommandGateway and the committed v2-live page harness
-    - RPC parsing is fail-closed and START_RUN is derived only from the authoritative current destiny offer
-    - runtime freshness audit smoke route guard typecheck lint secret scan and directly affected UI suites are green
-    - no Core Content server semantics default route tabBar or legacy-1.0 page changed
+    - wb-UI04D is a real single-commit descendant of the dispatched dev head
+    - UI04D dedicated 20/20 plus unchanged server-gateway 6/6 prove authenticated persistent cloud settlement idempotency timeout recovery and ownership isolation
+    - raw OPENID stays in the thin host identity boundary while public/bootstrap identity is authoritative opaque playerId
+    - CloudBase transactional path uses deterministic doc access with no where query and the generated cloud runtime is derived from the single source server/Core/Content closure
+    - client bootstrap now persists bootstrapId and no longer mints a dev playerId
 controllerDecision:
-  strategy: fast-lane-real-cloud-authority-backend
-  rationale: the client vertical slice is complete; the largest remaining blocker to real DevTools play is a persistent authenticated authoritative cloud backend, so implement the whole backend slice rather than splitting store/function/auth/artifact into separate hour-long tasks
+  strategy: fast-lane-complete-terminal-multi-life-loop
+  rationale: authenticated cloud play is implemented; the remaining product dead-end is the frozen terminal UI sequence, which currently has no real transition path after RuleState enters dying
 controllerIntent:
   mode: FAST_LANE_IMPLEMENTATION
-  goal: make the dev-only v2-live client usable against a real deployable tianfu2 cloudfunction with authoritative identity persistent transactional command settlement and idempotent bootstrap
-  postTask: controller reviews wb-UI04D; do not start UI04E/UI04FINAL yourself
+  goal: complete one full life through death/life-book/rebirth/next-life back to a fresh destiny offer without changing gameplay RuleState semantics
+  postTask: controller reviews wb-UI04E; if accepted the next task should be UI04FINAL final-audit, not another implementation slice unless a real blocker is discovered
 notes:
   - PROTOCOL v1.3 fast-lane applies. Do NOT run aggregate npm test, 600-run simulation, or re-prove known nested-process sandbox failures.
-  - Run the UI04D dedicated suite and directly affected server-gateway destiny-offer UI04C/UI04B suites plus cloud runtime audits, context-loader, typecheck, lint, secret scan and content01 lint.
-  - The Controller fixed context.mjs to understand verificationProfile in this dispatch commit; use node .codex/context.mjs UI04D normally.
-  - The cloud host must trust only getWXContext().OPENID. Do not accept a playerId or OPENID from event data as authority.
-  - createRunOffer must be retry-safe. Add and persist a bootstrapId from the client; same trusted identity plus bootstrapId must recover the same run rather than manufacture another run after a timeout.
-  - Use deterministic document ids on the transactional path. CloudBase document transactions support server-side transaction doc operations; do not design a where-query-dependent transaction path.
-  - Preserve CommandGateway semantics. Infrastructure refactoring is allowed; gameplay/reducer/content semantics are not.
-  - A wx-server-sdk dependency is allowed only inside cloudfunctions/tianfu2. Do not leak it into root/client runtime dependencies.
-  - Do not deploy to the real cloud environment in this task. Produce a deployable artifact and exact manual deployment/setup instructions.
+  - Read the UI04E task and contracts through node .codex/context.mjs UI04E.
+  - Terminal lifecycle state is presentation/session authority and must live outside RuleState. Do not add a terminalStage field to GameState and do not mutate gameplay state to turn pages.
+  - Do not add fake GameCommand variants merely to navigate terminal screens. Use the explicit advanceTerminal RPC and a separate exactly-once terminal transition receipt.
+  - A pure terminal transition must be demonstrably zero-diff on canonical gameplay state and command log.
+  - REBIRTH_RESULT in this task is a public summary, not a new meta-progression design. Do not invent permanent rewards or currencies.
+  - NEXT_LIFE creates a fresh run via a newly persisted bootstrapId; never recycle/reset the previous run.
+  - No real cloud deployment and no default-route switch in UI04E. Those are held until UI04FINAL passes.
   - Record only genuinely new tooling observations.

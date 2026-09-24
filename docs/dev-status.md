@@ -9,7 +9,7 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `badb88e3a49cba239e93e0c6dd43fa96479bffa3`
+- lastReviewedCommit: `e91530f866b850de6c2de8cee4dc76ad5afa7d01`
 - reviewedDate: `2026-09-24`
 
 不要修改 `main` / 1.0，除非未来任务明确要求。
@@ -68,6 +68,7 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - UI04A: PASS（Controller 已验收；client-safe command wire boundary 与 runtime dependency audit 通过）
 - UI04B: PASS（Controller 已验收；deterministic WeChat runtime artifact / freshness / audit / CommonJS smoke 通过）
 - UI04C: PASS（Controller 已验收；live client RPC boundary / DESTINY_OFFER → START_RUN / v2-live / retry-conflict-reconfirm 纵切片通过）
+- UI04D: PASS（Controller 已验收；OPENID 权威身份 / bootstrap 幂等 / CloudBase 事务 store / deployable tianfu2 cloud runtime 纵切片通过）
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
 
@@ -280,25 +281,27 @@ Full regression：264 / 264 PASS；全部 reported audits PASS。
 
 ## Next
 
-Latest accepted: `UI04C PASS`，result commit `badb88e3a49cba239e93e0c6dd43fa96479bffa3`。
+Latest accepted: `UI04D PASS`，result commit `e91530f866b850de6c2de8cee4dc76ad5afa7d01`。
 
-UI04C 已完成 live client 纵切片：严格 cloud RPC adapter、权威 offer 派生 START_RUN、dev-only v2-live 页面、RUN_HOME / EVENT / SPECIAL_NODE / breakthrough / archive / retry / STATE_CONFLICT reconfirm 全部接通，并通过真实 CommandGateway + 页面 harness 的 18/18 专项验证。
+UI04D 已完成真正的云权威闭环：OPENID → opaque playerId、bootstrapId 幂等开局、真实 CONTENT01 offer、CloudBase 事务持久化、跨冷启动 command idempotency、跨玩家隔离，以及由单一源码机械生成的 `cloudfunctions/tianfu2` 可部署 runtime。
 
-FAST_LANE 继续。下一棒不再拆成“先做一个 store 再做一个 function”，而是一次完成真正可部署的 2.0 云权威后端：`UI04D` — WeChat Cloud Authority Backend Vertical Slice。
+当前最明显的产品断点已经不是云后端，而是终局：Core 在寿命/致死风险时会进入 `dying` 并留下 authoritative ending/deathRecord，但现有 ViewModel 仍把 dying 映射成 SPECIAL_NODE，仓库没有实现 UI 合同冻结的 `ENDING → LIFE_BOOK → REBIRTH_RESULT → NEXT_LIFE`。
 
-核心目标：
-- 实现 `cloudfunctions/tianfu2` 三 RPC 真身：createRunOffer / fetchView / sendCommand。
-- 云函数只信 `cloud.getWXContext().OPENID`；生成/映射稳定 opaque playerId，客户端不再自报或保存 dev playerId，raw OPENID 永不返回。
-- createRunOffer 增加持久化 bootstrapId 幂等语义，同一 OPENID + bootstrapId 重试/刷新返回同一 run，不重复造人生。
-- 用真实 CONTENT01 + generateServerDestinyOffer 创建 offered run，rootSeed/runId 由服务端 entropy 生成，rootSeed 永不出云端。
-- 把 CommandGateway 的存储边界抽成可异步事务化的 store port，保留 InMemoryGatewayStore；新增 CloudBase 文档数据库 adapter，run + idempotency + bootstrap 映射在 server-side transaction 中原子结算。
-- 事务必须用 deterministic doc id + doc() 访问，不依赖事务内 where 查询。
-- 产出可部署的 `cloudfunctions/tianfu2` CommonJS runtime/artifact，由 server/Core/Content 单一源码生成，不手抄 reducer/gateway/content。
-- 更新 UI04C bootstrap contract：服务端响应权威 playerId；页面移除 `tianfu2:dev-player-id`，并持久化 bootstrapId 用于创建/恢复同一 run。
-- 用 fake CloudBase DB + fake getWXContext 加载真实 cloudfunction handler，证明创建、刷新、命令、重试幂等、跨用户越权拒绝、STATE_CONFLICT、冷启动恢复。
-- 不做真实生产部署、不切默认路由、不做终局链路；这些留给 UI04E / UI04FINAL。
+下一任务：`UI04E` — Terminal Lifecycle / Multi-Life Vertical Slice（FAST_LANE）。
 
-验证仍走 fast-lane：UI04D 专项 + server-gateway + destiny-offer + UI04C + runtime/artifact audits + typecheck/lint/secret scan/content01 lint；不跑 aggregate npm test，不跑 600-run，不复验已知 EBUSY。
+本轮一次完成：
+- 在服务端持久化 run presentation sidecar 的 terminal stage，严格放在 RuleState 之外；终局翻页绝不推进 RNG、age、stateVersion、commandLog 或 gameplay state。
+- 当 authoritative RuleState 进入 dying/ended 且已有 ending/deathRecord 时，live service 对外首先投影 ENDING，而不是无交互的 SPECIAL_NODE。
+- 新增 `advanceTerminal` RPC，服务器权威推进 ENDING → LIFE_BOOK → REBIRTH_RESULT → NEXT_LIFE；每次 transition 带 terminalTransitionId 并在 run 文档事务内 exactly-once，响应丢失后同 id retry 不能跨两页。
+- LIFE_BOOK 只由现有 PublicViewModel 中已经公开的历史、Build、人物、可见 Cause、ending/death 事实组成；不得读取 hidden Cause / rootSeed / internal trace。
+- REBIRTH_RESULT 只做公开人生总结/展示，不新增 metaCurrency、永久战力、付费优势或尚未定义的轮回奖励。
+- NEXT_LIFE 页由用户明确触发“开启下一世”；客户端原子旋转并持久化新的 bootstrapId，再调用已验收 createRunOffer，获得不同 runId、相同 authoritative playerId；旧 run 保持不可变。
+- v2-live 真正渲染四个终局页面及 retry/error 状态，仍不切默认路由。
+- 云函数 runtime 与 miniprogram runtime 都随源码重新生成并通过 freshness/audit/smoke。
+- 用真实 reducer 通过可控寿命 fixture 走到 dying，再从 live service/cloud harness 跑完整终局和第二世 bootstrap，证明 RuleState/hash/RNG/commandLog 在纯终局翻页期间完全不变。
+- 不做真实生产部署；不做 Daily Challenge / monetization / 新 meta 奖励；不改 gameplay balance。
+
+UI04E 仍是 fast-lane。通过后下一棒应进入 `UI04FINAL` final-audit，一次支付完整 regression / packaging / merge-readiness 成本。
 ## 新 Codex 会话 / 账号接手步骤
 
 1. 确认当前 branch = `dev/tianfu-2.0`。

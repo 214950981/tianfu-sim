@@ -127,3 +127,19 @@ UI04C hit a session where repository API/raw HTTP worked while git transport rep
 - continue retrying `ls-remote` independently for remote-head confirmation.
 
 Use this only as a transport fallback. Prefer normal fetch when available, and never treat approximate file reconstruction as real ancestry.
+
+## Generated cloud runtime cold-start ordering
+
+UI04D showed that generated CommonJS modules may execute `structuredClone` during module evaluation. If the target cloud Node runtime needs a compatibility shim, install it before the first `require()` of the generated runtime, not after. Cold-start compatibility code that runs after import is already too late.
+
+## Cross-realm cloud harness payloads
+
+When a cloud host is loaded in `node:vm`, objects created outside that realm can fail plain-object/prototype validators for reasons the real platform would not. Model the platform boundary by JSON-round-tripping request data into the VM realm and responses back out before asserting protocol behavior.
+
+## Post-commit timeout tests
+
+Arm a simulated post-commit timeout immediately before the transaction/operation being tested. A database-wide `throwAfterCommitOnce` flag set at construction can be consumed by bootstrap or setup work and silently test the wrong transaction.
+
+## Negative controls must drift the enforced property
+
+A negative control should mutate the boundary the tool actually guarantees. For generated artifacts, ordinary legal source edits belong to freshness checks; dependency-closure or facade-surface violations belong to generator/audit negative controls. Do not expect a valid derivation to fail merely because source content changed.

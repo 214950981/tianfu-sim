@@ -194,3 +194,7 @@ node tools/check-import-boundaries.mjs
 node tools/scan-secrets.mjs
 node tools/content01-lint.mjs
 ```
+
+## Controller acceptance / UI04E handoff
+
+UI04D was accepted at `e91530f866b850de6c2de8cee4dc76ad5afa7d01`. The next implementation slice is UI04E, which completes the already-frozen terminal UI contract without putting presentation-stage state into RuleState. Production deployment remains deferred until the UI04 chain is feature-complete and passes UI04FINAL.
