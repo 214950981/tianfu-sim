@@ -191,3 +191,7 @@ START_RUN 依然走 `CommandSubmissionController` 的 commandId / pending / retr
   "禁止 `callFunction` 这个 token"改为"禁止任何平台全局"（UI04C 故意把注入方法命名为 `callFunction`）；
   "不可达模块"反例现在要切断 command-wire 的**两条**入边（UI04C 给它加了值入边）。
 * `tests/ui03.test.mjs`：最后一页 pin 改为"`v2-live` 必须追加在 `v2-preview` 之后，前四位不变"。
+
+## Controller acceptance / UI04D handoff
+
+UI04C was accepted at `badb88e3a49cba239e93e0c6dd43fa96479bffa3`. The next task is the real cloud authority backend. UI04D must replace the dev-local player id with server-authenticated identity and make createRunOffer idempotent via a persisted bootstrap id before real cloud integration is considered complete.

@@ -9,7 +9,7 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `282030872a83434fdb2cd4b2be67b36f060b3700`
+- lastReviewedCommit: `badb88e3a49cba239e93e0c6dd43fa96479bffa3`
 - reviewedDate: `2026-09-24`
 
 不要修改 `main` / 1.0，除非未来任务明确要求。
@@ -67,6 +67,7 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - UI03: PASS（Controller 已验收；live-session controller / authoritative E2E wiring 通过）
 - UI04A: PASS（Controller 已验收；client-safe command wire boundary 与 runtime dependency audit 通过）
 - UI04B: PASS（Controller 已验收；deterministic WeChat runtime artifact / freshness / audit / CommonJS smoke 通过）
+- UI04C: PASS（Controller 已验收；live client RPC boundary / DESTINY_OFFER → START_RUN / v2-live / retry-conflict-reconfirm 纵切片通过）
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
 
@@ -279,25 +280,25 @@ Full regression：264 / 264 PASS；全部 reported audits PASS。
 
 ## Next
 
-Latest accepted: `UI04B PASS`，result commit `282030872a83434fdb2cd4b2be67b36f060b3700`。
+Latest accepted: `UI04C PASS`，result commit `badb88e3a49cba239e93e0c6dd43fa96479bffa3`。
 
-UI04B 已把 UI03/UI04A 的 client-safe TypeScript runtime 确定性生成到 `miniprogram/runtime/`：freshness、artifact audit、11 类负控、CommonJS clean-vm smoke 与源码差分均通过。没有页面、Core、Content、server、默认路由或 1.0 行为改动。
+UI04C 已完成 live client 纵切片：严格 cloud RPC adapter、权威 offer 派生 START_RUN、dev-only v2-live 页面、RUN_HOME / EVENT / SPECIAL_NODE / breakthrough / archive / retry / STATE_CONFLICT reconfirm 全部接通，并通过真实 CommandGateway + 页面 harness 的 18/18 专项验证。
 
-从这里开始采用 PROTOCOL v1.3 的 `fast-lane`：中间任务做更大的纵切片，只跑专项/直接相关回归与边界审计；完整 `npm test`、历史套件和 sandbox baseline 复现集中到后续 `UI04FINAL` 一次完成。
+FAST_LANE 继续。下一棒不再拆成“先做一个 store 再做一个 function”，而是一次完成真正可部署的 2.0 云权威后端：`UI04D` — WeChat Cloud Authority Backend Vertical Slice。
 
-下一任务：`UI04C` — WeChat Live Client Vertical Slice（FAST_LANE）。
+核心目标：
+- 实现 `cloudfunctions/tianfu2` 三 RPC 真身：createRunOffer / fetchView / sendCommand。
+- 云函数只信 `cloud.getWXContext().OPENID`；生成/映射稳定 opaque playerId，客户端不再自报或保存 dev playerId，raw OPENID 永不返回。
+- createRunOffer 增加持久化 bootstrapId 幂等语义，同一 OPENID + bootstrapId 重试/刷新返回同一 run，不重复造人生。
+- 用真实 CONTENT01 + generateServerDestinyOffer 创建 offered run，rootSeed/runId 由服务端 entropy 生成，rootSeed 永不出云端。
+- 把 CommandGateway 的存储边界抽成可异步事务化的 store port，保留 InMemoryGatewayStore；新增 CloudBase 文档数据库 adapter，run + idempotency + bootstrap 映射在 server-side transaction 中原子结算。
+- 事务必须用 deterministic doc id + doc() 访问，不依赖事务内 where 查询。
+- 产出可部署的 `cloudfunctions/tianfu2` CommonJS runtime/artifact，由 server/Core/Content 单一源码生成，不手抄 reducer/gateway/content。
+- 更新 UI04C bootstrap contract：服务端响应权威 playerId；页面移除 `tianfu2:dev-player-id`，并持久化 bootstrapId 用于创建/恢复同一 run。
+- 用 fake CloudBase DB + fake getWXContext 加载真实 cloudfunction handler，证明创建、刷新、命令、重试幂等、跨用户越权拒绝、STATE_CONFLICT、冷启动恢复。
+- 不做真实生产部署、不切默认路由、不做终局链路；这些留给 UI04E / UI04FINAL。
 
-一次完成客户端到云 RPC 边界的完整可交互纵切片：
-- 在 client-safe source 中加入注入式 `wx.cloud.callFunction` ApplicationTransport adapter，定义 createRunOffer / fetchView / sendCommand RPC 形状和严格响应校验。
-- 扩展 WeChatRunController 支持 DESTINY_OFFER 的 START_RUN 选择，只从权威 currentInteraction/body 生成 selectionId 或 destinyId，不猜规则。
-- 新建 dev-only `pages/v2-live` 并注册在 app.json 最后，不替换默认 start / tabBar。
-- 页面静态 require `miniprogram/runtime/index.js`，完成 bootstrap、择命、RUN_HOME 四动作、突破、EVENT/SPECIAL_NODE 选择、LIFE_ARCHIVE、pending/retry、STATE_CONFLICT 显式 reconfirm、错误/加载状态。
-- 继续使用服务端 pageState / currentInteraction / riskPresentation；页面不得计算 gameplay outcome/eligibility。
-- 修改 client source 后必须重新生成并验证 UI04B runtime artifact。
-- 本轮只铺客户端 + RPC contract，不实现/部署 2.0 cloudfunction 后端；后端权威持久化放下一纵切片。
-- 不改旧 1.0 页面、不切默认路由、不做终局链路。
-
-UI04C 是 fast-lane：不跑 aggregate npm test，不重新证明那 3 个固定 sandbox 子进程失败，不跑 600-run；只跑 UI04C 专项、UI04B/03 直接回归、runtime artifact/freshness/audit、client dependency audit、typecheck、lint、secret scan 和必要的 route guard。
+验证仍走 fast-lane：UI04D 专项 + server-gateway + destiny-offer + UI04C + runtime/artifact audits + typecheck/lint/secret scan/content01 lint；不跑 aggregate npm test，不跑 600-run，不复验已知 EBUSY。
 ## 新 Codex 会话 / 账号接手步骤
 
 1. 确认当前 branch = `dev/tianfu-2.0`。

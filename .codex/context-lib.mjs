@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 
-const ALLOWED_FIELDS = new Set(["id", "title", "phase", "read", "optional_read", "requiredContracts", "optionalContracts", "blockers", "inspect_first", "in", "out", "allowedScope", "forbiddenScope", "accept", "tests"]);
+const ALLOWED_FIELDS = new Set(["id", "title", "phase", "verificationProfile", "read", "optional_read", "requiredContracts", "optionalContracts", "blockers", "inspect_first", "in", "out", "allowedScope", "forbiddenScope", "accept", "tests"]);
 const LIST_FIELDS = new Set(["read", "optional_read", "requiredContracts", "optionalContracts", "blockers", "inspect_first", "in", "out", "allowedScope", "forbiddenScope", "accept", "tests"]);
 const TASK_ID = /^[A-Z][A-Z0-9_]*$/;
 
@@ -32,7 +32,7 @@ export function parseTaskDefinition(text, source = "task.yaml") {
   if (typeof result.title !== "string" || result.title.length === 0) throw new ContextLoaderError("MALFORMED_TASK", `${source} has no title`);
   if (typeof result.phase !== "string" || !/^[0-9]+$/.test(result.phase)) throw new ContextLoaderError("MALFORMED_TASK", `${source} has invalid phase`);
   const task = {
-    taskId: result.id, title: result.title, phase: Number(result.phase),
+    taskId: result.id, title: result.title, phase: Number(result.phase), verificationProfile: result.verificationProfile ?? "standard",
     requiredContracts: result.requiredContracts ?? result.read ?? [], optionalContracts: result.optionalContracts ?? result.optional_read ?? [],
     blockers: result.blockers ?? [], allowedScope: result.allowedScope ?? result.in ?? [], forbiddenScope: result.forbiddenScope ?? result.out ?? [],
     inspectFirst: result.inspect_first ?? [], acceptance: result.accept ?? [], tests: result.tests ?? [], usesLegacyRead: result.requiredContracts === undefined, raw: text, source
@@ -77,7 +77,7 @@ export function loadTaskContext(taskId, { repoRoot, taskDirectory = path.join(re
 }
 
 export function formatTaskContext(context) {
-  const { task } = context; const lines = [`=== ${task.source} ===`, task.raw.trimEnd(), "", "=== task-context ===", `taskId: ${task.taskId}`, `phase: ${task.phase}`, `requiredContracts: [${task.requiredContracts.join(",")}]`, `optionalContracts: [${task.optionalContracts.join(",")}]`, `blockers: [${task.blockers.join(",")}]`, `allowedScope: [${task.allowedScope.join(" | ")}]`, `forbiddenScope: [${task.forbiddenScope.join(" | ")}]`];
+  const { task } = context; const lines = [`=== ${task.source} ===`, task.raw.trimEnd(), "", "=== task-context ===", `taskId: ${task.taskId}`, `phase: ${task.phase}`, `verificationProfile: ${task.verificationProfile}`, `requiredContracts: [${task.requiredContracts.join(",")}]`, `optionalContracts: [${task.optionalContracts.join(",")}]`, `blockers: [${task.blockers.join(",")}]`, `allowedScope: [${task.allowedScope.join(" | ")}]`, `forbiddenScope: [${task.forbiddenScope.join(" | ")}]`];
   for (const blocker of context.blockerEntries) lines.push("", `=== decision:${blocker.id} ===`, blocker.text);
   for (const contract of context.loadedContracts) lines.push("", `=== ${contract.rel} ===`, contract.text.trimEnd());
   for (const contract of context.optionalContracts) lines.push("", `=== optional:${contract.rel} (${contract.present ? "loaded" : "missing"}) ===`, ...(contract.present ? [contract.text.trimEnd()] : []));

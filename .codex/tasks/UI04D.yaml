@@ -1,0 +1,46 @@
+id: UI04D
+title: UI04D — WeChat Cloud Authority Backend Vertical Slice
+phase: 2
+verificationProfile: fast-lane
+requiredContracts: [.codex/contracts/command.ref,.codex/contracts/state.ref,.codex/contracts/reducer.ref,.codex/contracts/platform.ref,.codex/contracts/viewmodel.ref,.codex/contracts/crosslayer.ref,.codex/contracts/ui.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [server/src/command-gateway.ts,server/src/destiny-offer.ts,server/src/viewmodel.ts,packages/content/src/content01-v1.ts,packages/content/src/npc-content01-v1.ts,packages/content/src/registry.ts,packages/core/src/persistence.ts,packages/wechat-shell/src/index.ts,miniprogram/pages/v2-live/v2-live.js,cloudfunctions/syncPlayerData/index.js,cloudfunctions/syncPlayerData/package.json,project.config.json,docs/UI04C_LIVE_CLIENT.md,tests/server-gateway.test.mjs,tests/destiny-offer.test.mjs,tests/ui04c.test.mjs]
+allowedScope:
+  - implement a real server application service for the three UI04C RPC operations createRunOffer fetchView sendCommand using the existing CommandGateway ServerViewModelBuilder generateServerDestinyOffer and CONTENT01 sources
+  - create a real cloudfunctions/tianfu2 host with a thin wx-server-sdk boundary; the host must obtain identity only from cloud.getWXContext().OPENID and must never trust OPENID playerId rootSeed rules state or ownership fields from event data
+  - derive or persist a stable opaque authoritative playerId from trusted OPENID; raw OPENID must never be returned to the client or stored inside RuleState command envelopes or public ViewModels
+  - change the createRunOffer RPC contract to include authoritative playerId in the validated response and make bootstrapWeChatRun use that server playerId; remove the dev-local player id path from v2-live
+  - add a client-generated locally persisted bootstrapId to createRunOffer so identical OPENID plus bootstrapId is idempotent: network retries and reloads must return the same run and must not create duplicate offered runs; the server must ignore any attempted client playerId
+  - build the live content registry from the real CONTENT01 pack including the CONTENT01 NPC pack and existing progression risk build director packs; createRunOffer must use generateServerDestinyOffer and a server-only entropy provider for runId/rootSeed
+  - keep rootSeed RNG state internal traces hidden Causes check specs and other server-only data strictly server-side; responses must satisfy the UI04C fail-closed parser
+  - refactor the CommandGateway persistence boundary only as needed to support an asynchronous transactional store port while preserving all existing externally observable gateway idempotency STATE_CONFLICT snapshot replay and failure semantics and preserving InMemoryGatewayStore for tests
+  - implement a CloudBase document-database gateway store using server-side transactions for run state command idempotency and bootstrap mapping; use deterministic document ids and transaction doc() reads/writes so no transaction depends on where queries
+  - ensure an exact duplicate commandId plus identical payload settles exactly once across cold handler instances and a changed payload with the same commandId is rejected without additional state RNG time or log mutation
+  - ensure fetchView and sendCommand enforce run ownership from trusted auth and cannot read or mutate another OPENID-derived player run
+  - create a deterministic deployable CommonJS server runtime/artifact under cloudfunctions/tianfu2 derived from the accepted server Core and Content TypeScript source closure; no handwritten second reducer gateway ViewModel builder or CONTENT01 implementation
+  - use existing TypeScript/dev tooling or a repository-local deterministic transform; do not add a general-purpose bundler dependency merely for this task
+  - add artifact freshness and dependency audit proving the cloud runtime contains only the required server Core Content closure plus approved Node builtins and never miniprogram client source
+  - cloudfunctions/tianfu2/package.json may depend on wx-server-sdk for the host runtime; no client dependency may depend on wx-server-sdk
+  - add an executable cloudfunction harness with injected fake wx-server-sdk/getWXContext/database implementing CloudBase-like runTransaction/doc get/set/update semantics and cold-start recreation
+  - prove full path: first bootstrap -> same-bootstrap retry -> START_RUN -> core action -> event option -> fetchView, plus timeout retry idempotency STATE_CONFLICT and cross-player rejection
+  - regenerate the UI04B client runtime after client source changes and keep UI04A/B/C targeted gates green
+  - document collection/data model RPC shapes bootstrap idempotency identity mapping deployment steps and remaining manual cloud setup
+  - update package scripts tests and LAST_RESULT
+forbiddenScope: [raw-OPENID-to-client,client-trusted-playerId,client-rootSeed,client-RNG-or-hidden-Cause,duplicate-gameplay-engine-in-cloudfunction,gameplay-rule-change,reducer-outcome-change,RNG-algorithm-change,Director-policy-change,Cause-semantics-change,Progression-balance-change,Risk-balance-change,Build-or-NPC-rule-change,CONTENT01-rebalance,default-route-replacement,legacy-1.0-page-change,tabBar-change,real-production-deployment,ENDING-LIFE_BOOK-REBIRTH_RESULT-NEXT_LIFE-orchestration,UI04E,source-branch-push]
+accept:
+  - cloudfunctions-tianfu2-implements-createRunOffer-fetchView-sendCommand-through-one-authoritative-server-service
+  - trusted-OPENID-is-the-only-auth-source-and-client-playerId-is-no-longer-trusted-or-required-for-bootstrap
+  - createRunOffer-response-carries-authoritative-opaque-playerId-and-never-raw-OPENID-or-server-secrets
+  - same-OPENID-plus-bootstrapId-is-idempotent-across-retries-and-cold-handler-instances-and-different-bootstrapId-can-create-a-new-run
+  - real-CONTENT01-offer-is-created-by-generateServerDestinyOffer-with-server-only-entropy-and-projects-a-valid-PublicViewModel
+  - cloud-database-store-preserves-command-idempotency-state-conflict-ownership-snapshot-and-replay-semantics-under-transaction
+  - transaction-access-uses-deterministic-doc-ids-and-no-where-query-inside-the-transactional-command-path
+  - exact-command-retry-after-simulated-post-commit-timeout-does-not-double-settle-state-RNG-time-or-log
+  - cross-player-fetch-and-command-are-rejected-without-leaking-run-existence-or-state
+  - deployable-cloudfunction-runtime-is-generated-from-single-source-server-Core-Content-code-and-passes-freshness-dependency-and-load-smoke-audits
+  - v2-live-uses-persisted-bootstrapId-and-authoritative-playerId-and-no-longer-stores-dev-playerId
+  - ui04d-server-gateway-destiny-offer-ui04c-ui04b-targeted-tests-cloud-runtime-audits-typecheck-lint-secret-scan-content01-lint-and-context-loader-are-green
+  - no-aggregate-npm-test-untouched-base-EBUSY-reproof-or-600-run-is-required-under-fast-lane-when-gameplay-and-balance-semantics-remain-unchanged
+  - no-default-route-legacy-1-0-terminal-flow-or-production-deployment-work
+tests: [ui04d,server-gateway,destiny-offer,ui04c,ui04b,cloud-runtime-artifact-freshness,cloud-runtime-dependency-audit,cloud-runtime-smoke,context-loader,typecheck,lint,secret-scan,content01-lint]

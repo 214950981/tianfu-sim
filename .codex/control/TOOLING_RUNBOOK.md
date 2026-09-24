@@ -116,3 +116,14 @@ Protocol v1.3 adds `verificationProfile: fast-lane` for stable implementation ph
 - Skip aggregate `npm test`, untouched-base reproduction and 600-run simulation unless the task explicitly requires them or scope unexpectedly reaches gameplay/content/server semantics.
 - Do not repeat already documented tooling observations. A changed proxy port by itself is not a finding.
 - Pay the deferred full-regression cost once at an explicit `final-audit` milestone.
+
+## REST-assisted exact Git reconstruction fallback
+
+UI04C hit a session where repository API/raw HTTP worked while git transport repeatedly returned proxy/TLS 502 errors. If the exact remote commit cannot be fetched but API access is healthy, a task may reconstruct the commit without switching to synthetic history:
+- obtain the remote commit metadata/tree SHA and changed-file set from the repository API;
+- materialize the parent tree locally and apply the exact remote file bytes;
+- require `git write-tree` to equal the remote tree SHA before any edit;
+- if real ancestry is needed, reconstruct/hash the commit object from the API metadata and verify its SHA exactly;
+- continue retrying `ls-remote` independently for remote-head confirmation.
+
+Use this only as a transport fallback. Prefer normal fetch when available, and never treat approximate file reconstruction as real ancestry.
