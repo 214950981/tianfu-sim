@@ -442,6 +442,29 @@ toolingObservations:
       Avoids quoting planned or remembered numbers.
     workaround: >-
       Reuse the one-liner.
+  - id: T8
+    severity: INFO
+    title: the documented push incantation worked on the FIRST attempt; bare git push was not tried
+    evidence: >-
+      A non-interactive credential probe first confirmed a stored GitHub credential without touching the
+      network: `printf 'protocol=https\nhost=github.com\n\n' | GCM_INTERACTIVE=never git -c
+      credential.helper=manager credential fill` exited 0 and produced a username + password. The push was
+      then run as the runbook prescribes, `GCM_INTERACTIVE=never git -c credential.helper=manager -c
+      credential.https://github.com.helper=manager push origin HEAD:refs/heads/wb-UI03`, inside a bounded
+      40x / `timeout 60` retry loop. Attempt 1 exited 0: "* [new branch] HEAD -> wb-UI03". No hang, no
+      prompt, no 502, and no retry was needed. `git ls-remote` afterwards reported refs/heads/wb-UI03 ==
+      the local task commit and refs/heads/dev/tianfu-2.0 still equal to baseCommit ce916d7..., i.e. the
+      source branch was not touched. A plain `git push` was deliberately NOT attempted, because the
+      runbook documents that the empty credential helper in ~/.gitconfig makes it fall back to an
+      interactive prompt and hang.
+    impact: >-
+      Confirms the runbook's push guidance is still correct in a session whose proxy port had changed
+      again (46226). The `-c credential.helper=manager` per-command form keeps working; ~/.gitconfig was
+      not modified. The retry loop stayed in place and cost nothing.
+    workaround: >-
+      Keep using the per-command `-c credential.helper=manager` form plus the bounded background retry
+      loop; verifying the credential with `git credential fill` first distinguishes a credential problem
+      from a network problem without burning attempts.
 
 blockers: []
 
