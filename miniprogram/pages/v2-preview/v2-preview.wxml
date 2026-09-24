@@ -79,7 +79,11 @@
            Only the capability vocabulary the UI contract already defines. Availability is READ from the
            accepted shell projection: the main contract flow is always open, every other row is a
            capability-gated entry that renders as clearly unavailable when its capability is off. No new
-           game mode exists in this markup. -->
+           game mode exists in this markup.
+
+           An unavailable row shows the player-facing `gateLabel` (暂未开放). The internal diagnostic
+           that names the missing capability (`gateNote`) is never bound here on purpose: an enum name
+           is implementation vocabulary, not product copy. -->
 
       <view wx:if="{{vm.kind === 'MODE_SELECT'}}" class="page page--modes">
 
@@ -93,7 +97,7 @@
                 class="entry-row {{item.available ? '' : 'is-gated'}}">
             <view class="entry-row-main">
               <view class="entry-row-label">{{item.label}}</view>
-              <view class="entry-row-note">{{item.available ? item.note : item.gateNote}}</view>
+              <view class="entry-row-note">{{item.available ? item.note : item.gateLabel}}</view>
             </view>
             <view class="entry-row-mark {{item.available ? '' : 'is-off'}}">{{item.available ? '可' : '闭'}}</view>
           </view>

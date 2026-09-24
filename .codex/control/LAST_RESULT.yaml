@@ -1,290 +1,232 @@
 version: 1
-taskId: UI02ENTRY
+taskId: UI02COPY
 attempt: 1
 status: PASS
-sourceBranch: dev/tianfu-2.0
-workBranch: wb-UI02ENTRY
-baseCommit: 07548318289ca120296090d74650ed79f5274bd5
-baseTreeSha: 915fbf09708c6903e24941fb01b9956e9db6635f
+sourceBranch: wb-UI02ENTRY
+workBranch: wb-UI02COPY
+baseCommit: fbce7058303fe1f52f4f2a3b76e1b8f219f919e4
+baseTreeSha: 61942138dcccfaafec45e765a171d9d5632c329a
 historyMode: real-ancestry
 sourceHeadVerifiedBy: >-
-  git ls-remote origin refs/heads/dev/tianfu-2.0 reports 07548318289ca120296090d74650ed79f5274bd5,
-  and a git fetch of that branch resolves FETCH_HEAD to the same commit, so the remote source branch was
-  read directly and not cached. Per the dispatch (basePolicy: remote-source-head-at-task-start,
-  allowSyntheticTreeBase: true) the task base IS the remote source HEAD. The local worktree HEAD
-  (3ca1cab0159af2417483da02c4bcbb9a7fe08e10) was verified to be a real ancestor of it
-  (git merge-base --is-ancestor returned true, merge-base == 3ca1cab0), so no synthetic tree was needed:
-  the worktree was positioned with `git read-tree -u --reset 075483182...` plus a written HEAD file, and
-  `git write-tree` over the untouched tree returned 915fbf09708c6903e24941fb01b9956e9db6635f,
-  byte-identical to `075483182...^{tree}`. That equality is the byte-identity proof. The result commit's
-  parent is 07548318289ca120296090d74650ed79f5274bd5. No source drift was observed during the task:
-  ls-remote was re-checked before the push and still reported 075483182.
+  The dispatch sets sourceBranch to wb-UI02ENTRY (not dev/tianfu-2.0) and basePolicy to
+  explicit-ui02entry-result-head. git ls-remote origin refs/heads/wb-UI02ENTRY reports
+  fbce7058303fe1f52f4f2a3b76e1b8f219f919e4, and a git fetch of that branch resolves FETCH_HEAD to the
+  same commit, so the remote source branch was read directly and not from cache. PROTOCOL.md,
+  NEXT_TASK.yaml and .codex/tasks/UI02COPY.yaml were all read out of that fetched commit (git show
+  FETCH_HEAD:<path>), so the dispatch and the base are the same tree. The local worktree HEAD already
+  equaled fbce705830 (verified with git rev-parse HEAD), so the task base IS the local HEAD and no
+  positioning was needed: `git write-tree` over the untouched tree returned
+  61942138dcccfaafec45e765a171d9d5632c329a, byte-identical to `fbce705830^{tree}`. That equality is the
+  byte-identity proof, and the result commit's parent is fbce7058303fe1f52f4f2a3b76e1b8f219f919e4, so
+  the work branch is a real descendant of the source branch. NOTE: the controllerReview
+  previousResultCommit (3da45910001246dd8336a5b632cf408d9b63207a) is an ANCESTOR of fbce705830, not the
+  base itself; fbce705830 is the later "chore: dispatch UI02COPY" commit that carries this dispatch, and
+  it is the correct base. No source drift was observed: ls-remote was re-checked before the push and
+  still reported fbce705830.
 
 summary: >-
-  UI02ENTRY is a UI_FAST_LANE presentation task that extends the accepted UI02R2A2 visual system to the
-  pre-run flow START -> MODE_SELECT -> DESTINY_OFFER -> RUN_OPENING, so a reviewer can see a coherent
-  launch-to-entering-a-life experience on the same 2.0 dev preview route. It adds no game authority, no
-  transport wiring and no route change.
+  UI02COPY is the final player-facing copy pass before the deferred full regression. It is a UI_FAST_LANE
+  presentation-only cleanup: it removes the raw implementation identifiers that were still reaching the
+  player in the otherwise visually accepted UI02ENTRY preview, and it changes no gameplay rule, no server
+  projection, no Core/Content source, no Director behaviour and no route.
 
-  Where the data comes from (one generated truth, no second gameplay copy):
+  Defect 1 — raw content keys. The accepted content pack stores every narrative key (titleKey / bodyKey /
+  labelKey / summaryKey) as an opaque string and the repository has no locale table, so the 2.0 preview
+  echoed the key itself onto the screen: dev.first-choice.title, dev.first-choice.body,
+  dev.first-choice.continue, dev.first-choice.test-fortune, dev.first-choice.rescue-stranger,
+  dev.first-choice.face-combat-risk, dev.first-choice.study-sword (EVENT), dev.ordinary-fallback.*
+  (SPECIAL_NODE) and build.fact.BUILD_STAGE_TRANSITION.title/.summary plus dev.first-choice.history and
+  dev.rescue-echo-a.* (LIFE_ARCHIVE). The page now carries a bounded zh-CN presentation catalog,
+  CONTENT_COPY, covering exactly the public narrative keys the committed fixtures reach, and routes the
+  two decision surfaces (scene title, body, every option label) and the archive history (title, summary)
+  through it. It is bounded in both directions: tests/ui02copy.test.mjs derives the reachable key set
+  from the committed fixtures themselves and asserts set equality with the catalog, so a missing entry
+  (a raw key would render) and an invented entry (copy for content that does not exist) both fail. An
+  unmapped future key still falls back verbatim through the existing presentLabel semantics, so a future
+  content pack fails VISIBLY instead of silently inheriting a wrong label or a silently invented meaning.
+  The catalog copy describes only what the fixture's own ids already mean — continue -> 就此前行,
+  rescue-stranger -> 出手相救, study-sword -> 参研剑术, the rescue cause's echo -> 昔日相救 — and a test
+  asserts it contains no capability vocabulary, no per-run fixture value, and no reward / benefit /
+  probability / success-rate / weight wording. Option ids, riskPresentation (tier, canBeFatal, reasons),
+  the submission and locking semantics and the public history data are all asserted unchanged.
 
-  - DESTINY_OFFER is the REAL public server offer: the fixture is built with the same production chain as
-    the accepted in-life fixtures (generateServerDestinyOffer -> reduce(START_RUN) ->
-    ServerViewModelBuilder.build -> buildWeChatPageShell), and the resolved public candidate fields come
-    from projectDestinyOfferView. The page renders exactly the public fields the accept contract names
-    (spiritualRoot / talent / majorDestiny display names plus the server-projected option id) and nothing
-    else. tests/ui02entry.test.mjs rebuilds the dev offer with an INDEPENDENT call of that same chain and
-    asserts the committed fixture equals it, then scans the whole entry collection for any seed, RNG
-    state, draw index, weight, odds, difficulty or rule-internal key/value.
-  - MODE_SELECT invents no mode: it renders the contract capability vocabulary (main contract flow plus
-    今日命局 / 商行 / 分享此命) and READS availability from the accepted shell projection
-    (buildWeChatPageShell.visibleEntries). A capability-off entry is rendered as clearly unavailable and
-    names the missing capability; the main flow is always available. The page declares exactly four mode
-    ids and no other.
-  - RUN_OPENING formats only already-public data: the selected spiritual root / talent / major destiny
-    (resolved display names, never raw ids), the run name, lifespan and the four public attributes. No
-    START_RUN outcome is re-derived and nothing is submitted.
-  - START reads no state at all. Its copy is documented product copy, and provenance is asserted against
-    the documents: the core line and the positioning line must appear verbatim in docs/PROJECT-BRAIN.md
-    and the product name in docs/UI02_PREVIEW.md, so the copy cannot drift into invented lore or promises.
+  Defect 2 — internal capability names. MODE_SELECT's unavailable helper text named the implementation enum
+  (能力未开通 · DailyChallengeCapability / · CommerceCapability). The rendered helper is now the
+  player-facing gateLabel (暂未开放). Because the accepted tests/ui02entry.test.mjs pins gateNote to
+  contain the capability name ("a disabled entry must name the missing capability") and the dispatch
+  requires that suite to remain green, the internal diagnostic is RETAINED on gateNote but is no longer
+  bound anywhere in the markup; tests/ui02copy.test.mjs asserts the product surface contains zero
+  occurrences of gateNote and that the rendered field carries no capability name. The markup-derived
+  guard therefore proves the diagnostic is structurally unreachable from the screen rather than asking a
+  reviewer to take it on trust.
 
-  Fixture layout (one deliberate structural decision): the four pre-run screens live in a NEW `entry`
-  collection rather than in `states`. START and MODE_SELECT happen before any authoritative Run exists, so
-  the server has no PageState or ViewModel to project for them (derivePageState only knows run status and
-  the current interaction); putting them in `states` would force a fabricated run into every pre-run
-  screen. With `entry` separate, `states`/`variants` stay exactly "server-authoritative pages" and the
-  in-life fixture assertions are untouched. DESTINY_OFFER inside `entry` really is a server page state
-  (run.status === "offered").
+  Defect 3 — no explicit guard existed for this defect class. tests/ui02copy.test.mjs adds one: it derives
+  the checked bindings FROM the committed WXML (parses every {{ }}, drops attribute bindings and
+  comparison operands, expands item.* through its wx:for list, and fails closed if a nested wx:for would
+  break the list attribution), then resolves those bindings against the real present() output for EVERY
+  committed fixture and asserts no rendered string is a dot-separated content key or a Capability enum
+  name. Because the binding set comes from the markup, adding or renaming a binding cannot make the guard
+  stale, and four negative controls prove it is not vacuous (raw option label, raw history summary,
+  gateNote rebound into the markup, emptied catalog).
 
-  Presentation (reusing the accepted language, not a new one): each screen is a `.page` flex child of
-  `.surface`, so the one-screen policy is structural rather than per-screen. The per-screen primary
-  control `.entry-cta` carries the same solid-ink treatment as the breakthrough CTA without reusing that
-  class; list rows read as chips; candidate cards are raised comparison surfaces whose selected state is
-  carried by an inset fill plus a strengthened edge rather than colour alone. Two bounded scroll regions
-  (mode list, candidate list) reuse the accepted `.attention-scroll` pattern, so below the baseline they
-  degrade into internal scroll instead of hidden clipping. No new media band was introduced and no frozen
-  token, interaction floor or readability floor changed; the only new tokens are the `--entry-*` rhythm
-  tokens, declared once.
-
-  Honesty about the one-screen claim: the layout audit gained a second, per-screen budget table
-  (ENTRY_STACKS) summed from the same tokens the stylesheet consumes, worst case per screen (full mode
-  vocabulary / full candidate set / primary action available, including the margins and paddings each
-  screen really renders). At the supported baseline 320x500 the tightest screen is DESTINY_OFFER at
-  351.6px + 34px safe-area of 500px (114.4px slack); the other three leave more. That proves the budget,
-  not the rendering — see the manual checklist note below.
+  Nothing else moved. The controlled fixture, the fixture generator, the layout audit, the WXSS compat
+  audit and every accepted test file are byte-identical to the base; ui02entry.test.mjs stayed green
+  WITHOUT modification, which is the evidence that the accepted UI02ENTRY contract was honoured rather
+  than relaxed.
 
 changedFiles:
   - .codex/control/LAST_RESULT.yaml
   - miniprogram/pages/v2-preview/v2-preview.js
   - miniprogram/pages/v2-preview/v2-preview.wxml
-  - miniprogram/pages/v2-preview/v2-preview.wxss
-  - miniprogram/pages/v2-preview/v2-fixtures.js
-  - miniprogram/pages/v2-preview/v2-fixtures.json
-  - tools/ui02-preview-fixtures.mjs
-  - tools/ui02r1-layout-audit.mjs
-  - tools/wxss-compat-audit.mjs
-  - tests/ui02entry.test.mjs
-  - tests/ui02r1.test.mjs
+  - tests/ui02copy.test.mjs
   - docs/UI02_PREVIEW.md
   - package.json
 
 changes:
   - id: C1
-    file: tools/ui02-preview-fixtures.mjs
-    kind: fixture-generator
-    detail: >-
-      The single offer/run construction was factored into offerFixture() (generateServerDestinyOffer ->
-      reduce(START_RUN)) so the entry flow and the in-life flow are provably the same offer. A new
-      buildPreviewEntry() emits the `entry` collection from that same chain plus projectDestinyOfferView,
-      and buildPreviewFixtures() now includes it. buildPreviewStates() is unchanged, so every in-life
-      fixture byte is unchanged. The CLI summary prints the entry collection separately.
-  - id: C2
-    file: miniprogram/pages/v2-preview/v2-fixtures.json
-    kind: generated-fixture
-    detail: >-
-      Regenerated (86593 bytes) by node tools/ui02-preview-fixtures.mjs --write. Adds `entry` with START /
-      MODE_SELECT / DESTINY_OFFER / RUN_OPENING. Public-only: the projection is what the accepted
-      ServerViewModelBuilder already sends, the candidates carry four public fields, and the entry
-      collection contains no seed, RNG state, draw index, weight, odds, difficulty or rule internals.
-  - id: C3
-    file: miniprogram/pages/v2-preview/v2-fixtures.js
-    kind: generated-fixture-module
-    detail: >-
-      Regenerated (87482 bytes) by node tools/ui02-preview-fixture-module.mjs --write. Same payload as the
-      JSON sibling; the page still loads it with the single statically analysable literal
-      require("./v2-fixtures.js").
-  - id: C4
     file: miniprogram/pages/v2-preview/v2-preview.js
     kind: presentation
     detail: >-
-      PAGE_KIND_BY_PAGE_STATE gains the four pre-run page states (still 1:1 page-state -> page, so
-      RUN_HOME variants stay RUN_HOME and the ended run stays LIFE_ARCHIVE). present() looks in the new
-      `entry` collection first and fails closed exactly as before. Four presentation builders were added
-      (buildStart / buildModeSelect / buildDestinyOffer / buildRunOpening); they only format the fixture
-      and never compute eligibility, odds, weights or outcomes. New page vocabulary: ATTRIBUTE_LABELS
-      (four core attribute keys), MODE_VOCABULARY (contract capability vocabulary, availability read from
-      the shell projection) and START_COPY (documented copy). The dev tabs list the four pre-run screens
-      first, the page opens on START, and handlers onEntryNav / onSelectCandidate / onOfferConfirm were
-      added. There is NO default destiny selection: offerSelected defaults to empty and show() clears it.
-      Tapping a flow action only switches which generated projection renders; it submits nothing.
-  - id: C5
+      Adds CONTENT_COPY, a bounded zh-CN presentation catalog (20 keys) with a header comment stating the
+      3 rules the task fixes: bounded to the reachable committed keys, fail-open is a VISIBLE raw-key
+      fallback rather than invented copy, and the copy describes only what the fixture's own ids mean.
+      buildDecision now resolves the scene title, the body and every option label through
+      presentLabel(CONTENT_COPY, ...); the optionId is preserved verbatim for submission and bookkeeping
+      and only the visible label is resolved. buildArchive resolves each history entry's title and summary
+      the same way. The only fallback wording changed is the degenerate no-interaction placeholder, which
+      said "(no interaction)" in the scene headline and now reads 暂无事件. Also adds
+      MODE_UNAVAILABLE_LABEL (暂未开放) and a gateLabel field on each mode; gateNote is kept byte-identical
+      (it is pinned by the accepted ui02entry assertions) with a comment recording that it is an internal
+      diagnostic that must never be rendered. The page header comment was updated to describe UI02COPY and
+      to correct the old UI02R2 statement that narrative content keys are out of scope. No rule is
+      computed, no transport is wired, no RNG or eligibility path is added.
+  - id: C2
     file: miniprogram/pages/v2-preview/v2-preview.wxml
     kind: presentation
     detail: >-
-      Four new product branches (page--start / page--modes / page--offer / page--opening) inside .surface,
-      before RUN_HOME. New class prefixes entry-* / offer-* / opening-* so no accepted class is shadowed:
-      in particular the entry heading is .entry-heading, NOT .entry-title, because LIFE_ARCHIVE already
-      owns .entry-title and a first draft that reused the name was caught by the layout audit and renamed.
-      The dev overlay notes and the one-screen policy block were extended. RUN_HOME / EVENT /
-      SPECIAL_NODE / LIFE_ARCHIVE markup is unchanged.
-  - id: C6
-    file: miniprogram/pages/v2-preview/v2-preview.wxss
-    kind: presentation
-    detail: >-
-      New `--entry-*` rhythm tokens (declared once, no new media band) and the entry-flow rule set (~43
-      rules) reusing the frozen paper/ink/cinnabar/gold tokens, the type scale, --radius-card and the
-      interaction floors. Six new boxes declare box-sizing: border-box (entry-list, entry-row, offer-cand,
-      opening-row, entry-attrs, entry-cta), because WXSS has no universal reset and each definite-sized
-      padded/bordered box must declare it itself. No accepted rule was modified.
-  - id: C7
-    file: tools/ui02r1-layout-audit.mjs
-    kind: audit
-    detail: >-
-      Audit grew from 96 to 143 checks. Adds ENTRY_STACKS / entryStack() with a per-screen worst-case
-      budget summed from the stylesheet tokens, a second `entryQuantised` result table (kept separate so
-      the accepted `quantised` length of six viewports is unchanged), and entry structural checks: one
-      container per pre-run screen inside .surface, each screen adds no scroll container, the two bounded
-      list regions are scroll-views, one primary control per screen at the touch floor, safe-area on the
-      entry action area, and both data-driven screens are driven by the projection. Entry selectors were
-      added to the clamp and reserved-height lists, and the report now prints the pre-run budget table.
-  - id: C8
-    file: tools/wxss-compat-audit.mjs
-    kind: audit
-    detail: >-
-      BORDER_BOX_CANDIDATES gained the six new entry boxes with rationale (15 -> 21 entries; 22 derived
-      and covered including the priorities panel), so the "no stale entries" and "no dead declaration"
-      checks stay meaningful.
-  - id: C9
-    file: tests/ui02entry.test.mjs
+      One functional change: the MODE_SELECT unavailable row binds {{item.available ? item.note :
+      item.gateLabel}} instead of gateNote, so the player-facing 暂未开放 renders and the capability enum
+      cannot. A comment records why the diagnostic is deliberately not bound. No container, class,
+      scroll-view, wx:if branch or product-kind discriminator was added, renamed or removed; the layout
+      audit's element and selector counts are unchanged at 143 checks, and the WXSS is byte-identical.
+  - id: C3
+    file: tests/ui02copy.test.mjs
     kind: test
     detail: >-
-      New dedicated suite, 20 tests. Pins: the four screens render from generated fixtures and are
-      walkable in-preview; every vm.* binding in the pre-run markup resolves on the presented view and each
-      screen binds only its own projection field (the blank-surface defect class this project has shipped
-      twice, which no structural check can see); DESTINY_OFFER equals an independently rebuilt real public
-      offer and leaks no secret key or value; there is no default selection and no submission binding;
-      MODE_SELECT renders only the contract vocabulary and gates availability from the projection (with
-      all-off / all-on behavioural controls); RUN_OPENING formats public data only, renders no raw ids and
-      resolves nothing; START has exactly one primary action and documented copy provenance; the pre-run
-      screens reuse the accepted tokens, band list and card radius; every pre-run screen fits every matrix
-      viewport with the safe-area reserved and cannot create page-level scroll; the audits are green and
-      the fixtures are fresh; the default route and the 1.0 start page are byte-equivalent to the task
-      base; and the page files do not reach into the gameplay layers. It ends with six negative controls
-      (injected weight, invented mode, default selection, dropped markup branch, overgrown screen, mistyped
-      binding) plus a readability-floor check.
-  - id: C10
-    file: tests/ui02r1.test.mjs
-    kind: test
-    detail: >-
-      Two deliberate, disclosed updates. (1) The BASE_TREE digest pins for the two shared fixtures that
-      this task legitimately had to change (tools/ui02-preview-fixtures.mjs and v2-fixtures.json) were
-      updated on purpose; every other pinned tree is untouched, which is what keeps the byte-equivalence
-      claim in UI02R1_scope meaningful. (2) The discriminator guard now covers the whole product surface:
-      ALL_FIXTURE_KEYS includes the entry collection in dev-tab order, the expected branch vocabulary is
-      the eight product kinds, and the negative control now removes BOTH kind-assignment sites (the
-      pre-run builder and the in-life builder) because "no kind at all" is the defect being guarded.
-  - id: C11
+      New dedicated suite, 11 tests, 538 lines. Pins: the catalog is exactly the narrative key set derived
+      from the committed fixtures (set equality both ways) and every entry is Chinese, non-echoing copy;
+      the catalog carries no capability name, no per-run fixture value and no promise wording, and is not
+      written into the content pack; the markup-derived visual guard is clean for every committed fixture
+      and the markup carries no capability vocabulary and never binds gateNote; EVENT renders the catalog
+      title/body and every option label in the server's order with option ids and the full
+      riskPresentation unchanged; SPECIAL_NODE does the same with its locking and risk semantics intact;
+      LIFE_ARCHIVE renders Chinese history and build-transition copy while the entry ids, kinds and public
+      history data stay untouched; MODE_SELECT shows 暂未开放 and no capability name; an unmapped future key
+      falls back verbatim and is reported; four negative controls prove the guard is not vacuous; and the
+      copy pass computes no rule, wires no transport, changes no projected value and leaves the route and
+      default page untouched.
+  - id: C4
     file: docs/UI02_PREVIEW.md
     kind: docs
     detail: >-
-      Entry-flow preview instructions (ten dev tabs, the walkable START -> MODE_SELECT -> DESTINY_OFFER
-      navigation labelled as preview-only, RUN_OPENING via the dev tab), why `entry` and `states` are
-      separate, the per-entry data-source table, the pre-run one-screen policy rows, the updated
-      border-box count, a new UI02ENTRY section with the four screen definitions and the explicit
-      not-done list, the updated audit command list with the fast-lane scope note, and eleven new manual
-      visual checklist items.
-  - id: C12
+      Adds section 5.6 (UI02COPY) with the copy policy for both defects, the bounded-catalog rules, the
+      capability-name fix and the visual-guard description plus its explicit not-done list. Section 5.2 rule
+      2 was corrected (narrative keys are no longer "out of scope"; they are handled by the bounded 5.6
+      catalog). The stale manual-checklist item that told the reviewer to expect ''能力未开通 ·
+      <Capability>'' now expects 暂未开放 and forbids the enum name, and three new checklist items (17-19)
+      cover EVENT / SPECIAL_NODE, LIFE_ARCHIVE and a whole-flow sweep for leftover identifiers. The audit
+      command list gains tests/ui02copy.test.mjs, the fast-lane scope note now covers UI02COPY, and the
+      intro block mentions the pass. The four test-pinned strings (pages/v2-preview/v2-preview,
+      tools/ui02-preview-fixtures.mjs, 生产, 未接线) are all still present.
+  - id: C5
     file: package.json
     kind: tooling
     detail: >-
-      Registers tests/ui02entry.test.mjs as test:ui02entry and appends it to the aggregate npm test list.
-      No dependency change.
+      Registers the new suite as test:ui02copy. The aggregate `test` script was deliberately NOT modified:
+      this task's dispatch defers the full regression, and extending the frozen aggregate list is a
+      merge-time decision for the controller. No dependency change.
 
 tests:
-  - name: tests/ui02entry.test.mjs (dedicated, new)
-    result: "20/20 pass, 0 fail (exit 0)"
+  - name: tests/ui02copy.test.mjs (dedicated, new)
+    result: "11/11 pass, 0 fail (exit 0)"
+  - name: tests/ui02entry.test.mjs (unmodified)
+    result: "20/20 pass, 0 fail (exit 0); the accepted capability assertion still holds because gateNote was retained"
   - name: tests/ui02r2a2.test.mjs
     result: "15/15 pass, 0 fail (exit 0)"
   - name: tests/ui02r2.test.mjs
     result: "15/15 pass, 0 fail (exit 0)"
   - name: tests/ui02r1.test.mjs
-    result: "32/32 pass, 0 fail (exit 0) (with the C10 digest pins and discriminator guard updated as described)"
+    result: >-
+      32/32 pass, 0 fail (exit 0), unmodified. Both shared-fixture digest pins still match, which is the
+      evidence that the fixture generator and the controlled fixture were NOT touched this time.
   - name: tests/ui02.test.mjs
     result: "18/18 pass, 0 fail (exit 0)"
   - name: tests/viewmodel-ui.test.mjs
     result: "6/6 pass, 0 fail (exit 0)"
   - name: tools/ui02r1-layout-audit.mjs
     result: >-
-      143/143 checks green, exit 0. In-life worst case unchanged: 320x500 444.2+34 of 500 (slack 21.8px);
-      360x560 507.4+34 of 560; 375x603 548.5+34 of 603; 390x750 690.0+34 of 750; 414x820 761.2+34 of 820;
-      430x850 790.6+34 of 850. New pre-run table, slack at the supported baseline: START 213.3px
-      (slack 252.7px), MODE_SELECT 319.1px (146.9px), DESTINY_OFFER 351.6px (114.4px), RUN_OPENING 314.0px
-      (152.0px). No entry screen and no matrix viewport has an unresolved token.
+      exit 0, 143/143 structural checks green, zero failures. Byte-identical to base and unwidened by this
+      task (no WXSS and no layout-affecting markup change), so the accepted budgets are unchanged:
+      RUN_HOME worst case 320x500 444.2px + 34px safe-area of 500px; pre-run worst case START/MODE_SELECT
+      unchanged (MODE_SELECT 320x500 319.1px + 34px of 500px, slack 146.9px).
   - name: tools/wxss-compat-audit.mjs
-    result: >-
-      PASS, exit 0, 14/14 checks green. 167 selectors, at-rules media only, media bands still exactly 6,
-      22 derived border-box boxes all covered (16 accepted + 6 new entry boxes).
+    result: "exit 0, 14/14 checks green, 167 selectors, at-rules media only, 6 media bands, 22 border-box boxes covered. WXSS is byte-identical to base."
   - name: tools/ui02-preview-fixture-module.mjs (fixture freshness)
     result: >-
-      exit 0. Fixture module and JSON up to date; v2-preview.js still requires "./v2-fixtures.js" with a
-      static literal and no miniprogram module uses a non-literal require; payload 87482 bytes, 4 entry
-      screens + 4 states + 2 variants.
-  - name: tsc --noEmit
+      exit 0. Fixture module and JSON reported up to date; v2-preview.js still requires "./v2-fixtures.js"
+      with a static literal and no miniprogram module uses a non-literal require; payload 87482 bytes,
+      4 entry screens + 4 states + 2 variants.
+  - name: npx --yes --package typescript@5.9.3 tsc --noEmit
     result: >-
-      exit 0, typescript 5.9.3 (the version pinned in package.json; no .ts file was modified by this task,
-      so this is the base result re-confirmed).
+      exit 0, clean, typescript 5.9.3 (the version pinned in package.json). No .ts file was modified by this
+      task, so this re-confirms the base result.
 
 gates:
   - name: typecheck
     result: PASS
   - name: layout-audit
-    result: "PASS (143/143, includes the new pre-run per-screen budget checks)"
+    result: "PASS (143/143, unchanged)"
   - name: wxss-compat-audit
-    result: "PASS (14/14)"
+    result: "PASS (14/14, unchanged)"
   - name: fixture-freshness
     result: PASS
-  - name: ui-fast-lane required suites (ui02entry, ui02r2a2, ui02r2, ui02r1, ui02, viewmodel-ui)
-    result: "PASS (20+15+15+32+18+6 = 106 tests, 0 fail)"
+  - name: ui-fast-lane required suites (ui02copy, ui02entry, ui02r2a2, ui02r2, ui02r1, ui02, viewmodel-ui)
+    result: "PASS (11+20+15+15+32+18+6 = 117 tests, 0 fail)"
   - name: full npm regression
     result: >-
-      DEFERRED (not run). The dispatch explicitly forbids running it during the visual iteration and the
-      task's `tests` list contains only the targeted fast-lane items above, so it was not executed here.
-      The dispatch requires exactly one final full regression after human visual acceptance and before
-      the UI02 chain is merged.
+      DEFERRED (not run), exactly as the dispatch requires. The task's `tests` list contains only the
+      targeted fast-lane items above, and NEXT_TASK states that the full npm regression stays deferred until
+      human visual acceptance of this final UI02 copy pass. It must be run once by the controller after that
+      acceptance and before the UI02 chain is merged.
 
 scope:
   coreChanged: false
   contractsChanged: false
   directorChanged: false
   contentChanged: false
+  contentPackChanged: false
   serverViewModelChanged: false
   wechatShellIntentMappingChanged: false
   applicationUiControllerChanged: false
   legacy1_0PagesChanged: false
   appRouteChanged: false
   ui02PreviewMarkupChanged: true
-  ui02PreviewStylesheetChanged: true
+  ui02PreviewStylesheetChanged: false
   ui02PreviewPageLogicChanged: true
-  ui02PreviewFixtureGeneratorChanged: true
-  ui02PreviewFixtureJsonChanged: true
-  ui02PreviewFixtureModuleChanged: true
-  entryFlowImplemented: true
-  entryFlowUsesRealServerOffer: true
+  ui02PreviewFixtureGeneratorChanged: false
+  ui02PreviewFixtureJsonChanged: false
+  ui02PreviewFixtureModuleChanged: false
+  rawDevContentKeysRendered: false
+  internalCapabilityNamesRendered: false
+  playerFacingCopyCatalogAdded: true
+  copyCatalogIsBounded: true
+  unknownKeyFallsBackVerbatim: true
+  optionIdsChanged: false
+  riskPresentationChanged: false
+  publicHistoryDataChanged: false
   clientRngOrEligibilityAdded: false
-  duplicateDestinyGenerationAdded: false
-  inventedGameModeOrLoreAdded: false
-  presentationLabelsExtended: true
-  narrativeContentI18n: false
+  inventedLoreOrBenefitAdded: false
+  existingTestsWeakenedOrEdited: false
   transportWired: false
   ui03Started: false
   viewportMatrixBandsChanged: false
@@ -294,36 +236,44 @@ scope:
   scrollOwnershipChanged: false
   newRuntimeDependency: false
   note: >-
-    Product changes are confined to miniprogram/pages/v2-preview (js / wxml / wxss plus the two generated
-    fixture artifacts). Supporting changes are the two audit tools, the two test files, the preview doc
-    and package.json. No Core, Content, Director, server projection, shell intent mapping, application UI
-    controller, route or legacy 1.0 page was touched; the UI02R1_scope pinned-tree digests for
-    packages/*, server/src, miniprogram/app.json, the legacy pages and app.wxss all still pass, proving
-    those trees are byte-identical to the task base. The only pinned digests updated are the two shared
-    fixtures this task had to regenerate, and that update is disclosed in C10. No new runtime dependency,
-    no new require, no new schema field, no RNG draw, no simulation, no source-branch push, no merge, no
-    rebase. UI03 was not started.
+    Product changes are confined to miniprogram/pages/v2-preview (the page logic and one markup binding).
+    Supporting changes are the new test file, the preview doc and package.json. The stylesheet, the fixture
+    generator, both controlled fixture artifacts, the layout audit and the WXSS compat audit are
+    byte-identical to the base, and the accepted tests/ui02r1.test.mjs scope digests for packages/*,
+    server/src, miniprogram/app.json, the legacy pages and app.wxss all still pass, proving those trees are
+    untouched. No accepted test file was edited, weakened or deleted — ui02entry.test.mjs, which pins the
+    behaviour this task had to change on screen, stayed green unmodified. No new require, no new schema
+    field, no RNG draw, no simulation, no source-branch push, no merge, no rebase. UI03 was not started.
 
 disclosedScopeNotes:
   - >-
-    tools/wxss-compat-audit.mjs and tools/ui02r1-layout-audit.mjs were extended. They are structural audit
-    tools, not gameplay; the task requires layout-audit and wxss-compat-audit to be green for the new
-    pre-run screens, which is only meaningful if they actually cover those screens.
+    MODE_SELECT keeps the internal capability diagnostic on gateNote. The accepted tests/ui02entry.test.mjs
+    contains `assert.equal(mode.gateNote.includes(mode.capability), true, "a disabled entry must name the
+    missing capability")` while this task's allowedScope requires that MODE_SELECT no longer expose
+    capability enum names, and the dispatch also requires the UI02ENTRY suite to remain green. The two can
+    only both hold if the enum leaves the SCREEN while the diagnostic stays in the view model, so the
+    rendered helper was moved to a new player-facing gateLabel and gateNote was retained untouched but
+    unbound. tests/ui02copy.test.mjs closes the loop structurally (zero occurrences of gateNote in the
+    product surface, and the rendered field must not contain the capability name). If the controller would
+    rather delete gateNote outright, the ui02entry assertion must be relaxed in the same change — that is a
+    controller decision, so no test was edited here.
   - >-
-    tests/ui02r1.test.mjs was modified. It pins the digest of the shared fixture generator and the
-    committed fixture JSON, both of which this task necessarily regenerates, and its discriminator guard
-    enumerates the product kinds, which this task extends. Without those two updates the accepted suite
-    could not stay green, and its own comment explicitly allows such an update by a later task that is
-    legitimately allowed to change one of the pinned trees.
+    The copy catalog lives in the preview page, NOT in packages/content. The task forbids content-rule and
+    balance changes and forbids content-pack edits, so the Chinese copy is a PRESENTATION table in the page,
+    which is the same discipline the accepted UI02R2 label tables already follow. tests/ui02copy.test.mjs
+    asserts the copy text does not appear in packages/content/dev-fixtures/minimal-pack.json.
   - >-
-    START copy: the product name 天符 is the one docs/UI02_PREVIEW.md already uses for 2.0, and the
-    positioning line and core line are verbatim from docs/PROJECT-BRAIN.md. UI labels such as 入此修行 /
-    择一路 / 择定此命 / 入世 are UI affordance labels, not lore or gameplay promises, and a test asserts
-    no reward/benefit/purchase vocabulary appears on START.
+    Adding test:ui02copy to package.json without adding it to the aggregate `test` script is deliberate. The
+    dispatch defers the full npm regression and this task must not run it; changing the frozen aggregate
+    list is a merge-time decision and was left to the controller. The suite is still runnable by its
+    documented command and is listed in docs/UI02_PREVIEW.md 6.1.
   - >-
-    The preview default tab changed from RUN_HOME to START so the flow reads in order. This is the dev
-    preview's initial view, not the app route or the production default page; app.json is unchanged and
-    pinned, and the page is still registered last and is still not a tabBar entry.
+    The EVENT scene body and the option labels are newly authored Chinese prose. No locale table exists in
+    the repository (verified: the content pack stores these keys as opaque strings and no i18n table
+    exists), so bounded presentation copy was the only mechanism available inside the task's scope. The copy
+    is constrained to what each key already means, and a test forbids capability vocabulary, per-run fixture
+    values and reward/benefit/probability wording. The controller should still confirm the wording reads
+    correctly for the product.
 
 toolingObservations:
   - id: T1
@@ -331,116 +281,138 @@ toolingObservations:
     inherited: true
     title: nested node process spawn fails with EBUSY in this sandbox
     evidence: >-
-      execFileSync / spawnSync of process.execPath (and of git.exe by absolute path) returns status null
-      with EBUSY in this worktree, so any tool that shells out cannot run from inside a Node script here.
-      git itself works when invoked from the shell, which is how the base was built and pushed. This does
-      not affect the targeted fast-lane suites, which run in-process.
+      execFileSync / spawnSync of process.execPath (and of git.exe by absolute path) returns status null with
+      EBUSY in this worktree, so any tool that shells out cannot run from inside a Node script here. git,
+      node and npx all work when invoked from the shell, which is how the base was verified and how the
+      suites above were run. Does not affect the targeted fast-lane suites, which run in-process.
     impact: >-
-      Unchanged from the UI02R2A2 report: the three nested-spawn tests in a full-suite run report EBUSY
+      Unchanged from the UI02ENTRY report: the three nested-spawn tests in a full-suite run report EBUSY
       regardless of repository content. Judge them as environment noise.
   - id: T2
     severity: PROCESS
-    title: the agent network proxy is flaky and the sandbox destroys git ref writes
+    inherited: true
+    title: the agent network proxy is flaky and the sandbox can destroy git ref writes
     evidence: >-
-      git ls-remote / fetch against origin intermittently fail through the proxy and succeed on retry. Any
-      git command that updates a ref (commit / reset) can exit 0 while leaving the branch ref absent, so
-      this run used object-only plumbing plus a hand-written ref file, and verified both the work branch
-      and the unchanged source branch with a retried ls-remote.
+      git ls-remote / fetch against origin intermittently fail through the proxy and succeed on retry (one
+      40-attempt retry loop was needed). A git fetch whose refspec includes a branch checked out in another
+      worktree fails outright ("refusing to fetch into branch ... checked out at ..."), so wb-UI02ENTRY had
+      to be fetched on its own. No ref-write destruction was observed this run: the fetch ref and both
+      rev-parse readbacks persisted, and the commit path stayed on object-only plumbing.
     impact: >-
-      Informational; no action needed. Consistent with the runbook.
+      Informational; the work branch and the unchanged source branch were both verified with a retried
+      ls-remote. Consistent with the runbook.
   - id: T3
     severity: TOOLING
+    inherited: true
     title: no WXSS compiler exists in this repository
     evidence: >-
-      tools/wxss-compat-audit.mjs is a curated subset check. It verifies no universal selector, no
-      attribute selectors, no parameterised pseudo-classes, only supported at-rules and media conditions,
-      and that every definite-sized padded/bordered box declares border-box (now 22 boxes), but it cannot
-      prove the stylesheet compiles or renders.
+      tools/wxss-compat-audit.mjs is a curated subset check, and this task changed no WXSS at all, so the
+      compiled stylesheet is exactly the already-reviewed base artefact.
     impact: >-
-      The new entry stylesheet's real compile and rendering must be confirmed in WeChat DevTools during
-      the human pass; a compile error would show up as a red build, not as a failed audit here.
+      Informational for this task. The copy pass adds no CSS, so the one remaining unproven claim (that the
+      accepted stylesheet compiles and renders) is unchanged from UI02ENTRY.
+  - id: T4
+    severity: TOOLING
+    title: the WXML text/binding scanner had to distinguish text bindings from attribute bindings
+    evidence: >-
+      A descendant element's attributes appear inside its ancestor's inner source, so a naive scan of
+      element.inner treats data-intent="{{vm.runHome.breakthrough.intentId}}" (value
+      "special.attemptBreakthrough") as rendered copy. The guard strips attribute bindings and comparison
+      operands before collecting paths, and asserts no nested wx:for exists (which would break the one-list
+      attribution it relies on).
+    impact: >-
+      Recorded so a future maintainer does not "simplify" the guard back into a false positive. A nested
+      wx:for in the product surface will make the guard fail closed with an explicit message rather than
+      silently mis-attribute a binding.
 
 blockers: []
 
 backlog:
   - id: U1
     severity: BACKLOG
-    title: manual visual QA of the entry flow has not been performed
+    title: manual visual QA of the copy pass has not been performed
     evidence: >-
-      No device or simulator rendering was executed here and no WXSS compiler exists in the repo, so every
-      claim about hierarchy, the candidate comparison, the selected state, the identity plate on START and
-      the opening summary is proven structurally only. Nothing was judged for visual quality.
+      No device or simulator rendering was executed here. Every claim about the new Chinese copy reading
+      well, about the 暂未开放 helper text and about the absence of identifiers on screen is proven
+      STRUCTURALLY (the guard resolves the real present() output against the bindings the committed markup
+      actually renders), but nothing was judged for visual or linguistic quality.
     impact: >-
       Treat this as structurally green but NOT visually accepted. The controller and user should review the
-      pushed HEAD in WeChat DevTools per the new checklist in docs/UI02_PREVIEW.md 6.2 items 9-16. UI03
-      must stay blocked until that human pass happens, and one final full regression is required after
-      visual acceptance and before the UI02 chain is merged.
+      pushed HEAD in WeChat DevTools per docs/UI02_PREVIEW.md 6.2 items 17-19. UI03 must stay blocked until
+      that human pass happens, and the single deferred full npm regression is required after it and before
+      the UI02 chain is merged.
     suggestedOwner: controller / user review before UI03
   - id: U2
     severity: BACKLOG
     title: repo-wide gates outside the task's targeted list were not run
     evidence: >-
-      lint (tools/check-import-boundaries.mjs), content lint and tools/scan-secrets.mjs are not in this
-      task's `tests` list. The dispatch instructs the implementer to run only the listed targeted UI
-      tests/audits during the visual iteration and not the full regression, so they were intentionally not
-      executed here.
+      lint (tools/check-import-boundaries.mjs), the content lints and the content-playability audit are not
+      in this task's `tests` list. tools/scan-secrets.mjs WAS run (PASS) because the page name-mangles a CSS
+      custom-property descriptor, but no other repo-wide gate was executed, per the dispatch's instruction to
+      run only the listed targeted suites during the visual iteration.
     impact: >-
-      Low risk (no new dependency, no new import edge, no .codex/ scan target and no CSS descriptor named
-      token), but the controller should run them once before merge together with the deferred full
-      regression.
+      Low risk (no new dependency, no new import edge, no gameplay source touched), but the controller should
+      run them once before merge together with the deferred full regression.
     suggestedOwner: controller before merge
   - id: U3
     severity: BACKLOG
-    title: narrative content keys still render as raw keys
-    evidence: "titleKey / bodyKey / labelKey / summaryKey prose still renders raw, by design, as in the UI02R2 backlog."
-    impact: Belongs to a later content/i18n task.
+    title: per-run content prose beyond the committed fixtures still has no locale layer
+    evidence: >-
+      CONTENT_COPY resolves exactly the narrative keys the COMMITTED preview fixtures reach (pinned by set
+      equality). A future content pack that introduces a new narrative key will render that raw key until the
+      catalog is extended — by design, so the gap is visible rather than silently filled with wrong copy.
+    impact: >-
+      This closes the UI02ENTRY backlog item that said narrative keys render raw. The remaining work — a real
+      content/localisation layer for arbitrary packs, and content-authored copy in the pack itself — belongs
+      to a later content/i18n task, not to UI02.
     suggestedOwner: later UI/content task
 
 recommendedCommitMessage: |-
-  feat(ui02entry): add high-fidelity 2.0 entry flow to the dev preview
+  feat(ui02copy): clear raw content keys and capability names from the 2.0 preview
 
-  Presentation-only UI_FAST_LANE slice that extends the accepted UI02R2A2 visual
-  system to START -> MODE_SELECT -> DESTINY_OFFER -> RUN_OPENING, so the 2.0 game
-  reads as one product from launch through entering a life. No Core, Content,
-  Director, server projection, shell intent mapping, application UI controller,
-  route or legacy 1.0 page change; UI03 live wiring is not started.
+  Presentation-only UI_FAST_LANE copy pass, the last one before the deferred full
+  regression. It removes the developer identifiers that were still reaching the
+  player in the visually accepted UI02ENTRY preview and changes no gameplay rule,
+  no server projection, no Core/Content source, no route and no layout contract.
 
-  One generated truth:
-  - the entry fixtures come from the same production chain as the accepted in-life
-    fixtures (generateServerDestinyOffer -> reduce(START_RUN) ->
-    ServerViewModelBuilder.build -> buildWeChatPageShell) plus
-    projectDestinyOfferView; a test rebuilds the dev offer independently and
-    asserts equality.
-  - DESTINY_OFFER renders only the public candidate fields and exposes no seed,
-    RNG state, draw index, weight, odds, difficulty or rule internals.
-  - MODE_SELECT invents no mode: it reads availability from the accepted shell
-    capability projection and gates disabled entries visibly.
-  - RUN_OPENING formats only public selected profile / run data and resolves
-    nothing. START reads no state and uses documented copy only.
+  Raw content keys:
+  - the accepted content pack stores titleKey/bodyKey/labelKey/summaryKey as opaque
+    strings and the repository has no locale table, so the preview echoed the keys
+    themselves (dev.first-choice.title, dev.first-choice.body,
+    dev.first-choice.continue, build.fact.BUILD_STAGE_TRANSITION.summary, ...).
+  - the page now carries a bounded zh-CN presentation catalog (CONTENT_COPY) and
+    routes the two decision surfaces (scene title, body, every option label) and
+    the LIFE_ARCHIVE history (title, summary) through it.
+  - the catalog is pinned by set equality against the narrative keys derived from
+    the committed fixtures, so a missing entry and an invented one both fail. An
+    unmapped future key still falls back verbatim, i.e. fails visibly instead of
+    inventing copy. Option ids, riskPresentation, locking semantics and the public
+    history data are asserted unchanged.
 
-  Structural decision: the pre-run screens live in a new `entry` fixture
-  collection instead of `states`, because START and MODE_SELECT precede any
-  authoritative run and have no PageState to project; `states` therefore stays
-  exactly "server-authoritative pages".
+  Internal capability names:
+  - MODE_SELECT rendered DailyChallengeCapability / CommerceCapability in its
+    unavailable helper text. The screen now shows the player-facing 暂未开放.
+  - the accepted ui02entry assertion pins the capability name onto gateNote, so the
+    internal diagnostic is retained there but is no longer bound anywhere in the
+    markup; the new suite asserts the product surface contains zero occurrences of
+    gateNote, proving it cannot leak back onto the screen.
 
-  One-screen policy stays structural: each screen is a .page flex child of
-  .surface; the two list regions reuse the accepted bounded-scroll pattern; no new
-  media band; no frozen token, interaction floor or readability floor changed.
-  The layout audit gains a second per-screen budget table summed from the real
-  tokens (worst case at 320x500: DESTINY_OFFER 351.6px + 34px safe-area of 500px).
+  Guard: the new suite derives the checked bindings FROM the committed WXML (drops
+  attribute bindings and comparison operands, expands item.* through its wx:for
+  list, fails closed on a nested wx:for) and asserts that no string rendered for any
+  committed fixture is a dot-separated content key or a Capability enum name. Four
+  negative controls prove it is not vacuous.
 
-  Two shared fixtures were regenerated on purpose (the generator and
-  v2-fixtures.json), so the two digest pins for them in tests/ui02r1.test.mjs were
-  updated on purpose; every other pinned tree is untouched. New
-  tests/ui02entry.test.mjs (20 tests) pins the flow, the public-offer boundary,
-  the capability gating, the one-screen budgets, the copy provenance, that every
-  pre-run binding resolves (so a mistyped binding cannot render blank), and the
-  no-regression scope, with six negative controls.
+  Scope: stylesheet, fixture generator, both controlled fixture artifacts and both
+  audit tools are byte-identical to the base, and NO accepted test file was edited —
+  ui02entry.test.mjs stayed green unmodified. New tests/ui02copy.test.mjs (11 tests)
+  is registered as test:ui02copy; the aggregate npm test list was left untouched
+  because the full regression is deferred.
 
-  Fast lane: ui02entry 20/20, ui02r2a2 15/15, ui02r2 15/15, ui02r1 32/32,
-  ui02 18/18, viewmodel-ui 6/6, layout audit 143/143, wxss compat 14/14, fixture
-  freshness green, tsc 5.9.3 clean. Full npm regression is deliberately deferred
-  until after human visual acceptance and before the final UI02 merge.
+  Fast lane: ui02copy 11/11, ui02entry 20/20, ui02r2a2 15/15, ui02r2 15/15,
+  ui02r1 32/32, ui02 18/18, viewmodel-ui 6/6, layout audit 143/143, wxss compat
+  14/14, fixture freshness green, tsc 5.9.3 clean. Full npm regression deliberately
+  deferred until after human visual acceptance and before the final UI02 merge.
 
   Manual visual QA in DevTools is required and is recorded as not performed;
   UI03 stays blocked.

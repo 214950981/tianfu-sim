@@ -57,7 +57,8 @@
   "ui02r1:fixture": "node tools/ui02-preview-fixture-module.mjs",
   "test:ui02r2": "node --test tests/ui02r2.test.mjs",
   "test:ui02r2a2": "node --test tests/ui02r2a2.test.mjs",
-  "test:ui02entry": "node --test tests/ui02entry.test.mjs"
+  "test:ui02entry": "node --test tests/ui02entry.test.mjs",
+  "test:ui02copy": "node --test tests/ui02copy.test.mjs"
 },
   "devDependencies": {
     "typescript": "5.9.3"

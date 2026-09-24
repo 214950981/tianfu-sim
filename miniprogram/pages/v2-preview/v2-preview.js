@@ -28,8 +28,9 @@
  * UI02R2 adds a presentation-only Chinese label vocabulary for structural enum ids (realm ids, build
  * stages, condition kinds, affinity/trust semantics, roles, participant slots, risk tiers, known
  * reason keys, death causes, archive entry kinds). It changes no projected value: unknown ids fall
- * back verbatim to the raw value, and narrative content keys (titleKey/bodyKey/labelKey/summaryKey
- * prose) are not translated — that is content i18n, not presentation.
+ * back verbatim to the raw value. Narrative content keys were left untranslated at that point;
+ * UI02COPY (below) adds the bounded presentation catalog that resolves the ones this preview
+ * actually renders.
  *
  * UI02ENTRY extends the same review surface to the pre-run flow, START -> MODE_SELECT ->
  * DESTINY_OFFER -> RUN_OPENING, without starting UI03 live wiring. It adds no game authority:
@@ -44,6 +45,23 @@
  *  - START reads no state at all; its copy is documented product copy.
  *  - Tapping a flow action only switches which generated projection is shown. That is preview
  *    navigation, not command submission; production transport is still unwired (docs/UI02_PREVIEW.md).
+ *
+ * UI02COPY is the final player-facing copy pass before the deferred full regression. It is still
+ * presentation only — no gameplay rule, no server projection, no Core/Content source and no route is
+ * touched — and it fixes exactly two defects the human review found in an otherwise accepted layout:
+ *
+ *  - EVENT / SPECIAL_NODE / LIFE_ARCHIVE echoed raw dot-separated content keys (`dev.first-choice
+ *    .title`, `dev.first-choice.body`, `dev.first-choice.continue`, `build.fact.BUILD_STAGE_TRANSITION
+ *    .summary`) straight to the player, because the accepted content pack stores those keys as opaque
+ *    strings and the repository has no locale table. `CONTENT_COPY` resolves exactly the keys the
+ *    committed fixtures reach; an unmapped key still falls back verbatim, i.e. visibly.
+ *  - MODE_SELECT rendered the internal capability enum name (`DailyChallengeCapability`) in its
+ *    unavailable-state helper text. The rendered helper is now the player-facing `gateLabel`
+ *    (暂未开放). The internal diagnostic stays on `gateNote` for the accepted UI02ENTRY assertion, and
+ *    tests/ui02copy.test.mjs proves structurally that the markup cannot render it.
+ *
+ * Option ids, `riskPresentation`, submission semantics, layout, safe-area, scroll ownership and the
+ * viewport matrix are all unchanged.
  */
 
 /**
@@ -249,6 +267,54 @@ var DEATH_CAUSE_LABELS = { "lifespan": "寿元耗尽", "injury": "伤重不治" 
 var ENTRY_KIND_LABELS = { "event": "事件", "build": "道途" };
 var CN_NUMERALS = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
 
+/**
+ * UI02COPY — bounded zh-CN presentation catalog for public narrative content keys.
+ *
+ * The tables above mirror *structural enum ids* that the accepted Core / Content contracts already
+ * define. Narrative content keys (`titleKey` / `bodyKey` / `history` / `summaryKey` prose) had no
+ * Chinese text anywhere: the accepted content pack stores them as opaque strings and no locale table
+ * exists in the repository, so the 2.0 preview rendered the raw dot-separated key to the player
+ * (`dev.first-choice.title`) on EVENT / SPECIAL_NODE / LIFE_ARCHIVE.
+ *
+ * This catalog is the bounded copy pass that fixes exactly that. Its scope is deliberate and narrow:
+ *
+ *  - It covers ONLY the public content keys that are actually reachable in the *committed* preview
+ *    fixtures — the interaction title/body/option keys the two decision surfaces render, and the
+ *    public history / cause title+summary keys the archive renders. It is not an i18n layer and not
+ *    a key registry: an unknown future key is NOT invented here.
+ *  - `tests/ui02copy.test.mjs` derives that reachable key set from the committed fixtures and asserts
+ *    the catalog matches it exactly, so both a missing entry and an invented one fail the suite.
+ *  - Fail-open at runtime is deliberately a *visible* failure: an unmapped key falls back verbatim
+ *    through `presentLabel`, so a future content pack shows its raw key (an obvious defect) instead
+ *    of silently inheriting a wrong label or a silently invented meaning.
+ *  - The copy describes only what the fixture's own ids already mean (`continue` → 就此前行,
+ *    `rescue-stranger` → 出手相救, `study-sword` → 参研剑术, a rescue cause's echo → 昔日相救). It
+ *    adds no reward, no benefit, no probability and no new lore, and it changes no projected value,
+ *    no option id and no `riskPresentation`.
+ */
+var CONTENT_COPY = {
+  "destiny.offer.title": "天命所归",
+  "innate.offer.selection": "择定此命",
+  "dev.first-choice.title": "初入此世",
+  "dev.first-choice.body": "前路初开，去从皆在你一念之间。",
+  "dev.first-choice.history": "你于初入此世时做出了抉择。",
+  "dev.first-choice.continue": "就此前行",
+  "dev.first-choice.test-fortune": "试问气运",
+  "dev.first-choice.rescue-stranger": "出手相救",
+  "dev.first-choice.face-combat-risk": "正面迎战",
+  "dev.first-choice.study-sword": "参研剑术",
+  "dev.ordinary-fallback.title": "寻常际遇",
+  "dev.ordinary-fallback.body": "寻常一日，别无他事，只看你如何安排。",
+  "dev.ordinary-fallback.continue": "继续前行",
+  "dev.rescue-echo-a.title": "昔日相救",
+  "dev.rescue-echo-a.history": "你曾救下路人，此事此后仍有余响。",
+  "build.fact.BUILD_STAGE_TRANSITION.title": "道途转进",
+  "build.fact.BUILD_STAGE_TRANSITION.summary": "你的修行路数由此转入新阶。",
+  "cause.rescued-stranger.title": "救助路人",
+  "cause.rescued-stranger.summary": "你曾救下一名路人，因果自此相连。",
+  "cause.hinted.summary": "似有一段因果尚未明朗。"
+};
+
 /** Presentation label lookup: a known contract enum id -> its Chinese label; anything unknown -> the raw value verbatim. */
 function presentLabel(table, value) {
   if (typeof value !== "string" || value.length === 0) return value;
@@ -298,7 +364,21 @@ var MODE_VOCABULARY = [
   { modeId: "commerce", label: "商行", note: "只卖新的可能", visibleKey: "commerce", capability: "CommerceCapability" },
   { modeId: "share", label: "分享此命", note: "仅分享已公开信息", visibleKey: "share", capability: "ShareCapability" }
 ];
+/**
+ * MODE_SELECT unavailable-state copy.
+ *
+ * `MODE_GATE_NOTE` is the *internal* diagnostic: it names the missing capability, and it exists only
+ * so the accepted UI02ENTRY assertion can keep checking that a gated entry is attributed to the right
+ * capability. It is deliberately NOT rendered — a player has no business reading an implementation
+ * enum name, and the UI contract only requires a missing capability to "hide or safely degrade" the
+ * entry.
+ *
+ * `MODE_UNAVAILABLE_LABEL` is what the product surface shows instead: one concise, player-facing
+ * state. tests/ui02copy.test.mjs asserts the markup binds only the player-facing field, so the
+ * diagnostic cannot leak back onto the screen.
+ */
 var MODE_GATE_NOTE = "能力未开通";
+var MODE_UNAVAILABLE_LABEL = "暂未开放";
 var DESTINY_OFFER_NOTE = "仅呈现服务端已公开的候选 · 不含隐藏权重 · 择定由服务端裁定";
 var RUN_OPENING_NOTE = "仅呈现服务端已公开的择定与开局信息 · 不含规则内部数据";
 var ENTRY_ACTION_LABELS = {
@@ -500,7 +580,9 @@ function buildDecision(vm) {
     var risk = option.riskPresentation || null;
     return {
       optionId: option.optionId,
-      label: text(option.labelKey, option.optionId),
+      // The option id is preserved verbatim for submission/bookkeeping; only the visible label is
+      // resolved through the content catalog, and an unmapped key stays visible as the raw key.
+      label: text(presentLabel(CONTENT_COPY, option.labelKey), option.optionId),
       hasRisk: risk !== null,
       tier: risk === null ? "" : presentLabel(RISK_TIER_LABELS, risk.tier),
       tierClass: risk === null ? "" : (RISK_TIER_CLASS[risk.tier] || ""),
@@ -513,8 +595,9 @@ function buildDecision(vm) {
   return {
     kind: vm.pageState,
     decisionId: text(interaction.interactionId, "(none)"),
-    headline: text(interaction.titleKey, "(no interaction)"),
-    bodyKey: text(body.bodyKey, ""),
+    headline: text(presentLabel(CONTENT_COPY, interaction.titleKey), "暂无事件"),
+    // Field name kept for the accepted `.scene-body` binding; the value is resolved copy now, not a key.
+    bodyKey: text(presentLabel(CONTENT_COPY, body.bodyKey), ""),
     state: text(interaction.interactionState, "idle"),
     participants: participants,
     options: options,
@@ -533,8 +616,10 @@ function buildArchive(vm) {
     return {
       entryId: entry.entryId,
       kind: presentLabel(ENTRY_KIND_LABELS, entry.kind),
-      title: entry.titleKey,
-      summary: entry.summaryKey
+      // The public history data itself is untouched: only the rendered title/summary copy is resolved
+      // through the content catalog instead of echoing the raw dot-separated content key.
+      title: presentLabel(CONTENT_COPY, entry.titleKey),
+      summary: presentLabel(CONTENT_COPY, entry.summaryKey)
     };
   });
   var builds = archive.builds.map(function (build) {
@@ -670,7 +755,10 @@ function buildModeSelect(entry) {
       note: mode.note,
       available: available,
       capability: mode.capability,
+      // Internal attribution, never rendered: see the MODE_SELECT copy note above.
       gateNote: available ? "" : MODE_GATE_NOTE + (mode.capability === "" ? "" : " · " + mode.capability),
+      // The player-facing unavailable state. This is the only one the markup binds.
+      gateLabel: available ? "" : MODE_UNAVAILABLE_LABEL,
       primary: mode.visibleKey === ""
     };
   });

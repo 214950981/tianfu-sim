@@ -8,6 +8,8 @@
 > UI02R1 在此基础上把 RUN_HOME 重构为**一屏化操作面**，并补齐响应式与安全区合同。
 > UI02ENTRY 用同一套已验收视觉系统补齐**开局前流程**
 > （START → MODE_SELECT → DESTINY_OFFER → RUN_OPENING），仍未开始 UI03 生产接线。
+> UI02COPY 是最终合入前的**纯玩家文案清理**：清掉屏上的原始内容 key 与内部 capability 名，
+> 不动玩法、投影、路由与布局合同（见 5.6）。
 
 ## 一、这个路由是什么
 
@@ -325,8 +327,9 @@ UI02R2 是**纯 presentation 打磨**，不扩张功能，不触碰任何 UI02R1
 规则（`tests/ui02r2.test.mjs` 钉死）：
 
 1. **未知值原样回退**（`presentLabel`）：未来内容包出现新 id 时显示原始 id，不显示错标签。
-2. **不是 locale 层**：叙事内容键（`titleKey`/`bodyKey`/`labelKey`/`summaryKey` 的正文）
-   **不在**映射范围——那是后续内容 i18n 任务，映射它们等于伪造文案。
+2. **不是 locale 层**：这张表只镜像合同里已有的**结构性枚举 id**。叙事内容键（`titleKey`/
+   `bodyKey`/`labelKey`/`summaryKey` 的正文）**不在**这组表里——它们由 5.6 的
+   `CONTENT_COPY` 目录单独处理（有界、只覆盖当前夹具真正触达的 key）。
 3. **不含任何 per-run 夹具值**（人名、局名、npc id 等），也不含叙事键。
 4. `realmOrder` 数值原样保留在投影上；`第N境`/`未入修行` 只是 order 的呈现。
 
@@ -409,6 +412,55 @@ UI02ENTRY 把 UI02R2A2 已人工验收的视觉系统**扩展**到开局前流�
 - 不新增页面、不改 `app.json`、不改默认路由（首页仍是 `pages/start/start`）、不碰 1.0 页面。
 - 不碰 `server` / `packages/core` / `packages/content` / `packages/wechat-shell` / `packages/application-ui`。
 
+### 5.6 UI02COPY —— 玩家可见文案 / 原始 key 清理（纯呈现）
+
+人工验收 UI02ENTRY 时发现：版式与视觉系统是连贯的，但**同一批预览屏里仍有开发者标识在漏给玩家**。
+UI02COPY 是最终合入前的**最后一次纯文案清理**，仍不动玩法规则、服务端投影、Core/Content 源码、路由
+与布局合同。它只解决两件事：
+
+**（1）原始内容 key。** 被验收的内容包把 `titleKey` / `bodyKey` / `labelKey` / `summaryKey` 一律存成
+不透明字符串，仓库里没有任何文案表，于是页面把 `dev.first-choice.title`、`dev.first-choice.body`、
+`dev.first-choice.continue`、`build.fact.BUILD_STAGE_TRANSITION.summary` 原样打在屏上。
+页面新增一张**有界**的中文呈现目录 `CONTENT_COPY`：
+
+| 屏幕 | 走目录的字段 |
+| --- | --- |
+| EVENT / SPECIAL_NODE | 场景标题、正文、**每一个**选项标签 |
+| LIFE_ARCHIVE | 已公开往事的标题与摘要（历史 / 道途转进） |
+
+规则（`tests/ui02copy.test.mjs` 钉死）：
+
+1. **有界**：目录的 key 集合 == 当前夹具真正触达的叙事 key 集合（测试从夹具自己推导）。少一条
+   ——屏上会漏原始 key；多一条——等于给不存在的内容编文案。两个方向都判失败。
+2. **未知 key 原样回退**（沿用 `presentLabel` 语义）：未来内容包出现新 key 时，屏上显示**原始 key**
+   （明显的缺陷），而不是悄悄继承一条错文案或自造玩法含义。
+3. **不编造**：文案只描述 key 自己已经表达的意思（`continue` → 就此前行，`rescue-stranger` →
+   出手相救，`study-sword` → 参研剑术，救人之因的回响 → 昔日相救）。不含奖励、收益、概率、成功率、
+   权重，也不含任何新的人名 / 地名 / 门派等设定，也不含任何 per-run 夹具值。
+4. **不动投影**：option id、`riskPresentation`（tier / canBeFatal / reasons）、提交与锁定语义、
+   `history` 公开数据、布局 / 安全区 / 滚动归属 / 视口矩阵全部不变。
+
+**（2）内部 capability 名。** MODE_SELECT 的不可用行原本把
+`DailyChallengeCapability` / `CommerceCapability` 直接写进 helper 文案。现在：
+
+- 屏上渲染**面向玩家**的 `gateLabel`（`暂未开放`）；
+- 命名能力名的内部诊断保留在 `gateNote` 上（`tests/ui02entry.test.mjs` 用它断言"置灰条目要归属到
+  正确的能力"），但**标记里不再绑定它**——`tests/ui02copy.test.mjs` 从标记里核对
+  `gateNote` 出现次数为 0，所以它无法再漏回屏上。
+
+**（3）无原始 key 的视觉守卫。** `tests/ui02copy.test.mjs` 的守卫**从提交的 WXML 推导**要检查的绑定
+（解析 `{{ }}`，剔除属性绑定与比较操作数，按 `wx:for` 展开 `item.*`），再对**每一个**夹具页解析真实
+`present()` 输出，断言：没有任何渲染字符串是点分内容 key 或 Capability 枚举名。因为绑定来自标记本身，
+新增或改名绑定不会让守卫失效；负向对照证明它不空转（还原原始 key / 还原 `gateNote` / 清空目录都必须
+被抓到）。
+
+**UI02COPY 明确没做的事**
+
+- 不改任何玩法规则、`server` 投影语义、`packages/core`、`packages/content`、`packages/wechat-shell`。
+- 不改路由、不改默认页、不碰 1.0 页面、不开始 UI03 生产接线。
+- 不动 UI02R2A2 / UI02ENTRY 的一屏、安全区、视口矩阵、触控下限、WXSS 令牌与滚动归属合同。
+- 不写进内容包（`CONTENT_COPY` 是页面里的**呈现**目录；内容包仍是内容的事实源）。
+
 ## 六、自动验证与人工视觉验收（务必区分）
 
 ### 6.1 自动结构验证（已执行）
@@ -418,6 +470,7 @@ node tools/ui02r1-layout-audit.mjs          # 143 项结构检查 + 内景/入�
 node tools/wxss-compat-audit.mjs            # WXSS 语法子集检查（含通配选择器与 border-box）
 node tools/ui02-preview-fixture-module.mjs  # fixture JS 模块 / JSON 是否最新 + require 字面量合同
 node --test tests/ui02entry.test.mjs        # UI02ENTRY 专项（入口流程 + 公开边界 + 负向对照）
+node --test tests/ui02copy.test.mjs         # UI02COPY 专项（有界文案目录 + 无原始 key 视觉守卫 + 负向对照）
 node --test tests/ui02r1.test.mjs           # UI02R1 专项（含两个审计与 fixture 一致性的负向对照）
 node --test tests/ui02r2.test.mjs           # UI02R2 专项（呈现层标签表 + 视觉打磨结构断言）
 node --test tests/ui02r2a2.test.mjs         # UI02R2A2 专项（RUN_HOME 重组 + 死区上限 + 负向对照）
@@ -435,7 +488,7 @@ node tools/scan-secrets.mjs
 它**只证明结构合同**：容器约束、滚动归属、四行动与 CTA 的存在性、入口四屏的存在性与一屏预算、
 触控目标下限、安全区写法、旧 1.0 / server / Core / Content 逐字节未变。
 
-> **UI02ENTRY 迭代期间的验证范围（由本任务定义）：只跑上面这份 UI fast-lane targeted 列表，
+> **UI02ENTRY / UI02COPY 迭代期间的验证范围（由任务定义）：只跑上面这份 UI fast-lane targeted 列表，
 > 不在视觉迭代期跑完整 `npm test` 回归。** 完整回归推迟到人工视觉验收通过之后、最终合并之前
 > 统一跑一次（见 `LAST_RESULT` 的显式记录）。
 
@@ -475,7 +528,8 @@ node tools/scan-secrets.mjs
     `启程` **不能**像 1.0 那种黑底霓虹仪表盘。
 11. **START**：主入口是否**一眼只有一个**；核心句与次要信息是否克制；留白是否读作设计而不是空。
 12. **MODE_SELECT**：`正式修行` 是否是唯一可用主入口；`今日命局` / `商行` / `分享此命`
-    的置灰与「能力未开通 · <Capability>」是否清楚可读、且不误导为可用。
+    的置灰与「暂未开放」是否清楚可读、且不误导为可用；屏上**不应**再出现
+    `DailyChallengeCapability` 之类的内部能力名。
 13. **DESTINY_OFFER**：三个候选的灵根/天赋/天命是否**逐行可比**、层级清楚；
     初始是否**没有任何**预选；点一项后选中态是否明显（下沉填充 + 加强描边）；
     四个候选外不应出现任何权重、概率、成功率之类信息。
@@ -486,7 +540,20 @@ node tools/scan-secrets.mjs
 16. **回归**：切回 `修行主页` / `事件` / `特殊节点` / `命书`，确认与 UI02R2A2 验收时**一致**，
     没有被入口流程改动带偏（四行动位置、突破 CTA 主次、抽屉行为、命书滚动）。
 
-任何一项不通过，都属于 UI02ENTRY 的返修范围，而不是 UI03。
+**UI02COPY 追加的文案清单：**
+
+17. **`事件` / `特殊节点`**：场景标题与正文是否为可读中文；五个（`特殊节点` 一个）选项标签是否
+    逐个可读、语义互不重复、且与右侧风险档位不矛盾；**不应**再出现
+    `dev.first-choice.title` / `dev.first-choice.body` / `dev.first-choice.continue` 这类点分 key。
+    确认风险档位（低险/危险）、`争斗之险 · 身负伤患` 与「此选项可能致命」的呈现与改动前一致。
+18. **`命书`**：已公开往事的标题与摘要是否为可读中文（含「道途转进」一条）；**不应**再出现
+    `dev.first-choice.history` / `build.fact.BUILD_STAGE_TRANSITION.summary` 这类点分 key。
+    确认只读、可滚动、终局与相识之人两段未被改动。
+19. **整体**：`启程` / `模式` / `择命` / `入世` / `修行主页` 五屏逐个扫一遍，确认没有任何
+    英文枚举名、点分 key 或 `xxxCapability` 残留在**玩家可见**的正文与标签里；
+    若出现未知 key 原样显示，那是 `CONTENT_COPY` 有界目录的**预期**回退行为（提回即可，不要绕过）。
+
+任何一项不通过，都属于 UI02ENTRY / UI02COPY 的返修范围，而不是 UI03。
 
 ## 七、明确尚未完成（生产接线）
 
