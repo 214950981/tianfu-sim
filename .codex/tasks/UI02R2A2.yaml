@@ -1,0 +1,49 @@
+id: UI02R2A2
+title: UI02R2A2 — RUN_HOME Visual Recomposition / Fast UI Iteration
+phase: 2
+requiredContracts: [.codex/contracts/ui.ref,.codex/contracts/viewmodel.ref,.codex/contracts/page-state.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [docs/UI02R1_RESPONSIVE_LAYOUT.md,docs/UI02_PREVIEW.md,docs/UIUX_RULES.md,miniprogram/pages/v2-preview/v2-preview.wxml,miniprogram/pages/v2-preview/v2-preview.wxss,miniprogram/pages/v2-preview/v2-preview.js,tests/ui02r2.test.mjs,tests/ui02r1.test.mjs,tools/ui02r1-layout-audit.mjs,tools/wxss-compat-audit.mjs]
+allowedScope:
+  - presentation-only second visual pass on the accepted-pending UI02R2 tree; do not start UI03 and do not touch gameplay/server authority
+  - keep the UI02R1 one-screen contract, viewport matrix, safe-area policy, scroll ownership and exactly-four core action intents
+  - recompose RUN_HOME so it feels like a game home screen rather than a paper form: stronger focal hierarchy, grouped surfaces, deliberate vertical rhythm, clearer interaction affordances and less empty dead space
+  - hero should read as identity/realm/lifespan at a glance; use restrained paper/ink/cinnabar/dark-gold contrast and a compact realm identity treatment rather than a plain large text line
+  - vitals should read as one coherent cultivation status component, not three unrelated table columns
+  - attention/current-priorities should feel like a game information module, not a spreadsheet list; keep the same at-most-three public summaries plus one condition row and read-only drawer behavior
+  - breakthrough remains the single primary CTA when enabled; four core actions remain a coherent 2x2 secondary action group with stronger affordance and consistent spacing
+  - remove the large visually dead middle gap on normal/tall phone previews without pushing actions below the first screen; use responsive rhythm/content allocation rather than page scrolling
+  - add presentation-only iconography/glyph treatments only if they are deterministic static UI decoration and do not imply hidden gameplay state; no external runtime dependency
+  - preserve Chinese presentation labels from UI02R2 and raw-value fallback for unknown ids
+  - leave the floating debug overlay functional but visually subordinate; product surface must still be reviewable with the overlay closed
+  - update docs/UI02_PREVIEW.md only as needed for the revised visual review checklist
+  - add or extend tests/ui02r2a2.test.mjs for structural invariants that are actually machine-checkable
+  - .codex/control/LAST_RESULT.yaml task result
+forbiddenScope: [server-viewmodel-changes,wechat-shell-intent-mapping-changes,application-ui-controller-changes,Core-gameplay-rule-changes,Content-gameplay-changes,Director-changes,Cause-semantics,Progression-changes,Risk-resolution-changes,Build-or-NPC-rule-changes,narrative-content-i18n,START-MODE_SELECT-DESTINY_OFFER-RUN_OPENING-implementation,legacy-1.0-page-rewrite,miniprogram-app-route-changes,default-route-changes,real-transport-wiring,UI03-implementation,UI04,CHAL01,ITEM01,TECH01,SECT01,WORLD01,new-heavy-test-dependency,source-branch-push]
+accept:
+  - RUN_HOME-still-has-no-page-level-vertical-scroll-and-all-four-core-actions-remain-first-screen-visible
+  - breakthrough-remains-server-gated-and-visually-primary-without-changing-intent-or-command-shape
+  - no-large-unexplained-dead-middle-gap-on-the-normal-and-tall-reference-layout-structure
+  - hero-vitals-attention-and-action-dock-each-have-a-distinct-visual-role-without-reverting-to-neon-dashboard-style
+  - attention-keeps-at-most-three-public-summaries-plus-one-condition-row-and-read-only-drawers
+  - touch-target-floor-safe-area-scroll-boundaries-and-viewport-matrix-remain-unchanged
+  - presentation-labels-and-unknown-value-fallback-from-UI02R2-remain-intact
+  - no-Core-Content-server-viewmodel-wechat-shell-application-ui-or-legacy-1.0-page-change
+  - dedicated-ui02r2a2-ui02r2-ui02r1-tests-green
+  - layout-audit-wxss-compat-audit-and-fixture-freshness-green
+  - LAST_RESULT-explicitly-records-that-full-npm-regression-was-not-required-for-this-presentation-only-iteration-unless-shared-code-was-touched
+testPolicy:
+  mode: UI_FAST_LANE
+  required: [ui02r2a2,ui02r2,ui02r1,ui02,viewmodel-ui,layout-audit,wxss-compat-audit,fixture-freshness,typecheck]
+  skipByDefault: [full-npm-test,content-lint,content01-lint,full-gameplay-regression,600-run-simulation]
+  escalation:
+    - run-full-npm-test-if-any-file-outside-miniprogram/pages/v2-preview-tests-ui02-docs-ui02-preview-package-test-registration-is-changed
+    - run-full-npm-test-once-after-human-visual-acceptance-before-controller-merges-the-final-UI02-chain-into-dev
+    - gameplay-or-server-contract-change-is-forbidden-rather-than-covered-by-more-testing-in-this-task
+manualVisualGate:
+  - normal-phone: hierarchy feels intentional, not sparse or form-like
+  - tall-phone: no giant empty middle field; action area still feels connected to the information above
+  - four actions read as a single operation group and the breakthrough CTA reads as the primary action
+  - typography and borders are comfortable at a glance; no tiny controls, no cramped packing
+tests: [ui02r2a2,ui02r2,ui02r1,ui02,viewmodel-ui,layout-audit,wxss-compat-audit,fixture-freshness,typecheck]
