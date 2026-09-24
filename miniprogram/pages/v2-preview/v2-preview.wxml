@@ -1,15 +1,24 @@
 <!-- UI02R1 dev preview — one-screen operational surface.
 
-     Product surface (RUN_HOME / EVENT / SPECIAL_NODE / LIFE_ARCHIVE) lives inside .surface, which is
-     height-constrained by .screen (100vh) and never grows the document: RUN_HOME / EVENT /
-     SPECIAL_NODE have no page-level vertical scroll, LIFE_ARCHIVE scrolls only inside its own
-     viewport, and long regions scroll inside bounded scroll-view containers.
+     Product surface (START / MODE_SELECT / DESTINY_OFFER / RUN_OPENING / RUN_HOME / EVENT /
+     SPECIAL_NODE / LIFE_ARCHIVE) lives inside .surface, which is height-constrained by .screen
+     (100vh) and never grows the document: every pre-run screen and RUN_HOME / EVENT / SPECIAL_NODE
+     have no page-level vertical scroll, LIFE_ARCHIVE scrolls only inside its own viewport, and long
+     regions scroll inside bounded scroll-view containers.
+
+     UI02ENTRY adds the four pre-run screens using the same accepted visual system and the same
+     one-screen discipline. They are ordinary .page children of .surface, so the page-level scroll
+     policy is structural rather than per-screen. The offer candidate list and the mode list are
+     bounded scroll-view regions of the same kind as the accepted RUN_HOME attention region: at the
+     supported viewports their content fits without scrolling, and below the baseline the region
+     degrades into internal scroll instead of hidden clipping.
 
      The dev layer (.dev-trigger / .dev-panel) and the read-only detail drawers (.drawer) are fixed
      overlays. They carry zero product layout height, so switching views or reading diagnostics never
      changes how much of the product surface is visible.
 
-     Everything rendered here is already-public server projection. No value is computed locally. -->
+     Everything rendered here is already-public server projection (or, for START, documented product
+     copy). No gameplay value is computed locally. -->
 <view class="screen">
 
   <view class="surface">
@@ -39,6 +48,145 @@
     </view>
 
     <block wx:if="{{failure === null && vm !== null}}">
+
+      <!-- ===================== START =====================
+           Pre-run identity surface. Each entry screen is a .page inside .surface, so it inherits the
+           same constrained 100vh viewport and cannot create page-level scroll. Product layout only:
+           the copy is documented product copy, no projected state is rendered. -->
+
+      <view wx:if="{{vm.kind === 'START'}}" class="page page--start">
+
+        <view class="entry-body">
+          <view class="eyebrow entry-head-gap">{{vm.start.eyebrow}}</view>
+          <view class="entry-heading">{{vm.start.title}}</view>
+          <view class="entry-sub">{{vm.start.positioning}}</view>
+          <view class="entry-core">
+            <view class="entry-core-mark"></view>
+            <view class="entry-core-text">{{vm.start.coreLine}}</view>
+          </view>
+        </view>
+
+        <view class="entry-dock">
+          <view class="entry-cta" data-target="{{vm.start.primary.target}}" bindtap="onEntryNav">
+            <view class="entry-cta-label">{{vm.start.primary.label}}</view>
+            <view class="entry-cta-enter">›</view>
+          </view>
+        </view>
+
+      </view>
+
+      <!-- ===================== MODE_SELECT =====================
+           Only the capability vocabulary the UI contract already defines. Availability is READ from the
+           accepted shell projection: the main contract flow is always open, every other row is a
+           capability-gated entry that renders as clearly unavailable when its capability is off. No new
+           game mode exists in this markup. -->
+
+      <view wx:if="{{vm.kind === 'MODE_SELECT'}}" class="page page--modes">
+
+        <view class="entry-head">
+          <view class="eyebrow">模式</view>
+          <view class="entry-heading entry-heading--sm">择一路</view>
+        </view>
+
+        <scroll-view class="entry-list" scroll-y>
+          <view wx:for="{{vm.modeSelect.modes}}" wx:key="modeId"
+                class="entry-row {{item.available ? '' : 'is-gated'}}">
+            <view class="entry-row-main">
+              <view class="entry-row-label">{{item.label}}</view>
+              <view class="entry-row-note">{{item.available ? item.note : item.gateNote}}</view>
+            </view>
+            <view class="entry-row-mark {{item.available ? '' : 'is-off'}}">{{item.available ? '可' : '闭'}}</view>
+          </view>
+        </scroll-view>
+
+        <view class="entry-dock">
+          <view class="entry-cta {{vm.modeSelect.primary.enabled ? '' : 'is-disabled'}}"
+                data-target="{{vm.modeSelect.primary.target}}" bindtap="onEntryNav">
+            <view class="entry-cta-label">{{vm.modeSelect.primary.label}}</view>
+            <view class="entry-cta-enter">›</view>
+          </view>
+        </view>
+
+      </view>
+
+      <!-- ===================== DESTINY_OFFER =====================
+           Real public server offer. Only the public candidate fields are rendered (spiritual root /
+           talent / major destiny), plus one confirm affordance. There is no pre-selected candidate:
+           choosing is a UI highlight and the preview never resolves, ranks or confirms a destiny. -->
+
+      <view wx:if="{{vm.kind === 'DESTINY_OFFER'}}" class="page page--offer">
+
+        <view class="entry-head">
+          <view class="eyebrow">择命</view>
+          <view class="entry-heading entry-heading--sm">{{vm.destinyOffer.count}} 命候择</view>
+          <view class="entry-meta">{{vm.destinyOffer.note}}</view>
+        </view>
+
+        <scroll-view class="entry-list" scroll-y>
+          <view wx:for="{{vm.destinyOffer.candidates}}" wx:key="optionId"
+                class="offer-cand {{offerSelected === item.optionId ? 'is-selected' : ''}}"
+                data-option="{{item.optionId}}" bindtap="onSelectCandidate">
+            <view class="offer-cand-order">{{item.order}}</view>
+            <view class="offer-cand-body">
+              <view class="offer-cand-root">{{item.spiritualRoot}}</view>
+              <view class="offer-cand-line">天赋 · {{item.talent}}</view>
+              <view class="offer-cand-line">天命 · {{item.majorDestiny}}</view>
+            </view>
+            <view class="offer-cand-pick {{offerSelected === item.optionId ? 'is-on' : ''}}">{{offerSelected === item.optionId ? '已择' : '择'}}</view>
+          </view>
+        </scroll-view>
+
+        <view class="entry-dock">
+          <view class="entry-cta" bindtap="onOfferConfirm">
+            <view class="entry-cta-label">择定此命</view>
+          </view>
+        </view>
+
+      </view>
+
+      <!-- ===================== RUN_OPENING =====================
+           Short transition/summary surface over already-public selected profile / run information.
+           Nothing is mutated or resolved here; the only affordance enters RUN_HOME. -->
+
+      <view wx:if="{{vm.kind === 'RUN_OPENING'}}" class="page page--opening">
+
+        <view class="entry-body">
+          <view class="eyebrow entry-head-gap">入世</view>
+          <view class="entry-heading">{{vm.runOpening.realmName}}</view>
+          <view class="entry-meta">{{vm.runOpening.runName}} · 寿元 {{vm.runOpening.age}} / {{vm.runOpening.maxAge}}</view>
+
+          <view class="opening-block">
+            <view class="opening-row">
+              <view class="opening-key">灵根</view>
+              <view class="opening-value">{{vm.runOpening.selectedRoot}}</view>
+            </view>
+            <view class="opening-row">
+              <view class="opening-key">天赋</view>
+              <view class="opening-value">{{vm.runOpening.selectedTalent}}</view>
+            </view>
+            <view class="opening-row">
+              <view class="opening-key">天命</view>
+              <view class="opening-value">{{vm.runOpening.selectedDestiny}}</view>
+            </view>
+          </view>
+
+          <view class="entry-attrs">
+            <view wx:for="{{vm.runOpening.attributes}}" wx:key="key" class="entry-attr">
+              <view class="entry-attr-label">{{item.label}}</view>
+              <view class="entry-attr-value">{{item.value}}</view>
+            </view>
+          </view>
+
+          <view class="entry-meta entry-meta--foot">{{vm.runOpening.note}}</view>
+        </view>
+
+        <view class="entry-dock">
+          <view class="entry-cta" data-target="{{vm.runOpening.enter.target}}" bindtap="onEntryNav">
+            <view class="entry-cta-label">{{vm.runOpening.enter.label}}</view>
+          </view>
+        </view>
+
+      </view>
 
       <!-- ===================== RUN_HOME ===================== -->
       <view wx:if="{{vm.kind === 'RUN_HOME'}}" class="page page--home">
@@ -231,7 +379,7 @@
 
   <view class="dev-panel" wx:if="{{devOpen}}">
     <scroll-view class="dev-scroll" scroll-y>
-      <view class="dev-note">UI02R1 内景预览 · 开发路由 · 非默认页 · 生产接线未完成</view>
+      <view class="dev-note">UI02ENTRY 内景预览 · 入口流程 + 内景 · 开发路由 · 非默认页 · 生产接线未完成</view>
 
       <view class="dev-block">
         <view class="dev-block-title">视图</view>
@@ -266,9 +414,10 @@
 
       <view class="dev-block">
         <view class="dev-block-title">一屏策略</view>
-        <view class="dev-line">RUN_HOME / EVENT / SPECIAL_NODE 无页面级纵向滚动。</view>
+        <view class="dev-line">START / MODE_SELECT / DESTINY_OFFER / RUN_OPENING / RUN_HOME / EVENT / SPECIAL_NODE 无页面级纵向滚动。</view>
         <view class="dev-line">开发层与详情抽屉为悬浮覆盖，不占产品布局高度。</view>
         <view class="dev-line">产品内容缩放由 wxss 的视口矩阵断点控制，不靠缩小字号或点击区。</view>
+        <view class="dev-line">入口流程的整屏、模式与候选列表在受控区内滚动，不撑高文档。</view>
       </view>
 
       <view class="dev-note">切换视图会收起本面板，便于直接观察产品一屏效果。</view>

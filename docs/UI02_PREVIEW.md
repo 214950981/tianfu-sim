@@ -6,6 +6,8 @@
 > 这是 UI02 的高保真可视化切片（RUN_HOME / EVENT / SPECIAL_NODE / LIFE_ARCHIVE），
 > 不是生产默认页，也不是新一轮玩法调参。
 > UI02R1 在此基础上把 RUN_HOME 重构为**一屏化操作面**，并补齐响应式与安全区合同。
+> UI02ENTRY 用同一套已验收视觉系统补齐**开局前流程**
+> （START → MODE_SELECT → DESTINY_OFFER → RUN_OPENING），仍未开始 UI03 生产接线。
 
 ## 一、这个路由是什么
 
@@ -21,8 +23,12 @@
 2. 左侧「普通编译」下拉 → **添加编译模式**。
 3. 启动页面选择 `pages/v2-preview/v2-preview`（若列表未刷新，先点一次「编译」）。
 4. 进入后页面**右上角有一个悬浮的「调试」触发器**（不占产品布局高度）。
-   点它展开 dev overlay，可在六个视图间切换：
+   点它展开 dev overlay，可在十个视图间切换（**前面四个是开局前流程，按顺序读**）：
 
+   - `启程` — START（开局身份面）
+   - `模式` — MODE_SELECT（只列合同已有的模式/能力入口）
+   - `择命` — DESTINY_OFFER（真实服务端公开命格候选）
+   - `入世` — RUN_OPENING（开局过渡/摘要）
    - `修行主页` — RUN_HOME
    - `事件` — EVENT
    - `特殊节点` — SPECIAL_NODE
@@ -31,6 +37,10 @@
    - `能力缺省·变体` — RUN_HOME，平台/商业/分享能力全部关闭
 
    切换视图会**自动收起 dev overlay**，方便直接观察一屏效果；再次点击「调试」可继续切换。
+   预览默认停在 `启程`（流程第一屏）。
+   开局前流程也可以**在页面内点着走**：`启程` 的主按钮 → `模式`，`模式` 的主按钮 → `择命`
+   （这是**预览内导航**，dev overlay 会明确标注「未提交命令」，不是生产路由跳转）。
+   `入世` 用 dev tab 打开。
 
 也可以直接在开发者工具控制台执行：
 
@@ -76,6 +86,35 @@ node tools/ui02-preview-fixtures.mjs --write        # 重新生成 JSON
 | 页面壳 / 能力入口 | `packages/wechat-shell/src/index.ts` → `buildWeChatPageShell` |
 | 意图映射 | `miniprogram` → `mapCoreActionIntents` / `mapSpecialActionIntents` |
 | 命书投影 | `buildArchiveView` |
+| 择命候选（公开） | `server/src/destiny-offer.ts` → `projectDestinyOfferView` |
+
+### 3.0 `entry` 与 `states` 为什么分开
+
+夹具有两个集合：
+
+- `entry`（UI02ENTRY 新增）：`START / MODE_SELECT / DESTINY_OFFER / RUN_OPENING`。
+- `states` / `variants`：内景 `RUN_HOME / EVENT / SPECIAL_NODE / LIFE_ARCHIVE` 与两个 RUN_HOME 变体。
+
+分开的原因是**语义**，不是风格：`START` 与 `MODE_SELECT` 发生在**任何权威 Run 存在之前**，
+服务端没有对应的 `PageState` 或 ViewModel 可投影（`derivePageState` 只认 run 状态与当前交互）。
+把它们塞进 `states` 就必须给每个开局前屏幕伪造一个 Run。分开之后：
+
+- `states` 仍然是「**服务端权威页面**」集合（`entry` 不参与它的逐字段再生成断言）；
+- `entry` 明确是「**开局前的公开流程**」，且 **DESTINY_OFFER 那一项本身就是真实服务端投影**
+  （`run.status === "offered"` 是货真价实的 `PageState`）。
+
+`entry` 每一项都只带已经公开的数据：
+
+| entry 键 | 携带内容 | 是否来自服务端投影 |
+| --- | --- | --- |
+| START | 无状态数据；页面只渲染**文档已有文案**（见 5.6 溯源） | 否（无 Run 可言） |
+| MODE_SELECT | 只有 `shell.visibleEntries`（已验收的 `buildWeChatPageShell` 能力投影） | 是（能力投影） |
+| DESTINY_OFFER | 完整的公开命格投影（`view` + `shell`） | 是 |
+| RUN_OPENING | 已开局 Run 的公开投影 + `projectDestinyOfferView` 解析出的**已选候选公开字段** | 是 |
+
+> `tests/ui02entry.test.mjs` 会在测试里用**独立的**生产链调用重新造一次 dev offer，并断言夹具里的
+> 候选就是那一次真实投影（不是手写文案），同时扫描整个 `entry` 集合，确认没有
+> seed / RNG 状态 / drawIndex / 权重 / odds / difficulty / 任何规则内部字段。
 
 `tests/ui02.test.mjs` 会**重新生成**一份 fixture 并与已提交的 JSON 逐字段比对；
 `tests/ui02r1.test.mjs` 再断言 JS 模块与两者一致，因此任何一方被手工篡改或与真实代码脱节，测试立即失败。
@@ -100,6 +139,10 @@ node tools/ui02-preview-fixtures.mjs --write        # 重新生成 JSON
 
 | 状态 | 构造方式 | 目的 |
 | --- | --- | --- |
+| START（启程） | 无状态数据；只渲染文档已有文案 | 开局身份面：一个主入口 + 克制次要信息 |
+| MODE_SELECT（模式） | 只有已验收的能力投影 `visibleEntries` | 只列合同已有模式/能力入口；缺能力的入口显示为不可用 |
+| DESTINY_OFFER（择命） | `generateServerDestinyOffer` → `ServerViewModelBuilder.build` | 展示**真实**公开命格候选与择定态（无默认选中） |
+| RUN_OPENING（入世） | 已开局 Run 的公开投影 + `projectDestinyOfferView` | 开局过渡/摘要；只读已公开信息，不结算 |
 | RUN_HOME | 活跃一世，修为已满，含公开条件 / 因果线索 / 道途印记 / 相识之人 | 展示主线主页与该有的四行 |
 | EVENT | 同一世挂起一个未落定选项事件 | 展示服务端 `riskPresentation` 与「普通返回被锁」 |
 | SPECIAL_NODE | 该世进入 `dying` 并挂起一个特殊节点 | 展示通用交互/重试边界，**不是**第二套突破引擎 |
@@ -117,6 +160,10 @@ node tools/ui02-preview-fixtures.mjs --write        # 重新生成 JSON
 
 | 页面 | 政策 |
 | --- | --- |
+| START | **禁止页面级纵向滚动**。身份面留白，主入口固定在底部。 |
+| MODE_SELECT | **禁止页面级纵向滚动**。模式列表在受控区内（见下）。 |
+| DESTINY_OFFER | **禁止页面级纵向滚动**。候选列表在受控区内（见下）。 |
+| RUN_OPENING | **禁止页面级纵向滚动**。摘要 + 单一入世入口。 |
 | RUN_HOME | **禁止页面级纵向滚动**。核心状态与四个核心行动首屏可见。 |
 | EVENT / SPECIAL_NODE | **禁止页面级纵向滚动**。标题固定在顶部，正文与选项在受控区内滚动。 |
 | LIFE_ARCHIVE | 允许纵向滚动，但滚动只发生在自己的 `archive-viewport` 内。 |
@@ -124,6 +171,11 @@ node tools/ui02-preview-fixtures.mjs --write        # 重新生成 JSON
 结构保证：`page { height:100%; overflow:hidden }` + 页面级 `disableScroll: true` +
 `.screen { height:100vh; overflow:hidden }` + 用 flex/min-height:0 约束各层容器。
 产品区**没有任何** `min-height: 100vh` 之类的自然撑高写法。
+
+四个开局前屏幕同样是 `.surface` 的 `.page` 子元素，因此一屏政策是**结构性**的，不是逐屏特判：
+它们自己**不新增任何滚动容器**，只有两个受控列表区（模式列表与候选列表）用 `.entry-list`
+（`scroll-y` + `flex: 1 1 auto` + `min-height: 0`，与已验收的 `.attention-scroll` 同款）：
+支持视口内内容本来就不需要滚动，低于基线时退化为**内部滚动**而不是隐形裁切。
 
 ### 4.2 支持基线与视口矩阵
 
@@ -182,7 +234,8 @@ dev 触发器、dev overlay、只读抽屉全部是 `position: fixed` 悬浮层�
 选择器子集）。修复方式：
 
 - 删除通配选择器。WXSS 没有全局 reset，因此**凡是"有确定尺寸且同时带 padding/border"的盒子，
-  都在自己的规则里显式声明 `box-sizing: border-box`**（当前 15 个）。这不是风格问题：
+  都在自己的规则里显式声明 `box-sizing: border-box`**（当前 22 个；其中 6 个是 UI02ENTRY 入口流程新增的
+  `.entry-list` / `.entry-row` / `.offer-cand` / `.opening-row` / `.entry-attrs` / `.entry-cta`）。这不是风格问题：
   一屏预算算术是按 border-box 写的，漏掉任何一个都会让布局预算失真。
 - 该要求由 `tools/wxss-compat-audit.mjs` **从样式表推导**（有确定尺寸 + 垂直方向 padding/border
   即要求 border-box，且无法解析的内边距按非零处理），不是手写清单，因此新增盒子漏写会被发现。
@@ -317,16 +370,57 @@ UI02R2A2 依然**纯 presentation**：不动一屏合同、不动四行动、不
 
 自动结构验证见 `tests/ui02r2a2.test.mjs`（15 项）与 6.1；**视觉是否好看仍必须由人验收**。
 
+### 5.5 UI02ENTRY —— 开局前流程视觉切片（纯呈现）
+
+UI02ENTRY 把 UI02R2A2 已人工验收的视觉系统**扩展**到开局前流程，仍然**纯 presentation**：
+不动一屏合同、不动内景四屏、不动视口矩阵、不动交互下限，也不开始 UI03 生产接线。
+
+**四个屏幕的定位**
+
+- **START（启程）**：一屏身份面。主按钮只有**一个**；次要信息保持克制；**留白是设计的一部分**。
+  文案不是新写的：产品名用 `docs/UI02_PREVIEW.md` 已有的「天符」，
+  定位句与核心句**逐字**取自 `docs/PROJECT-BRAIN.md`。
+- **MODE_SELECT（模式）**：只列**合同已有**的模式/能力入口——`正式修行`（合同主线流程，恒可用）
+  加三个能力入口 `今日命局` / `商行` / `分享此命`。**没有新玩法模式**：
+  可用性**只读**已验收 `buildWeChatPageShell` 的 `visibleEntries`，
+  缺能力的入口**明确置灰并标注缺失的能力名**（合同允许「隐藏或安全降级」，这里选择可读的降级）。
+- **DESTINY_OFFER（择命）**：一屏高级选择面。候选是**真实服务端公开投影**
+  （灵根 / 天赋 / 天命 三项 displayName + 序号 + 择定 chip），单行省略、逐项可比。
+  **没有默认选中**：点选只是 UI 高亮，确认只记录「本应提交 `START_RUN`」，预览**不发送、不结算、不排序**。
+- **RUN_OPENING（入世）**：一屏过渡/摘要。只呈现**已公开**的：已选灵根/天赋/天命（由
+  `projectDestinyOfferView` 解析出的公开字段）、此生名、寿元、四维公开属性。
+  底部**一个**入世入口 → RUN_HOME。**不启动 Run、不改任何状态**。
+
+**与内景一致的地方**（`tests/ui02entry.test.mjs` 钉死）
+
+- 每屏的主控件 `.entry-cta` 与突破 CTA 同款处理（实心墨底 + 纸色文字 + `--radius-card`），
+  交互下限恒 `>= 104rpx`（320 宽即 44.37 CSS px）。
+- 列表行读作 chip，候选卡是浮起比较面；选中态靠**下沉填充 + 加强描边**表达，不只靠颜色。
+- 入口节奏新增的 `--entry-*` token **只声明一次**（不新增 media 断点），
+  且首屏预算由 `tools/ui02r1-layout-audit.mjs` 从这些 token **重新求和**（见 6.1 打印的
+  `pre-run first-screen budget` 表）：320×500 最紧的 DESTINY_OFFER 为 351.6px + 34px 安全区，
+  仍有 114.4px 余量。
+- 入口文字**没有低于 20rpx**，长公开字符串一律单行省略。
+
+**UI02ENTRY 明确没做的事**
+
+- 不发送任何命令（没有 `wx.request`，没有 `ApplicationTransport` / `CommandGateway` 接线）。
+- 不实现 `START_RUN` 结算、不做客户端命格/RNG/权重推演、不做客户端 eligibility。
+- 不新增页面、不改 `app.json`、不改默认路由（首页仍是 `pages/start/start`）、不碰 1.0 页面。
+- 不碰 `server` / `packages/core` / `packages/content` / `packages/wechat-shell` / `packages/application-ui`。
+
 ## 六、自动验证与人工视觉验收（务必区分）
 
 ### 6.1 自动结构验证（已执行）
 
 ```bash
-node tools/ui02r1-layout-audit.mjs          # 96 项结构检查 + 6 视口首屏预算表
+node tools/ui02r1-layout-audit.mjs          # 143 项结构检查 + 内景/入口流程两套首屏预算表
 node tools/wxss-compat-audit.mjs            # WXSS 语法子集检查（含通配选择器与 border-box）
 node tools/ui02-preview-fixture-module.mjs  # fixture JS 模块 / JSON 是否最新 + require 字面量合同
+node --test tests/ui02entry.test.mjs        # UI02ENTRY 专项（入口流程 + 公开边界 + 负向对照）
 node --test tests/ui02r1.test.mjs           # UI02R1 专项（含两个审计与 fixture 一致性的负向对照）
 node --test tests/ui02r2.test.mjs           # UI02R2 专项（呈现层标签表 + 视觉打磨结构断言）
+node --test tests/ui02r2a2.test.mjs         # UI02R2A2 专项（RUN_HOME 重组 + 死区上限 + 负向对照）
 node --test tests/ui02.test.mjs             # UI02 视觉语言 / fixture / A12 边界
 node --test tests/viewmodel-ui.test.mjs     # A12 安全边界（必须保持全绿）
 npx tsc --noEmit
@@ -336,21 +430,27 @@ node tools/content01-lint.mjs
 node tools/scan-secrets.mjs
 ```
 
-审计会打印每个矩阵视口的首屏预算（栈高 + 安全区 vs 视口高）。
-它**只证明结构合同**：容器约束、滚动归属、四行动与 CTA 的存在性、
+审计会打印每个矩阵视口的首屏预算（栈高 + 安全区 vs 视口高）：
+内景表（RUN_HOME 最坏情况）与 **UI02ENTRY 入口表**（每个开局前屏幕的最坏情况）各一份。
+它**只证明结构合同**：容器约束、滚动归属、四行动与 CTA 的存在性、入口四屏的存在性与一屏预算、
 触控目标下限、安全区写法、旧 1.0 / server / Core / Content 逐字节未变。
+
+> **UI02ENTRY 迭代期间的验证范围（由本任务定义）：只跑上面这份 UI fast-lane targeted 列表，
+> 不在视觉迭代期跑完整 `npm test` 回归。** 完整回归推迟到人工视觉验收通过之后、最终合并之前
+> 统一跑一次（见 `LAST_RESULT` 的显式记录）。
 
 ### 6.2 仍然必须由人做的视觉验收（未执行）
 
 自动测试**不能**替代真机或开发者工具的肉眼验收。请在微信开发者工具中完成：
 
-0. **首先确认编译通过，且预览页进入了 RUN_HOME 而不是失败面板。** UI02R1 曾出现过三次加载
+0. **首先确认编译通过，且预览页进入了产品界面而不是失败面板。**
+   预览现在默认停在 `启程`（START）。UI02R1 曾出现过三次加载
    问题：`v2-preview.wxss` 因通配选择器 `*` 编译失败（`unexpected token '*'`）；
    页面因 `require` 一个 `.json` 模块而显示"缺少 v2-fixtures.json"；
    以及加载点写成 `require(FIXTURE_MODULE_SPECIFIER)` 变量形式，
    打包器无法建立依赖，运行时 `module '<path>' is not defined`。三者都已修复。
    若出现任何 WXSS 语法错误，或看到失败面板（阶段 / 代码 / 详情 / 模块 / 提示），
-   请把它当成 UI02R1 的返修项提回，而不是绕过——失败面板是**故意**显示这些信息的，
+   请把它当成返修项提回，而不是绕过——失败面板是**故意**显示这些信息的，
    它就是给返修用的。
 1. 用**自定义编译模式**或设备模拟器，逐个切到上表 6 个视口（320×500 起）。
 2. RUN_HOME：确认**页面完全不能纵向滑动**（手势下拉没有页面位移），
@@ -366,11 +466,31 @@ node tools/scan-secrets.mjs
 8. 在 320 宽的小屏上确认行动块仍好点（≥44 CSS px）且文字不糊、
    未出现「为了塞进一屏而变小」的迹象。
 
-任何一项不通过，都属于 UI02R1 的返修范围，而不是 UI03。
+**UI02ENTRY 追加的开局前流程清单：**
+
+9. **四屏一屏化**：`启程` / `模式` / `择命` / `入世` 逐个切换，确认
+   **页面都不能纵向滑动**（手势下拉没有页面位移），底部主按钮都在首屏内、不被 Home Indicator 遮挡。
+10. **视觉同源**：把 `启程` 与 `修行主页` 放在一起看，确认它们**像同一个产品**：
+    同一套宣纸/墨/朱砂/极少暗金、同一套主按钮处理、同一套卡片圆角与间距节奏；
+    `启程` **不能**像 1.0 那种黑底霓虹仪表盘。
+11. **START**：主入口是否**一眼只有一个**；核心句与次要信息是否克制；留白是否读作设计而不是空。
+12. **MODE_SELECT**：`正式修行` 是否是唯一可用主入口；`今日命局` / `商行` / `分享此命`
+    的置灰与「能力未开通 · <Capability>」是否清楚可读、且不误导为可用。
+13. **DESTINY_OFFER**：三个候选的灵根/天赋/天命是否**逐行可比**、层级清楚；
+    初始是否**没有任何**预选；点一项后选中态是否明显（下沉填充 + 加强描边）；
+    四个候选外不应出现任何权重、概率、成功率之类信息。
+14. **RUN_OPENING**：是否只显示已选灵根/天赋/天命 + 此生名/寿元/四维；
+    底部入世入口是否唯一且明显；确认没有出现任何结算、死亡、终局痕迹。
+15. **流程可走**：在页面内点 `启程` 主按钮 → `模式` → `择命`，确认切屏后 dev overlay 收起、
+    一屏效果可直接观察；打开 dev overlay 确认「最近意图」写的是**预览导航（未提交命令）**。
+16. **回归**：切回 `修行主页` / `事件` / `特殊节点` / `命书`，确认与 UI02R2A2 验收时**一致**，
+    没有被入口流程改动带偏（四行动位置、突破 CTA 主次、抽屉行为、命书滚动）。
+
+任何一项不通过，都属于 UI02ENTRY 的返修范围，而不是 UI03。
 
 ## 七、明确尚未完成（生产接线）
 
-以下是**有意留白**，不属于 UI02 / UI02R1 范围：
+以下是**有意留白**，不属于 UI02 / UI02R1 / UI02ENTRY 范围：
 
 1. **生产传输未接线。** 预览没有 `wx.request`，也没有连接
    `ApplicationTransport` / `CommandGateway`。点击行动只会记录「本应提交的命令形状」。
@@ -381,6 +501,10 @@ node tools/scan-secrets.mjs
    预览只能读取服务端投影的「可否突破」，不计算成功率、不改动 RNG、不持有第二套 Core。
 5. **SPECIAL_NODE 未覆盖战斗。** 只呈现通用容器与交互边界。
 6. **事件选项仍是只读呈现。** 选项提交属于 UI03 的 live-session 接线。
+7. **开局前流程也只是呈现（UI02ENTRY）。** `启程` / `模式` / `择命` / `入世` 的主按钮
+   只做**预览内导航**（`show()` 换一个已生成的投影），既不提交命令也不跳转生产路由。
+   `择命` 的确认只记录「本应提交 `START_RUN`」；真正的 `START_RUN` 提交、开局结果与
+   从服务端 `offered` 状态进入 `RUN_OPENING` 的 live 流程，都属于 UI03。
 
-把以上接起来属于 UI03 及后续任务。UI02R1 的产出是**可验证的一屏信息架构、
-响应式与安全区合同**，UI03 不负责补救基础布局。
+把以上接起来属于 UI03 及后续任务。UI02R1 / UI02ENTRY 的产出是**可验证的一屏信息架构、
+响应式与安全区合同，以及从开局到入世的一致视觉系统**，UI03 不负责补救基础布局。

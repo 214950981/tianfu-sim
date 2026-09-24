@@ -30,6 +30,20 @@
  * reason keys, death causes, archive entry kinds). It changes no projected value: unknown ids fall
  * back verbatim to the raw value, and narrative content keys (titleKey/bodyKey/labelKey/summaryKey
  * prose) are not translated — that is content i18n, not presentation.
+ *
+ * UI02ENTRY extends the same review surface to the pre-run flow, START -> MODE_SELECT ->
+ * DESTINY_OFFER -> RUN_OPENING, without starting UI03 live wiring. It adds no game authority:
+ *
+ *  - DESTINY_OFFER renders the real public server offer (generateServerDestinyOffer ->
+ *    ServerViewModelBuilder.build) and nothing else; it holds no default selection, so the preview
+ *    never pre-decides a destiny, and it cannot see rootSeed, RNG state, draw index or any weight.
+ *  - MODE_SELECT only READS the accepted shell's capability projection; no mode is invented and no
+ *    entry is gated by anything the client computed.
+ *  - RUN_OPENING formats the already-public selected profile and public run only. No START_RUN
+ *    outcome is re-derived, and nothing is submitted.
+ *  - START reads no state at all; its copy is documented product copy.
+ *  - Tapping a flow action only switches which generated projection is shown. That is preview
+ *    navigation, not command submission; production transport is still unwired (docs/UI02_PREVIEW.md).
  */
 
 /**
@@ -132,6 +146,22 @@ var VARIANT_LABELS = {
 };
 
 /**
+ * UI02ENTRY — the pre-run entry flow, reviewed ahead of the in-life states.
+ *
+ * ENTRY_KEYS mirrors the generated `entry` collection and the contract main flow
+ * (START -> MODE_SELECT -> DESTINY_OFFER -> RUN_OPENING). They are listed first because the flow
+ * reads first; the accepted in-life states (RUN_HOME / EVENT / SPECIAL_NODE / LIFE_ARCHIVE) and the
+ * two RUN_HOME variants follow unchanged.
+ */
+var ENTRY_KEYS = ["START", "MODE_SELECT", "DESTINY_OFFER", "RUN_OPENING"];
+var ENTRY_LABELS = {
+  START: "启程",
+  MODE_SELECT: "模式",
+  DESTINY_OFFER: "择命",
+  RUN_OPENING: "入世"
+};
+
+/**
  * The product page kind the markup switches on, derived from the server-authoritative page state.
  *
  * `vm.kind` is the ONLY discriminator the product surface reads: RUN_HOME / EVENT / SPECIAL_NODE /
@@ -148,10 +178,19 @@ var VARIANT_LABELS = {
  * A page state absent from this table has no product page yet, and present() fails closed instead of
  * emitting a view the markup would silently drop.
  *
+ * UI02ENTRY adds the four pre-run states. START / MODE_SELECT / RUN_OPENING have no server PageState
+ * of their own (they precede any authoritative run), so their fixture entries carry the page state
+ * explicitly and this table maps it 1:1 to the product page. DESTINY_OFFER is a real server page
+ * state (run.status === "offered") and stays a 1:1 mapping too: one server page state -> one page.
+ *
  * tests/ui02r1.test.mjs runs the real generated fixture through this function and the real markup, and
  * asserts the emitted kinds and the markup's branches agree exactly.
  */
 var PAGE_KIND_BY_PAGE_STATE = {
+  START: "START",
+  MODE_SELECT: "MODE_SELECT",
+  DESTINY_OFFER: "DESTINY_OFFER",
+  RUN_OPENING: "RUN_OPENING",
   RUN_HOME: "RUN_HOME",
   EVENT: "EVENT",
   SPECIAL_NODE: "SPECIAL_NODE",
@@ -234,6 +273,52 @@ var DRAWER_TITLES = {
   people: "相识之人"
 };
 var DRAWER_NOTE = "只读 · 仅展示服务端已公开条目 · 不改变任何玩法状态";
+
+/**
+ * UI02ENTRY presentation vocabulary for the pre-run flow.
+ *
+ * Same discipline as the UI02R2 label tables: these mirror ONLY contract identifiers, and they carry
+ * no gameplay meaning.
+ *
+ *  - ATTRIBUTE_LABELS mirrors the four core attribute keys (core/state.ts run.attributes, also the
+ *    logical paths in core/event.ts). The labels are the documented ones in docs/PROJECT-BRAIN.md.
+ *  - MODE_VOCABULARY is the capability vocabulary the UI contract already defines. It deliberately
+ *    contains NO game mode: `main` is the contract main flow (START -> MODE_SELECT -> DESTINY_OFFER ->
+ *    RUN_OPENING -> RUN_HOME) and every other row is an entry the contract already gates by capability.
+ *    `visibleKey` names the field of the accepted shell projection (buildWeChatPageShell.visibleEntries)
+ *    that decides availability, so availability is READ, never computed here.
+ *  - START copy is documented product copy, not projected state: the identity line and the core line
+ *    come from docs/PROJECT-BRAIN.md. No lore, benefit or gameplay promise is invented.
+ */
+var ATTRIBUTE_ORDER = ["insight", "body", "spiritSense", "fortune"];
+var ATTRIBUTE_LABELS = { "insight": "悟性", "body": "体魄", "spiritSense": "神识", "fortune": "气运" };
+var MODE_VOCABULARY = [
+  { modeId: "main", label: "正式修行", note: "择命格，入此生", visibleKey: "", capability: "" },
+  { modeId: "dailyChallenge", label: "今日命局", note: "每日一局 · 正式榜", visibleKey: "dailyChallenge", capability: "DailyChallengeCapability" },
+  { modeId: "commerce", label: "商行", note: "只卖新的可能", visibleKey: "commerce", capability: "CommerceCapability" },
+  { modeId: "share", label: "分享此命", note: "仅分享已公开信息", visibleKey: "share", capability: "ShareCapability" }
+];
+var MODE_GATE_NOTE = "能力未开通";
+var DESTINY_OFFER_NOTE = "仅呈现服务端已公开的候选 · 不含隐藏权重 · 择定由服务端裁定";
+var RUN_OPENING_NOTE = "仅呈现服务端已公开的择定与开局信息 · 不含规则内部数据";
+var ENTRY_ACTION_LABELS = {
+  START: "入此修行",
+  MODE_SELECT: "择命格",
+  RUN_OPENING: "入世"
+};
+var ENTRY_PREVIEW_NAV = "（预览导航，未提交命令）";
+/**
+ * START identity copy. Every line is documented product copy, not projected state and not new lore:
+ * the product name is the one docs/UI02_PREVIEW.md already uses for 2.0, and the positioning line and
+ * the core line are verbatim from docs/PROJECT-BRAIN.md. tests/ui02entry.test.mjs asserts that
+ * provenance against those two documents, so this copy cannot drift into invented lore unnoticed.
+ */
+var START_COPY = {
+  eyebrow: "天符 · 2.0",
+  title: "天符",
+  positioning: "选择驱动 + Build 构筑 + 因果回响 + 轮回成长 + AI 叙事",
+  coreLine: "命由天定，路由我选，因果终有回响。"
+};
 
 function text(value, fallback) {
   return typeof value === "string" && value.length > 0 ? value : fallback;
@@ -532,11 +617,161 @@ function buildDrawer(kind, runHome) {
 /** Public structural listing of what the fixture actually carries: keys only, never values. */
 function fixtureViewKeys() {
   if (fixtures === null) return "(none)";
-  return Object.keys(fixtures.states).concat(Object.keys(fixtures.variants)).join(", ") || "(none)";
+  return ENTRY_KEYS.concat(Object.keys(fixtures.states)).concat(Object.keys(fixtures.variants)).join(", ") || "(none)";
+}
+
+/** The capability-gated entry names that are hidden for a given public entry projection. Read, never computed. */
+function gatedEntriesOf(visible) {
+  var gated = [];
+  if (visible.dailyChallenge !== true) gated.push("今日命局（能力未开通）");
+  if (visible.share !== true) gated.push("分享（能力未开通）");
+  if (visible.commerce !== true) gated.push("商行（能力未开通）");
+  if (visible.rewardedAd !== true) gated.push("广告（能力未开通）");
+  return gated;
+}
+
+/* ---------- UI02ENTRY pre-run flow: presentation builders ----------
+ *
+ * These four builders only FORMAT the generated fixture. The copy and the vocabulary live here; every
+ * datum (offer candidates, capability gates, the selected public profile, the public run) comes from
+ * the fixture, which is generated by the real production chain. Nothing here computes eligibility,
+ * odds, weights, outcomes, RNG or a destiny. In particular:
+ *  - START reads no state at all;
+ *  - MODE_SELECT only READS the accepted shell's capability projection to decide what is available;
+ *  - DESTINY_OFFER renders the public candidate fields verbatim and holds NO default selection, so the
+ *    preview never pre-decides a destiny for the player;
+ *  - RUN_OPENING formats the already-public selected profile and run only.
+ */
+
+function buildStart() {
+  // Identity + documented positioning + the documented core line. No projected state is involved, so
+  // there is nothing that could disagree with the server.
+  return {
+    kind: "START",
+    eyebrow: START_COPY.eyebrow,
+    title: START_COPY.title,
+    positioning: START_COPY.positioning,
+    coreLine: START_COPY.coreLine,
+    primary: { label: ENTRY_ACTION_LABELS.START, enabled: true, target: "MODE_SELECT" }
+  };
+}
+
+function buildModeSelect(entry) {
+  // Availability is the accepted shell's capability projection, never a locally invented flag: the
+  // main contract flow is always available, every other row is gated by its named capability.
+  var visible = (entry !== null && entry.shell !== undefined && entry.shell.visibleEntries !== null && entry.shell.visibleEntries !== undefined)
+    ? entry.shell.visibleEntries
+    : {};
+  var modes = MODE_VOCABULARY.map(function (mode) {
+    var available = mode.visibleKey === "" ? true : visible[mode.visibleKey] === true;
+    return {
+      modeId: mode.modeId,
+      label: mode.label,
+      note: mode.note,
+      available: available,
+      capability: mode.capability,
+      gateNote: available ? "" : MODE_GATE_NOTE + (mode.capability === "" ? "" : " · " + mode.capability),
+      primary: mode.visibleKey === ""
+    };
+  });
+  var main = modes.filter(function (mode) { return mode.primary; })[0];
+  return {
+    kind: "MODE_SELECT",
+    modes: modes,
+    availableCount: modes.filter(function (mode) { return mode.available; }).length,
+    gatedCount: modes.filter(function (mode) { return !mode.available; }).length,
+    // The entry action follows the main contract flow; it is enabled only when that row is available so
+    // the visual state can never disagree with the projection.
+    primary: { label: ENTRY_ACTION_LABELS.MODE_SELECT, enabled: main !== undefined && main.available === true, target: "DESTINY_OFFER" }
+  };
+}
+
+function buildDestinyOffer(entry) {
+  var interaction = (entry !== null && entry.view !== undefined && entry.view.currentInteraction !== undefined)
+    ? entry.view.currentInteraction
+    : {};
+  var body = interaction.body !== undefined && interaction.body !== null ? interaction.body : {};
+  var options = interaction.options !== undefined ? interaction.options : [];
+  var optionById = {};
+  for (var index = 0; index < options.length; index += 1) {
+    optionById[options[index].optionId] = options[index];
+  }
+  var candidates = (body.candidates || []).map(function (candidate, position) {
+    var selectionId = text(candidate.selectionId, "");
+    var option = optionById[selectionId];
+    return {
+      // The confirmation option id is the server-projected option for this candidate, matched by id
+      // (never by position), so the preview cannot pair a candidate with the wrong option.
+      optionId: option === undefined ? selectionId : text(option.optionId, selectionId),
+      selectionId: selectionId,
+      order: position + 1,
+      spiritualRoot: text(candidate.spiritualRoot, ""),
+      talent: text(candidate.talent, ""),
+      majorDestiny: text(candidate.majorDestiny, "")
+    };
+  });
+  return {
+    kind: "DESTINY_OFFER",
+    offerId: text(interaction.interactionId, ""),
+    state: text(interaction.interactionState, "idle"),
+    candidates: candidates,
+    count: candidates.length,
+    note: DESTINY_OFFER_NOTE
+  };
+}
+
+function buildRunOpening(entry) {
+  var run = (entry !== null && entry.view !== undefined && entry.view.state !== undefined)
+    ? entry.view.state.publicRun
+    : {};
+  var realm = run.realm !== undefined && run.realm !== null ? run.realm : {};
+  var attributes = run.attributes !== undefined && run.attributes !== null ? run.attributes : {};
+  var selected = entry !== null && entry.selected !== undefined ? entry.selected : null;
+  var rows = ATTRIBUTE_ORDER.map(function (key) {
+    return { key: key, label: presentLabel(ATTRIBUTE_LABELS, key), value: number(attributes[key], 0) };
+  });
+  return {
+    kind: "RUN_OPENING",
+    runName: text(run.runName, "无名"),
+    realmName: presentLabel(REALM_LABELS, text(realm.id, "unknown")),
+    age: number(run.age, 0),
+    maxAge: number(run.maxAge, 0),
+    attributes: rows,
+    hasSelected: selected !== null,
+    selectedRoot: selected === null ? "" : text(selected.spiritualRoot !== undefined && selected.spiritualRoot !== null ? selected.spiritualRoot.displayName : "", ""),
+    selectedTalent: selected === null ? "" : text(selected.talent !== undefined && selected.talent !== null ? selected.talent.displayName : "", ""),
+    selectedDestiny: selected === null ? "" : text(selected.majorDestiny !== undefined && selected.majorDestiny !== null ? selected.majorDestiny.displayName : "", ""),
+    note: RUN_OPENING_NOTE,
+    enter: { label: ENTRY_ACTION_LABELS.RUN_OPENING, enabled: true, target: "RUN_HOME" }
+  };
+}
+
+/** Builds the presentation for one generated `entry` fixture; null when the key is not an entry state. */
+function buildEntry(key, entry) {
+  var kind = PAGE_KIND_BY_PAGE_STATE[entry.pageState];
+  if (kind === undefined) return null;
+  var visible = (entry.shell !== undefined && entry.shell !== null) ? entry.shell.visibleEntries : null;
+  var base = {
+    key: key,
+    kind: kind,
+    label: ENTRY_LABELS[key] || key,
+    pageState: entry.pageState,
+    shell: entry.shell === undefined ? null : entry.shell,
+    capabilities: entry.view === undefined ? null : entry.view.state.capabilities,
+    visibleEntries: visible,
+    gatedEntries: visible === null ? [] : gatedEntriesOf(visible)
+  };
+  if (key === "START") base.start = buildStart();
+  else if (key === "MODE_SELECT") base.modeSelect = buildModeSelect(entry);
+  else if (key === "DESTINY_OFFER") base.destinyOffer = buildDestinyOffer(entry);
+  else if (key === "RUN_OPENING") base.runOpening = buildRunOpening(entry);
+  return base;
 }
 
 function present(key) {
   if (fixtures === null) return null;
+  var entryState = fixtures.entry !== undefined ? fixtures.entry[key] : undefined;
+  if (entryState !== undefined && entryState !== null) return buildEntry(key, entryState);
   var entry = fixtures.states[key] || fixtures.variants[key];
   if (entry === undefined || entry === null) return null;
   var kind = PAGE_KIND_BY_PAGE_STATE[entry.pageState];
@@ -553,13 +788,7 @@ function present(key) {
     visibleEntries: entry.shell.visibleEntries,
     gatedEntries: []
   };
-  var gated = [];
-  var visible = entry.shell.visibleEntries;
-  if (visible.dailyChallenge !== true) gated.push("今日命局（能力未开通）");
-  if (visible.share !== true) gated.push("分享（能力未开通）");
-  if (visible.commerce !== true) gated.push("商行（能力未开通）");
-  if (visible.rewardedAd !== true) gated.push("广告（能力未开通）");
-  base.gatedEntries = gated;
+  base.gatedEntries = gatedEntriesOf(entry.shell.visibleEntries);
   if (key === "RUN_HOME" || key === "RUN_HOME_BREAKTHROUGH_BLOCKED" || key === "RUN_HOME_NO_PLATFORM_CAPABILITY") {
     base.runHome = buildRunHome(entry);
   } else if (key === "EVENT" || key === "SPECIAL_NODE") {
@@ -573,16 +802,21 @@ function present(key) {
 Page({
   data: {
     tabs: [],
-    activeKey: "RUN_HOME",
+    activeKey: "START",
     vm: null,
     failure: fixtureLoadFailure,
     lastIntent: "(尚未提交意图)",
+    // DESTINY_OFFER highlight only. It is a preview UI state: nothing is resolved from it.
+    offerSelected: "",
     devOpen: false,
     drawer: null
   },
 
   onLoad: function () {
     var tabs = [];
+    for (var entry = 0; entry < ENTRY_KEYS.length; entry += 1) {
+      tabs.push({ key: ENTRY_KEYS[entry], label: ENTRY_LABELS[ENTRY_KEYS[entry]] });
+    }
     for (var index = 0; index < STATE_KEYS.length; index += 1) {
       tabs.push({ key: STATE_KEYS[index], label: STATE_LABELS[STATE_KEYS[index]] });
     }
@@ -590,10 +824,12 @@ Page({
       tabs.push({ key: VARIANT_KEYS[variant], label: VARIANT_LABELS[VARIANT_KEYS[variant]] + "·变体" });
     }
     this.setData({ tabs: tabs, failure: fixtureLoadFailure });
-    this.show("RUN_HOME");
+    // The preview opens on the flow's first screen so the entry flow reads in order.
+    this.show("START");
   },
 
   show: function (key) {
+    this.setData({ offerSelected: "" });
     if (fixtureLoadFailure !== null) {
       this.setData({ activeKey: key, vm: null, failure: fixtureLoadFailure });
       return;
@@ -609,7 +845,7 @@ Page({
           "view",
           key,
           "预览数据中没有该视图，或该视图的服务端页面状态没有对应的产品页面；已有：" + fixtureViewKeys(),
-          "检查 STATE_KEYS / VARIANT_KEYS 与 fixture 的 states / variants 是否一致，以及 PAGE_KIND_BY_PAGE_STATE 是否覆盖该 pageState"
+          "检查 ENTRY_KEYS / STATE_KEYS / VARIANT_KEYS 与 fixture 的 entry / states / variants 是否一致，以及 PAGE_KIND_BY_PAGE_STATE 是否覆盖该 pageState"
         )
       });
       return;
@@ -624,6 +860,55 @@ Page({
       this.setData({ devOpen: false, drawer: null });
       this.show(key);
     }
+  },
+
+  /**
+   * Pre-run flow navigation inside the preview.
+   *
+   * START -> MODE_SELECT -> DESTINY_OFFER are pure contract page-state transitions, so tapping the
+   * primary action simply switches which generated projection is rendered. Nothing is submitted, and
+   * the target view is a fixture produced by the real production chain, so no rule is resolved here.
+   */
+  onEntryNav: function (event) {
+    var target = event.currentTarget.dataset.target;
+    if (typeof target !== "string" || target.length === 0) return;
+    this.show(target);
+    this.setData({ lastIntent: "预览导航 → " + (ENTRY_LABELS[target] || target) + ENTRY_PREVIEW_NAV });
+  },
+
+  /** DESTINY_OFFER highlight. Pure UI selection; it never resolves, ranks or confirms a destiny. */
+  onSelectCandidate: function (event) {
+    var vm = this.data.vm;
+    if (vm === null || vm.destinyOffer === undefined) return;
+    var optionId = event.currentTarget.dataset.option;
+    if (typeof optionId !== "string" || optionId.length === 0) return;
+    var found = null;
+    for (var index = 0; index < vm.destinyOffer.candidates.length; index += 1) {
+      if (vm.destinyOffer.candidates[index].optionId === optionId) found = vm.destinyOffer.candidates[index];
+    }
+    if (found === null) return;
+    this.setData({ offerSelected: optionId });
+  },
+
+  /**
+   * DESTINY_OFFER confirmation. In this dev preview the intent is only recorded, never sent: the real
+   * START_RUN command and its authoritative result belong to the live-session wiring (UI03).
+   */
+  onOfferConfirm: function () {
+    var vm = this.data.vm;
+    if (vm === null || vm.destinyOffer === undefined) return;
+    var selected = null;
+    for (var index = 0; index < vm.destinyOffer.candidates.length; index += 1) {
+      if (vm.destinyOffer.candidates[index].optionId === this.data.offerSelected) selected = vm.destinyOffer.candidates[index];
+    }
+    if (selected === null) {
+      this.setData({ lastIntent: "尚未择定命格（预览未提交命令）" });
+      return;
+    }
+    this.setData({
+      lastIntent: "预览已择定 " + selected.spiritualRoot + " · " + selected.talent + " · " + selected.majorDestiny +
+        " → 命令 START_RUN（预览未接线，未发送）"
+    });
   },
 
   onToggleDev: function () {

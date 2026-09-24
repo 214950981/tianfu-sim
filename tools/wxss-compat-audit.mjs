@@ -50,7 +50,8 @@ export const SUPPORTED_PSEUDO_CLASSES = ["active", "first-child", "last-child", 
 export const BORDER_BOX_CANDIDATES = [
   "screen", "vitals", "attn", "dock-note", "action", "cta", "dev-trigger", "dev-tab",
   "dev-action", "drawer-close", "attention-scroll", "decision-viewport", "archive-viewport",
-  "dev-scroll", "drawer-scroll"
+  "dev-scroll", "drawer-scroll",
+  "entry-list", "entry-row", "offer-cand", "opening-row", "entry-attrs", "entry-cta"
 ];
 
 export const BORDER_BOX_RATIONALE = {
@@ -68,7 +69,13 @@ export const BORDER_BOX_RATIONALE = {
   "decision-viewport": "flex-grown scroll viewport with safe-area padding",
   "archive-viewport": "flex-grown scroll viewport with safe-area padding",
   "dev-scroll": "flex-grown scroll viewport with padding",
-  "drawer-scroll": "explicit 46vh height plus padding"
+  "drawer-scroll": "explicit 46vh height plus padding",
+  "entry-list": "UI02ENTRY flex-grown bounded scroll viewport with padding (the entry-screen analogue of attention-scroll)",
+  "entry-row": "UI02ENTRY height token plus horizontal padding and a bottom hairline",
+  "offer-cand": "UI02ENTRY height token plus padding and a full hairline border",
+  "opening-row": "UI02ENTRY height token plus a bottom hairline",
+  "entry-attrs": "UI02ENTRY height token plus a full hairline border",
+  "entry-cta": "UI02ENTRY min-height token plus a 2rpx border (the pre-run primary control's 44 CSS px target)"
 };
 
 const read = (relative) => fs.readFileSync(path.join(ROOT, relative), "utf8");

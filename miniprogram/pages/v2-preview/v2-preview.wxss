@@ -35,6 +35,15 @@
  * so the audited budget stays truthful; interaction floors, safe-area and the viewport matrix are
  * untouched, and no new media band is introduced.
  *
+ * UI02ENTRY extends the same system to the pre-run flow (START / MODE_SELECT / DESTINY_OFFER /
+ * RUN_OPENING). It adds no new media band and changes no frozen value: the four screens reuse the
+ * exact tokens, type scale, radius and interaction floors above, and introduce only the
+ * `--entry-*` rhythm tokens. The one-screen contract is structural — each screen is a `.page` flex
+ * child of `.surface`, so the same constrained 100vh viewport bounds it and no screen can create
+ * page-level scroll. Entry lists reuse the accepted bounded-scroll pattern (`.entry-list` mirrors
+ * `.attention-scroll`), and the per-screen primary control (`.entry-cta`) carries the same solid-ink
+ * treatment as the breakthrough CTA without reusing that class.
+ *
  * WXSS compatibility (checked by tools/wxss-compat-audit.mjs):
  *  - No universal `*` selector. The DevTools WXSS compiler rejects the `*` token outright, and there is
  *    no universal reset here; every box that has a definite size AND padding/border declares
@@ -111,6 +120,22 @@ page {
   /* Horizontal room reserved so the floating dev trigger never covers the realm name. */
   --dev-reserve-x: 108rpx;
   --dev-trigger-top: 10rpx;
+
+  /* ---------- UI02ENTRY pre-run flow rhythm ----------
+     The four pre-run screens reuse the UI02R2A2 language and the interaction floors above; these
+     tokens are the only new ones. They are deliberately declared once (no new media band) because the
+     entry stack has a large margin at every matrix viewport, and the audit re-derives the budget from
+     exactly these names instead of hard-coded numbers. */
+  --entry-head-h: 40rpx;
+  --entry-title-lh: 112rpx;
+  --entry-titlerow-h: 76rpx;
+  --entry-sub-lh: 48rpx;
+  --entry-core-lh: 92rpx;
+  --entry-meta-h: 48rpx;
+  --entry-row-h: 116rpx;
+  --entry-cand-h: 152rpx;
+  --entry-line-h: 56rpx;
+  --entry-attrs-h: 96rpx;
 
   background-color: var(--paper);
   color: var(--ink);
@@ -714,6 +739,393 @@ page {
 .action.is-disabled {
   opacity: 0.4;
   border-color: var(--rule);
+}
+
+/* ---------- UI02ENTRY: pre-run flow (START / MODE_SELECT / DESTINY_OFFER / RUN_OPENING) ----------
+   Same frozen language and the same one-screen discipline as RUN_HOME. Each screen is a .page flex
+   child of .surface, so it is bounded by the same constrained 100vh viewport and structurally cannot
+   extend the document. The primary control per screen is the same solid-ink treatment as the
+   breakthrough CTA; list rows read as chips inside a bounded scroll surface, matching the accepted
+   attention region. */
+
+.entry-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.entry-head {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  min-height: 0;
+}
+
+.entry-head-gap {
+  margin-top: var(--space-3);
+}
+
+.entry-heading {
+  flex: 0 0 auto;
+  font-size: 64rpx;
+  font-weight: 600;
+  line-height: var(--entry-title-lh);
+  height: var(--entry-title-lh);
+  letter-spacing: 8rpx;
+  color: var(--ink);
+  padding-right: var(--dev-reserve-x);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.entry-heading--sm {
+  height: var(--entry-titlerow-h);
+  line-height: var(--entry-titlerow-h);
+  font-size: 40rpx;
+  letter-spacing: 4rpx;
+}
+
+.entry-sub {
+  flex: 0 0 auto;
+  line-height: var(--entry-sub-lh);
+  height: var(--entry-sub-lh);
+  font-size: 24rpx;
+  color: var(--ink-muted);
+  padding-right: var(--dev-reserve-x);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* The core line is the identity anchor: an inset plate with the single cinnabar edge, the same role
+   the priorities panel plays on RUN_HOME, so both flows read as one product. */
+.entry-core {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  margin-top: var(--space-4);
+  padding-left: var(--space-2);
+  border-left: 4rpx solid var(--cinnabar-soft);
+  border-radius: var(--radius-card);
+  background-color: var(--paper-raised);
+}
+
+.entry-core-mark {
+  flex: 0 0 auto;
+  width: 10rpx;
+  height: 10rpx;
+  margin-right: var(--space-1);
+  background-color: var(--gold);
+}
+
+.entry-core-text {
+  flex: 1 1 auto;
+  min-width: 0;
+  line-height: var(--entry-core-lh);
+  height: var(--entry-core-lh);
+  font-size: 30rpx;
+  letter-spacing: 2rpx;
+  color: var(--ink-soft);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.entry-meta {
+  flex: 0 0 auto;
+  line-height: var(--entry-meta-h);
+  height: var(--entry-meta-h);
+  font-size: 22rpx;
+  color: var(--ink-faint);
+  padding-right: var(--dev-reserve-x);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.entry-meta--foot {
+  margin-top: var(--space-2);
+}
+
+/* Bounded list surface: same contract as the accepted .attention-scroll — at supported viewports the
+   content fits without scrolling, and below the baseline the region degrades into internal scroll
+   instead of hidden clipping. */
+.entry-list {
+  box-sizing: border-box;
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: var(--space-2);
+  padding-top: var(--space-1);
+}
+
+.entry-row {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  height: var(--entry-row-h);
+  min-width: 0;
+  padding: 0 var(--space-2);
+  border-bottom: var(--hairline) solid var(--rule);
+}
+
+.entry-row:active {
+  opacity: 0.72;
+}
+
+.entry-row.is-gated {
+  opacity: 0.5;
+}
+
+.entry-row-main {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.entry-row-label {
+  font-size: 30rpx;
+  font-weight: 500;
+  letter-spacing: 4rpx;
+  color: var(--ink);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.entry-row-note {
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: var(--ink-faint);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.entry-row-mark {
+  flex: 0 0 auto;
+  margin-left: var(--space-2);
+  padding: 2rpx var(--space-1);
+  font-size: 20rpx;
+  letter-spacing: 2rpx;
+  color: var(--gold);
+  border: var(--hairline) solid var(--gold-soft);
+  border-radius: var(--radius);
+  white-space: nowrap;
+}
+
+.entry-row-mark.is-off {
+  color: var(--ink-faint);
+  border-color: var(--rule-strong);
+}
+
+/* Candidate cards: raised comparison surface, with the selected state carried by the inset fill and a
+   strengthened edge rather than by colour alone, so the state survives a monochrome read. */
+.offer-cand {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  height: var(--entry-cand-h);
+  min-width: 0;
+  margin-bottom: var(--dock-gap);
+  padding: var(--space-2);
+  border: var(--hairline) solid var(--rule-strong);
+  border-radius: var(--radius-card);
+  background-color: var(--paper-raised);
+}
+
+.offer-cand:active {
+  opacity: 0.8;
+}
+
+.offer-cand.is-selected {
+  background-color: var(--paper-sunk);
+  border-color: var(--ink-soft);
+}
+
+.offer-cand-order {
+  flex: 0 0 auto;
+  width: 44rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  color: var(--gold);
+  text-align: center;
+}
+
+.offer-cand-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-left: var(--space-2);
+}
+
+.offer-cand-root {
+  font-size: 32rpx;
+  font-weight: 600;
+  letter-spacing: 2rpx;
+  color: var(--ink);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.offer-cand-line {
+  margin-top: 4rpx;
+  font-size: 22rpx;
+  color: var(--ink-muted);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.offer-cand-pick {
+  flex: 0 0 auto;
+  margin-left: var(--space-2);
+  padding: 2rpx var(--space-1);
+  font-size: 20rpx;
+  letter-spacing: 2rpx;
+  color: var(--ink-muted);
+  border: var(--hairline) solid var(--rule-strong);
+  border-radius: var(--radius);
+  white-space: nowrap;
+}
+
+.offer-cand-pick.is-on {
+  color: var(--paper);
+  background-color: var(--ink-soft);
+  border-color: var(--ink-soft);
+}
+
+.opening-block {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 auto;
+  margin-top: var(--space-3);
+  border-top: var(--hairline) solid var(--rule);
+}
+
+.opening-row {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: var(--entry-line-h);
+  min-width: 0;
+  border-bottom: var(--hairline) solid var(--rule);
+}
+
+.opening-key {
+  flex: 0 0 auto;
+  font-size: 22rpx;
+  letter-spacing: 4rpx;
+  color: var(--ink-faint);
+}
+
+.opening-value {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-left: var(--space-2);
+  font-size: 28rpx;
+  color: var(--ink-soft);
+  text-align: right;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.entry-attrs {
+  box-sizing: border-box;
+  display: flex;
+  align-items: stretch;
+  flex: 0 0 auto;
+  height: var(--entry-attrs-h);
+  margin-top: var(--space-2);
+  padding: 0 var(--space-2);
+  border: var(--hairline) solid var(--rule);
+  border-radius: var(--radius-card);
+  background-color: var(--paper-raised);
+}
+
+.entry-attr {
+  flex: 1 1 0%;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 0 var(--space-1);
+}
+
+.entry-attr-label {
+  font-size: 20rpx;
+  letter-spacing: 4rpx;
+  color: var(--ink-faint);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.entry-attr-value {
+  margin-top: 4rpx;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: var(--ink);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Bottom action area of every pre-run screen: same safe-area policy as the RUN_HOME dock. */
+.entry-dock {
+  flex: 0 0 auto;
+  padding-top: var(--dock-pad-top);
+  padding-bottom: var(--dock-pad-bottom);
+  padding-bottom: calc(var(--dock-pad-bottom) + constant(safe-area-inset-bottom));
+  padding-bottom: calc(var(--dock-pad-bottom) + env(safe-area-inset-bottom, 0px));
+  border-top: var(--hairline) solid var(--rule-strong);
+}
+
+.entry-cta {
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: var(--cta-h);
+  padding: 0 var(--space-3);
+  border: 2rpx solid var(--ink);
+  border-radius: var(--radius-card);
+  background-color: var(--ink);
+}
+
+.entry-cta:active {
+  opacity: 0.8;
+}
+
+.entry-cta.is-disabled {
+  opacity: 0.5;
+}
+
+.entry-cta-label {
+  flex: 0 0 auto;
+  font-size: 32rpx;
+  font-weight: 600;
+  letter-spacing: 8rpx;
+  color: var(--paper);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.entry-cta-enter {
+  flex: 1 1 auto;
+  min-width: 0;
+  margin-left: var(--space-2);
+  font-size: 26rpx;
+  color: var(--gold-soft);
+  text-align: right;
 }
 
 /* ---------- EVENT / SPECIAL_NODE: fixed full-screen decision container ---------- */

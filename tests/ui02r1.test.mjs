@@ -59,6 +59,11 @@ const readJson = (relative) => JSON.parse(read(relative));
  * the 2.0 dev preview surface. A later task that is legitimately allowed to change one of these trees
  * must update the digest and the file list on purpose.
  *
+ * UI02ENTRY (task base = remote source HEAD 07548318289ca120296090d74650ed79f5274bd5) is exactly
+ * such a task for two entries: it extends the shared preview fixture generator with the pre-run entry
+ * collection, which necessarily regenerates v2-fixtures.json. Both digests below were updated on
+ * purpose in that task; every other pinned tree is untouched.
+ *
  * `files` is the exact base file list (derived from `git ls-tree -r HEAD`). Pinning the list, not just
  * a count, is what makes the digest fail closed on any addition inside a pinned tree while still
  * tolerating the DevTools scratch files listed in DEVTOOLS_ARTIFACTS.
@@ -171,11 +176,11 @@ const BASE_TREE = {
   },
   "tools/ui02-preview-fixtures.mjs": {
     files: ["tools/ui02-preview-fixtures.mjs"],
-    digest: "9327e7018f256735860d21efbd92f35bfbc1367486f26e011a15d94a8d662c48"
+    digest: "17f528de3956e7f5a213a12e5a22f78b1e236d97af290c1805facc23863a6378"
   },
   "miniprogram/pages/v2-preview/v2-fixtures.json": {
     files: ["miniprogram/pages/v2-preview/v2-fixtures.json"],
-    digest: "af40f19c015a3a00855fa9e031eb7fe15700b0f61af0fd9a96ccd7ad3c869a7d"
+    digest: "cf32de6d23f91f82deee064b41d7c2027ff7fbb517355f61ee38694d221f90b1"
   }
 };
 
@@ -1017,13 +1022,29 @@ function pageInstance(pageOptions) {
   return page;
 }
 
-const ALL_FIXTURE_KEYS = [...Object.keys(fixtures.states), ...Object.keys(fixtures.variants)];
+/**
+ * Every fixture key the page can render, in the exact order the dev tabs list them: the UI02ENTRY
+ * pre-run collection first, then the accepted in-life states, then the RUN_HOME variants. UI02ENTRY
+ * extended this guard to the whole product surface, so the four pre-run screens are held to the same
+ * "the emitted kind matches a real markup branch" contract as RUN_HOME / EVENT / SPECIAL_NODE /
+ * LIFE_ARCHIVE.
+ */
+const ALL_FIXTURE_KEYS = [
+  ...Object.keys(fixtures.entry),
+  ...Object.keys(fixtures.states),
+  ...Object.keys(fixtures.variants)
+];
+
+/** The generated fixture entry for a key, across all three collections. */
+const fixtureEntryOf = (key) => fixtures.entry[key] || fixtures.states[key] || fixtures.variants[key];
+
+const ALL_PRODUCT_KINDS = ["DESTINY_OFFER", "EVENT", "LIFE_ARCHIVE", "MODE_SELECT", "RUN_HOME", "RUN_OPENING", "SPECIAL_NODE", "START"];
 
 test("UI02R1_kind: every generated fixture page projects the discriminator the WXML switches on", () => {
   const sandbox = loadPreviewPage();
   const branches = wxmlKindDiscriminators(wxml);
   // the markup discriminates on a small explicit vocabulary — this is the set the guard compares against
-  assert.deepEqual(branches, ["EVENT", "LIFE_ARCHIVE", "RUN_HOME", "SPECIAL_NODE"]);
+  assert.deepEqual(branches, ALL_PRODUCT_KINDS);
   // the markup reads the product kind, never the raw server page state
   assert.equal(/vm\.pageState\b/.test(stripMarkup(wxml)), false, "the markup must discriminate on vm.kind");
 
@@ -1032,7 +1053,7 @@ test("UI02R1_kind: every generated fixture page projects the discriminator the W
 
   // the discriminator is a projection of the authoritative page state, not a copy of the fixture key
   for (const [key, view] of views) {
-    const entry = fixtures.states[key] || fixtures.variants[key];
+    const entry = fixtureEntryOf(key);
     assert.equal(view.pageState, entry.pageState, `${key} must report the server page state verbatim`);
   }
   assert.equal(sandbox.present("LIFE_ARCHIVE").pageState, "ENDING", "an ended run is projected as ENDING");
@@ -1044,8 +1065,8 @@ test("UI02R1_kind: every generated fixture page projects the discriminator the W
       assert.equal(byPageState.get(view.pageState), view.kind, `${key} must not fork the product page for pageState ${view.pageState}`);
     } else byPageState.set(view.pageState, view.kind);
   }
-  // the four canonical pages land on their own kind...
-  for (const key of Object.keys(fixtures.states)) {
+  // every canonical page lands on its own kind...
+  for (const key of ALL_FIXTURE_KEYS.filter((candidate) => !candidate.startsWith("RUN_HOME_"))) {
     assert.equal(sandbox.present(key).kind, key, `${key} must render as ${key}`);
   }
   // ...and a variant keeps the RUN_HOME page, kind and payload alike, without its key becoming a kind
@@ -1054,6 +1075,11 @@ test("UI02R1_kind: every generated fixture page projects the discriminator the W
     assert.equal(view.kind, "RUN_HOME", `${variant} must still render the RUN_HOME product page`);
     assert.notEqual(view.kind, variant, "a fixture variant key must never be used as a kind");
     assert.notEqual(view.runHome, undefined, `${variant} must carry the RUN_HOME projection, not just the kind`);
+  }
+  // the pre-run screens carry their own projection, not just a kind (a blank pre-run surface would be
+  // exactly as invisible as the blank RUN_HOME this guard was written for)
+  for (const [key, field] of [["START", "start"], ["MODE_SELECT", "modeSelect"], ["DESTINY_OFFER", "destinyOffer"], ["RUN_OPENING", "runOpening"]]) {
+    assert.notEqual(sandbox.present(key)[field], undefined, `${key} must carry its projection payload`);
   }
 });
 
@@ -1115,11 +1141,15 @@ test("UI02R1_kind: the discriminator guard fails closed on every way the blank s
   assert.equal(kindAlignmentProblems(missingPage, branches).some((problem) => problem.includes("unreachable")), true);
 
   // 6. the shipped implementation itself, not just synthetic data: deleting the discriminator assignment
-  //    from the committed page source reproduces attempt 2 exactly, and the guard must reject it
+  //    from the committed page source reproduces attempt 2 exactly, and the guard must reject it. There
+  //    are two assignment sites since UI02ENTRY (the pre-run builder and the in-life builder), so the
+  //    control removes every one of them — the defect is "no kind at all", not "one builder forgot".
   const kindAssignment = "    kind: kind,\n";
   assert.equal(pageJs.includes(kindAssignment), true, "present() must assign the product kind");
-  const regressedSource = pageJs.replace(kindAssignment, "");
+  const regressedSource = pageJs.split(kindAssignment).join("");
   assert.notEqual(regressedSource, pageJs, "the negative control must actually change the page source");
+  assert.equal(/^    kind: kind,$/m.test(regressedSource), false, "the control must remove every kind assignment site");
+  assert.equal((pageJs.match(/^    kind: kind,$/gm) || []).length >= 2, true, "both builders assign the kind");
   const regressed = loadPreviewPage(regressedSource);
   const regressedProblems = kindAlignmentProblems(ALL_FIXTURE_KEYS.map((key) => [key, regressed.present(key)]), branches);
   assert.equal(
@@ -1135,5 +1165,9 @@ test("UI02R1_kind: the discriminator guard fails closed on every way the blank s
 
   // the real projection is untouched by any of the above (the guard does not mutate what it inspects)
   assert.deepEqual(kindAlignmentProblems(views, branches), []);
-  assert.deepEqual(views.map(([key, view]) => view.kind), ["RUN_HOME", "EVENT", "SPECIAL_NODE", "LIFE_ARCHIVE", "RUN_HOME", "RUN_HOME"]);
+  assert.deepEqual(views.map(([key, view]) => view.kind), [
+    "START", "MODE_SELECT", "DESTINY_OFFER", "RUN_OPENING",
+    "RUN_HOME", "EVENT", "SPECIAL_NODE", "LIFE_ARCHIVE",
+    "RUN_HOME", "RUN_HOME"
+  ]);
 });

@@ -260,6 +260,86 @@ export function runHomeStack(tokens, width) {
   return { parts, missing, totalPx };
 }
 
+// ------------------------------------------------------------------ UI02ENTRY pre-run screen budgets
+
+/**
+ * Worst-case first-screen budget for each pre-run screen, expressed only through the tokens the
+ * stylesheet actually consumes, so a later edit that grows a screen past the supported baseline fails
+ * the audit instead of drifting silently.
+ *
+ * Worst case per screen: the full mode vocabulary (4 rows), the full candidate set (3 cards) and an
+ * available primary action. Margins and paddings that a screen really renders are listed too, so the
+ * sum is the real requirement rather than an optimistic one. The four screens have a large margin at
+ * every matrix viewport, which is why they need no extra media band.
+ */
+export const ENTRY_STACKS = {
+  START: [
+    { id: "screen-pad-top", cssVar: "--screen-pad-top", note: ".screen padding-top" },
+    { id: "eyebrow-gap", cssVar: "--space-3", note: ".entry-head-gap margin-top" },
+    { id: "eyebrow", cssVar: "--entry-head-h", note: ".eyebrow line box" },
+    { id: "title", cssVar: "--entry-title-lh", note: ".entry-title height" },
+    { id: "sub", cssVar: "--entry-sub-lh", note: ".entry-sub height" },
+    { id: "core-gap", cssVar: "--space-4", note: ".entry-core margin-top" },
+    { id: "core", cssVar: "--entry-core-lh", note: ".entry-core-text height" },
+    { id: "dock-pad-top", cssVar: "--dock-pad-top", note: ".entry-dock padding-top" },
+    { id: "cta", cssVar: "--cta-h", note: ".entry-cta min-height" },
+    { id: "dock-pad-bottom", cssVar: "--dock-pad-bottom", note: ".entry-dock padding-bottom" }
+  ],
+  MODE_SELECT: [
+    { id: "screen-pad-top", cssVar: "--screen-pad-top", note: ".screen padding-top" },
+    { id: "eyebrow", cssVar: "--entry-head-h", note: ".eyebrow line box" },
+    { id: "head", cssVar: "--entry-titlerow-h", note: ".entry-title--sm height" },
+    { id: "list-margin", cssVar: "--space-2", note: ".entry-list margin-top" },
+    { id: "list-pad", cssVar: "--space-1", note: ".entry-list padding-top" },
+    { id: "rows", cssVar: "--entry-row-h", count: 4, note: "mode vocabulary rows" },
+    { id: "dock-pad-top", cssVar: "--dock-pad-top", note: ".entry-dock padding-top" },
+    { id: "cta", cssVar: "--cta-h", note: ".entry-cta min-height" },
+    { id: "dock-pad-bottom", cssVar: "--dock-pad-bottom", note: ".entry-dock padding-bottom" }
+  ],
+  DESTINY_OFFER: [
+    { id: "screen-pad-top", cssVar: "--screen-pad-top", note: ".screen padding-top" },
+    { id: "eyebrow", cssVar: "--entry-head-h", note: ".eyebrow line box" },
+    { id: "head", cssVar: "--entry-titlerow-h", note: ".entry-title--sm height" },
+    { id: "meta", cssVar: "--entry-meta-h", note: ".entry-meta height" },
+    { id: "list-margin", cssVar: "--space-2", note: ".entry-list margin-top" },
+    { id: "list-pad", cssVar: "--space-1", note: ".entry-list padding-top" },
+    { id: "candidates", cssVar: "--entry-cand-h", count: 3, note: "candidate cards" },
+    { id: "candidate-gaps", cssVar: "--dock-gap", count: 3, note: ".offer-cand margin-bottom" },
+    { id: "dock-pad-top", cssVar: "--dock-pad-top", note: ".entry-dock padding-top" },
+    { id: "cta", cssVar: "--cta-h", note: ".entry-cta min-height" },
+    { id: "dock-pad-bottom", cssVar: "--dock-pad-bottom", note: ".entry-dock padding-bottom" }
+  ],
+  RUN_OPENING: [
+    { id: "screen-pad-top", cssVar: "--screen-pad-top", note: ".screen padding-top" },
+    { id: "eyebrow-gap", cssVar: "--space-3", note: ".entry-head-gap margin-top" },
+    { id: "eyebrow", cssVar: "--entry-head-h", note: ".eyebrow line box" },
+    { id: "title", cssVar: "--entry-title-lh", note: ".entry-title height" },
+    { id: "meta", cssVar: "--entry-meta-h", note: ".entry-meta height" },
+    { id: "block-gap", cssVar: "--space-3", note: ".opening-block margin-top" },
+    { id: "selected", cssVar: "--entry-line-h", count: 3, note: "selected profile rows" },
+    { id: "attrs-gap", cssVar: "--space-2", note: ".entry-attrs margin-top" },
+    { id: "attrs", cssVar: "--entry-attrs-h", note: ".entry-attrs height" },
+    { id: "foot-gap", cssVar: "--space-2", note: ".entry-meta--foot margin-top" },
+    { id: "foot", cssVar: "--entry-meta-h", note: ".entry-meta--foot height" },
+    { id: "dock-pad-top", cssVar: "--dock-pad-top", note: ".entry-dock padding-top" },
+    { id: "cta", cssVar: "--cta-h", note: ".entry-cta min-height" },
+    { id: "dock-pad-bottom", cssVar: "--dock-pad-bottom", note: ".entry-dock padding-bottom" }
+  ]
+};
+
+/** Same summation rule as runHomeStack, over a named entry-screen model. */
+export function entryStack(model, tokens, width) {
+  const parts = [];
+  for (const item of model) {
+    const raw = tokens.get(item.cssVar);
+    if (raw === undefined) parts.push({ ...item, raw: undefined, px: Number.NaN, missing: true });
+    else parts.push({ ...item, raw, px: rpxToPx(raw, width) * (item.count || 1) });
+  }
+  const missing = parts.filter((part) => part.missing === true).map((part) => part.cssVar);
+  const totalPx = parts.reduce((sum, part) => sum + (Number.isFinite(part.px) ? part.px : 0), 0);
+  return { parts, missing, totalPx };
+}
+
 // ------------------------------------------------------------------ WXML structure
 
 export function parseWxmlElements(rawSource) {
@@ -692,7 +772,10 @@ export function auditLayout(overrides = {}) {
   const nowrapClamped = [
     ".hero-name", ".hero-run", ".vital-label", ".vital-value", ".attn-value", ".action-label",
     ".cta-target", ".dock-note", ".option-label", ".archive-title", ".build-name", ".build-stage",
-    ".person-name", ".person-meta", ".drawer-title", ".drawer-row-title", ".drawer-row-meta"
+    ".person-name", ".person-meta", ".drawer-title", ".drawer-row-title", ".drawer-row-meta",
+    ".entry-heading", ".entry-sub", ".entry-meta", ".entry-core-text", ".entry-row-label",
+    ".entry-row-note", ".offer-cand-root", ".offer-cand-line", ".opening-value", ".entry-attr-label",
+    ".entry-attr-value", ".entry-cta-label"
   ];
   const unclamped = [];
   for (const selector of nowrapClamped) {
@@ -726,7 +809,7 @@ export function auditLayout(overrides = {}) {
     unsafeWrap.length === 0,
     unsafeWrap.length === 0 ? "all break long tokens" : "unprotected: " + unsafeWrap.join(", ")
   ));
-  const reservedHeightBlocks = [".hero-name", ".hero-meta", ".vitals", ".attention-head", ".attn", ".dock-note", ".action", ".cta"];
+  const reservedHeightBlocks = [".hero-name", ".hero-meta", ".vitals", ".attention-head", ".attn", ".dock-note", ".action", ".cta", ".entry-heading", ".entry-row", ".offer-cand", ".opening-row", ".entry-attrs", ".entry-cta"];
   const unreserved = reservedHeightBlocks.filter((selector) => {
     const decls = parseDeclarations(ruleBody(stylesheet, selector));
     const raw = decls.get("height") || decls.get("min-height");
@@ -748,8 +831,147 @@ export function auditLayout(overrides = {}) {
     checks.push(check("design: UI02 token " + token + " preserved", wxss.includes(token), token));
   }
 
+  // --- 10. UI02ENTRY pre-run flow: four screens, each one screen, no page-level scroll ---------------
+  const ENTRY_PAGE_CLASS = {
+    START: "page--start",
+    MODE_SELECT: "page--modes",
+    DESTINY_OFFER: "page--offer",
+    RUN_OPENING: "page--opening"
+  };
+  for (const key of Object.keys(ENTRY_STACKS)) {
+    const className = ENTRY_PAGE_CLASS[key];
+    const pages = findByClass(elements, className);
+    const page = pages[0];
+    checks.push(check(
+      "entry: " + key + " renders exactly one ." + className + " product page",
+      pages.length === 1,
+      pages.length + " match(es)"
+    ));
+    checks.push(check(
+      "entry: " + key + " is a .page child of .surface (same constrained viewport, so it cannot extend the document)",
+      page !== undefined && classesOf(page).includes("page") && ancestorClasses(page).includes("surface"),
+      page === undefined ? "(no element)" : "ancestors: " + ancestorClasses(page).join(" > ")
+    ));
+    const pageDecls = parseDeclarations(ruleBody(stylesheet, "." + className));
+    checks.push(check(
+      "entry: " + key + " adds no page-level scroll container of its own (scroll policy stays structural)",
+      pageDecls.get("height") === undefined && pageDecls.get("overflow") === undefined,
+      "height=" + pageDecls.get("height") + " overflow=" + pageDecls.get("overflow")
+    ));
+  }
+
+  const entryLists = findByClass(elements, "entry-list");
+  checks.push(check(
+    "entry: the bounded entry list regions are scroll-view elements (mode list + candidate list)",
+    entryLists.length === 2 &&
+      entryLists.every((element) => element.tag === "scroll-view" && /(^|\s)scroll-y(\s|$)/.test(element.attrs)),
+    entryLists.length + " match(es), tags=" + entryLists.map((element) => element.tag).join(",")
+  ));
+  checks.push(check(
+    "entry: every bounded entry list belongs to a pre-run page",
+    entryLists.length === 2 &&
+      entryLists.every((element) => ["page--modes", "page--offer"].some((name) => ancestorClasses(element).includes(name))),
+    entryLists.map((element) => ancestorClasses(element).filter((name) => name.startsWith("page--")).join(",")).join(" | ")
+  ));
+  const entryListDecls = parseDeclarations(ruleBody(stylesheet, ".entry-list"));
+  checks.push(check(
+    "entry: .entry-list is a compressible bounded viewport (flex 1 1 auto + min-height 0)",
+    String(entryListDecls.get("flex") || "").startsWith("1 1") && entryListDecls.get("min-height") === "0",
+    "flex=" + entryListDecls.get("flex") + " min-height=" + entryListDecls.get("min-height")
+  ));
+
+  const entryCtas = findByClass(elements, "entry-cta");
+  checks.push(check(
+    "entry: each of the four pre-run screens carries exactly one primary control",
+    entryCtas.length === 4,
+    entryCtas.length + " .entry-cta element(s)"
+  ));
+  const entryCtaDecls = parseDeclarations(ruleBody(stylesheet, ".entry-cta"));
+  checks.push(check(
+    "entry: the pre-run primary control keeps the " + TOUCH_TARGET_MIN_PX + " CSS px interaction floor at the baseline",
+    (() => {
+      const minHeight = lengthPx(String(entryCtaDecls.get("min-height")), baseTokens, SUPPORTED_BASELINE.minWidth);
+      return Number.isFinite(minHeight) && minHeight >= TOUCH_TARGET_MIN_PX;
+    })(),
+    "min-height=" + entryCtaDecls.get("min-height")
+  ));
+  checks.push(check(
+    "entry: the pre-run action area reserves the home-indicator inset",
+    /env\(safe-area-inset-bottom/.test(ruleBody(stylesheet, ".entry-dock")),
+    "env(safe-area-inset-bottom) present"
+  ));
+  checks.push(check(
+    "entry: the pre-run action area is a non-shrinking flex child",
+    String(parseDeclarations(ruleBody(stylesheet, ".entry-dock")).get("flex") || "").startsWith("0 0"),
+    "flex=" + parseDeclarations(ruleBody(stylesheet, ".entry-dock")).get("flex")
+  ));
+
+  // The two data-driven pre-run screens must be driven by the projection, never by a hand-written list.
+  const modeRows = findByClass(elements, "entry-row");
+  checks.push(check(
+    "entry: MODE_SELECT renders the projected capability vocabulary, never a hand-written mode list",
+    modeRows.length === 1 && /wx:for="\{\{vm\.modeSelect\.modes\}\}"/.test(modeRows[0].attrs),
+    modeRows.length + " .entry-row template(s)"
+  ));
+  const offerCands = findByClass(elements, "offer-cand");
+  checks.push(check(
+    "entry: DESTINY_OFFER renders the public candidate projection, keyed by option id",
+    offerCands.length === 1 &&
+      /wx:for="\{\{vm\.destinyOffer\.candidates\}\}"/.test(offerCands[0].attrs) &&
+      /data-option="\{\{item\.optionId\}\}"/.test(offerCands[0].attrs) &&
+      ancestorClasses(offerCands[0]).includes("page--offer"),
+    offerCands.length + " .offer-cand template(s)"
+  ));
+  checks.push(check(
+    "entry: the preview holds no default destiny selection (nothing is decided for the player)",
+    /offerSelected:\s*""/.test(pageJs),
+    "data.offerSelected defaults to empty"
+  ));
+
+  // Every entry rule must be expressed in tokens the stylesheet already declares, so a pre-run screen
+  // cannot quietly introduce an undeclared value that no budget check would see.
+  const allTokens = resolveTokens(stylesheet, SUPPORTED_BASELINE.minWidth, SUPPORTED_BASELINE.minHeight).tokens;
+  const undeclaredEntryTokens = new Set();
+  for (const rule of stylesheet.outerRules) {
+    if (!/^\.(entry|offer|opening)-/.test(rule.selector)) continue;
+    for (const match of rule.body.matchAll(/var\((--[a-zA-Z0-9-]+)/g)) {
+      if (!allTokens.has(match[1])) undeclaredEntryTokens.add(match[1]);
+    }
+  }
+  checks.push(check(
+    "entry: every pre-run rule consumes only declared layout tokens",
+    undeclaredEntryTokens.size === 0,
+    undeclaredEntryTokens.size === 0 ? "no undeclared tokens" : "undeclared: " + [...undeclaredEntryTokens].join(", ")
+  ));
+
+  const entryQuantised = [];
+  for (const key of Object.keys(ENTRY_STACKS)) {
+    for (const viewport of VIEWPORT_MATRIX) {
+      const { tokens, sources } = resolveTokens(stylesheet, viewport.width, viewport.height);
+      const stack = entryStack(ENTRY_STACKS[key], tokens, viewport.width);
+      const total = stack.totalPx + SAFE_AREA_BOTTOM_WORST_CASE_PX;
+      entryQuantised.push({
+        key,
+        viewport,
+        sources: sources.map((entry) => entry.band),
+        stackPx: stack.totalPx,
+        totalPx: total,
+        slackPx: viewport.height - total,
+        missingTokens: stack.missing
+      });
+    }
+  }
+  for (const entry of entryQuantised) {
+    const label = entry.key + " @ " + entry.viewport.width + "x" + entry.viewport.height;
+    checks.push(check(
+      "entry-budget: " + label + " HEIGHT BUDGET " + entry.stackPx.toFixed(1) + "px + " + SAFE_AREA_BOTTOM_WORST_CASE_PX + "px safe-area <= " + entry.viewport.height + "px",
+      entry.missingTokens.length === 0 && entry.totalPx <= entry.viewport.height,
+      "slack " + entry.slackPx.toFixed(1) + "px; tokens: " + entry.sources.join(" -> ")
+    ));
+  }
+
   const failures = checks.filter((entry) => !entry.ok);
-  return { checks, failures, quantised };
+  return { checks, failures, quantised, entryQuantised };
 }
 
 function formatReport(result) {
@@ -773,6 +995,19 @@ function formatReport(result) {
   lines.push("  bands applied per viewport:");
   for (const entry of result.quantised) {
     lines.push("    " + entry.viewport.width + "x" + entry.viewport.height + " -> " + entry.sources.join(" | "));
+  }
+  lines.push("");
+  lines.push("pre-run first-screen budget (UI02ENTRY worst case: full mode vocabulary / full candidate set, primary action available):");
+  lines.push("  screen                   viewport      stack     +safe    limit    slack");
+  for (const entry of result.entryQuantised) {
+    lines.push(
+      "  " + entry.key.padEnd(22) +
+      (entry.viewport.width + "x" + entry.viewport.height).padEnd(12) +
+      (entry.stackPx.toFixed(1) + "px").padStart(8) +
+      (String(SAFE_AREA_BOTTOM_WORST_CASE_PX) + "px").padStart(9) +
+      (String(entry.viewport.height) + "px").padStart(9) +
+      (entry.slackPx.toFixed(1) + "px").padStart(9)
+    );
   }
   lines.push("");
   if (result.failures.length === 0) {

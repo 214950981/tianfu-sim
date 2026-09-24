@@ -5,6 +5,11 @@
 // mapCoreActionIntents/mapSpecialActionIntents/buildArchiveView). Nothing in the preview page
 // invents game rules; the page only renders these projections.
 //
+// UI02ENTRY adds the `entry` collection (START / MODE_SELECT / DESTINY_OFFER / RUN_OPENING). It is
+// the same production chain: generateServerDestinyOffer -> ServerViewModelBuilder.build ->
+// buildWeChatPageShell -> projectDestinyOfferView. It is a separate collection because START and
+// MODE_SELECT precede any authoritative run, so they have no server PageState to project.
+//
 // Usage:
 //   node tools/ui02-preview-fixtures.mjs            # print a summary
 //   node tools/ui02-preview-fixtures.mjs --write    # regenerate the committed fixture JSON
@@ -13,7 +18,7 @@ import path from "node:path";
 import { ContentRegistry } from "../packages/content/src/index.ts";
 import { reduce, validateGameState } from "../packages/core/src/index.ts";
 import { buildArchiveView, buildWeChatPageShell, mapCoreActionIntents, mapSpecialActionIntents } from "../packages/wechat-shell/src/index.ts";
-import { ServerViewModelBuilder, generateServerDestinyOffer } from "../server/src/index.ts";
+import { ServerViewModelBuilder, generateServerDestinyOffer, projectDestinyOfferView } from "../server/src/index.ts";
 
 export const FIXTURE_PATH = "miniprogram/pages/v2-preview/v2-fixtures.json";
 const PACK_PATH = "packages/content/dev-fixtures/minimal-pack.json";
@@ -30,7 +35,15 @@ function contentRegistry() {
   return content;
 }
 
-function baseActiveState(content) {
+/**
+ * The real server destiny offer, plus the run produced by choosing its first public candidate.
+ *
+ * UI02ENTRY reuses this single construction for two different fixtures, so the pre-run entry flow and
+ * the in-life flow are provably the same offer: the DESTINY_OFFER screen renders the offer as it is,
+ * and the RUN_OPENING screen renders the run that the offer's first candidate would start. Both come
+ * from generateServerDestinyOffer -> reduce(START_RUN); neither is hand-authored.
+ */
+function offerFixture(content) {
   const generated = generateServerDestinyOffer({
     schemaVersion: 2, rulesVersion: RULES_VERSION, contentVersion: CONTENT_VERSION,
     runId: RUN_ID, playerId: PLAYER_ID, rootSeed: ROOT_SEED,
@@ -46,11 +59,16 @@ function baseActiveState(content) {
     }
   });
   const selectionId = generated.state.run.offer.innateProfiles[0].selectionId;
-  return reduce({
+  const started = reduce({
     state: generated.state,
     command: { type: "START_RUN", offerId: "offer-ui02-preview", selectionId },
     context: { rulesVersion: RULES_VERSION, contentVersion: CONTENT_VERSION, content, commandId: "cmd:ui02-bootstrap" }
   }).state;
+  return { generated, selectionId, started };
+}
+
+function baseActiveState(content) {
+  return offerFixture(content).started;
 }
 
 const cause = (causeId, templateId, visibility) => ({
@@ -214,6 +232,44 @@ export function buildPreviewStates() {
   return { content, runHome, event: eventState(content), specialNode: specialNodeState(content), ended: endedState(content), breakthroughBlocked };
 }
 
+/**
+ * UI02ENTRY — the pre-run entry flow, as a separate generated collection.
+ *
+ * Why a separate `entry` collection instead of more `states`: START and MODE_SELECT happen *before*
+ * any authoritative run exists, so the server has no PageState or ViewModel to project for them
+ * (derivePageState only knows run status / current interaction). Squeezing them into `states` would
+ * force a fabricated run into every pre-run screen. Keeping them apart means the in-life `states`
+ * collection stays exactly "server-authoritative pages" while `entry` is explicitly "the public
+ * pre-run flow".
+ *
+ *  - START: pure identity surface. It carries no game data at all — the copy is documented product
+ *    copy, not projected state.
+ *  - MODE_SELECT: carries only `shell.visibleEntries`, i.e. the capability projection the accepted
+ *    WeChat shell already computes. No mode is invented here; the list the page renders is the
+ *    contract's capability vocabulary, gated by those flags.
+ *  - DESTINY_OFFER: a full public projection of the *real* server offer
+ *    (generateServerDestinyOffer -> ServerViewModelBuilder.build). Only the public candidate fields the
+ *    accept contract names are present: no rootSeed, no RNG state, no draw index, no weights.
+ *  - RUN_OPENING: the public projection of the run the chosen candidate starts, plus that candidate's
+ *    already-public fields resolved by projectDestinyOfferView. No START_RUN outcome is re-derived and
+ *    no rule state is exposed beyond what the accepted ViewModel already sends.
+ */
+export function buildPreviewEntry() {
+  const content = contentRegistry();
+  const { generated, selectionId, started } = offerFixture(content);
+  const builder = new ServerViewModelBuilder(content, { capabilities: { PlatformCapability: true, ShareCapability: true, AiNarrativeCapability: true } });
+  const submission = { interactionState: "idle", mutuallyExclusiveLocked: false, requiresReconfirmation: false };
+  const offerView = builder.build(generated.state);
+  const startedView = builder.build(started);
+  const selected = projectDestinyOfferView(generated.state, content).candidates.find((candidate) => candidate.id === selectionId);
+  return {
+    START: { pageState: "START" },
+    MODE_SELECT: { pageState: "MODE_SELECT", shell: buildWeChatPageShell(startedView, submission) },
+    DESTINY_OFFER: { pageState: "DESTINY_OFFER", view: offerView, shell: buildWeChatPageShell(offerView, submission) },
+    RUN_OPENING: { pageState: "RUN_OPENING", view: startedView, shell: buildWeChatPageShell(startedView, submission), selected }
+  };
+}
+
 export function buildPreviewFixtures() {
   const { content, runHome, event, specialNode, ended, breakthroughBlocked } = buildPreviewStates();
   const fullCaps = new ServerViewModelBuilder(content, { capabilities: { PlatformCapability: true, ShareCapability: true, AiNarrativeCapability: true } });
@@ -222,6 +278,7 @@ export function buildPreviewFixtures() {
   return {
     schemaVersion: 1,
     source: "generated by tools/ui02-preview-fixtures.mjs from real server/core/platform-neutral code; do not hand-edit",
+    entry: buildPreviewEntry(),
     states: {
       RUN_HOME: present(fullCaps.build(runHome)),
       EVENT: present(fullCaps.build(event)),
@@ -244,7 +301,10 @@ if (isMain) {
     fs.writeFileSync(FIXTURE_PATH, serialized, "utf8");
     console.log(`wrote ${FIXTURE_PATH} (${serialized.length} bytes)`);
   } else {
-    console.log(`built ${Object.keys(fixtures.states).length} states + ${Object.keys(fixtures.variants).length} variants (${serialized.length} bytes)`);
+    console.log(`built ${Object.keys(fixtures.entry).length} entry + ${Object.keys(fixtures.states).length} states + ${Object.keys(fixtures.variants).length} variants (${serialized.length} bytes)`);
+  }
+  for (const [name, entry] of Object.entries(fixtures.entry)) {
+    console.log(`${name.padEnd(34)} pageState=${entry.pageState.padEnd(13)} entry-flow`);
   }
   for (const [name, entry] of Object.entries({ ...fixtures.states, ...fixtures.variants })) {
     const special = entry.specialIntents.map((intent) => `${intent.intentId}=${intent.enabled}`).join(",") || "none";
