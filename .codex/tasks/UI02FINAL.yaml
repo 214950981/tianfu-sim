@@ -1,0 +1,28 @@
+id: UI02FINAL
+title: UI02FINAL — Final Regression / Merge Readiness Audit
+phase: 2
+requiredContracts: [.codex/contracts/ui.ref,.codex/contracts/viewmodel.ref,.codex/contracts/page-state.ref,.codex/contracts/platform.ref,.codex/contracts/command.ref,.codex/contracts/crosslayer.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [package.json,.codex/control/LAST_RESULT.yaml,docs/UI02_PREVIEW.md,tests/ui02copy.test.mjs,tests/ui02entry.test.mjs,tests/ui02r2a2.test.mjs,tests/ui02r1.test.mjs,tools/ui02r1-layout-audit.mjs,tools/wxss-compat-audit.mjs]
+allowedScope:
+  - perform the single deferred full regression and merge-readiness audit for the accumulated UI02 -> UI02R1 -> UI02R2 -> UI02R2A2 -> UI02ENTRY -> UI02COPY chain after human visual acceptance
+  - make no product behaviour or visual changes; this task is verification-only except for adding tests/ui02copy.test.mjs to the aggregate npm test command if it is not already registered there
+  - run the aggregate npm test suite after the aggregate command includes ui02copy
+  - run dedicated UI02COPY UI02ENTRY UI02R2A2 UI02R2 UI02R1 UI02 and viewmodel-ui suites explicitly so their result is visible even if the aggregate run encounters sandbox noise
+  - run typecheck import-boundary lint content lint content01 lint secret scan layout audit WXSS compatibility fixture freshness participant-bridge audit recurrence audit director audit phase2 drift audit and content playability audit
+  - run context-loader smoke for UI02FINAL so every task definition must parse under the current schema
+  - if the aggregate npm test reports only the previously documented nested-process EBUSY failures in import-boundary or replay, reproduce those exact failures on the untouched task base and run the underlying direct tools; classify them as environment noise only when base reproduction and direct-tool success are both proven
+  - verify the accumulated branch remains a real descendant of dev/tianfu-2.0 and that no Core Content Director server gameplay rule legacy-1.0 page or default-route change entered through the UI chain beyond already reviewed preview fixture/audit/test/doc work
+  - update .codex/control/LAST_RESULT.yaml with a concise merge-readiness verdict and exact test/gate evidence
+forbiddenScope: [new-feature-work,visual-redesign,new-copy-work,Core-gameplay-rule-changes,Content-gameplay-changes,Director-changes,Cause-semantics,Progression-changes,Risk-resolution-changes,Build-or-NPC-rule-changes,server-viewmodel-semantics-change,wechat-shell-live-controller-wiring,application-ui-live-controller-wiring,legacy-1.0-page-rewrite,default-route-change,real-cloud-backend-deployment,UI03-implementation,UI04,CHAL01,ITEM01,TECH01,SECT01,WORLD01,new-runtime-dependency,source-branch-push]
+accept:
+  - tests-ui02copy-is-included-in-the-aggregate-npm-test-command
+  - context-loader-parses-UI02FINAL-and-all-task-definitions-without-MALFORMED_TASK
+  - aggregate-npm-test-is-green-or-has-only-proven-base-reproducible-nested-process-EBUSY-environment-failures-with-underlying-direct-tools-green
+  - dedicated-ui02copy-ui02entry-ui02r2a2-ui02r2-ui02r1-ui02-and-viewmodel-ui-suites-are-green
+  - typecheck-lint-content-lint-content01-lint-secret-scan-layout-audit-wxss-compat-fixture-freshness-participant-bridge-recurrence-director-phase2-drift-and-content-playability-gates-are-green
+  - no-600-run-simulation-is-required-because-no-gameplay-rule-or-balance-code-changed-in-the-UI-chain
+  - accumulated-UI-chain-is-a-real-descendant-of-dev-tianfu-2-0-and-has-no-unreviewed-gameplay-server-or-legacy-1-0-change
+  - LAST_RESULT-status-is-PASS-only-if-the-chain-is-safe-to-fast-forward-into-dev-tianfu-2-0-and-start-UI03
+tests: [full-npm-test,ui02copy,ui02entry,ui02r2a2,ui02r2,ui02r1,ui02,viewmodel-ui,typecheck,lint,content-lint,content01-lint,secret-scan,layout-audit,wxss-compat-audit,fixture-freshness,participant-bridge-audit,recurrence-audit,director-audit,phase2-drift-audit,content-playability-audit,context-loader]
