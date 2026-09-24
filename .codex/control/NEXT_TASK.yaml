@@ -1,11 +1,11 @@
 version: 1
 status: READY
 attempt: 1
-taskId: UI03
-title: UI03 — WeChat 2.0 Live Session Controller / E2E Wiring
-taskDefinition: .codex/tasks/UI03.yaml
+taskId: UI04A
+title: UI04A — Client-Safe Command Wire Boundary
+taskDefinition: .codex/tasks/UI04A.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-UI03
+workBranch: wb-UI04A
 worktreeRequired: true
 allowSyntheticTreeBase: true
 basePolicy: remote-source-head-at-task-start
@@ -16,26 +16,26 @@ execution:
   updateSourceBranch: false
   startNextTask: false
 controllerReview:
-  previousTask: UI02FINAL
+  previousTask: UI03
   previousStatus: ACCEPTED
-  acceptedResultCommit: 1ecc9c9c1515c1dabe1eef784f7cd7e9fae6ec82
+  acceptedResultCommit: 09213468c2de5fa7c74b026b6fb45fa40154872a
   acceptanceBasis:
-    - UI02FINAL task contract satisfied
-    - dev/tianfu-2.0 was a real ancestor of wb-UI02FINAL and fast-forwarded without force
-    - aggregate regression had only three task-permitted EBUSY environment failures proven on untouched base with underlying direct tools green
-    - all dedicated UI suites and required gates passed
-    - no gameplay Core Content Director server legacy-1.0 or default-route change entered through the UI chain
+    - wb-UI03 is a real two-commit descendant of the unchanged dispatched dev head
+    - dedicated UI03 18/18 and all required UI/UI gateway reducer gates passed
+    - aggregate regression added exactly the 18 UI03 tests and had only the same three EBUSY failures proven on untouched base with direct tools green
+    - WeChatRunController keeps gameplay authority server-side and reuses CommandSubmissionController for envelope retry and reconfirmation semantics
+    - the additive authoritative CurrentInteraction.eventId projection is necessary for CHOOSE_EVENT_OPTION and has been aligned into viewmodel.ref by the Controller
 controllerDecision:
-  strategy: start-live-session-controller-wiring
-  rationale: the visual/UI chain is accepted and merge-ready; the highest-value next step is authoritative live session wiring without moving gameplay authority client-side
+  strategy: harden-client-runtime-boundary-before-page-wiring
+  rationale: UI03 is accepted, but the inherited CommandSubmissionController runtime import through the Core barrel is not an acceptable packaging boundary for a real miniprogram client; extract the wire codec first, then wire pages and transport in UI04B
 controllerIntent:
   mode: STANDARD_IMPLEMENTATION
-  goal: connect the accepted 2.0 presentation layer to authoritative transport/session orchestration with real E2E evidence
-  postTask: controller reviews wb-UI03; do not start UI04 or any follow-up task yourself
+  goal: make the UI03 controller dependency closure client-safe without changing any gameplay or command semantics
+  postTask: controller reviews wb-UI04A; do not start UI04B or any page/transport work yourself
 notes:
   - Read .codex/control/TOOLING_RUNBOOK.md before execution.
-  - Any reusable tooling/environment finding must be committed to Git in LAST_RESULT.toolingObservations. Do not leave important operational knowledge only in chat.
-  - Plain git push may hang in this sandbox because the user gitconfig resets credential helpers. Follow the validated push guidance in TOOLING_RUNBOOK.md and read the current proxy from HTTPS_PROXY instead of hard-coding a port.
-  - WeChat DevTools can pollute the worktree; verify and isolate those artifacts before trusting digest-pinned tests.
-  - Known nested-node EBUSY may be called environment noise only with the same proof standard used by UI02FINAL: untouched-base reproduction plus direct-tool success.
-  - UI03 may not widen into UI04, default-route replacement, production cloud deployment, or gameplay-rule work.
+  - Reusable tooling/environment findings must be committed to LAST_RESULT.toolingObservations; chat-only observations are not durable evidence.
+  - Do not solve this by copying a second command validator into the client. There must remain one protocol definition/validation source of truth.
+  - Do not solve this merely by pointing imports at packages/core/src/command.ts if that still leaves the production client runtime coupled to gameplay Core. The accepted end state is a lower-level client-safe wire boundary outside gameplay Core, with compatibility maintained for Core/server callers.
+  - No miniprogram page wiring, wx.request, cloudfunction deployment or default-route change in UI04A.
+  - If a clean acyclic extraction would require gameplay semantic changes, stop BLOCKED and report the architecture conflict instead of widening scope.

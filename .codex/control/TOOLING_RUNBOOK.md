@@ -22,13 +22,19 @@ Validated non-interactive pattern:
 
 `GCM_INTERACTIVE=never git -c credential.helper=manager -c credential.https://github.com.helper=manager push origin HEAD:refs/heads/<workBranch>`
 
+Optional credential-only probe before spending a network attempt:
+
+`printf 'protocol=https\nhost=github.com\n\n' | GCM_INTERACTIVE=never git -c credential.helper=manager credential fill`
+
+UI03 verified this probe and the documented push pattern successfully on the first attempt without changing `~/.gitconfig`.
+
 Operational rules:
 - push only the task's exact flat work branch;
 - bound attempts with a timeout where the sandbox supports it;
 - do not assume a fixed proxy port;
 - read the current proxy from `HTTPS_PROXY`.
 
-Proxy ports observed so far include 18036 and 23843. The port is environment data, not configuration.
+Proxy ports observed so far include 18036, 23843 and 46226. The port is environment data, not configuration.
 
 ## WeChat DevTools worktree pollution
 
@@ -54,3 +60,25 @@ UI02FINAL proved the known three failures were environmental only because BOTH c
 2. each underlying direct tool succeeded when invoked directly from the shell, including the negative-control behavior where applicable.
 
 Do not classify a future EBUSY as environment noise merely because the error text looks similar. Re-establish both proofs for the affected task.
+
+## Real-ancestry worktree positioning without ref writes
+
+UI03 verified a safe recipe when the exact remote commit object is fetchable but local ref writes are undesirable:
+- fetch the remote source commit;
+- `git read-tree -u --reset <sha>`;
+- write the worktree-specific `HEAD` file to `<sha>` directly;
+- verify `git rev-parse HEAD == <sha>` and `git write-tree == <sha>^{tree}` before editing.
+
+This preserves real ancestry without creating or moving an extra local branch ref. Use synthetic-tree fallback only when the remote commit object genuinely cannot be fetched and NEXT_TASK explicitly allows it.
+
+## Untouched-base reproduction
+
+For proving that a failure exists on the pristine task base, UI03 verified:
+
+`mkdir -p <scratch> && git archive <baseCommit> | tar -x -C <scratch>`
+
+Run the suspect tests from that extracted tree. This is safer for multi-file tasks than temporarily checking out task files back to base and avoids stash/ref writes. Keep the scratch tree Git-excluded and remove any accidental nested `.git` directory.
+
+## Sandbox composite-command artefact
+
+A sandbox-level `decisionRecord missing actual resource subject` error may abort a long composite shell call before any command runs. When it appears with no command output, split the chain into single-purpose calls and retry the pieces before diagnosing repository state.

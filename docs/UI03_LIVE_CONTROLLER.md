@@ -1,7 +1,7 @@
 # UI03 — WeChat 2.0 Live Session Controller
 
 本文件说明 UI03 新增的 **live session controller**（`WeChatRunController`）：它负责什么、不负责什么、
-生产 WeChat transport 的接线口在哪里，以及哪些事情明确属于 UI04。
+生产 WeChat transport 的接线口在哪里，以及哪些事情属于后续 UI04 系列。
 
 > 这是 **session / presentation orchestration**，不是新的玩法层。
 > UI03 不把 gameplay authority 搬到客户端，也不改 Core / Content / Director / 服务端网关规则。
@@ -99,13 +99,15 @@ var controller = new WeChatRunController({
 });
 ```
 
-## 六、明确属于 UI04（UI03 不做）
+## 六、明确属于 UI04 系列（UI03 不做）
 
 - 真实 WeChat transport（`wx.request` / 云函数端点 / 生产云部署）与 `createRunOffer` 接线；
 - 把 `pages/v2-preview/v2-preview`（或新的 2.0 生产页）接到本控制器、替换默认路由；
 - 终局链路 `ENDING → LIFE_BOOK → REBIRTH_RESULT → NEXT_LIFE` 的编排；
 - 恢复/超时的产品级交互（弹窗、toast、重试提示文案）；
 - 掌机级 pending UI 之外的任何新玩法、榜单、商业或广告能力。
+
+Controller 在 UI03 验收后将后续工作拆分：`UI04A` 先收紧 client-safe command wire 运行时依赖边界；真实 WeChat transport、生产页接线、默认路由和终局链路留给 `UI04B+`。UI04A 不得提前做这些页面/部署工作。
 
 ## 七、验收口径
 

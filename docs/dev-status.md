@@ -9,7 +9,7 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `1ecc9c9c1515c1dabe1eef784f7cd7e9fae6ec82`
+- lastReviewedCommit: `09213468c2de5fa7c74b026b6fb45fa40154872a`
 - reviewedDate: `2026-09-24`
 
 不要修改 `main` / 1.0，除非未来任务明确要求。
@@ -64,6 +64,7 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - UI02ENTRY: PASS（人工视觉验收通过）
 - UI02COPY: PASS（人工视觉验收通过）
 - UI02FINAL: PASS（Controller 已验收；完整回归与 merge-readiness audit 通过）
+- UI03: PASS（Controller 已验收；live-session controller / authoritative E2E wiring 通过）
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
 
@@ -276,24 +277,23 @@ Full regression：264 / 264 PASS；全部 reported audits PASS。
 
 ## Next
 
-Latest accepted: `UI02FINAL PASS`，result commit `1ecc9c9c1515c1dabe1eef784f7cd7e9fae6ec82`。
+Latest accepted: `UI03 PASS`，result commit `09213468c2de5fa7c74b026b6fb45fa40154872a`。
 
-UI02 累积视觉链已完成最终完整回归并由 Controller 验收，已安全 fast-forward 到 `dev/tianfu-2.0`。完整回归 375 项中 372 PASS；其余 3 项为已在 untouched base 复现、且底层 direct tools 独立通过的 nested-process EBUSY sandbox 环境噪声。UI02FINAL 按任务约定未运行 600-run simulation，因为 UI 链没有 gameplay/balance 改动。
+UI03 已将 2.0 presentation/session orchestration 接到真实 `CommandGateway + GatewayApplicationTransport + ServerViewModelBuilder` 的 E2E 路径，并保持 `CommandSubmissionController` 对 commandId / pending / retry / STATE_CONFLICT reconfirmation 的单一所有权。Controller 同步接受了 UI03 的最小公开投影补充：`CurrentInteraction.eventId?`，并已把 `viewmodel.ref` 对齐，客户端不得从 interactionId/titleKey 猜 eventId。
 
-下一任务：`UI03` — WeChat 2.0 Live Session Controller / E2E Wiring。
+在真正接入 WeChat 页面之前，先处理一个运行时边界风险：`CommandSubmissionController` 目前通过 Core barrel 引入命令信封解析/序列化。测试环境可用，但真实小程序打包时不应把 gameplay Core/reducer 依赖链带进 client bundle。
+
+下一任务：`UI04A` — Client-Safe Command Wire Boundary。
 
 目标：
+- 把客户端确实需要的 command/envelope wire codec 与类型放到 gameplay Core 之外的低层、client-safe 边界。
+- `packages/application-ui` / `packages/wechat-shell` 的运行时依赖图不得再经过 Core gameplay barrel、reducer、RNG、Director、Content 或 server。
+- 保持现有命令形状、验证、canonical serialization、retry/idempotency 语义完全不变；Core 可通过兼容 re-export 保持现有调用方不破裂。
+- 增加机器可执行的 client-runtime dependency audit 与 dedicated tests。
+- 本任务不接真实 wx.request / 云函数、不改默认路由、不做页面接线；这些放到后续 UI04B+。
+- 不跑 600-run simulation，除非 WorkBuddy 发现不得不触碰 gameplay/balance 代码；若需要则应 BLOCKED 等 Controller 决策。
 
-- 将已验收 UI02 presentation layer 接到可复用 live-session controller。
-- 客户端只做 session / presentation orchestration，不获得 gameplay authority。
-- 复用 CommandSubmissionController，保留 commandId / retry / reconfirm / STATE_CONFLICT 语义的单一所有权。
-- 打通 RUN_HOME → EVENT / SPECIAL_NODE → authoritative refresh，以及 server-projected breakthrough。
-- LIFE_ARCHIVE 保持本地只读侧页，不修改 gameplay state。
-- 增加真实 CommandGateway + transport + ServerViewModelBuilder 的 E2E 证据。
-- 不改 Core gameplay、Director、Content、legacy 1.0 页面或默认路由。
-- WorkBuddy 不得自行开始 UI04 或任何后续任务。
-
-Tooling 注意事项已沉淀到 `.codex/control/TOOLING_RUNBOOK.md`。WorkBuddy 后续发现可复用的环境/工具问题时，必须写入 Git 的 `LAST_RESULT.toolingObservations`，不能只留在聊天窗口.
+WorkBuddy 仍必须把任何可复用 tooling/environment 发现写进 `LAST_RESULT.toolingObservations`。
 ## 新 Codex 会话 / 账号接手步骤
 
 1. 确认当前 branch = `dev/tianfu-2.0`。

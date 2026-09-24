@@ -1,9 +1,9 @@
-// VIEWMODEL CONTRACT v1 (UI01 Final Contract v1)
+// VIEWMODEL CONTRACT v1.1 (UI03 additive event identity projection)
 type PublicJson=string|number|boolean|null|PublicJson[]|{[key:string]:PublicJson};
 type RiskPresentation={tier:'low'|'caution'|'dangerous'|'lethal';canBeFatal:boolean;reasons:string[];level?:'safe'|'guarded'|'dangerous'|'unknown';labelKey?:string;detailKey?:string};
 type PublicCause={publicId:string;level:'explicit'|'hinted';titleKey?:string;summaryKey:string};
 export type PublicState={schemaVersion:number;rulesVersion:string;contentVersion:string;stateVersion:number;runId:string;pageState:PageState;runStatus:'offered'|'active'|'dying'|'ended'|'abandoned';publicRun:Record<string,PublicJson>;capabilities:Record<string,boolean>;publicCauses:PublicCause[]};
-export type CurrentInteraction={interactionId:string;kind:'destinyOffer'|'event'|'specialNode'|'ending'|'rebirth';titleKey:string;body:PublicJson;options:Array<{optionId:string;labelKey:string;riskPresentation?:RiskPresentation}>;interactionState:'idle'|'submitting'|'confirmed'|'retryableError'|'fatalError';retryCommandId?:string};
+export type CurrentInteraction={interactionId:string;kind:'destinyOffer'|'event'|'specialNode'|'ending'|'rebirth';titleKey:string;body:PublicJson;options:Array<{optionId:string;labelKey:string;riskPresentation?:RiskPresentation}>;eventId?:string;interactionState:'idle'|'submitting'|'confirmed'|'retryableError'|'fatalError';retryCommandId?:string};
 export type PublicHistory={entries:Array<{entryId:string;kind:string;titleKey:string;summaryKey:string;data?:Record<string,PublicJson>}>};
 export type ShareViewModel={title:string;summary:string;imageKey?:string;facts:Array<{label:string;value:string}>};
 The client receives only a public projection the player is entitled to know.
@@ -16,6 +16,6 @@ Public death projection may expose age, realm, registered direct cause, player-k
 ViewModel may only project/filter/format/aggregate/translate authoritative results. It must not roll RNG, decide Outcome, advance time, create Cause, mutate RuleState, or decide breakthrough results.
 Build projection exposes semantic stage/display labels and dominant identity only; exact affinityBps and lifetimeEvidence remain authoritative server state.
 People projection exposes only met NPC identity, known roles/facts/traits, semantic affinity/trust/debt, known status/last-known information and public milestone summaries.
-CurrentInteraction may project participant slot plus safe displayName from authoritative bindings. It never projects participantBindings, npcId association, actualStatus, significance, unrevealed facts/traits, generation inputs or NPC RNG state.
+CurrentInteraction may project participant slot plus safe displayName from authoritative bindings. For event/specialNode decisions it may also project the authoritative current eventId; clients must use that field for CHOOSE_EVENT_OPTION and must never derive eventId from interactionId, titleKey or presentation text. eventId is absent when no current run event exists (for example destinyOffer). It never projects participantBindings, npcId association, actualStatus, significance, unrevealed facts/traits, generation inputs or NPC RNG state.
 Never send raw affinity/trust, exact significance, promotionThreshold, hidden traits/facts, unrevealed actualStatus, future NPC event references, selector weights or NPC RNG state.
 ShareViewModel contains public share-safe data only and cannot be converted into rule effects.

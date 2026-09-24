@@ -1,0 +1,30 @@
+id: UI04A
+title: UI04A — Client-Safe Command Wire Boundary
+phase: 2
+requiredContracts: [.codex/contracts/command.ref,.codex/contracts/platform.ref,.codex/contracts/crosslayer.ref,.codex/contracts/ui.ref,.codex/contracts/viewmodel.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [packages/application-ui/src/index.ts,packages/wechat-shell/src/index.ts,packages/core/src/command.ts,packages/core/src/index.ts,packages/platform-contract/src/index.ts,tests/command.test.mjs,tests/ui03.test.mjs,docs/UI03_LIVE_CONTROLLER.md,tsconfig.json,package.json]
+allowedScope:
+  - remove the client runtime dependency from application-ui and wechat-shell to the gameplay Core barrel by extracting the command/envelope wire types validation canonical serialization and parsing needed by client orchestration into a lower-level client-safe module or package outside gameplay Core
+  - keep the wire boundary purely protocol-level: command shapes envelope fields validation canonical JSON serialization parsing and application error codes only; it must not contain RuleState reducer RNG outcome progression risk build NPC director content or server logic
+  - preserve compatibility for existing Core/server callers by re-exporting or otherwise keeping existing public command imports working where practical; do not force unrelated gameplay files to rewrite imports unless required by a clean acyclic dependency graph
+  - make application-ui and wechat-shell use the client-safe runtime boundary for command/envelope persistence and validation; type-only imports are acceptable only when erased and must not create runtime dependency edges
+  - add a machine-executable client-runtime dependency audit rooted at application-ui and wechat-shell that fails if their runtime graph reaches gameplay Core modules such as reducer state rng destiny event cause progression risk build npc director participants, any Content implementation, or server
+  - add dedicated UI04A tests that prove canonical serialized bytes and parse/validation behaviour remain compatible for representative valid and invalid envelopes including CHOOSE_ACTION CHOOSE_EVENT_OPTION ATTEMPT_BREAKTHROUGH and START_RUN
+  - prove retry restore and STATE_CONFLICT semantics from UI03 remain unchanged after the boundary extraction
+  - document the resulting runtime dependency boundary and the remaining UI04B page/transport work
+  - update package test registration and .codex/control/LAST_RESULT.yaml
+forbiddenScope: [gameplay-command-shape-change,Core-rule-change,reducer-behavior-change,RNG-change,Director-change,Cause-semantics,Progression-change,Risk-resolution-change,Build-or-NPC-rule-change,Content-change,server-gateway-semantics-change,server-viewmodel-semantics-change,new-public-viewmodel-field,miniprogram-page-live-wiring,wx-request,cloudfunction-runtime,production-cloud-deployment,default-route-change,legacy-1.0-page-change,UI04B,ENDING-LIFE_BOOK-REBIRTH_RESULT-NEXT_LIFE-orchestration,new-runtime-dependency,source-branch-push]
+accept:
+  - application-ui-and-wechat-shell-have-no-runtime-import-edge-through-the-gameplay-Core-barrel-or-forbidden-gameplay-modules
+  - command-envelope-wire-code-lives-in-a-client-safe-lower-level-boundary-with-no-rule-state-reducer-rng-content-director-or-server-dependency
+  - existing-command-envelope-shapes-validation-and-canonical-serialization-are-semantically-and-byte-compatible
+  - existing-Core-and-server-command-imports-remain-compatible-or-are-migrated-without-behaviour-change
+  - client-runtime-dependency-audit-is-green-and-has-a-negative-control-that-proves-it-can-detect-a-forbidden-edge
+  - ui04a-ui03-command-server-gateway-reducer-replay-and-viewmodel-ui-tests-are-green-except-only-proven-sandbox-EBUSY-environment-noise-under-the-runbook-two-proof-standard
+  - aggregate-npm-test-is-green-or-has-only-proven-base-reproducible-nested-process-EBUSY-with-underlying-direct-tools-green
+  - typecheck-lint-content-lint-content01-lint-secret-scan-green
+  - no-gameplay-content-server-viewmodel-miniprogram-page-legacy-1.0-or-default-route-change
+  - no-600-run-simulation-is-required-when-gameplay-and-balance-code-remain-semantically-unchanged
+tests: [ui04a,ui03,command,server-gateway,reducer,replay,viewmodel-ui,full-npm-test,typecheck,lint,content-lint,content01-lint,secret-scan,client-runtime-dependency-audit]
