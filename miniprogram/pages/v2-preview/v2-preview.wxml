@@ -92,11 +92,13 @@
             <scroll-view class="attention-scroll" scroll-y>
               <view wx:for="{{vm.runHome.attentions}}" wx:key="key" class="attn"
                     data-drawer="{{item.drawer}}" bindtap="onOpenDrawer">
+                <view class="attn-mark"></view>
                 <view class="attn-tag">{{item.tag}}</view>
                 <view class="attn-value">{{item.value}}</view>
                 <view class="attn-enter">›</view>
               </view>
               <view class="attn" data-drawer="conditions" bindtap="onOpenDrawer">
+                <view class="attn-mark"></view>
                 <view class="attn-tag">条件</view>
                 <view class="attn-value">{{vm.runHome.conditionSummary}}</view>
                 <view class="attn-enter">›</view>

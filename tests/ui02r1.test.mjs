@@ -378,8 +378,21 @@ test("UI02R1_wxss: removing the universal reset did not silently break the box m
     assert.notEqual(rule, undefined, "." + name + " must exist");
     assert.equal(/box-sizing:\s*border-box/.test(rule.body), true, "." + name + " must declare box-sizing: border-box");
   }
-  // and the declaration count stays exactly the derived requirement: no blanket rule smuggled back in
-  assert.equal((stripCss(wxss).match(/box-sizing:\s*border-box/g) || []).length, BORDER_BOX_CANDIDATES.length);
+  // and the declaration count stays exactly the derived requirement: no blanket rule smuggled back in.
+  // UI02R2A2 turned the priorities panel into a bounded surface: it is a flex-grown box (a definite
+  // size for box-sizing purposes) that carries a hairline edge and padding, so it is a further box that
+  // must declare border-box itself. It is named explicitly here instead of being absorbed silently into
+  // the count, so the pin still fails closed on any additional or blanket declaration.
+  const EXTRA_BORDER_BOX = ["attention"];
+  for (const name of EXTRA_BORDER_BOX) {
+    const rule = sheet.outerRules.find((entry) => entry.selector === "." + name);
+    assert.notEqual(rule, undefined, "." + name + " must exist");
+    assert.equal(/box-sizing:\s*border-box/.test(rule.body), true, "." + name + " must declare box-sizing: border-box");
+  }
+  assert.equal(
+    (stripCss(wxss).match(/box-sizing:\s*border-box/g) || []).length,
+    BORDER_BOX_CANDIDATES.length + EXTRA_BORDER_BOX.length
+  );
 });
 
 test("UI02R1_wxss: the compatibility audit detects unsupported WXSS syntax (negative controls)", () => {
