@@ -365,17 +365,26 @@ test("UI03_back: unresolved EVENT and SPECIAL_NODE cannot be ordinarily backed o
   assert.equal(controller.pageModel().pageState, "RUN_HOME");
   assert.equal(controller.pageModel().shell.ordinaryBackAllowed, true, "resolving the decision releases the lock");
 
+  // An *active* run in a special node is the real SPECIAL_NODE case, so the back-lock below is asserted
+  // against the page state that actually carries it.
   const specialId = runIdOf("back-special");
-  const special = stack(specialId, specialNodeState(offeredWithInnateProfile(specialId), "dying", "combat"));
+  const special = stack(specialId, specialNodeState(offeredWithInnateProfile(specialId), "active", "combat"));
   await special.controller.load();
   assert.equal(special.controller.pageModel().pageState, "SPECIAL_NODE");
-  assert.equal(special.controller.pageModel().shell.ordinaryBackAllowed, false);
+  assert.equal(special.controller.pageModel().shell.ordinaryBackAllowed, false, "an unresolved SPECIAL_NODE must keep back disabled");
   const specialEventId = authoritativeEventId(special.store, specialId);
-  // the mapping is the same authoritative boundary as EVENT; a dying run is then legitimately refused
-  const refused = await special.controller.submit(choose("continue"));
-  assert.equal(refused.ok, false);
-  assert.equal(refused.error.code, "RUN_NOT_ACTIVE");
-  assert.deepEqual(special.sent[0].command, { type: "CHOOSE_EVENT_OPTION", eventId: specialEventId, optionId: "continue" });
+  assert.deepEqual(await special.controller.submit(choose("continue")).then(() => special.sent[0].command), { type: "CHOOSE_EVENT_OPTION", eventId: specialEventId, optionId: "continue" });
+
+  // UI04E: a dying run is no longer an empty SPECIAL_NODE dead-end — it projects the ENDING terminal
+  // page, and the command is still legitimately refused because the run is not active.
+  const dyingId = runIdOf("back-dying");
+  const dying = stack(dyingId, specialNodeState(offeredWithInnateProfile(dyingId), "dying", "combat"));
+  await dying.controller.load();
+  assert.equal(dying.controller.pageModel().pageState, "ENDING", "UI04E: a dying run projects ENDING, not SPECIAL_NODE");
+  // The terminal page is advanced through `advanceTerminal`, never through an ordinary event option, so
+  // the controller refuses the intent locally and no CHOOSE_EVENT_OPTION leaves the client.
+  await assert.rejects(() => dying.controller.submit(choose("continue")), IntentUnavailableError);
+  assert.equal(dying.sent.length, 0, "a terminal page must not emit an ordinary event-option command");
 });
 
 test("UI03_lock: an in-flight submission locks the surface and rejects a second intent", async () => {

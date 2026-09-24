@@ -1266,7 +1266,7 @@ module.exports = {
           "stateVersion": 6,
           "runId": "run-ui02-preview",
           "pageState": "SPECIAL_NODE",
-          "runStatus": "dying",
+          "runStatus": "active",
           "publicRun": {
             "runName": "青芜问道",
             "age": 27,
@@ -1426,7 +1426,7 @@ module.exports = {
                 "kind": "breakthrough",
                 "available": false,
                 "labelKey": "special.attemptBreakthrough",
-                "blockedReasonKey": "run.not_active",
+                "blockedReasonKey": "breakthrough.interaction_pending",
                 "targetRealm": {
                   "id": "qi-refining",
                   "displayName": "炼气"

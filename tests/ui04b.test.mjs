@@ -546,17 +546,23 @@ test("UI04B_scope: the trees UI02/UI02R1 do not already pin are untouched by thi
   // UI04D updated TWO of these on purpose and disclosed it in its LAST_RESULT: `cloudfunctions`, because
   // the deployable `cloudfunctions/tianfu2` host and its generated runtime now live there (the accepted
   // 1.0 `syncPlayerData` is byte-unchanged), and the `server/src` cross-check below, because UI04D adds
-  // the store port, identity, live content registry, CloudBase store and live service modules. The wire
-  // package, the preview page and its manifest are still byte-identical.
+  // the store port, identity, live content registry, CloudBase store and live service modules.
+  //
+  // UI04E/UI04FINAL re-pin `cloudfunctions`, `miniprogram/pages/v2-preview` and the `server/src`
+  // cross-check for the same disclosed reason: `server/src` gains `terminal-flow.ts` (a presentation-only
+  // module outside RuleState), the generated cloud runtime gains the matching `server-terminal-flow.js`
+  // plus the createRunOffer bootstrap-projection repair, and the dev preview fixtures are regenerated
+  // because the accepted terminal contract now projects a `dying` run as ENDING. The wire package and
+  // the preview page manifest remain byte-identical.
   const expected = {
     "packages/command-wire/src": "2ec21e2128bf742dea1e89993e10178c4dbade4623b9c7172e03a6711494352f",
-    cloudfunctions: "fdb405ecc57efd432ef3b4aac3b3eec99f3665c131157cd4d8bfc63100ad3e3e",
-    "miniprogram/pages/v2-preview": "99cea159ea16bd2bbba98ee06db94f9d7602c01e559482ee96d618b2e4ad329c",
+    cloudfunctions: "91a950ec700ac24e53b1971a808564374d7d60e3ba9c577b56c3f5eca3593206",
+    "miniprogram/pages/v2-preview": "39ecf89849741cde926eaac8996b6f77c10d21da9b4affd03ad7665de2cd34a1",
     "miniprogram/pages/v2-preview/v2-preview.json": "b529428057cc32edcc20e4b340b84a680ca674fd9c3e4add8078015f0b02bdd1"
   };
   for (const [relative, digest] of Object.entries(expected)) {
     assert.equal(treeDigestOf(relative), digest, relative + " must be byte-equivalent to the UI04B task base");
   }
   // Cross-check the algorithm itself against a digest UI02R1 computed independently for the same tree.
-  assert.equal(treeDigestOf("server/src"), "0a22969c3234ab4969df0c5dfe062cbb09103395f0678fd1c181382d4a057929");
+  assert.equal(treeDigestOf("server/src"), "cdcd8f567be31c5a16ec0ac1ed49a1f0731377de233b4573a03504cf0683903b");
 });

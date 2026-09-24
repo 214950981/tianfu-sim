@@ -200,7 +200,9 @@ const BASE_TREE = {
   },
   "packages/wechat-shell/src": {
     files: ["packages/wechat-shell/src/index.ts"],
-    digest: "d7db6a2498faa47380226b5fe357de7c8e986506d040aaf0324fe2aad9004ce4"
+    // UI04E: the shell gains the terminal advance/start-next-life seam (and `TerminalUnavailableError`).
+    // It is presentation-only — no rule, no reward, no next-run id crosses it.
+    digest: "44793b371190b4014834aa89add48d78b5985b095ed39ed6a3ceeff99d3b39b4"
   },
   "packages/application-ui/src": {
     files: ["packages/application-ui/src/index.ts"],
@@ -208,7 +210,8 @@ const BASE_TREE = {
   },
   "packages/platform-contract/src": {
     files: ["packages/platform-contract/src/index.ts"],
-    digest: "95afe1f89f0b2554ec0265cbeb7c92d298344bd4afeb4824b1bae426657b3aab"
+    // UI04E: gains the terminal request/result contract only.
+    digest: "1266f4f7e5674e62d650f4f2b9aa67cc6ce975b2474eb5cd7397dc37c24fa286"
   },
   "server/src": {
     files: [
@@ -220,17 +223,21 @@ const BASE_TREE = {
       "server/src/index.ts",
       "server/src/live-content.ts",
       "server/src/live-service.ts",
+      // UI04E: the terminal presentation flow. It writes only `StoredRun.terminal`, never RuleState.
+      "server/src/terminal-flow.ts",
       "server/src/viewmodel.ts"
     ],
-    digest: "0a22969c3234ab4969df0c5dfe062cbb09103395f0678fd1c181382d4a057929"
+    digest: "cdcd8f567be31c5a16ec0ac1ed49a1f0731377de233b4573a03504cf0683903b"
   },
   "tools/ui02-preview-fixtures.mjs": {
     files: ["tools/ui02-preview-fixtures.mjs"],
-    digest: "17f528de3956e7f5a213a12e5a22f78b1e236d97af290c1805facc23863a6378"
+    // UI04E: the SPECIAL_NODE fixture is an *active* run again, because a `dying` run now projects the
+    // ENDING terminal page the preview page does not render.
+    digest: "03a146f9dec731186f55198e661855e36bdebac541139fee20dc9a63465ff030"
   },
   "miniprogram/pages/v2-preview/v2-fixtures.json": {
     files: ["miniprogram/pages/v2-preview/v2-fixtures.json"],
-    digest: "cc17abacc5c639fbdedd3b803ca407a5ca27a78fa32e2dcb62106541e14eb58a"
+    digest: "5e79b68cd639740f52ca437a37535d63e83d272776b52c6b3a21f8a0c24a58fa"
   }
 };
 

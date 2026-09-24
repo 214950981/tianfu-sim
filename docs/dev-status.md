@@ -9,8 +9,9 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `e91530f866b850de6c2de8cee4dc76ad5afa7d01`
-- reviewedDate: `2026-09-24`
+- lastReviewedCommit: `f309c384d0ba9b23f880680b6ca9aa96387b783e`
+- reviewedDate: `2026-09-25`
+- ui04FinalWorkBranch: `wb-UI04FINAL`（Controller 验收后再把 `lastReviewedCommit` 推进到验收 commit）
 
 不要修改 `main` / 1.0，除非未来任务明确要求。
 
@@ -69,6 +70,8 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - UI04B: PASS（Controller 已验收；deterministic WeChat runtime artifact / freshness / audit / CommonJS smoke 通过）
 - UI04C: PASS（Controller 已验收；live client RPC boundary / DESTINY_OFFER → START_RUN / v2-live / retry-conflict-reconfirm 纵切片通过）
 - UI04D: PASS（Controller 已验收；OPENID 权威身份 / bootstrap 幂等 / CloudBase 事务 store / deployable tianfu2 cloud runtime 纵切片通过）
+- UI04E: PASS（随 UI04FINAL 一次性验收；终端链路 ENDING → LIFE_BOOK → REBIRTH_RESULT → NEXT_LIFE → 显式开启下一世 → 全新 DESTINY_OFFER，并修复 createRunOffer bootstrap 恢复丢弃 terminal sidecar 的缺陷）
+- UI04FINAL: PASS（UI04 里程碑终审；aggregate 回归 + UI04E-R2/R1/UI04E/UI04D/UI04C/UI04B/UI04A/UI03/UI02 + 生成物/依赖/路由/类型/lint/secret/content/context/phase2-drift 全绿）
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
 
@@ -279,24 +282,76 @@ P4 gate：
 
 Full regression：264 / 264 PASS；全部 reported audits PASS。
 
+## UI04E / UI04FINAL 验收证据
+
+### 已修复缺陷
+
+`TianfuLiveService.createRunOffer` 的三条恢复路径此前只返回 `GameState`，丢弃 `StoredRun.terminal`，
+并用 `builder.build(state)` 投影。结果是：bootstrapping 到一个已处于 NEXT_LIFE 的旧 run 会投影出
+`pageState: "ENDING"` 且 `state.terminal === undefined`，与同一 run 的 `fetchView`（NEXT_LIFE + 完整 sidecar）
+不一致，页面重载后「开启下一世」CTA 不可达。
+
+修复：三条路径（mapped-existing / deterministic-existing / newly-generated）统一 settle 完整的
+`StoredRun`，并统一走 `buildFromStoredRun` —— 与 `fetchView` 同一个 terminal-aware 投影。
+
+### 终端 / 轮回升阶链路（已证明）
+
+`ENDING → LIFE_BOOK → REBIRTH_RESULT → NEXT_LIFE → 显式 start-next-life → 全新 DESTINY_OFFER`
+
+- `advanceTerminal` 只 bump `StoredRun.terminal`，从不创建下一世；
+- 下一世只由显式 `createRunOffer`（携带客户端持久化的 pending bootstrapId）创建；
+- 响应丢失后重载：current bootstrap 不晋升、pending 保留、库中只有 old + 1 个 new run；
+- 重试复用同一 pending id 并恢复已创建的 run，绝不产生第二世；
+- 成功后晋升 pending → current、清空 pending、渲染 DESTINY_OFFER，playerId 仍为同一权威身份；
+- 旧 run 在新生命创建后 gameplay 字节（state / commandLog / ruleStateHash）与 terminal sidecar 完全不变，阶段仍为 NEXT_LIFE。
+
+### 终审结论
+
+- aggregate `npm test`：489 tests，仅 3 项失败且均已证明为本 sandbox 嵌套进程噪声（见下）；
+- UI04E-R2 3/3、UI04E-R1 9/9、UI04E 26/26、UI04D 20/20、UI04C 18/18、UI04B 16/16、
+  UI04A 16/16、UI03 18/18、UI02 18/18（含 UI02R1/R2/R2A2/ENTRY/COPY）全绿；
+- cloud runtime 生成物 freshness / dependency audit / smoke 全绿（15 checks）；
+- WeChat runtime 生成物 freshness / artifact audit / CommonJS smoke 全绿（8 checks）；
+- client-runtime dependency audit、route guard、typecheck、import boundary、secret scan、
+  content lint / content01 lint、context-loader 18/18、phase2 drift audit 全绿；
+- 未触发 600-run：本次仅 UI / server 投影 / 展示层改动，Core / Content / 玩法语义未变。
+
+### 已知环境噪声（非回归）
+
+当前 sandbox 中，Node 测试内部再 spawn 一个 `node.exe` 会失败。终审复现的 3 项失败全部属于此类：
+
+- `tests/import-boundary.test.mjs` 2 项（spawnSync 返回 null status / undefined stderr）
+- `tests/replay.test.mjs` 1 项（spawnSync EBUSY）
+
+已按 TOOLING_RUNBOOK 建立最小终审证明（一次 bounded batch）：
+
+1. 在 untouched base tree（`git archive f309c38 ...`）上复现出**完全相同**的 3 项失败；
+2. 从 shell 直接调用底层工具全部成功：`tools/check-import-boundaries.mjs` exit 0，
+   其 negative control `--root tests/fixtures/core-forbidden` exit 1 且输出 `forbidden import`，
+   `tools/replay.mjs <input> <pack>` exit 0 且 `finalRuleStateHash` 与期望值一致、checkpoints = 2。
+
+### 部署就绪度与剩余人工步骤
+
+代码侧已就绪（`cloudfunctions/tianfu2` 为可部署产物，`miniprogram/runtime` 已重新生成并 audit 通过）。
+仍需人工完成的步骤不在本任务范围内：
+
+1. 在微信云开发控制台部署 `cloudfunctions/tianfu2`（部署前在其目录内 `npm install`）；
+2. 用微信开发者工具打开 `miniprogram/` 做真人视觉验收 —— **尚未执行**；
+3. 真机 / 开放数据域下的 OPENID 身份与生命周期上限复核。
+
+注意：微信开发者工具会在工作区写入 `project.config.json`、`project.private.config.json`
+与 `miniprogram/pages/game/game.js` stub，会污染 digest-pinned 回归，验收前先检查 `git status`。
+
 ## Next
 
-Controller strategy changed before UI04E_R3 execution: do not spend another cycle on a one-bug micro-task.
+UI04FINAL 已完成并推送到 `wb-UI04FINAL`，等待 Controller 验收。
 
-The known bootstrap-recovery defect from UI04E_R2 remains valid: `createRunOffer` drops the terminal sidecar when recovering an existing run. But the next task now combines that repair with completion of the UI04E chain and the UI04 milestone final audit.
+验收后建议顺序：
 
-Current task: `UI04FINAL` — Terminal Lifecycle Completion + Final Audit.
+1. Controller review `wb-UI04FINAL`（tree diff + LAST_RESULT）；
+2. 验收通过后由 Controller 决定下一步派发（本实现方不自行派发新任务）；
+3. 进入真人试玩前先完成上面的「剩余人工步骤」。
 
-Execution order:
-1. Transplant the reviewed UI04E_R2 candidate once (excluding `.workbuddy/**`).
-2. Fix the known `createRunOffer` StoredRun/terminal-sidecar recovery bug.
-3. Run the R2 page-level lost-response/reload proof and the UI04E targeted chain until green.
-4. Continue, do not stop: regenerate cloud/miniprogram artifacts only as needed after source stabilizes.
-5. Run one milestone final audit for the whole UI04 chain: aggregate regression + UI04 chain suites + packaging/runtime/dependency/route/type/lint/secret/content gates.
-6. If that final audit finds a bounded UI04-scope defect, fix it inside the same task with targeted proof, then rerun only the affected final gate / aggregate once more. Do not create another R4/R5 micro-task.
-7. Stop BLOCKED only for a genuinely new out-of-scope/P0/P1 architecture conflict.
-
-Credit-efficient final audit applies: expensive full regression happens at the end, not after each edit. Aggregate full-suite runs max 2, push attempts max 2. 600-run remains unnecessary unless gameplay/Content semantics are actually changed.
 ## 新 Codex 会话 / 账号接手步骤
 
 1. 确认当前 branch = `dev/tianfu-2.0`。

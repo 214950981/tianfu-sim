@@ -259,7 +259,9 @@ test("UI02_event: renders server-built riskPresentation and an unresolved event 
 test("UI02_special_node: uses authoritative currentInteraction and submission state only", () => {
   const node = fixtures.states.SPECIAL_NODE;
   assert.equal(node.view.state.pageState, "SPECIAL_NODE");
-  assert.equal(node.view.state.runStatus, "dying");
+  // UI04E: a `dying` life now projects the ENDING terminal page, so the preview's SPECIAL_NODE fixture
+  // is an *active* life facing an authoritative special node. The page state it proves is unchanged.
+  assert.equal(node.view.state.runStatus, "active");
   assert.equal(node.view.currentInteraction !== undefined, true);
   assert.equal(node.view.currentInteraction.interactionId, "inst-ui02-special");
   assert.equal(node.view.currentInteraction.interactionState, "idle");

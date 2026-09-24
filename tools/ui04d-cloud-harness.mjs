@@ -68,6 +68,10 @@ export function createFakeCloudDatabase({ throwOnWhereInTransaction = true } = {
     return collections.get(name);
   };
 
+  /** Test-only: write a document straight into the committed collection (bypassing the staged view).
+   *  Used to seed a near-death offered state before a reducer-driven START_RUN. */
+  const seedDoc = (name, id, data) => { documentsOf(name).set(id, jsonClone(data)); audits.documentIds.add(`${name}/${id}`); };
+
   /**
    * One document reference. `staged` is the transaction's write buffer (`name -> id -> data`) or `null`
    * outside a transaction; reads see staged writes first, so the transaction is read-your-writes.
@@ -158,6 +162,7 @@ export function createFakeCloudDatabase({ throwOnWhereInTransaction = true } = {
      * command the idempotency design actually has to survive.
      */
     armPostCommitTimeout: () => { commitTimeoutPending = true; },
+    seedDoc,
     /** Test-only introspection. */
     audit: () => ({ ...audits, documentIds: [...audits.documentIds].sort() }),
     snapshot: () => new Map([...collections].map(([name, documents]) => [name, new Map(documents)]))

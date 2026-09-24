@@ -1,7 +1,7 @@
 // GENERATED FILE — DO NOT HAND-EDIT.
 //
 // Source of truth: server/src/gateway-store.ts
-// Source sha256:   49c307c28bf66d94b0fa21a09153d233ed59c804fac13eff6a10e0fe7593452d
+// Source sha256:   8be5fe1542a90a3b018e2609e3720751f29a56b6768ab6251fd9af474c95fb13
 // Generator:       tools/ui04d-cloud-runtime-artifact.mjs
 // Regenerate:      node tools/ui04d-cloud-runtime-artifact.mjs --write
 //
@@ -37,12 +37,54 @@
 
 var { createCommandLog, validateGameState } = require("./core-index.js");
 
+/**
+ * UI04E — the terminal presentation sidecar attached to a stored run.
+ *
+ * It lives **outside RuleState** on purpose: the design treats terminal flow as presentation/session
+ * orchestration, so settling an `ENDING -> LIFE_BOOK -> REBIRTH_RESULT -> NEXT_LIFE` transition must not
+ * touch `stateVersion`, `age`, `nodeIndex`, `rng`, `commandLog`, snapshots, causes, NPC state, resources,
+ * builds, or any other gameplay field. Every pure terminal transition is therefore byte-identical on the
+ * canonical gameplay state — what changes here is `terminal`.
+ *
+ * `transitions` is the *exactly-once* idempotency table, by `terminalTransitionId`:
+ *   - the first settlement of a given id writes the record and advances the stage;
+ *   - an exact retry after a post-commit timeout reads the record and returns the settled stage without
+ *     advancing;
+ *   - a reused id with a different payload fails closed.
+ */
+                                                                                    
+const TERMINAL_STAGES                           = ["ENDING", "LIFE_BOOK", "REBIRTH_RESULT", "NEXT_LIFE"];
+                                                                                                           
+const TERMINAL_ACTIONS                            = ["advance-to-life-book", "advance-to-rebirth-result", "advance-to-next-life"];
+
+/** The transition a record settles — kept so an audit/UI knows exactly what was settled and when. */
+                                           
+                      
+                         
+                           
+                         
+                   
+                                                                                                      
+                   
+ 
+
+                                  
+                                                                                          
+                       
+                                                                               
+                  
+                                                                                    
+                                                        
+ 
+
 /** A persisted run: the authoritative state, its command log and its snapshot bookkeeping. */
                             
                    
                          
                           
                                           
+                                                                                               
+                             
  
 
 /** The settled result of one commandId, keyed by the hash of the exact envelope that produced it. */
@@ -70,6 +112,13 @@ var { createCommandLog, validateGameState } = require("./core-index.js");
                                                                     
                                                                                                          
                                                                    
+     
+                                                                                                     
+                                                                                                        
+                                                                                                    
+     
+                                                                                                                                            
+                                                                                             
  
 
 /** The whole persistence surface `CommandGateway` is allowed to use. */
@@ -92,6 +141,8 @@ class InMemoryGatewayStore                         {
   #runs = new Map                   ();
   #idempotency = new Map                           ();
   #bootstraps = new Map                         ();
+  /** UI04E — terminal transition receipts, keyed by `terminalTransitionId`. */
+  #terminalTransitions = new Map                                  ();
   #tail                = Promise.resolve();
 
   seedRun(stateValue         )       {
@@ -105,20 +156,24 @@ class InMemoryGatewayStore                         {
   async transact   (operation                                                  )             {
     const previous = this.#tail; let release = ()       => {};
     this.#tail = new Promise      ((resolve) => { release = resolve; }); await previous;
-    const stagedRuns = new Map(this.#runs); const stagedIdempotency = new Map(this.#idempotency); const stagedBootstraps = new Map(this.#bootstraps);
+    const stagedRuns = new Map(this.#runs); const stagedIdempotency = new Map(this.#idempotency); const stagedBootstraps = new Map(this.#bootstraps); const stagedTerminalTransitions = new Map(this.#terminalTransitions);
     const view                         = {
       getRun: (runId) => stagedRuns.get(runId),
       setRun: (runId, value) => stagedRuns.set(runId, value),
       getIdempotency: (commandId) => stagedIdempotency.get(commandId),
       setIdempotency: (commandId, value) => stagedIdempotency.set(commandId, value),
       getBootstrap: (bootstrapKey) => stagedBootstraps.get(bootstrapKey),
-      setBootstrap: (bootstrapKey, value) => stagedBootstraps.set(bootstrapKey, value)
+      setBootstrap: (bootstrapKey, value) => stagedBootstraps.set(bootstrapKey, value),
+      getTerminalTransition: (terminalTransitionId) => stagedTerminalTransitions.get(terminalTransitionId),
+      setTerminalTransition: (terminalTransitionId, value) => stagedTerminalTransitions.set(terminalTransitionId, value)
     };
-    try { const result = await operation(view); this.#runs = stagedRuns; this.#idempotency = stagedIdempotency; this.#bootstraps = stagedBootstraps; return result; }
+    try { const result = await operation(view); this.#runs = stagedRuns; this.#idempotency = stagedIdempotency; this.#bootstraps = stagedBootstraps; this.#terminalTransitions = stagedTerminalTransitions; return result; }
     finally { release(); }
   }
 }
 
 module.exports = Object.assign({}, {
+  TERMINAL_STAGES,
+  TERMINAL_ACTIONS,
   InMemoryGatewayStore
 });

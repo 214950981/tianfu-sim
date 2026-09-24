@@ -169,7 +169,14 @@ function eventState(content) {
   });
 }
 
-/** A dying life facing an authoritative special node (no second breakthrough engine). */
+/**
+ * A life facing an authoritative special node (no second breakthrough engine).
+ *
+ * UI04E: this fixture must keep projecting `SPECIAL_NODE`, so the run is `active`, not `dying`. The
+ * accepted terminal contract now projects a `dying` life as `ENDING` (never an empty SPECIAL_NODE
+ * dead-end), and the preview page renders no ENDING branch — a dying fixture here would regress into a
+ * blank surface. The special node itself is still the same authoritative combat fallback event.
+ */
 function specialNodeState(content) {
   const base = eventState(content);
   return validateGameState({
@@ -177,7 +184,7 @@ function specialNodeState(content) {
     stateVersion: base.stateVersion + 1,
     run: {
       ...base.run,
-      status: "dying",
+      status: "active",
       events: { history: base.run.events.history, current: { eventId: "dev.ordinary-fallback", kind: "combat", instanceId: "inst-ui02-special" } }
     }
   });

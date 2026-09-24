@@ -44,6 +44,11 @@ import { ARTIFACT_PATHS, FACADE_PATH, REPO_ROOT, RUNTIME_DIR } from "./ui04b-wec
  * UI04C (the live client slice) grows it by the three entries that are the live seam: the injected
  * cloud transport adapter, the run bootstrap and the transport protocol error. A live page must be able
  * to reach exactly those three and nothing else.
+ *
+ * UI04E grows it by exactly one more: `TerminalUnavailableError`, the refusal a page must be able to
+ * recognise when `advanceTerminal` is rejected (stale stage, foreign run, un-reached end-of-life). The
+ * terminal flow is presentation-only, so the client needs the error type and nothing else — in
+ * particular no next-run identifier ever crosses this surface.
  */
 export const EXPECTED_PUBLIC_API = [
   "APP_ERROR_CODES",
@@ -52,6 +57,7 @@ export const EXPECTED_PUBLIC_API = [
   "IntentUnavailableError",
   "RetryUnavailableError",
   "SubmissionLockedError",
+  "TerminalUnavailableError",
   "TransportProtocolError",
   "WeChatRunController",
   "bootstrapWeChatRun",

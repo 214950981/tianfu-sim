@@ -23,6 +23,7 @@ module.exports = {
   IntentUnavailableError: dep1.IntentUnavailableError,
   RetryUnavailableError: dep1.RetryUnavailableError,
   SubmissionLockedError: dep1.SubmissionLockedError,
+  TerminalUnavailableError: dep1.TerminalUnavailableError,
   TransportProtocolError: dep1.TransportProtocolError,
   WeChatRunController: dep1.WeChatRunController,
   bootstrapWeChatRun: dep1.bootstrapWeChatRun,
