@@ -4,3 +4,4 @@ miniprogram_npm/
 project.private.config.json
 *.iml
 .idea/
+.workbuddy/

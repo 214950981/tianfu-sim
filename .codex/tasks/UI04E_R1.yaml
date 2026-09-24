@@ -7,15 +7,6 @@ requiredContracts: [.codex/contracts/state.ref,.codex/contracts/command.ref,.cod
 optionalContracts: [.codex/contracts/qa.yaml]
 blockers: []
 inspect_first: [.codex/tasks/UI04E.yaml,server/src/terminal-flow.ts,server/src/gateway-store.ts,server/src/live-service.ts,server/src/viewmodel.ts,packages/platform-contract/src/index.ts,packages/wechat-shell/src/index.ts,miniprogram/pages/v2-live/v2-live.js,miniprogram/pages/v2-live/v2-live.wxml,tests/ui04e.test.mjs,docs/UI04E_TERMINAL_LIFECYCLE.md]
-executionBudget:
-  preferredImplementationPath: transplant-rejected-UI04E-once-then-minimal-R1-diff
-  fullDedicatedSuiteMaxRuns: 2
-  typecheckMaxRuns: 2
-  artifactRegenerationMaxRounds: 2
-  pushMaxAttempts: 2
-  sameSymptomMaxIterations: 3
-  longFilePolicy: targeted-symbol-or-range-reads
-  lastResultPolicy: concise-evidence-no-logs
 allowedScope:
   - use rejected UI04E result commit e978ac0619a1c71d25454eb1705d75c7543d33b7 only as implementation reference or transplant source; it is not accepted and must not be treated as source truth over this task
   - carry forward the valid UI04E terminal sidecar, public projection, advanceTerminal exactly-once, ownership, cloud runtime and four-stage rendering work while correcting the NEXT_LIFE start boundary below

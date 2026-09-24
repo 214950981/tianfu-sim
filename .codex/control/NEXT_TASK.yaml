@@ -1,11 +1,11 @@
 version: 1
 status: READY
 attempt: 1
-taskId: UI04E_R1
-title: UI04E-R1 — Explicit NEXT_LIFE Start Boundary
-taskDefinition: .codex/tasks/UI04E_R1.yaml
+taskId: UI04E_R2
+title: UI04E-R2 — Response-Loss Reload Proof + Submission Hygiene
+taskDefinition: .codex/tasks/UI04E_R2.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-UI04E-R1
+workBranch: wb-UI04E-R2
 worktreeRequired: true
 allowSyntheticTreeBase: true
 basePolicy: remote-source-head-at-task-start
@@ -20,38 +20,32 @@ execution:
   runAggregateNpmTest: false
   rerunKnownSandboxBaseline: false
   run600Simulation: false
-  maxFullDedicatedSuiteRuns: 2
-  maxTypecheckRuns: 2
-  maxArtifactRegenerationRounds: 2
+  maxFullDedicatedSuiteRuns: 1
+  maxTypecheckRuns: 0
+  maxArtifactRegenerationRounds: 0
   maxPushAttempts: 2
   preferTargetedTestNamePattern: true
   prohibitUnboundedRetryLoops: true
 controllerReview:
-  previousTask: UI04E
-  previousStatus: REJECTED
-  rejectedResultCommit: e978ac0619a1c71d25454eb1705d75c7543d33b7
+  previousTask: UI04E_R1
+  previousStatus: REJECTED_PROOF_GAP
+  rejectedResultCommit: fcb930b64cecc5c13e3eb8c784af72f44978c1b8
   rejectionReason:
-    - the rejected implementation created the new run during REBIRTH_RESULT -> NEXT_LIFE
-    - the task requires NEXT_LIFE to be rendered first and a separate explicit user action to rotate/persist bootstrapId and call createRunOffer
-    - v2-live therefore had no explicit NEXT_LIFE start CTA and auto-switched the run too early
+    - R1 product semantics are materially correct but the required response-loss plus reload proof is not actually executed
+    - R1 committed an undeclared .workbuddy memory artifact
+    - R1 local record reports seven push retries despite the hard maxPushAttempts 2
 controllerDecision:
-  strategy: targeted-lifecycle-boundary-repair
-  rationale: the UI04E sidecar/exactly-once/public-projection work is otherwise sound; repair the one semantic boundary without widening scope or paying final-audit cost yet
+  strategy: proof-only-no-rewrite
+  rationale: do not spend another implementation cycle; transplant the reviewed R1 candidate once, add the missing behavioral proof, and remove submission/tooling pollution
 controllerIntent:
-  mode: FAST_LANE_REPAIR
-  goal: preserve UI04E implementation while separating terminal arrival at NEXT_LIFE from explicit user creation of the next run
-  postTask: controller reviews wb-UI04E-R1; if accepted dispatch UI04FINAL final-audit
+  mode: FAST_LANE_PROOF
+  goal: close the last acceptance-evidence gap with minimal tool use
+  postTask: controller reviews wb-UI04E-R2; if accepted dispatch UI04FINAL
 notes:
-  - Source truth remains dev/tianfu-2.0. The rejected wb-UI04E commit is reference material only.
-  - You may cherry-pick or transplant e978ac0619a1c71d25454eb1705d75c7543d33b7 onto the new work branch if useful, but the final result must satisfy UI04E_R1 and LAST_RESULT must describe the corrected semantics.
-  - Do not merge or push dev/tianfu-2.0 and do not modify main.
-  - Keep FAST_LANE. Do not run aggregate npm test, 600-run, or known sandbox-baseline reproof.
-  - The central invariant is simple: arriving at NEXT_LIFE is not the same operation as starting the next life.
-  - Record only genuinely new tooling observations.
-  - CREDIT EFFICIENCY: do not reimplement UI04E from scratch. Prefer one transplant/cherry-pick-no-commit of rejected UI04E as the starting tree, then make the narrow R1 corrections.
-  - Do not repeatedly dump long files. Search symbols and read only the ranges needed for the repair.
-  - During repair, use node --test --test-name-pattern for the failing R1/UI04E cases. Do not rerun the full ui04e suite after every edit.
-  - Run the full dedicated repair/UI04E verification only after the narrow cases are green, then once more only if a fix was required.
-  - Batch client/cloud artifact regeneration + freshness/audit/smoke after source stabilizes; do not regenerate on every edit.
-  - Before push, do one bounded remote/credential preflight if needed. Push once; at most one retry. If both fail, stop PUSH_BLOCKED instead of looping.
-  - Keep LAST_RESULT concise: one result per gate, no pasted logs, no repeated known-environment narratives.
+  - Run node .codex/context.mjs UI04E_R2 once. It should now accept executionProfile.
+  - Transplant fcb930b64cecc5c13e3eb8c784af72f44978c1b8 once, preferably cherry-pick --no-commit or equivalent, and explicitly exclude .workbuddy/** before the final commit.
+  - If the new functional proof passes against the transplanted R1 product tree, do not touch product code, do not regenerate runtime artifacts, and do not run typecheck or unrelated gates.
+  - Run the new ui04e-r2 test while developing; run ui04e-r1 exactly once after it is green.
+  - Hard push limit is 2 attempts. After two transient failures stop PUSH_BLOCKED with the local commit SHA. Do not loop.
+  - LAST_RESULT must include resourceUsage with actual fullDedicatedSuiteRuns, typecheckRuns, artifactRegenerationRounds, pushAttempts.
+  - Do not create or commit .workbuddy memory/log files.

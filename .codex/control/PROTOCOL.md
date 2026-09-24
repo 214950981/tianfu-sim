@@ -1,4 +1,4 @@
-# Tianfu Agent Handoff Protocol v1.4
+# Tianfu Agent Handoff Protocol v1.5
 
 This directory is the Git-based handoff bus between the controller (ChatGPT) and the implementer (WorkBuddy).
 
@@ -50,6 +50,8 @@ Rules:
 - Git/network operations must be bounded. Do one credential/remote preflight if needed, then one push. On a transient network failure, make at most one additional push attempt. Never spin a 5/10/20-attempt push loop. If two bounded attempts fail, stop with BLOCKED/PUSH_BLOCKED and preserve the local commit SHA.
 - Do not repeatedly run `git status`, `rev-parse`, `write-tree`, or ancestry probes after every edit. Verify source/base once at start and final tree/commit once before push unless a real inconsistency appears.
 - LAST_RESULT is evidence, not a transcript. Do not paste full test logs, long source excerpts, or repeated observations. Record one concise result per executed gate plus genuinely new blockers/tooling findings.
+- Implementer-local memory/log/transcript paths such as `.workbuddy/**` are never task deliverables unless a task explicitly allows them. Do not commit them. If accidentally created, keep them ignored/untracked.
+- For `executionProfile: credit-efficient`, LAST_RESULT must include a concise `resourceUsage` summary with actual counts for full dedicated-suite runs, typecheck runs, artifact-regeneration rounds, and push attempts. Exceeding a hard NEXT_TASK maximum without stopping is a protocol failure even if product tests pass.
 - Already documented environment behavior is not re-investigated on fast-lane tasks unless it changes the task result.
 
 If an iteration loop reaches 3 attempts on the same unresolved symptom, stop rerunning commands and reassess the root cause. If still unresolved, report BLOCKED rather than consuming budget by repetition.

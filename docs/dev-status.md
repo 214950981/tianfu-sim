@@ -281,22 +281,24 @@ Full regression：264 / 264 PASS；全部 reported audits PASS。
 
 ## Next
 
-UI04E attempt 1 (`wb-UI04E` result `e978ac0619a1c71d25454eb1705d75c7543d33b7`) was **REJECTED by Controller** and was NOT merged into `dev/tianfu-2.0`.
+UI04E_R1 result `fcb930b64cecc5c13e3eb8c784af72f44978c1b8` is **NOT YET ACCEPTED** and was not merged.
 
-Most of the terminal sidecar/exactly-once implementation is sound, but one lifecycle invariant is wrong: the rejected implementation creates the next run during `REBIRTH_RESULT -> NEXT_LIFE` and immediately switches the client into that run. The dispatched UI04E task explicitly requires NEXT_LIFE to be a real authoritative page first, and only an explicit user action on NEXT_LIFE may rotate/persist a new bootstrapId and call the already-accepted `createRunOffer`.
+The product correction is materially right: REBIRTH_RESULT -> NEXT_LIFE is now sidecar-only, NEXT_LIFE has an explicit CTA, and createRunOffer owns next-run creation. However the task's strongest acceptance proof is still missing: the dedicated R1 suite does not actually simulate 'server created the next run, response was lost, page reloaded, same pending bootstrap was reused'. It only proves a second createRunOffer with the same bootstrap returns the same run.
 
-Correction task: `UI04E_R1` — Explicit NEXT_LIFE Start Boundary.
+The R1 branch also violated credit-efficient execution: its own local memory says push retried 7 times although NEXT_TASK capped push attempts at 2, and it accidentally committed `.workbuddy/memory/...` outside changedFiles. Neither artifact will be accepted into dev.
 
-Required correction:
-- keep ENDING -> LIFE_BOOK -> REBIRTH_RESULT -> NEXT_LIFE as sidecar-only presentation transitions;
-- `advanceTerminal` must never create a next run/bootstrap mapping and must not return nextBootstrapId/nextRunId;
-- NEXT_LIFE must render an explicit “开启下一世” CTA;
-- on that CTA, the client creates/reuses a persisted pending next-life bootstrapId BEFORE calling `createRunOffer`; response loss/reload must reuse the same pending key;
-- only after successful createRunOffer should the current bootstrap key/session switch to the new run; then clear the pending key;
-- prove no next run exists before the explicit NEXT_LIFE action, and prove retry after response loss recovers the same new run;
-- preserve all accepted UI04E terminal sidecar exactly-once / gameplay-zero-diff behavior.
+Correction/proof task: `UI04E_R2` — Response-Loss Reload Proof + Submission Hygiene.
 
-Use the rejected UI04E result as implementation reference, not as accepted source truth. Source remains `dev/tianfu-2.0`. FAST_LANE + credit-efficient execution apply: no repeated full-suite/typecheck/artifact/push loops. If UI04E_R1 passes, Controller will dispatch UI04FINAL.## 新 Codex 会话 / 账号接手步骤
+R2 is intentionally tiny:
+- transplant the R1 implementation once, excluding `.workbuddy/**`;
+- add one functional test that persists pending bootstrap before the first createRunOffer, lets the real fake-cloud handler commit the new run, then loses the response client-side;
+- recreate/reload the page/controller with the same local storage; it must return to the old NEXT_LIFE run, reuse the same pending bootstrap on the explicit CTA, and recover the already-created new run;
+- prove only two run documents exist (old + one new), current bootstrap remains old until success, pending remains after the lost response, then success promotes current/clears pending and renders new DESTINY_OFFER under the same playerId;
+- if that test passes without product changes, do not edit product code, regenerate artifacts, rerun typecheck, or rerun unrelated suites;
+- run ui04e-r1 once as regression plus context-loader once; no aggregate npm test / 600-run.
+
+Controller also fixed context.mjs to accept scalar executionProfile and added `.workbuddy/` to .gitignore. Complex execution budgets remain in NEXT_TASK/protocol, not task YAML.
+## 新 Codex 会话 / 账号接手步骤
 
 1. 确认当前 branch = `dev/tianfu-2.0`。
 2. 查看 `git status`。

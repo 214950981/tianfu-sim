@@ -1,0 +1,37 @@
+id: UI04E_R2
+title: UI04E-R2 — Response-Loss Reload Proof + Submission Hygiene
+phase: 2
+verificationProfile: fast-lane
+executionProfile: credit-efficient
+requiredContracts: [.codex/contracts/platform.ref,.codex/contracts/viewmodel.ref,.codex/contracts/ui.ref,.codex/contracts/crosslayer.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [.codex/tasks/UI04E_R1.yaml,tests/ui04e-r1.test.mjs,miniprogram/pages/v2-live/v2-live.js,packages/wechat-shell/src/index.ts,tools/ui04d-cloud-harness.mjs]
+allowedScope:
+  - use rejected-candidate R1 commit fcb930b64cecc5c13e3eb8c784af72f44978c1b8 as a one-time transplant source; carry its product/runtime/docs/test changes but exclude every .workbuddy path
+  - do not reimplement UI04E or R1 from scratch and do not alter product source unless the new functional proof exposes a real bug
+  - add a dedicated functional proof for the exact acceptance gap: start from a real old run at authoritative NEXT_LIFE and local storage containing the old current bootstrap with no pending bootstrap
+  - exercise the actual v2-live pending-bootstrap lifecycle through a page-level or equivalent behavioral harness, not source-string inspection alone
+  - on the first explicit start-next-life action, persist one pending bootstrap before invoking createRunOffer
+  - have the real fake-cloud handler commit createRunOffer for that pending bootstrap, then simulate loss of the response before the page/controller receives success
+  - after the lost response assert the current bootstrap is still the old run key, the pending bootstrap is still present, and the database contains exactly old run plus one new run
+  - simulate a page/controller reload using the same local storage and cloud database; bootstrap must still recover the old terminal run/NEXT_LIFE because current bootstrap was not promoted
+  - on the next explicit start-next-life CTA reuse exactly the same pending bootstrap; createRunOffer must return the already-created new run rather than create another
+  - after successful recovery assert exactly two run documents remain, authoritative playerId is unchanged, new runId differs from old, current bootstrap is promoted to the pending id, pending key is cleared, and rendered view is DESTINY_OFFER
+  - run the existing ui04e-r1 suite once to prove the candidate implementation remains intact
+  - run context-loader once and prove UI04E_R2 loads with verificationProfile and executionProfile normally
+  - if the new proof passes without product-source changes, do not regenerate client/cloud runtime artifacts and do not run typecheck/lint/secret/content suites again; rely on the already-green R1 evidence for the byte-identical candidate tree
+  - update LAST_RESULT with concise evidence and resourceUsage counts; do not add .workbuddy memory/log files
+forbiddenScope: [product-rewrite,gameplay-change,Core-change,Content-change,reducer-change,new-cloud-RPC,default-route-change,legacy-1.0-change,tabBar-change,production-deployment,artifact-regeneration-without-product-source-change,typecheck-without-product-source-change,aggregate-npm-test,600-run,unbounded-push-retry,.workbuddy-commit,UI04FINAL,source-branch-push]
+accept:
+  - functional-test-simulates-server-commit-plus-lost-createRunOffer-response-before-client-success
+  - lost-response-leaves-current-bootstrap-old-and-pending-bootstrap-durable
+  - reload-recovers-old-run-at-NEXT_LIFE-and-reuses-the-exact-same-pending-bootstrap
+  - retry-recovers-the-same-new-run-and-database-never-exceeds-old-plus-one-new-run
+  - success-promotes-current-bootstrap-clears-pending-and-renders-new-DESTINY_OFFER-with-same-authoritative-player
+  - candidate-R1-product-files-remain-byte-identical-to-fcb930b64cecc5c13e3eb8c784af72f44978c1b8-unless-the-functional-test-found-a-real-bug
+  - no-.workbuddy-path-is-committed
+  - context-loader-accepts-executionProfile-and-UI04E_R2-context-loads-cleanly
+  - ui04e-r2-and-one-ui04e-r1-regression-pass
+  - resourceUsage-reports-pushAttempts-at-most-2-and-no-unbounded-retry-loop
+tests: [ui04e-r2,ui04e-r1-once,context-loader]
