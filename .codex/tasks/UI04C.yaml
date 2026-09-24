@@ -1,0 +1,36 @@
+id: UI04C
+title: UI04C — WeChat Live Client Vertical Slice
+phase: 2
+verificationProfile: fast-lane
+requiredContracts: [.codex/contracts/command.ref,.codex/contracts/platform.ref,.codex/contracts/ui.ref,.codex/contracts/viewmodel.ref,.codex/contracts/crosslayer.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [packages/wechat-shell/src/index.ts,packages/application-ui/src/index.ts,packages/platform-contract/src/index.ts,miniprogram/runtime/index.js,tools/ui04b-wechat-runtime-artifact.mjs,tools/ui04b-wechat-runtime-audit.mjs,docs/UI04B_WECHAT_RUNTIME_ARTIFACT.md,miniprogram/app.json,miniprogram/pages/v2-preview/v2-preview.js,miniprogram/pages/v2-preview/v2-preview.wxml,miniprogram/pages/v2-preview/v2-preview.wxss,server/src/viewmodel.ts]
+allowedScope:
+  - add an injected WeChat cloud-call ApplicationTransport adapter in the client-safe source layer; it may use an injected callFunction-shaped API but neutral source packages must not reference a global wx object
+  - define a small strict RPC surface for createRunOffer fetchView and sendCommand, including fail-closed response/error normalization; client must not trust unvalidated result wrappers
+  - define the createRunOffer bootstrap result needed to instantiate WeChatRunController with authoritative runId rulesVersion contentVersion and initial PublicViewModel; no rootSeed or server secret may be returned
+  - extend WeChatRunController or a tightly scoped bootstrap controller so DESTINY_OFFER options can submit START_RUN from the authoritative public offer only; innate offers use the selected public candidate selectionId and legacy offers use destinyId, and the client must never fabricate a candidate
+  - create a new dev-only miniprogram page pages/v2-live with js wxml wxss json and register it LAST in miniprogram/app.json; keep pages/start/start first and keep the existing tabBar unchanged
+  - page must static-literal require ../../runtime/index.js and use the generated runtime, createWeChatPlatformStorage and cloud transport adapter; do not import source TypeScript from outside miniprogramRoot
+  - implement one coherent live-client flow: bootstrap/create offer -> DESTINY_OFFER selection -> RUN_HOME -> core action -> EVENT or SPECIAL_NODE -> option -> authoritative refresh; expose server-projected breakthrough when enabled
+  - implement LIFE_ARCHIVE local read-only open/close, loading/submitting state, retryable transport failure retry, STATE_CONFLICT refresh plus explicit user reconfirmation, and a bounded fatal/bootstrap error state
+  - keep all page transitions driven by authoritative PublicViewModel/pageState; UI may format labels and local chrome but may not compute outcome risk eligibility breakthrough odds RNG or rule state
+  - reuse the accepted UI02 visual language/copy where practical; sharing presentation helpers or WXSS is allowed, but do not turn v2-preview into the live page and do not weaken its fixture guards
+  - regenerate the committed miniprogram/runtime artifact after client-safe source changes and keep UI04B freshness/audit/smoke green
+  - add a page/controller harness with an injected fake cloud callFunction that proves the full client RPC round trip and exact submitted envelopes without requiring a deployed backend
+  - document the RPC contract page lifecycle error/retry/reconfirm behavior and the exact backend operations still required by the next server task
+  - update package scripts tests and LAST_RESULT
+forbiddenScope: [2-0-cloudfunction-implementation,cloud-database-persistence,production-cloud-deployment,client-gameplay-authority,rootSeed-to-client,hidden-Cause-or-RNG-to-client,handwritten-runtime-copy,Core-rule-change,reducer-behavior-change,RNG-change,Director-change,Cause-semantics,Progression-change,Risk-resolution-change,Build-or-NPC-rule-change,Content-change,server-gateway-semantics-change,server-viewmodel-semantics-change,default-route-replacement,legacy-1.0-page-change,tabBar-change,ENDING-LIFE_BOOK-REBIRTH_RESULT-NEXT_LIFE-orchestration,UI04D,source-branch-push]
+accept:
+  - cloud-transport-adapter-is-client-safe-injected-and-fail-closed-and-covers-createRunOffer-fetchView-sendCommand
+  - bootstrap-exposes-only-authoritative-public-session-metadata-and-PublicViewModel-with-no-server-secrets
+  - DESTINY_OFFER-start-command-is-derived-only-from-the-authoritative-public-offer-and-submitted-through-CommandSubmissionController-semantics
+  - dev-only-v2-live-page-is-registered-last-loads-runtime-via-static-literal-require-and-does-not-replace-start-or-tabBar
+  - full-client-flow-bootstrap-destiny-run-home-core-action-event-or-special-option-refresh-is-proven-with-an-injected-cloud-RPC-harness
+  - server-projected-breakthrough-archive-retry-and-explicit-conflict-reconfirm-are-wired-without-local-gameplay-calculation
+  - runtime-artifact-is-regenerated-and-ui04b-freshness-audit-smoke-plus-ui04a-client-runtime-audit-remain-green
+  - ui04c-ui04b-ui03-targeted-tests-typecheck-lint-secret-scan-and-route-guard-are-green
+  - no-aggregate-npm-test-untouched-base-EBUSY-reproof-content-regression-or-600-run-is-required-under-fast-lane-because-gameplay-content-and-server-semantics-are-forbidden
+  - no-cloud-backend-default-route-legacy-1.0-or-terminal-flow-work
+tests: [ui04c,ui04b,ui03,ui04a-client-runtime-audit,ui04b-artifact-freshness,ui04b-artifact-audit,ui04b-smoke,typecheck,lint,secret-scan,route-guard]

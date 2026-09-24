@@ -1,4 +1,4 @@
-# Tianfu Agent Handoff Protocol v1.2
+# Tianfu Agent Handoff Protocol v1.3
 
 This directory is the Git-based handoff bus between the controller (ChatGPT) and the implementer (WorkBuddy).
 
@@ -17,6 +17,23 @@ Priority remains:
 4. long-form project notes
 
 NEXT_TASK is dispatch metadata, not a replacement for contracts or the task definition.
+
+## Verification profiles
+
+NEXT_TASK may set `verificationProfile`:
+
+- `fast-lane`: default for bounded implementation slices after a stable milestone. Run the dedicated task suite, directly affected predecessor suites, and the specific boundary/audit gates named by the task. Do NOT run aggregate `npm test`, 600-run simulation, untouched-base reproduction, or unrelated historical suites unless the task explicitly requires them or the implementation unexpectedly touches gameplay/content/server semantics.
+- `standard`: broader verification for architecture changes whose blast radius is not yet narrow.
+- `final-audit`: milestone/full-chain regression. Run the aggregate suite and all task-specified release gates; re-establish environment-noise evidence as needed.
+
+Fast-lane is a throughput policy, not permission to weaken contracts. A dedicated test failure, scope drift, unexpected dependency edge, or new P0/P1 issue still blocks acceptance.
+
+For fast-lane tasks:
+- prefer a larger vertical slice over a tiny single-file task when boundaries are already understood;
+- do not rerun known sandbox failures just to reconfirm the same environment signature;
+- `LAST_RESULT.tests` should list only tests actually executed;
+- `toolingObservations` records only NEW reusable findings. Proxy-port changes or repeated confirmation of an already documented workaround are not new findings;
+- controller schedules a later `final-audit` checkpoint to pay the deferred regression cost once, not on every intermediate commit.
 
 ## Task states
 
@@ -133,4 +150,4 @@ Implementer must stop and return BLOCKED instead of widening scope when:
 - task contracts conflict;
 - a P0/P1 issue appears.
 
-This protocol deliberately favors safe serialized work over autonomous breadth.
+This protocol favors bounded, reviewable progress. Use fast-lane vertical slices between explicit final-audit checkpoints so safety does not consume most implementation time.

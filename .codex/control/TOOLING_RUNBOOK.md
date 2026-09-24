@@ -34,7 +34,7 @@ Operational rules:
 - do not assume a fixed proxy port;
 - read the current proxy from `HTTPS_PROXY`.
 
-Proxy ports observed so far include 18036, 23843, 46226 and 47905. The port is environment data, not configuration.
+Observed proxy ports vary between sessions. The port is environment data, not configuration. Do not record a new tooling observation merely because the numeric port changed; only record new network behavior or a new workaround.
 
 ## WeChat DevTools worktree pollution
 
@@ -59,7 +59,7 @@ UI02FINAL proved the known three failures were environmental only because BOTH c
 1. the exact failures reproduced on the untouched task base; and
 2. each underlying direct tool succeeded when invoked directly from the shell, including the negative-control behavior where applicable.
 
-Do not classify a future EBUSY as environment noise merely because the error text looks similar. Re-establish both proofs for the affected task.
+Do not classify a new failure as environment noise merely because the error text looks similar. On `final-audit` or when an affected suite must run, re-establish both proofs. On a `fast-lane` task, do not rerun known nested-process failures unless the task changed the affected tool/test path or the targeted verification surfaces a new failure.
 
 ## Real-ancestry worktree positioning without ref writes
 
@@ -108,3 +108,11 @@ If a frozen marker check points at a file that becomes a facade/re-export after 
 ## Compatibility re-export proof
 
 When a module becomes a compatibility re-export, runtime object identity assertions are a cheap guard against accidentally creating a second implementation. Example: assert the compat export's validator/class/constant is `===` the source module binding.
+
+## Fast-lane verification
+
+Protocol v1.3 adds `verificationProfile: fast-lane` for stable implementation phases.
+- Run only the task's dedicated tests, directly affected predecessor tests, and named boundary/audit gates.
+- Skip aggregate `npm test`, untouched-base reproduction and 600-run simulation unless the task explicitly requires them or scope unexpectedly reaches gameplay/content/server semantics.
+- Do not repeat already documented tooling observations. A changed proxy port by itself is not a finding.
+- Pay the deferred full-regression cost once at an explicit `final-audit` milestone.

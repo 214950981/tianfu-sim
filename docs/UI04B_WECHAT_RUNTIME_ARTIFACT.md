@@ -213,3 +213,7 @@ that differentially proves behavioural parity with those sources. The `v2-previe
 deliberately not used because the accepted `checkFixtureRequire` contract allows exactly one `require()`
 call in that page and weakening an accepted guard is out of scope. Real transport and page session
 wiring remain UI04C.
+
+## Controller acceptance / fast-lane handoff
+
+UI04B was accepted at `282030872a83434fdb2cd4b2be67b36f060b3700`. Protocol v1.3 switches the next implementation phase to `fast-lane`: UI04C is intentionally a larger client vertical slice, while aggregate regression is deferred to UI04FINAL.

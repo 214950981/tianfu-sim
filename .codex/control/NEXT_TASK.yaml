@@ -1,42 +1,45 @@
 version: 1
 status: READY
 attempt: 1
-taskId: UI04B
-title: UI04B — WeChat Client Runtime Artifact / Packager Bridge
-taskDefinition: .codex/tasks/UI04B.yaml
+taskId: UI04C
+title: UI04C — WeChat Live Client Vertical Slice
+taskDefinition: .codex/tasks/UI04C.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-UI04B
+workBranch: wb-UI04C
 worktreeRequired: true
 allowSyntheticTreeBase: true
 basePolicy: remote-source-head-at-task-start
+verificationProfile: fast-lane
 execution:
   readProtocolFirst: true
   commitTaskResult: true
   pushWorkBranch: true
   updateSourceBranch: false
   startNextTask: false
+  runAggregateNpmTest: false
+  rerunKnownSandboxBaseline: false
+  run600Simulation: false
 controllerReview:
-  previousTask: UI04A
+  previousTask: UI04B
   previousStatus: ACCEPTED
-  acceptedResultCommit: d75201b87a9108a2671d91a52f8be6ff75145da9
+  acceptedResultCommit: 282030872a83434fdb2cd4b2be67b36f060b3700
   acceptanceBasis:
-    - wb-UI04A is a real single-commit descendant of the unchanged dispatched dev head
-    - command-wire is the single dependency-free owner of command/envelope validation and canonical serialization while Core is only a compatibility re-export
-    - application-ui and wechat-shell runtime closures no longer reach Core Content or server and the audit has a real forbidden-edge negative control
-    - canonical bytes and validation/error behaviour match the untouched base and UI03 retry restore STATE_CONFLICT semantics remain green
-    - aggregate regression added exactly 16 UI04A tests and had only the same three nested-process sandbox failures re-proven on untouched base with direct tools green
+    - wb-UI04B is a real single-commit descendant of the unchanged dispatched dev head
+    - the four committed miniprogram runtime files are deterministically derived from accepted client-safe source modules
+    - freshness artifact audit eleven negative controls and clean-vm CommonJS differential smoke all passed
+    - no page Core Content server default-route or legacy-1.0 behavior changed
 controllerDecision:
-  strategy: prove-WeChat-packaging-boundary-before-live-transport
-  rationale: miniprogramRoot is miniprogram/ while the accepted controller sources are external TypeScript packages; produce a deterministic in-root client runtime artifact before adding network/backend complexity
+  strategy: fast-lane-large-client-vertical-slice
+  rationale: UI04A/B stabilized the dependency and packaging boundaries; the next unit should deliver a visible end-to-end client interaction slice rather than another tiny infrastructure task
 controllerIntent:
-  mode: STANDARD_IMPLEMENTATION
-  goal: make the accepted UI03/UI04A client controller physically loadable by the WeChat package without duplicating logic or importing gameplay authority
-  postTask: controller reviews wb-UI04B; do not start UI04C or any live transport/cloud/page session work yourself
+  mode: FAST_LANE_IMPLEMENTATION
+  goal: wire a real dev-only WeChat live client from cloud RPC boundary through controller to interactive page states while keeping gameplay authority server-side
+  postTask: controller reviews wb-UI04C; do not start the cloud-authority/backend task yourself
 notes:
-  - Read .codex/control/TOOLING_RUNBOOK.md before execution.
-  - Reusable tooling/environment findings must be committed to LAST_RESULT.toolingObservations; chat-only observations are not durable evidence.
-  - Do not hand-copy the controller or command codec into miniprogram. The artifact must be generated from the accepted source modules.
-  - Do not add esbuild webpack rollup or another new bundler dependency just for this task. Use existing TypeScript/dev tooling or a deterministic repository-local generation approach.
-  - A static literal require from v2-preview is allowed only as a side-effect-free packager visibility seam; the page must remain fixture-driven and visually unchanged.
-  - No wx.request, 2.0 wx.cloud.callFunction, cloud persistence, deployment, default-route switch or production session wiring in UI04B.
-  - If making a WeChat-loadable artifact requires gameplay or server semantic changes, stop BLOCKED and report the exact packaging conflict.
+  - PROTOCOL v1.3 fast-lane applies. Do NOT run aggregate npm test or re-prove the known nested-process sandbox failures.
+  - Run only the task's dedicated tests, directly affected UI03/UI04B tests, runtime/client audits, typecheck, lint, secret scan, and route guard.
+  - Reusable tooling/environment findings go to LAST_RESULT.toolingObservations ONLY when genuinely new. A different HTTPS_PROXY port or another successful use of an existing workaround is not a finding.
+  - This task should be materially larger than UI04A/B: complete the client vertical slice before stopping.
+  - The new v2-live page is dev-only and registered last. Do not replace the existing start page or tabBar.
+  - Do not implement or deploy the 2.0 cloudfunction/backend in this task. The fake callFunction is test injection only; production page code must target the documented RPC operation names.
+  - If the client slice requires gameplay/server semantic changes, stop BLOCKED rather than pulling authority into the client.
