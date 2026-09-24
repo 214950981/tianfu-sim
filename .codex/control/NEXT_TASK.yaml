@@ -1,14 +1,14 @@
 version: 1
 status: READY
 attempt: 1
-taskId: UI02ENTRY
-title: UI02ENTRY — 2.0 Entry Flow High-Fidelity Visual Slice
-taskDefinition: .codex/tasks/UI02ENTRY.yaml
-sourceBranch: dev/tianfu-2.0
-workBranch: wb-UI02ENTRY
+taskId: UI02COPY
+title: UI02COPY — Chinese Player-Facing Copy / Raw-Key Cleanup
+taskDefinition: .codex/tasks/UI02COPY.yaml
+sourceBranch: wb-UI02ENTRY
+workBranch: wb-UI02COPY
 worktreeRequired: true
 allowSyntheticTreeBase: true
-basePolicy: remote-source-head-at-task-start
+basePolicy: explicit-ui02entry-result-head
 execution:
   readProtocolFirst: true
   commitTaskResult: true
@@ -16,23 +16,26 @@ execution:
   updateSourceBranch: false
   startNextTask: false
 controllerReview:
-  previousTask: UI02R2A2
-  previousStatus: ACCEPTED
-  acceptedResultCommit: bb8c899d2076574d1e6114745c68248d4189f5b0
+  previousTask: UI02ENTRY
+  previousStatus: ACCEPTED_PENDING_FINAL_UI02_MERGE
+  previousResultCommit: 3da45910001246dd8336a5b632cf408d9b63207a
   acceptanceBasis:
-    - human DevTools review confirms RUN_HOME now has coherent identity vitals priorities and action surfaces without the prior giant dead middle gap
-    - four core actions remain first-screen visible and breakthrough remains the server-gated primary action
-    - targeted UI fast-lane suites and structural audits are green
-    - the attempted full suite reported only three nested-node EBUSY environment failures which reproduce identically on the untouched base tree; no product regression evidence
+    - human DevTools review confirms START MODE_SELECT DESTINY_OFFER RUN_OPENING all render correctly and share the accepted 2.0 visual system
+    - DESTINY_OFFER uses real public server projection and entry screens remain one-screen
+    - targeted UI fast-lane suites are green
+  postAcceptanceFinding:
+    - human review of the same preview exposes raw dev.* narrative keys in EVENT and SPECIAL_NODE
+    - LIFE_ARCHIVE exposes raw history/build-fact keys
+    - MODE_SELECT exposes internal capability enum names in unavailable-state helper text
 controllerDecision:
-  strategy: propagate-accepted-visual-system-to-entry-flow
-  rationale: the in-life visual system is now good enough to freeze as the 2.0 baseline; build the missing START MODE_SELECT DESTINY_OFFER RUN_OPENING visuals before live-session UI03 so the user can review a coherent beginning-to-life experience
+  strategy: final-player-facing-copy-pass-before-full-regression
+  rationale: do not lock or live-wire a visually coherent UI that still leaks developer identifiers; clean only presentation copy, then run the single deferred full regression after human acceptance
 controllerIntent:
   mode: UI_FAST_LANE
-  goal: make the 2.0 game feel complete from launch through entering a life, using real public destiny-offer data and no client gameplay authority
-  postTask: controller/user visually reviews entry flow; after visual acceptance run one final full regression once, then resume UI03 live-session wiring
+  goal: make every currently reviewable 2.0 screen read like a player-facing Chinese game screen without changing any gameplay or server authority
+  postTask: controller/user visually reviews all preview screens; if accepted, dispatch one final UI02 full-regression/audit task and then resume UI03
 notes:
-  - This task intentionally uses targeted UI fast-lane verification only. Do not run full npm regression during the visual iteration unless shared gameplay/server logic is touched.
-  - UI03 remains blocked. Do not wire transport or live command submission here.
-  - Do not copy the old 1.0 black-neon start screen. It may serve only as evidence that the product needs stronger game presence; the 2.0 entry flow must use the accepted paper/ink/cinnabar/dark-gold language.
-  - Open this task in a fresh WorkBuddy conversation and read Git as the only task memory.
+  - Open this in a fresh WorkBuddy conversation. Read Git as the only task memory.
+  - Do not run full npm regression in this task. Use only the targeted tests listed in UI02COPY.yaml.
+  - This is not permission to rewrite content rules or invent new story branches. It is a bounded presentation-copy cleanup for keys already exposed by the current preview fixtures.
+  - UI03 remains blocked and must not be started.
