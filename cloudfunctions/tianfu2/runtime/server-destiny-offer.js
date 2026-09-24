@@ -1,55 +1,60 @@
+// GENERATED FILE — DO NOT HAND-EDIT.
+//
+// Source of truth: server/src/destiny-offer.ts
+// Source sha256:   a3751f046686716191b69b92e99409debff34564c4e91227fab4bc3553baf88d
+// Generator:       tools/ui04d-cloud-runtime-artifact.mjs
+// Regenerate:      node tools/ui04d-cloud-runtime-artifact.mjs --write
+//
+// Deployable CommonJS derived mechanically from the accepted TypeScript module above: type syntax is
+// erased with Node's built-in type stripper and ES module syntax is rewritten to plain CommonJS.
+// Nothing here was hand-copied — there is exactly one reducer, one CommandGateway, one ViewModel
+// builder and one CONTENT01, and they live in the source modules named above.
+//
+// The closure is pinned to the required server Core/Content modules only: no client package (except
+// command-wire, which Core's command module re-exports), no content audit or simulation tooling, and no
+// Node builtin or third-party dependency. See docs/UI04D_CLOUD_BACKEND.md.
 // UI04D: the barrel (`packages/content/src/index.ts`) re-exports the content *audit and simulation*
 // tooling too, which is development output and must not ship inside the cloud function. `ContentRegistry`
 // and the destiny types live in `registry.ts`, so the live closure imports them from there directly.
-import { ContentRegistry, type DestinyDefinition } from "../../packages/content/src/registry.ts";
-import {
-  createOfferedRun,
-  createRngState,
-  selectInnateProfileOffers,
-  selectDestinyCandidates,
-  validateGameState,
-  type GameState,
-  type MetaView,
-  type OfferedRunFixture,
-  type RngTrace
-} from "../../packages/core/src/index.ts";
+var { ContentRegistry } = require("./content-registry.js");
+var { createOfferedRun, createRngState, selectInnateProfileOffers, selectDestinyCandidates, validateGameState } = require("./core-index.js");
 
-export interface ServerDestinyOfferInput {
-  schemaVersion: number;
-  rulesVersion: string;
-  contentVersion: string;
-  runId: string;
-  playerId: string;
-  rootSeed: string;
-  metaView: MetaView;
-  fixture: Omit<OfferedRunFixture, "destinyIds">;
-  content: ContentRegistry;
-}
+                                          
+                        
+                       
+                         
+                
+                   
+                   
+                     
+                                                 
+                           
+ 
 
-export interface GeneratedDestinyOffer {
-  state: GameState;
-  internalTrace: { rngDraws: RngTrace[] };
-}
+                                        
+                   
+                                          
+ 
 
-export interface DestinyOfferView {
-  schemaVersion: number;
-  rulesVersion: string;
-  contentVersion: string;
-  stateVersion: number;
-  runId: string;
-  status: "offered";
-  offerId: string;
-  runName: string;
-  candidates: Array<Pick<DestinyDefinition, "id" | "profile" | "titleKey" | "descriptionKey" | "advantage" | "cost" | "hook"> | { id: string; spiritualRoot: { id: string; displayName: string }; talent: { id: string; displayName: string }; majorDestiny: { id: string; displayName: string } }>;
-  metaView: MetaView;
-}
+                                   
+                        
+                       
+                         
+                       
+                
+                    
+                  
+                  
+                                                                                                                                                                                                                                                                                                    
+                     
+ 
 
-export function generateServerDestinyOffer(input: ServerDestinyOfferInput): GeneratedDestinyOffer {
+function generateServerDestinyOffer(input                         )                        {
   const pack = input.content.get(input.contentVersion);
   if (pack.manifest.rulesVersion !== input.rulesVersion) throw new RangeError("content rulesVersion does not match locked rulesVersion");
   if (pack.progressionPackId !== undefined) {
     const selection = selectInnateProfileOffers(createRngState(input.rulesVersion, input.rootSeed), input.content.getProgression(input.contentVersion));
-    const state = createOfferedRun({ schemaVersion: input.schemaVersion, rulesVersion: input.rulesVersion, contentVersion: input.contentVersion, runId: input.runId, playerId: input.playerId, rootSeed: input.rootSeed, metaView: input.metaView, fixture: { ...input.fixture, destinyIds: selection.offers.map((offer) => offer.profile.majorDestinyId) as [string, string, string], innateProfiles: selection.offers }, initialRng: selection.rng });
+    const state = createOfferedRun({ schemaVersion: input.schemaVersion, rulesVersion: input.rulesVersion, contentVersion: input.contentVersion, runId: input.runId, playerId: input.playerId, rootSeed: input.rootSeed, metaView: input.metaView, fixture: { ...input.fixture, destinyIds: selection.offers.map((offer) => offer.profile.majorDestinyId)                            , innateProfiles: selection.offers }, initialRng: selection.rng });
     return { state, internalTrace: { rngDraws: selection.trace } };
   }
   const unlocks = new Set(input.metaView.unlocks);
@@ -71,7 +76,7 @@ export function generateServerDestinyOffer(input: ServerDestinyOfferInput): Gene
   return { state, internalTrace: { rngDraws: selection.trace } };
 }
 
-export function projectDestinyOfferView(value: unknown, content: ContentRegistry): DestinyOfferView {
+function projectDestinyOfferView(value         , content                 )                   {
   const state = validateGameState(value);
   if (state.run.status !== "offered" || state.run.offer === undefined) throw new RangeError("state must contain an active destiny offer");
   const candidates = state.run.offer.innateProfiles === undefined ? state.run.offer.destinyIds.map((destinyId) => {
@@ -106,3 +111,8 @@ export function projectDestinyOfferView(value: unknown, content: ContentRegistry
     }
   };
 }
+
+module.exports = Object.assign({}, {
+  generateServerDestinyOffer,
+  projectDestinyOfferView
+});

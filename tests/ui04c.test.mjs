@@ -132,7 +132,10 @@ function fakeCloud({ seed, playerId = PLAYER_ID, wrap } = {}) {
       const runId = `run-ui04c-${(sequence += 1)}`;
       const state = seed(runId);
       store.seedRun(state);
-      return { errMsg: "cloud.callFunction:ok", result: { runId, rulesVersion: RULES_VERSION, contentVersion: CONTENT_VERSION, view: builder.build(state) } };
+      // UI04D: the bootstrap response now carries the *authoritative* playerId the server derived from the
+      // trusted OPENID, and a client bootstrapId lets the same device recover the same run. This fake is
+      // the server, so it publishes the identity — the client no longer supplies one.
+      return { errMsg: "cloud.callFunction:ok", result: { runId, playerId, rulesVersion: RULES_VERSION, contentVersion: CONTENT_VERSION, view: builder.build(state) } };
     }
     if (data.operation === "fetchView") return { errMsg: "cloud.callFunction:ok", result: { view: await gateway.fetchView(auth, String(data.runId)) } };
     // The clone is not cosmetic: a real cloud call serializes its payload, so the authoritative stack
@@ -150,7 +153,9 @@ async function liveClient(cloud) {
   const transport = createWeChatCloudTransport({ api: cloud.api, cloudFunctionName: CLOUD_FUNCTION });
   const raw = new RawWeChatStorage();
   const commandIdsFactory = commandIds("cmd:ui04c");
-  const boot = await bootstrapWeChatRun({ transport, playerId: PLAYER_ID, clientBuild: CLIENT_BUILD });
+  // UI04D: the identity is no longer a client fact — `bootstrapWeChatRun` takes the server's
+  // authoritative playerId from the response and the client contributes only its persisted bootstrap key.
+  const boot = await bootstrapWeChatRun({ transport, bootstrapId: "boot:ui04c", clientBuild: CLIENT_BUILD });
   const controller = new WeChatRunController({
     transport,
     storage: createWeChatPlatformStorage(raw),
@@ -245,7 +250,7 @@ test("UI04C_bootstrap: the session is authoritative public metadata and nothing 
   const { boot, controller } = await liveClient(cloud);
 
   assert.deepEqual(Object.keys(boot.session).sort(), ["clientBuild", "contentVersion", "playerId", "rulesVersion", "runId"]);
-  assert.equal(boot.session.playerId, PLAYER_ID, "the player identity is a client fact, never a server one");
+  assert.equal(boot.session.playerId, PLAYER_ID, "the player identity is the server's authoritative handle, published by createRunOffer");
   assert.equal(boot.session.clientBuild, CLIENT_BUILD);
   assert.equal(boot.session.runId, boot.view.state.runId);
   assert.equal(boot.session.rulesVersion, boot.view.state.rulesVersion);
@@ -487,9 +492,10 @@ test("UI04C_archive: the read-only side page opens and closes locally and submit
  * `node:vm` realm with a CommonJS wrapper is the same trick `tools/ui04b-wechat-runtime-smoke.mjs` uses
  * for the artifact, and it keeps the page's top-level `var`s module-scoped exactly as the packager does.
  */
-function loadLivePage(cloud, { playerId = PLAYER_ID } = {}) {
+function loadLivePage(cloud, { bootstrapId = "boot:ui04c-page" } = {}) {
   const store = new Map();
-  if (playerId !== null) store.set("tianfu2:dev-player-id", playerId);
+  // UI04D: the page no longer keeps a dev player id. What it persists is the bootstrap key it re-sends.
+  if (bootstrapId !== null) store.set("tianfu2:bootstrap-id", bootstrapId);
   const context = vm.createContext({});
   let definition = null;
   context.Page = (value) => { definition = value; };

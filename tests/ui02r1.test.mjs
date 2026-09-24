@@ -98,6 +98,21 @@ const readJson = (relative) => JSON.parse(read(relative));
  * Core, Content, server ViewModel, application-ui, platform-contract and the 1.0 pages stay
  * byte-identical, which is what still makes this digest a real scope guard rather than a rubber stamp.
  *
+ * UI04D is such a task for THREE entries, all updated on purpose and disclosed in its LAST_RESULT. It
+ * puts a real authoritative cloud backend behind the UI04C RPC boundary:
+ *   - `packages/platform-contract/src` — `ApplicationTransport.createRunOffer` gained one optional
+ *     argument, `{ bootstrapId? }`, because UI04D makes bootstrap idempotent. It is a widening only: an
+ *     existing zero-argument implementation still satisfies it, and no other member changed;
+ *   - `packages/wechat-shell/src` — `createRunOffer` takes that optional `bootstrapId`, and the
+ *     validated offer result carries the *server* `playerId` the bootstrap adopts. No intent mapping,
+ *     no decision view and no existing validator was redefined, and ui03/ui04a/ui04b/ui04c re-pin its
+ *     behaviour;
+ *   - `server/src` — five modules were added (the store port, OPENID identity, the live CONTENT01
+ *     registry, the CloudBase store and the live service) and `command-gateway.ts` was changed only to
+ *     read through the injected port. Every externally observable gateway semantic is re-pinned by
+ *     `tests/server-gateway.test.mjs`, and Core, Content and the ViewModel projection are unchanged.
+ * Core, Content, application-ui and the 1.0 pages stay byte-identical.
+ *
  * `files` is the exact base file list (derived from `git ls-tree -r HEAD`). Pinning the list, not just
  * a count, is what makes the digest fail closed on any addition inside a pinned tree while still
  * tolerating the DevTools scratch files listed in DEVTOOLS_ARTIFACTS.
@@ -185,7 +200,7 @@ const BASE_TREE = {
   },
   "packages/wechat-shell/src": {
     files: ["packages/wechat-shell/src/index.ts"],
-    digest: "abc04263b6cb4660a7e5595b903df889220db5ee0786659ac15752eb9f4e13b1"
+    digest: "d7db6a2498faa47380226b5fe357de7c8e986506d040aaf0324fe2aad9004ce4"
   },
   "packages/application-ui/src": {
     files: ["packages/application-ui/src/index.ts"],
@@ -193,16 +208,21 @@ const BASE_TREE = {
   },
   "packages/platform-contract/src": {
     files: ["packages/platform-contract/src/index.ts"],
-    digest: "ef609e10e56bf1582db108fedceb479f15d67234e403a8caf4047713f996236a"
+    digest: "95afe1f89f0b2554ec0265cbeb7c92d298344bd4afeb4824b1bae426657b3aab"
   },
   "server/src": {
     files: [
+      "server/src/cloudbase-store.ts",
       "server/src/command-gateway.ts",
       "server/src/destiny-offer.ts",
+      "server/src/gateway-store.ts",
+      "server/src/identity.ts",
       "server/src/index.ts",
+      "server/src/live-content.ts",
+      "server/src/live-service.ts",
       "server/src/viewmodel.ts"
     ],
-    digest: "5609f8335f03d445137de30fa9f6af5047ca876ebe885e4544f8d864824620df"
+    digest: "0a22969c3234ab4969df0c5dfe062cbb09103395f0678fd1c181382d4a057929"
   },
   "tools/ui02-preview-fixtures.mjs": {
     files: ["tools/ui02-preview-fixtures.mjs"],

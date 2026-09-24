@@ -34,7 +34,15 @@ var runtime = require("../../runtime/index.js");
 var RUNTIME_SPECIFIER = "../../runtime/index.js";
 var REGENERATE_HINT = "重新生成：node tools/ui04b-wechat-runtime-artifact.mjs --write";
 var DIAGNOSTIC_MAX_CHARS = 160;
-var PLAYER_ID_KEY = "tianfu2:dev-player-id";
+/**
+ * UI04D — the only local identity the page keeps.
+ *
+ * It is a *recovery key*, not a player identity: the page mints it once, persists it, and re-sends it on
+ * every bootstrap so a reload or a retry after a timeout comes back to the same offered run instead of
+ * manufacturing another life. Who the player actually is comes from the server (`getWXContext().OPENID`
+ * -> authoritative opaque playerId); the page never stores, guesses or transmits a player id of its own.
+ */
+var BOOTSTRAP_ID_KEY = "tianfu2:bootstrap-id";
 var CLIENT_BUILD = "v2-live-dev";
 var RPC_FUNCTION_NAME = "tianfu2";
 
@@ -360,7 +368,7 @@ Page({
     }
 
     Promise.resolve()
-      .then(function () { return runtime.bootstrapWeChatRun({ transport: transport, playerId: self.devPlayerId(), clientBuild: CLIENT_BUILD }); })
+      .then(function () { return runtime.bootstrapWeChatRun({ transport: transport, bootstrapId: self.bootstrapId(), clientBuild: CLIENT_BUILD }); })
       .then(function (result) {
         self.controller = new runtime.WeChatRunController({
           transport: transport,
@@ -383,17 +391,27 @@ Page({
       });
   },
 
-  /** The dev player identity. Local only: a real auth task replaces this, never the server. */
-  devPlayerId: function () {
+  /**
+   * The locally persisted bootstrap key. Created once, then reused for the life of the install so the
+   * same device always returns to the same run. Storage failures degrade to an in-memory value rather
+   * than breaking the bootstrap: the server still decides, and a fresh key simply means a fresh run.
+   */
+  bootstrapId: function () {
+    if (typeof this.cachedBootstrapId === "string" && this.cachedBootstrapId.length > 0) return this.cachedBootstrapId;
     try {
-      var stored = wx.getStorageSync(PLAYER_ID_KEY);
-      if (typeof stored === "string" && stored.length > 0) return stored;
-      var created = "dev-player:" + Date.now().toString(36);
-      wx.setStorageSync(PLAYER_ID_KEY, created);
-      return created;
+      var stored = wx.getStorageSync(BOOTSTRAP_ID_KEY);
+      if (typeof stored === "string" && stored.length > 0) { this.cachedBootstrapId = stored; return stored; }
     } catch (error) {
-      return "dev-player:fallback";
+      // Ignored on purpose: a storage failure must not stop the bootstrap, only make it non-recoverable.
     }
+    this.bootSequence = (this.bootSequence || 0) + 1;
+    this.cachedBootstrapId = "boot:" + Date.now().toString(36) + ":" + this.bootSequence;
+    try {
+      wx.setStorageSync(BOOTSTRAP_ID_KEY, this.cachedBootstrapId);
+    } catch (error) {
+      // Same reasoning: persist best-effort, use the value either way.
+    }
+    return this.cachedBootstrapId;
   },
 
   /** Client-side command identity only. The server stays authoritative; a commandId is not a secret. */

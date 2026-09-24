@@ -453,7 +453,9 @@ function offerCandidateFor(body: PublicJson, optionId: string): OfferCandidateId
  * The RPC surface is small and strict, and the adapter is fail-closed. Nothing the server returns is
  * trusted before it has been validated:
  *
- *   operation "createRunOffer"  -> { runId, rulesVersion, contentVersion, view: PublicViewModel }
+ *   operation "createRunOffer"  -> { runId, playerId, rulesVersion, contentVersion, view: PublicViewModel }
+ *                                  request may carry `{ bootstrapId }` (UI04D), a locally persisted
+ *                                  recovery key: same device + same bootstrapId => same offered run
  *   operation "fetchView"       -> { view: PublicViewModel }
  *   operation "sendCommand"     -> CommandResult
  *
@@ -489,18 +491,32 @@ export interface WeChatCloudTransportOptions {
   cloudFunctionName?: string;
 }
 
-/** The validated result of the `createRunOffer` bootstrap RPC. Public session metadata only. */
+/**
+ * The validated result of the `createRunOffer` bootstrap RPC.
+ *
+ * UI04D: `playerId` joined this payload. It is the *server's* authoritative, opaque handle — derived from
+ * the trusted WeChat OPENID and never the OPENID itself — because the command contract keys every
+ * envelope and every ownership check on the same id the server will compare against. A client that
+ * invented its own player id could not submit a command at all, so the value has to come from here.
+ */
 export interface WeChatRunOfferResult {
   runId: string;
+  playerId: string;
   rulesVersion: string;
   contentVersion: string;
   view: PublicViewModel;
 }
 
-/** The client-side identity a page supplies. Never taken from the server. */
+/**
+ * What a live page supplies to bootstrap a run.
+ *
+ * `bootstrapId` is a *locally generated and persisted recovery key*, not an identity: the same device
+ * re-sends it after a reload or a retry so the server returns the same offered run instead of
+ * manufacturing another one. It says nothing about who the player is — that comes back from the server.
+ */
 export interface WeChatRunBootstrapInput {
   transport: ApplicationTransport;
-  playerId: string;
+  bootstrapId?: string;
   clientBuild: string;
 }
 
@@ -525,9 +541,15 @@ const applicationErrorCodes: readonly string[] = APP_ERROR_CODES;
 const FORBIDDEN_RESPONSE_KEYS: readonly string[] = [
   "rootSeed", "rng", "rngState", "drawIndex", "echoBudget", "salience", "selectorWeights",
   "futureEventIds", "checkSpec", "difficulty", "effectSpec", "internalTrace", "antiCheat",
-  "hiddenCause", "hiddenCauses", "specialNotes", "serverSecret"
+  "hiddenCause", "hiddenCauses", "specialNotes", "serverSecret",
+  // UI04D: the WeChat OPENID is the server's identity source and the client has no legitimate use for it.
+  // A response that carries one is a boundary bug at best and an identity leak at worst, so it is refused
+  // exactly like a leaked rootSeed rather than ignored.
+  "openid", "openId", "OPENID", "unionid", "unionId", "UNIONID"
 ];
 const MAX_RESPONSE_DEPTH = 64;
+/** Identifier length limit, mirroring the server gateway's own bound so both sides reject the same input. */
+const MAX_IDENTIFIER_LENGTH = 128;
 
 function rpcRecord(value: unknown, path: string): Record<string, unknown> {
   if (typeof value !== "object" || value === null || Array.isArray(value)) throw new TransportProtocolError(`${path} must be an object`);
@@ -622,13 +644,15 @@ export function parseRunOfferResult(value: unknown): WeChatRunOfferResult {
   // as reachable to the page as one inside it.
   assertNoServerSecrets(record, "createRunOffer result");
   const runId = rpcString(record.runId, "createRunOffer result.runId");
+  const playerId = rpcString(record.playerId, "createRunOffer result.playerId");
+  if (playerId.length > MAX_IDENTIFIER_LENGTH) throw new TransportProtocolError("createRunOffer result.playerId is longer than the command identifier limit");
   const rulesVersion = rpcString(record.rulesVersion, "createRunOffer result.rulesVersion");
   const contentVersion = rpcString(record.contentVersion, "createRunOffer result.contentVersion");
   const view = parsePublicViewModel(record.view, "createRunOffer result.view");
   if (view.state.runId !== runId) throw new TransportProtocolError("createRunOffer result.runId does not match the returned ViewModel");
   if (view.state.rulesVersion !== rulesVersion) throw new TransportProtocolError("createRunOffer result.rulesVersion does not match the returned ViewModel");
   if (view.state.contentVersion !== contentVersion) throw new TransportProtocolError("createRunOffer result.contentVersion does not match the returned ViewModel");
-  return { runId, rulesVersion, contentVersion, view };
+  return { runId, playerId, rulesVersion, contentVersion, view };
 }
 
 /** Unwraps the host's `{ result, errMsg }` response. A missing result is a transport failure, not a payload. */
@@ -659,8 +683,12 @@ export function createWeChatCloudTransport(options: WeChatCloudTransportOptions)
       const result = rpcRecord(await callCloud(api, name, { operation: "fetchView", runId: rpcString(runId, "fetchView runId") }), "fetchView result");
       return parsePublicViewModel(result.view, "fetchView result.view");
     },
-    async createRunOffer(): Promise<unknown> {
-      return parseRunOfferResult(await callCloud(api, name, { operation: "createRunOffer" }));
+    async createRunOffer(options?: { bootstrapId?: string }): Promise<unknown> {
+      // The bootstrap id is a recovery key, not an identity: it is only sent when the caller has one, so
+      // the accepted UI04C payload shape (`{ operation }`) is still exactly what a caller without one sends.
+      const bootstrapId = typeof options?.bootstrapId === "string" && options.bootstrapId.length > 0 ? options.bootstrapId : undefined;
+      const data = bootstrapId === undefined ? { operation: "createRunOffer" } : { operation: "createRunOffer", bootstrapId };
+      return parseRunOfferResult(await callCloud(api, name, data));
     }
   };
 }
@@ -668,19 +696,24 @@ export function createWeChatCloudTransport(options: WeChatCloudTransportOptions)
 /**
  * Creates the session and authoritative starting view for a live client.
  *
- * The bootstrap is the client's only source of run truth: the run id, the locked rules/content
- * versions and the initial PublicViewModel all come from the authoritative `createRunOffer` response.
- * The player identity and client build are *client* facts and are injected by the caller, never read
- * from the server. The response is validated (twice, deliberately: the cloud adapter refuses a bad RPC
- * payload at the boundary, and this function refuses a bad payload from any transport implementation),
- * so an unvalidated or secret-bearing response can never become the client's session.
+ * The bootstrap is the client's only source of run truth — and since UI04D that includes the *player
+ * identity*. The run id, the locked rules/content versions, the authoritative opaque playerId and the
+ * initial PublicViewModel all come from the `createRunOffer` response. That is not a convenience: the
+ * command contract keys every envelope on `playerId`, and the server compares it against the OPENID it
+ * derived, so a client-invented identity could never submit a command. The client contributes exactly
+ * two things of its own: the `clientBuild` string and a locally persisted `bootstrapId`, which lets a
+ * retry or a reload recover the same run instead of manufacturing another one.
+ *
+ * The response is validated twice, deliberately: the cloud adapter refuses a bad RPC payload at the
+ * boundary, and this function refuses a bad payload from any transport implementation, so an
+ * unvalidated or secret-bearing response can never become the client's session.
  */
 export async function bootstrapWeChatRun(input: WeChatRunBootstrapInput): Promise<WeChatRunBootstrap> {
-  const playerId = rpcString(input.playerId, "bootstrap playerId");
   const clientBuild = rpcString(input.clientBuild, "bootstrap clientBuild");
-  const offer = parseRunOfferResult(await input.transport.createRunOffer());
+  const bootstrapId = typeof input.bootstrapId === "string" && input.bootstrapId.length > 0 ? input.bootstrapId : undefined;
+  const offer = parseRunOfferResult(await input.transport.createRunOffer(bootstrapId === undefined ? undefined : { bootstrapId }));
   return {
-    session: { playerId, runId: offer.runId, rulesVersion: offer.rulesVersion, contentVersion: offer.contentVersion, clientBuild },
+    session: { playerId: offer.playerId, runId: offer.runId, rulesVersion: offer.rulesVersion, contentVersion: offer.contentVersion, clientBuild },
     view: offer.view
   };
 }

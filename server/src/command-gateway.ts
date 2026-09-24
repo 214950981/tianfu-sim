@@ -1,7 +1,13 @@
+/**
+ * UI04D moved `StoredRun` / the transaction view / `InMemoryGatewayStore` into `./gateway-store.ts` so
+ * the persistence boundary is a named port an asynchronous document store can implement. Nothing in the
+ * settlement logic below changed: the same validation, the same idempotency record, the same
+ * STATE_CONFLICT and ownership rules, the same snapshot cadence. Only the read calls became `await`ed,
+ * which is a no-op for the in-memory store and is what lets a CloudBase transaction serve them.
+ */
 import {
   PersistenceError,
   ReducerError,
-  createCommandLog,
   createSnapshot,
   executeLoggedCommand,
   serializeCommandEnvelope,
@@ -10,31 +16,17 @@ import {
   validateGameState,
   type AppErrorCode,
   type CommandEnvelope,
-  type CommandLog,
   type CommandResult,
   type GameState,
-  type ReplayContext,
-  type Snapshot
+  type ReplayContext
 } from "../../packages/core/src/index.ts";
 import { sha256Utf8 } from "../../packages/core/src/sha256.ts";
+import type { GatewayStore, GatewayTransactionView, IdempotencyRecord, StoredRun } from "./gateway-store.ts";
 
 export const MAX_COMMAND_ENVELOPE_BYTES = 16_384;
 export const MAX_GATEWAY_ID_LENGTH = 128;
 
 export interface TrustedAuthContext { playerId: string }
-export interface StoredRun {
-  state: GameState;
-  commandLog: CommandLog;
-  lastSnapshot?: Snapshot;
-  successfulCommandsSinceSnapshot: number;
-}
-interface IdempotencyRecord { payloadHash: string; result: CommandResult; runId: string; playerId: string }
-interface TransactionView {
-  getRun(runId: string): StoredRun | undefined;
-  setRun(runId: string, value: StoredRun): void;
-  getIdempotency(commandId: string): IdempotencyRecord | undefined;
-  setIdempotency(commandId: string, value: IdempotencyRecord): void;
-}
 
 function clone<T>(value: T): T { return structuredClone(value); }
 function hex(bytes: Uint8Array): string { return [...bytes].map((byte) => byte.toString(16).padStart(2, "0")).join(""); }
@@ -51,28 +43,8 @@ function identifiersWithinLimit(envelope: CommandEnvelope): boolean {
   return [envelope.commandId, envelope.playerId, envelope.runId, envelope.rulesVersion, envelope.contentVersion, envelope.clientBuild].every((value) => value.length <= MAX_GATEWAY_ID_LENGTH);
 }
 
-export class InMemoryGatewayStore {
-  #runs = new Map<string, StoredRun>();
-  #idempotency = new Map<string, IdempotencyRecord>();
-  #tail: Promise<void> = Promise.resolve();
-
-  seedRun(stateValue: unknown): void {
-    const state = validateGameState(stateValue); if (this.#runs.has(state.run.runId)) throw new RangeError("run already exists");
-    this.#runs.set(state.run.runId, { state: clone(state), commandLog: createCommandLog(state), successfulCommandsSinceSnapshot: 0 });
-  }
-  readRun(runId: string): StoredRun | undefined { const stored = this.#runs.get(runId); return stored === undefined ? undefined : clone(stored); }
-  async transact<T>(operation: (view: TransactionView) => Promise<T> | T): Promise<T> {
-    const previous = this.#tail; let release = (): void => {};
-    this.#tail = new Promise<void>((resolve) => { release = resolve; }); await previous;
-    const stagedRuns = new Map(this.#runs); const stagedIdempotency = new Map(this.#idempotency);
-    const view: TransactionView = { getRun: (runId) => stagedRuns.get(runId), setRun: (runId, value) => stagedRuns.set(runId, value), getIdempotency: (commandId) => stagedIdempotency.get(commandId), setIdempotency: (commandId, value) => stagedIdempotency.set(commandId, value) };
-    try { const result = await operation(view); this.#runs = stagedRuns; this.#idempotency = stagedIdempotency; return result; }
-    finally { release(); }
-  }
-}
-
 export interface CommandGatewayOptions {
-  store: InMemoryGatewayStore;
+  store: GatewayStore;
   content: object;
   resolveContext?: (envelope: CommandEnvelope) => ReplayContext;
   beforeCommit?: (envelope: CommandEnvelope) => void | Promise<void>;
@@ -81,7 +53,7 @@ export interface CommandGatewayOptions {
 }
 
 export class CommandGateway {
-  readonly #store: InMemoryGatewayStore;
+  readonly #store: GatewayStore;
   readonly #content: object;
   readonly #resolveContext: (envelope: CommandEnvelope) => ReplayContext;
   readonly #beforeCommit?: CommandGatewayOptions["beforeCommit"];
@@ -90,7 +62,7 @@ export class CommandGateway {
   constructor(options: CommandGatewayOptions) { this.#store = options.store; this.#content = options.content; this.#resolveContext = options.resolveContext ?? (() => ({})); this.#beforeCommit = options.beforeCommit; this.#afterCommit = options.afterCommit; this.#projectView = options.projectView; }
 
   async fetchView(auth: TrustedAuthContext, runId: string): Promise<unknown> {
-    const stored = this.#store.readRun(runId); if (stored === undefined || stored.state.run.playerId !== auth.playerId) throw new Error("UNAUTHORIZED");
+    const stored = await this.#store.readRun(runId); if (stored === undefined || stored.state.run.playerId !== auth.playerId) throw new Error("UNAUTHORIZED");
     if (this.#projectView === undefined) throw new Error("ViewModel builder is not configured"); return this.#projectView(stored.state);
   }
 
@@ -102,15 +74,15 @@ export class CommandGateway {
     } catch { return failure(untrustedCommandId, 0, "INVALID_COMMAND", "command.invalid"); }
     if (typeof auth?.playerId !== "string" || auth.playerId.length === 0 || auth.playerId !== envelope.playerId) return failure(envelope.commandId, 0, "UNAUTHORIZED", "auth.player_mismatch");
     const fingerprint = payloadHash(envelope); let newlyCommitted = false;
-    const result = await this.#store.transact(async (transaction) => {
-      const prior = transaction.getIdempotency(envelope.commandId);
+    const result = await this.#store.transact(async (transaction: GatewayTransactionView) => {
+      const prior = await transaction.getIdempotency(envelope.commandId);
       if (prior !== undefined) {
         if (prior.playerId !== auth.playerId) return failure(envelope.commandId, prior.result.stateVersion, "UNAUTHORIZED", "auth.player_mismatch");
         if (prior.payloadHash !== fingerprint) return failure(envelope.commandId, prior.result.stateVersion, "INVALID_COMMAND", "command.idempotency_conflict");
         return clone(prior.result);
       }
       const settle = (settled: CommandResult): CommandResult => { transaction.setIdempotency(envelope.commandId, { payloadHash: fingerprint, result: settled, runId: envelope.runId, playerId: auth.playerId }); return settled; };
-      const stored = transaction.getRun(envelope.runId); if (stored === undefined) return settle(failure(envelope.commandId, 0, "UNAUTHORIZED", "run.not_owned"));
+      const stored = await transaction.getRun(envelope.runId); if (stored === undefined) return settle(failure(envelope.commandId, 0, "UNAUTHORIZED", "run.not_owned"));
       if (envelope.expectedStateVersion !== stored.state.stateVersion) return settle(failure(envelope.commandId, stored.state.stateVersion, "STATE_CONFLICT", "state.version_conflict"));
       if (stored.state.run.playerId !== auth.playerId || stored.state.run.playerId !== envelope.playerId) return settle(failure(envelope.commandId, stored.state.stateVersion, "UNAUTHORIZED", "run.not_owned"));
       if (stored.state.rulesVersion !== envelope.rulesVersion || stored.state.contentVersion !== envelope.contentVersion) return settle(failure(envelope.commandId, stored.state.stateVersion, "CONTENT_MISMATCH", "content.version_mismatch"));
@@ -135,7 +107,12 @@ export class CommandGateway {
 export interface ApplicationTransport {
   sendCommand(command: CommandEnvelope): Promise<CommandResult>;
   fetchView(runId: string): Promise<unknown>;
-  createRunOffer(): Promise<unknown>;
+  /**
+   * UI04D: `createRunOffer` may carry a client-generated `bootstrapId`. It is a *recovery* key, not an
+   * identity: the same trusted OPENID plus the same bootstrapId must return the same run. A caller that
+   * has none (the accepted A11 transport, a fixture-driven test) simply omits it.
+   */
+  createRunOffer(options?: { bootstrapId?: string }): Promise<unknown>;
 }
 
 export class GatewayApplicationTransport implements ApplicationTransport {
@@ -144,5 +121,5 @@ export class GatewayApplicationTransport implements ApplicationTransport {
   constructor(gateway: CommandGateway, auth: TrustedAuthContext) { this.gateway = gateway; this.auth = auth; }
   sendCommand(command: CommandEnvelope): Promise<CommandResult> { return this.gateway.sendCommand(this.auth, command); }
   fetchView(runId: string): Promise<unknown> { return this.gateway.fetchView(this.auth, runId); }
-  createRunOffer(): Promise<unknown> { return Promise.reject(new Error("A11 transport implements sendCommand only")); }
+  createRunOffer(_options?: { bootstrapId?: string }): Promise<unknown> { return Promise.reject(new Error("A11 transport implements sendCommand only")); }
 }

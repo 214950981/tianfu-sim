@@ -45,6 +45,14 @@ export interface PublicViewModel { state: PublicState; currentInteraction?: Curr
 export interface ApplicationTransport {
   sendCommand(command: CommandEnvelope<GameCommand>): Promise<CommandResult>;
   fetchView(runId: string): Promise<unknown>;
-  createRunOffer(): Promise<unknown>;
+  /**
+   * Asks the server for a fresh offered run.
+   *
+   * UI04D made the request payload optional-but-real: `bootstrapId` is a client-generated, locally
+   * persisted recovery key, so the same trusted identity plus the same id recovers the same run after a
+   * retry or a reload instead of manufacturing another life. It is *not* an identity — the server still
+   * derives the player from the trusted OPENID and ignores anything else it is sent.
+   */
+  createRunOffer(options?: { bootstrapId?: string }): Promise<unknown>;
 }
 export interface PlatformStorage { getLocal(key: string): Promise<string | null>; setLocal(key: string, value: string): Promise<void> }

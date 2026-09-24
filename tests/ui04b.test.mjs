@@ -54,8 +54,12 @@ const readerWith = (overrides) => (relative) =>
 /** Same algorithm the other scope pins were produced with: sha256 over sorted "<relpath>:<sha256(content)>\n". */
 function treeDigestOf(relative) {
   const absolute = path.join(ROOT, relative);
+  // UI04D adds `cloudfunctions/tianfu2`, whose documented deployment step is `npm install` inside it.
+  // Dependency output is not source, so it is skipped: otherwise following the deployment instructions
+  // would break this pin. No pinned tree currently contains a node_modules directory.
   const walk = (directory) =>
     fs.readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+      if (entry.isDirectory() && entry.name === "node_modules") return [];
       const full = path.join(directory, entry.name);
       return entry.isDirectory() ? walk(full) : [full];
     });
@@ -538,9 +542,15 @@ test("UI04B_scope: the trees UI02/UI02R1 do not already pin are untouched by thi
   // pages with their exact file lists. These four are the gaps this task could have widened — the wire
   // package the artifact is derived from, the 1.0 cloudfunctions tree, the preview page manifest, and the
   // dev preview's fixture module sibling — so they are pinned here with the identical algorithm.
+  //
+  // UI04D updated TWO of these on purpose and disclosed it in its LAST_RESULT: `cloudfunctions`, because
+  // the deployable `cloudfunctions/tianfu2` host and its generated runtime now live there (the accepted
+  // 1.0 `syncPlayerData` is byte-unchanged), and the `server/src` cross-check below, because UI04D adds
+  // the store port, identity, live content registry, CloudBase store and live service modules. The wire
+  // package, the preview page and its manifest are still byte-identical.
   const expected = {
     "packages/command-wire/src": "2ec21e2128bf742dea1e89993e10178c4dbade4623b9c7172e03a6711494352f",
-    cloudfunctions: "482f6ce918366228e92b05cf33849322936773c95769ee7da194fbf482d70fc5",
+    cloudfunctions: "fdb405ecc57efd432ef3b4aac3b3eec99f3665c131157cd4d8bfc63100ad3e3e",
     "miniprogram/pages/v2-preview": "99cea159ea16bd2bbba98ee06db94f9d7602c01e559482ee96d618b2e4ad329c",
     "miniprogram/pages/v2-preview/v2-preview.json": "b529428057cc32edcc20e4b340b84a680ca674fd9c3e4add8078015f0b02bdd1"
   };
@@ -548,5 +558,5 @@ test("UI04B_scope: the trees UI02/UI02R1 do not already pin are untouched by thi
     assert.equal(treeDigestOf(relative), digest, relative + " must be byte-equivalent to the UI04B task base");
   }
   // Cross-check the algorithm itself against a digest UI02R1 computed independently for the same tree.
-  assert.equal(treeDigestOf("server/src"), "5609f8335f03d445137de30fa9f6af5047ca876ebe885e4544f8d864824620df");
+  assert.equal(treeDigestOf("server/src"), "0a22969c3234ab4969df0c5dfe062cbb09103395f0678fd1c181382d4a057929");
 });
