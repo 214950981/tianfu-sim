@@ -1,14 +1,14 @@
 version: 1
 status: READY
-attempt: 2
-taskId: UI02R2A2
-title: UI02R2A2 — RUN_HOME Visual Recomposition / Fast UI Iteration
-taskDefinition: .codex/tasks/UI02R2A2.yaml
-sourceBranch: wb-UI02R2
-workBranch: wb-UI02R2A2
+attempt: 1
+taskId: UI02ENTRY
+title: UI02ENTRY — 2.0 Entry Flow High-Fidelity Visual Slice
+taskDefinition: .codex/tasks/UI02ENTRY.yaml
+sourceBranch: dev/tianfu-2.0
+workBranch: wb-UI02ENTRY
 worktreeRequired: true
 allowSyntheticTreeBase: true
-basePolicy: explicit-ui02r2-result-head
+basePolicy: remote-source-head-at-task-start
 execution:
   readProtocolFirst: true
   commitTaskResult: true
@@ -16,23 +16,23 @@ execution:
   updateSourceBranch: false
   startNextTask: false
 controllerReview:
-  previousTask: UI02R2
-  previousStatus: TECHNICAL_PASS_VISUAL_REJECT
-  previousResultCommit: b5b2ab2e14b22c5b8ff847a369a65abdaee112d4
-  userVisualFinding:
-    - current RUN_HOME is functional and one-screen, but still visually too plain and document-like
-    - button hierarchy and grouping improved but still do not feel polished enough for a released mini-game
-    - tall-screen composition leaves too much dead space between information and the action area
-    - the legacy 1.0 start screen feels substantially more game-like; the 2.0 START -> MODE_SELECT -> DESTINY_OFFER -> RUN_OPENING visual flow has not yet been implemented
+  previousTask: UI02R2A2
+  previousStatus: ACCEPTED
+  acceptedResultCommit: bb8c899d2076574d1e6114745c68248d4189f5b0
+  acceptanceBasis:
+    - human DevTools review confirms RUN_HOME now has coherent identity vitals priorities and action surfaces without the prior giant dead middle gap
+    - four core actions remain first-screen visible and breakthrough remains the server-gated primary action
+    - targeted UI fast-lane suites and structural audits are green
+    - the attempted full suite reported only three nested-node EBUSY environment failures which reproduce identically on the untouched base tree; no product regression evidence
 controllerDecision:
-  strategy: one-more-focused-home-visual-pass-before-propagating-style
-  rationale: lock a convincing 2.0 visual system on RUN_HOME first, then reuse it for the still-unbuilt start flow; do not multiply an unsatisfactory style across five pages
+  strategy: propagate-accepted-visual-system-to-entry-flow
+  rationale: the in-life visual system is now good enough to freeze as the 2.0 baseline; build the missing START MODE_SELECT DESTINY_OFFER RUN_OPENING visuals before live-session UI03 so the user can review a coherent beginning-to-life experience
 controllerIntent:
   mode: UI_FAST_LANE
-  goal: produce a materially more game-like, comfortable RUN_HOME without touching authority/gameplay and without paying a full-repo regression cost for every visual iteration
-  postTask: controller/user performs immediate DevTools visual review; if accepted, run one final full regression before merging the accumulated UI02 chain, then schedule the 2.0 entry-flow visual task and only afterwards resume UI03 live wiring
+  goal: make the 2.0 game feel complete from launch through entering a life, using real public destiny-offer data and no client gameplay authority
+  postTask: controller/user visually reviews entry flow; after visual acceptance run one final full regression once, then resume UI03 live-session wiring
 notes:
-  - Full npm regression is intentionally NOT required for this presentation-only iteration unless shared/non-preview code is touched.
-  - Use the required targeted UI tests/audits in UI02R2A2.yaml. The final full suite is deferred until human visual acceptance, once, before merge.
-  - Do not implement START/MODE_SELECT/DESTINY_OFFER/RUN_OPENING in this task. Those pages exist in the UI contract but high-fidelity 2.0 visuals have not been built yet.
-  - Open this task in a fresh WorkBuddy conversation. Do not rely on the previous long UI repair chat.
+  - This task intentionally uses targeted UI fast-lane verification only. Do not run full npm regression during the visual iteration unless shared gameplay/server logic is touched.
+  - UI03 remains blocked. Do not wire transport or live command submission here.
+  - Do not copy the old 1.0 black-neon start screen. It may serve only as evidence that the product needs stronger game presence; the 2.0 entry flow must use the accepted paper/ink/cinnabar/dark-gold language.
+  - Open this task in a fresh WorkBuddy conversation and read Git as the only task memory.

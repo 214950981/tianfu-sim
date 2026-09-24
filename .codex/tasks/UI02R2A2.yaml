@@ -33,17 +33,4 @@ accept:
   - dedicated-ui02r2a2-ui02r2-ui02r1-tests-green
   - layout-audit-wxss-compat-audit-and-fixture-freshness-green
   - LAST_RESULT-explicitly-records-that-full-npm-regression-was-not-required-for-this-presentation-only-iteration-unless-shared-code-was-touched
-testPolicy:
-  mode: UI_FAST_LANE
-  required: [ui02r2a2,ui02r2,ui02r1,ui02,viewmodel-ui,layout-audit,wxss-compat-audit,fixture-freshness,typecheck]
-  skipByDefault: [full-npm-test,content-lint,content01-lint,full-gameplay-regression,600-run-simulation]
-  escalation:
-    - run-full-npm-test-if-any-file-outside-miniprogram/pages/v2-preview-tests-ui02-docs-ui02-preview-package-test-registration-is-changed
-    - run-full-npm-test-once-after-human-visual-acceptance-before-controller-merges-the-final-UI02-chain-into-dev
-    - gameplay-or-server-contract-change-is-forbidden-rather-than-covered-by-more-testing-in-this-task
-manualVisualGate:
-  - normal-phone: hierarchy feels intentional, not sparse or form-like
-  - tall-phone: no giant empty middle field; action area still feels connected to the information above
-  - four actions read as a single operation group and the breakthrough CTA reads as the primary action
-  - typography and borders are comfortable at a glance; no tiny controls, no cramped packing
 tests: [ui02r2a2,ui02r2,ui02r1,ui02,viewmodel-ui,layout-audit,wxss-compat-audit,fixture-freshness,typecheck]

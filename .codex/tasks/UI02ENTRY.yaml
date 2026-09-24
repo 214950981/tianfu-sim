@@ -1,0 +1,38 @@
+id: UI02ENTRY
+title: UI02ENTRY — 2.0 Entry Flow High-Fidelity Visual Slice
+phase: 2
+requiredContracts: [.codex/contracts/ui.ref,.codex/contracts/viewmodel.ref,.codex/contracts/page-state.ref,.codex/contracts/platform.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [docs/UIUX_RULES.md,docs/UI02_PREVIEW.md,docs/UI02R1_RESPONSIVE_LAYOUT.md,.codex/PAGE_STATE_MAP.yaml,tools/ui02-preview-fixtures.mjs,server/src/viewmodel.ts,miniprogram/pages/v2-preview/v2-preview.js,miniprogram/pages/v2-preview/v2-preview.wxml,miniprogram/pages/v2-preview/v2-preview.wxss,tests/ui02r2a2.test.mjs]
+allowedScope:
+  - extend the accepted 2.0 dev preview visual system to the pre-run flow START -> MODE_SELECT -> DESTINY_OFFER -> RUN_OPENING without changing gameplay authority or starting UI03 live wiring
+  - reuse the accepted UI02R2A2 paper ink cinnabar restrained-dark-gold visual language, spacing rhythm, responsive safe-area policy and game-like grouped-surface treatment so the entry flow and RUN_HOME feel like one product
+  - START is a one-screen title/identity surface with a single obvious primary entry action and restrained secondary information; it may use the project core line already present in docs but must not invent lore or gameplay promises
+  - MODE_SELECT is one-screen and only presents modes/capabilities already supported by the UI contract; capability-disabled entries stay hidden or clearly unavailable according to the existing contract, and no new game mode may be invented
+  - DESTINY_OFFER must be generated from the real public server offer projection produced by generateServerDestinyOffer plus ServerViewModelBuilder; render the public candidate information only and never expose rootSeed RNG hidden weights or unrevealed rule data
+  - DESTINY_OFFER should feel like a premium choice screen with clear candidate hierarchy, comparison readability and a single selected/confirm affordance, while remaining a visual preview with no duplicate rules engine
+  - RUN_OPENING is a short one-screen transition/summary surface using only already-public selected profile/run information and a clear enter-RUN_HOME affordance; no local START_RUN outcome or server mutation is allowed in this visual task
+  - extend the dev preview tabs or equivalent dev-only preview mechanism so all four entry states plus the accepted in-life states can be reviewed without changing the production default route
+  - keep all entry screens usable on the same portrait baseline and representative viewport matrix used by UI02R1; no page-level document scroll on START MODE_SELECT DESTINY_OFFER or RUN_OPENING
+  - keep the floating debug layer subordinate and out of product layout flow
+  - extend the existing preview fixture generator rather than hand-copying a second gameplay truth; any new generated fixture artifact must remain reproducible and public-only
+  - add dedicated tests/ui02entry.test.mjs and only the targeted UI fast-lane verification listed for this task; do not run full npm regression during visual iteration unless a forbidden/shared gameplay layer is touched
+  - update docs/UI02_PREVIEW.md with entry-flow preview instructions and manual visual checklist
+  - .codex/control/LAST_RESULT.yaml task result
+forbiddenScope: [Core-gameplay-rule-changes,Content-gameplay-changes,Director-changes,Cause-semantics,Progression-changes,Risk-resolution-changes,Build-or-NPC-rule-changes,server-rule-or-viewmodel-semantics-change,wechat-shell-live-controller-wiring,application-ui-live-controller-wiring,duplicate-destiny-generation,client-side-RNG,client-side-offer-eligibility,hidden-seed-or-weight-projection,narrative-content-i18n,invented-game-mode,invented-lore-or-fake-benefit-copy,legacy-1.0-start-game-rank-rewrite,replace-default-route,real-cloud-backend-deployment,UI03-implementation,UI04,CHAL01,ITEM01,TECH01,SECT01,WORLD01,new-heavy-test-dependency,source-branch-push]
+accept:
+  - START-MODE_SELECT-DESTINY_OFFER-RUN_OPENING-are-all-visually-reviewable-in-the-2.0-dev-preview
+  - the-four-entry-screens-share-the-accepted-UI02R2A2-visual-system-and-feel-like-one-product-with-RUN_HOME
+  - each-entry-screen-is-one-screen-on-the-supported-portrait-baseline-with-safe-area-respected-and-no-page-level-document-scroll
+  - START-has-one-clear-primary-entry-action-without-neon-legacy-dashboard-styling
+  - MODE_SELECT-does-not-invent-modes-and-capability-disabled-entries-follow-the-existing-contract
+  - DESTINY_OFFER-uses-real-generated-public-offer-data-and-exposes-no-rootSeed-RNG-hidden-weights-or-rule-internals
+  - DESTINY_OFFER-candidates-are-readable-comparable-and-have-a-clear-visual-selected-state-without-locally-deciding-outcome
+  - RUN_OPENING-uses-only-public-selected-run-information-and-does-not-mutate-or-resolve-gameplay
+  - default-route-and-legacy-1.0-pages-remain-byte-equivalent-to-task-base
+  - accepted-RUN_HOME-EVENT-SPECIAL_NODE-LIFE_ARCHIVE-visuals-and-one-screen-contract-do-not-regress
+  - dedicated-ui02entry-ui02r2a2-ui02r2-ui02r1-ui02-tests-green
+  - layout-audit-wxss-compat-audit-fixture-freshness-viewmodel-ui-and-typecheck-green
+  - LAST_RESULT-explicitly-records-that-full-npm-regression-is-deferred-until-human-visual-acceptance-before-final-merge
+tests: [ui02entry,ui02r2a2,ui02r2,ui02r1,ui02,viewmodel-ui,layout-audit,wxss-compat-audit,fixture-freshness,typecheck]

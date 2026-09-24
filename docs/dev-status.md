@@ -9,8 +9,8 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `ba648f144b9a0cc3f147ec30d9afecf8e0e541ba`
-- reviewedDate: `2026-09-23`
+- lastReviewedCommit: `bb8c899d2076574d1e6114745c68248d4189f5b0`
+- reviewedDate: `2026-09-24`
 
 不要修改 `main` / 1.0，除非未来任务明确要求。
 
@@ -58,6 +58,9 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - LOOPFIX02C: PASS
 - PLAYCHECK02: PASS
 - UI02: PASS
+- UI02R1: PASS
+- UI02R2: PASS
+- UI02R2A2: PASS（人工视觉验收通过）
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
 
@@ -270,32 +273,21 @@ Full regression：264 / 264 PASS；全部 reported audits PASS。
 
 ## Next
 
-Latest completed: `UI02 PASS`。
+Latest accepted: `UI02R2A2 PASS`，commit `bb8c899d2076574d1e6114745c68248d4189f5b0`。
 
-人工预览新增发现：当前 UI02 的 RUN_HOME 虽然视觉与数据边界正确，但信息结构按 section 纵向铺开，在普通手机内容视口需要页面级下滑；开发预览 tabs 额外占高，但不是根因。
+RUN_HOME 的 2.0 视觉基线已人工验收：一屏结构、身份区、修行状态、眼下要务、突破主 CTA 与四行动操作组均可作为后续页面的统一视觉系统。
 
-UI03 已暂停且尚未开工。下一任务改为：
+下一任务：`UI02ENTRY` — 2.0 Entry Flow High-Fidelity Visual Slice。
 
-`UI02R1` — One-Screen Responsive Gameplay Layout。
+目标：
 
-核心要求：
-
-- RUN_HOME 在支持的常见竖屏内容视口内不依赖页面级纵向滚动。
-- 支持基线：windowWidth >= 320 CSS px、windowHeight >= 500 CSS px。
-- 代表矩阵：320×500、360×560、375×603、390×750、414×820、430×850。
-- 四行动始终首屏可见；available=true 的突破也首屏可达。
-- 不能靠缩小字体/按钮硬塞，核心触控目标约 44 CSS px。
-- Build / Cause / People 主页做摘要，完整公开详情进入只读二级 overlay / side view。
-- EVENT / SPECIAL_NODE 页面不做纵向文档，长内容只在受控区域内部滚动。
-- LIFE_ARCHIVE 保持可滚动。
-- dev tabs / debug 信息脱离产品文档流，默认收起或悬浮。
-- 底部操作区考虑 Home Indicator / safe-area。
-- 长名称、长 labelKey、多条件、多人物、多 Cause、突破可用/不可用、capability 开关都要做布局压力考虑。
-- 不修改 server projection、shell intents、Core/Content 或旧 1.0 页面。
-
-详细要求已冻结在 `docs/UI02R1_RESPONSIVE_LAYOUT.md`。
-
-UI02R1 自动验收通过后，还需要用户在微信开发者工具做一次肉眼视觉确认；随后才解锁 UI03。
+- 补齐尚未高保真实现的 `START -> MODE_SELECT -> DESTINY_OFFER -> RUN_OPENING`。
+- 与已验收 RUN_HOME 使用同一套宣纸 / 墨 / 朱砂 / 克制暗金视觉系统。
+- START 要有真正的游戏启动感，但不复制旧 1.0 黑金霓虹页面。
+- DESTINY_OFFER 必须使用真实 server/public offer projection，不在客户端重新生成或计算命格。
+- 四个入口页均按手机竖屏一屏设计，沿用既有 safe-area / responsive 原则。
+- 本轮继续使用 UI_FAST_LANE，只跑 targeted UI tests/audits；人工视觉通过后再统一跑一次完整 regression。
+- UI03 继续 blocked，不提前做 live transport/controller wiring。
 
 ## 新 Codex 会话 / 账号接手步骤
 
