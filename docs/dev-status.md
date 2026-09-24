@@ -9,7 +9,7 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `bb8c899d2076574d1e6114745c68248d4189f5b0`
+- lastReviewedCommit: `1ecc9c9c1515c1dabe1eef784f7cd7e9fae6ec82`
 - reviewedDate: `2026-09-24`
 
 不要修改 `main` / 1.0，除非未来任务明确要求。
@@ -61,6 +61,9 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - UI02R1: PASS
 - UI02R2: PASS
 - UI02R2A2: PASS（人工视觉验收通过）
+- UI02ENTRY: PASS（人工视觉验收通过）
+- UI02COPY: PASS（人工视觉验收通过）
+- UI02FINAL: PASS（Controller 已验收；完整回归与 merge-readiness audit 通过）
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
 
@@ -273,22 +276,24 @@ Full regression：264 / 264 PASS；全部 reported audits PASS。
 
 ## Next
 
-Latest accepted: `UI02R2A2 PASS`，commit `bb8c899d2076574d1e6114745c68248d4189f5b0`。
+Latest accepted: `UI02FINAL PASS`，result commit `1ecc9c9c1515c1dabe1eef784f7cd7e9fae6ec82`。
 
-RUN_HOME 的 2.0 视觉基线已人工验收：一屏结构、身份区、修行状态、眼下要务、突破主 CTA 与四行动操作组均可作为后续页面的统一视觉系统。
+UI02 累积视觉链已完成最终完整回归并由 Controller 验收，已安全 fast-forward 到 `dev/tianfu-2.0`。完整回归 375 项中 372 PASS；其余 3 项为已在 untouched base 复现、且底层 direct tools 独立通过的 nested-process EBUSY sandbox 环境噪声。UI02FINAL 按任务约定未运行 600-run simulation，因为 UI 链没有 gameplay/balance 改动。
 
-下一任务：`UI02ENTRY` — 2.0 Entry Flow High-Fidelity Visual Slice。
+下一任务：`UI03` — WeChat 2.0 Live Session Controller / E2E Wiring。
 
 目标：
 
-- 补齐尚未高保真实现的 `START -> MODE_SELECT -> DESTINY_OFFER -> RUN_OPENING`。
-- 与已验收 RUN_HOME 使用同一套宣纸 / 墨 / 朱砂 / 克制暗金视觉系统。
-- START 要有真正的游戏启动感，但不复制旧 1.0 黑金霓虹页面。
-- DESTINY_OFFER 必须使用真实 server/public offer projection，不在客户端重新生成或计算命格。
-- 四个入口页均按手机竖屏一屏设计，沿用既有 safe-area / responsive 原则。
-- 本轮继续使用 UI_FAST_LANE，只跑 targeted UI tests/audits；人工视觉通过后再统一跑一次完整 regression。
-- UI03 继续 blocked，不提前做 live transport/controller wiring。
+- 将已验收 UI02 presentation layer 接到可复用 live-session controller。
+- 客户端只做 session / presentation orchestration，不获得 gameplay authority。
+- 复用 CommandSubmissionController，保留 commandId / retry / reconfirm / STATE_CONFLICT 语义的单一所有权。
+- 打通 RUN_HOME → EVENT / SPECIAL_NODE → authoritative refresh，以及 server-projected breakthrough。
+- LIFE_ARCHIVE 保持本地只读侧页，不修改 gameplay state。
+- 增加真实 CommandGateway + transport + ServerViewModelBuilder 的 E2E 证据。
+- 不改 Core gameplay、Director、Content、legacy 1.0 页面或默认路由。
+- WorkBuddy 不得自行开始 UI04 或任何后续任务。
 
+Tooling 注意事项已沉淀到 `.codex/control/TOOLING_RUNBOOK.md`。WorkBuddy 后续发现可复用的环境/工具问题时，必须写入 Git 的 `LAST_RESULT.toolingObservations`，不能只留在聊天窗口.
 ## 新 Codex 会话 / 账号接手步骤
 
 1. 确认当前 branch = `dev/tianfu-2.0`。

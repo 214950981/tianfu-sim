@@ -3,7 +3,7 @@ title: UI03 — WeChat 2.0 Live Session Controller / E2E Wiring
 phase: 2
 requiredContracts: [.codex/contracts/ui.ref,.codex/contracts/viewmodel.ref,.codex/contracts/page-state.ref,.codex/contracts/platform.ref,.codex/contracts/command.ref,.codex/contracts/crosslayer.ref]
 optionalContracts: [.codex/contracts/qa.yaml]
-blockers: [UI02FINAL]
+blockers: []
 inspect_first: [docs/UI02R1_RESPONSIVE_LAYOUT.md,packages/application-ui/src/index.ts,packages/wechat-shell/src/index.ts,packages/platform-contract/src/index.ts,server/src/command-gateway.ts,server/src/viewmodel.ts,tests/viewmodel-ui.test.mjs,tests/ui02.test.mjs,docs/UI02_PREVIEW.md,miniprogram/pages/v2-preview/v2-preview.js]
 allowedScope:
   - wire the accepted UI02 presentation layer to a reusable live-session controller that consumes ApplicationTransport and PlatformStorage without introducing client-side gameplay authority

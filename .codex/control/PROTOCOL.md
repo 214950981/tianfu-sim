@@ -1,4 +1,4 @@
-# Tianfu Agent Handoff Protocol v1.1
+# Tianfu Agent Handoff Protocol v1.2
 
 This directory is the Git-based handoff bus between the controller (ChatGPT) and the implementer (WorkBuddy).
 
@@ -90,6 +90,8 @@ When synthetic-tree fallback is used, also include:
 
 Rules:
 - baseCommit is the remote source-branch HEAD observed at task start.
+- Reusable environment/tooling findings MUST be written into Git under `toolingObservations` in LAST_RESULT; chat-only observations are not durable evidence.
+- When an observation is likely to affect later tasks (credentials, proxy behavior, worktree pollution, sandbox limitations, verified workarounds), the implementer should point to `.codex/control/TOOLING_RUNBOOK.md`. The controller decides whether to promote/update the runbook after review.
 - changedFiles lists actual task changes, excluding generated temp files.
 - tests/gates must report real executed results, never planned results.
 - scope.coreChanged / contractsChanged / directorChanged / contentChanged must be explicit booleans.
@@ -114,6 +116,7 @@ If accepted from synthetic-tree fallback:
 
 After acceptance:
 - controller dispatches the next task by updating NEXT_TASK on source;
+- controller reviews `toolingObservations` and promotes durable, cross-task findings into `.codex/control/TOOLING_RUNBOOK.md` when useful;
 - workBranch may be retained temporarily for audit.
 
 If rejected or blocked:
