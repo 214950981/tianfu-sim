@@ -1,4 +1,6 @@
-import type { CommandResult, GameCommand } from "../../core/src/index.ts";
+// UI04A: even the *type-only* command surface is taken from the client-safe wire boundary, so the
+// shell package has no import of any kind — runtime or type — into gameplay Core.
+import type { CommandResult, GameCommand } from "../../command-wire/src/index.ts";
 import { CommandSubmissionController, RetryUnavailableError, SubmissionLockedError, canOrdinaryBack, type SubmissionSnapshot } from "../../application-ui/src/index.ts";
 import type {
   ApplicationTransport,

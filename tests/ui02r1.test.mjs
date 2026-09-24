@@ -75,6 +75,17 @@ const readJson = (relative) => JSON.parse(read(relative));
  * Every other pinned tree — 1.0 pages, Core, Content, application-ui, the preview generator — is
  * untouched, which is what still makes this digest a real scope guard rather than a rubber stamp.
  *
+ * UI04A is such a task for THREE entries, all updated on purpose and disclosed in its LAST_RESULT.
+ * It extracts the command/envelope wire codec out of gameplay Core into the dependency-free
+ * `packages/command-wire` boundary, so the client runtime stops pulling the Core barrel into a
+ * miniprogram bundle:
+ *   - `packages/core/src` — only `command.ts` changed, into a compatibility re-export of the wire
+ *     module (the file list is unchanged);
+ *   - `packages/application-ui/src` — its runtime import now points at `command-wire`;
+ *   - `packages/wechat-shell/src` — even its type-only command import now points at `command-wire`.
+ * `packages/platform-contract/src`, `server/src`, Content, the 1.0 pages and the preview surface are
+ * byte-identical, which is the evidence that no gameplay, ViewModel or presentation code moved.
+ *
  * `files` is the exact base file list (derived from `git ls-tree -r HEAD`). Pinning the list, not just
  * a count, is what makes the digest fail closed on any addition inside a pinned tree while still
  * tolerating the DevTools scratch files listed in DEVTOOLS_ARTIFACTS.
@@ -139,7 +150,7 @@ const BASE_TREE = {
       "packages/core/src/sha256.ts",
       "packages/core/src/state.ts"
     ],
-    digest: "247b0b9e650aab642824491fc36186fbef552e62dddf9a75cc0ebeaaa92ef80d"
+    digest: "a385c7e731514d002a7e52ae21d1720a8eed6d31eec26b716e63c8f5be7645cf"
   },
   "packages/content/src": {
     files: [
@@ -166,11 +177,11 @@ const BASE_TREE = {
   },
   "packages/wechat-shell/src": {
     files: ["packages/wechat-shell/src/index.ts"],
-    digest: "6b981fe17e7cf9d5d99183ed512ecac471f44d1189b02a99cb7b2465975ba227"
+    digest: "7977af8d4581fd92dbce318b390cc20654548ee374d1be9f59f0c5c33b544830"
   },
   "packages/application-ui/src": {
     files: ["packages/application-ui/src/index.ts"],
-    digest: "9548718c649769adcf8b825115c93657ee902a03883dfc2076a528f0688cabd9"
+    digest: "d00f4147872bd73d3a54e182570d422da2b30ff8202d0ca5c29b9ade4457580b"
   },
   "packages/platform-contract/src": {
     files: ["packages/platform-contract/src/index.ts"],

@@ -23,12 +23,19 @@ const readJson = (relative) => JSON.parse(read(relative));
  * can prove, without needing git at test time, that legacy 1.0 gameplay and Core/Content gameplay
  * sources are byte-equivalent to the base. They are deliberately base-specific: a later task that is
  * legitimately allowed to change those trees must update them on purpose.
+ *
+ * UI04A updated `packages/core/src` on purpose and discloses it here: it moved the command/envelope
+ * wire codec out of gameplay Core into the dependency-free `packages/command-wire` boundary, leaving
+ * `packages/core/src/command.ts` as a compatibility re-export of that module. Nothing else in the
+ * tree changed — no reducer, RNG, Director, Cause, Progression, Risk, Build or NPC source moved, and
+ * `packages/content/src` plus the 1.0 pages are still byte-identical, which is what this digest is
+ * really guarding.
  */
 const BASE_TREE_DIGESTS = {
   "miniprogram/pages/start": "60e0cc693eb8849d74a23b56cca97b7a154e18ad2167013109efb534f1dfbcba",
   "miniprogram/pages/game": "c04c015e9ea8e37c3ea9d817377cf010a07e618a35d7b84a00f61b816d991cfe",
   "miniprogram/pages/rank": "3171b3fbbb94368e7ed3df556b1cfb58379911e1bf2d617e19554c37c5c0d605",
-  "packages/core/src": "247b0b9e650aab642824491fc36186fbef552e62dddf9a75cc0ebeaaa92ef80d",
+  "packages/core/src": "a385c7e731514d002a7e52ae21d1720a8eed6d31eec26b716e63c8f5be7645cf",
   "packages/content/src": "3a290c9b6fbf03969990857544709acebaea57d22fe5f864fa9c197b65bfec67",
   "miniprogram/app.wxss": "50d3287504a6112527997fbbf85678724c457bb90513467609895c936da370fe"
 };

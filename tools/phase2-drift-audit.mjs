@@ -3,10 +3,19 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { loadTaskContext } from "../.codex/context-lib.mjs";
 
+/**
+ * Frozen-semantic-marker drift audit.
+ *
+ * UI04A note: the PROG01 marker `ATTEMPT_BREAKTHROUGH` moved with the command/envelope wire codec
+ * from `packages/core/src/command.ts` to the client-safe `packages/command-wire` boundary, and
+ * `packages/core/src/command.ts` is now a pure re-export of that module. The check follows the
+ * marker to its new home rather than being dropped, so it still fails if the protocol loses the
+ * breakthrough command.
+ */
 const SPECS = {
   PROG01: {
     contracts: ["progression.ref", "state.ref", "command.ref", "event.ref"],
-    checks: [["packages/core/src/progression.ts", ["aggregateProgressionModifiers", "applyRetreatProgression", "resolveBreakthrough"]], ["packages/content/src/progression-v1.ts", ["PROGRESSION_V1"]], ["packages/core/src/state.ts", ["cultivationBps", "realmFoundationBps", "innateProfile"]], ["packages/core/src/command.ts", ["ATTEMPT_BREAKTHROUGH"]], ["tests/progression.test.mjs", ["combo-audit", "replays to identical hash"]]]
+    checks: [["packages/core/src/progression.ts", ["aggregateProgressionModifiers", "applyRetreatProgression", "resolveBreakthrough"]], ["packages/content/src/progression-v1.ts", ["PROGRESSION_V1"]], ["packages/core/src/state.ts", ["cultivationBps", "realmFoundationBps", "innateProfile"]], ["packages/command-wire/src/index.ts", ["ATTEMPT_BREAKTHROUGH"]], ["tests/progression.test.mjs", ["combo-audit", "replays to identical hash"]]]
   },
   RISK01: {
     contracts: ["risk.ref", "event.ref", "state.ref", "viewmodel.ref"],

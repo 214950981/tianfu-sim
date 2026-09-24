@@ -1,4 +1,7 @@
-import { parseCommandEnvelope, serializeCommandEnvelope, type CommandEnvelope, type CommandResult, type GameCommand } from "../../core/src/index.ts";
+// UI04A: the command/envelope wire codec is imported from the client-safe `command-wire` boundary,
+// never from the gameplay Core barrel. This is the client runtime's *only* source of command
+// validation and canonical serialization, and `command-wire` itself has no imports at all.
+import { parseCommandEnvelope, serializeCommandEnvelope, type CommandEnvelope, type CommandResult, type GameCommand } from "../../command-wire/src/index.ts";
 import type { ApplicationTransport, InteractionState, PlatformStorage, PublicViewModel } from "../../platform-contract/src/index.ts";
 
 export class SubmissionLockedError extends Error { constructor() { super("command submission is locked"); this.name = "SubmissionLockedError"; } }
