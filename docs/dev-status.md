@@ -9,7 +9,7 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `09213468c2de5fa7c74b026b6fb45fa40154872a`
+- lastReviewedCommit: `d75201b87a9108a2671d91a52f8be6ff75145da9`
 - reviewedDate: `2026-09-24`
 
 不要修改 `main` / 1.0，除非未来任务明确要求。
@@ -65,6 +65,7 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - UI02COPY: PASS（人工视觉验收通过）
 - UI02FINAL: PASS（Controller 已验收；完整回归与 merge-readiness audit 通过）
 - UI03: PASS（Controller 已验收；live-session controller / authoritative E2E wiring 通过）
+- UI04A: PASS（Controller 已验收；client-safe command wire boundary 与 runtime dependency audit 通过）
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
 
@@ -277,23 +278,24 @@ Full regression：264 / 264 PASS；全部 reported audits PASS。
 
 ## Next
 
-Latest accepted: `UI03 PASS`，result commit `09213468c2de5fa7c74b026b6fb45fa40154872a`。
+Latest accepted: `UI04A PASS`，result commit `d75201b87a9108a2671d91a52f8be6ff75145da9`。
 
-UI03 已将 2.0 presentation/session orchestration 接到真实 `CommandGateway + GatewayApplicationTransport + ServerViewModelBuilder` 的 E2E 路径，并保持 `CommandSubmissionController` 对 commandId / pending / retry / STATE_CONFLICT reconfirmation 的单一所有权。Controller 同步接受了 UI03 的最小公开投影补充：`CurrentInteraction.eventId?`，并已把 `viewmodel.ref` 对齐，客户端不得从 interactionId/titleKey 猜 eventId。
+UI04A 已把 command/envelope wire codec 从 gameplay Core 搬到 dependency-free 的 `packages/command-wire`，Core 仅保留兼容 re-export；`application-ui` / `wechat-shell` 的运行时闭包已不再触达 Core / Content / server。专项测试 16/16 PASS，aggregate 409 项中 406 PASS，其余 3 项按本轮 untouched-base + direct-tool 双重证明认定为 sandbox nested-process 环境噪声。
 
-在真正接入 WeChat 页面之前，先处理一个运行时边界风险：`CommandSubmissionController` 目前通过 Core barrel 引入命令信封解析/序列化。测试环境可用，但真实小程序打包时不应把 gameplay Core/reducer 依赖链带进 client bundle。
+下一步先解决微信真实打包边界，而不是直接上云：当前 `project.config.json` 的 `miniprogramRoot` 是 `miniprogram/`，已验收控制器仍位于 root 外的 TypeScript packages，真实小程序页面不能把“源码路径可 import”当成“微信包内可运行”。
 
-下一任务：`UI04A` — Client-Safe Command Wire Boundary。
+下一任务：`UI04B` — WeChat Client Runtime Artifact / Packager Bridge。
 
 目标：
-- 把客户端确实需要的 command/envelope wire codec 与类型放到 gameplay Core 之外的低层、client-safe 边界。
-- `packages/application-ui` / `packages/wechat-shell` 的运行时依赖图不得再经过 Core gameplay barrel、reducer、RNG、Director、Content 或 server。
-- 保持现有命令形状、验证、canonical serialization、retry/idempotency 语义完全不变；Core 可通过兼容 re-export 保持现有调用方不破裂。
-- 增加机器可执行的 client-runtime dependency audit 与 dedicated tests。
-- 本任务不接真实 wx.request / 云函数、不改默认路由、不做页面接线；这些放到后续 UI04B+。
-- 不跑 600-run simulation，除非 WorkBuddy 发现不得不触碰 gameplay/balance 代码；若需要则应 BLOCKED 等 Controller 决策。
+- 从已验收的 client-safe runtime 源码生成确定性的 WeChat 可加载 JavaScript 产物，并把最终运行时闭包放进 `miniprogram/` 内。
+- 不手抄第二套 Controller / codec；生成物必须来自 command-wire + application-ui + wechat-shell 的单一源码。
+- 生成物不得包含 Core / Content / server，也不得出现 Node-only runtime dependency。
+- 提供 freshness / reproducibility / runtime-closure audit，防止提交的生成物与源码漂移。
+- 允许在现有 `v2-preview` 中增加一个无玩法副作用的静态 require / runtime smoke seam，用来证明微信 packager 能看见该模块；不得把 fixture preview 改成 live gameplay。
+- 本轮不接 `wx.request`、不设计 2.0 云端持久化、不部署 cloudfunction、不改默认路由、不碰旧 1.0 页面；真实 transport/page session 接线留给 UI04C。
+- 不跑 600-run simulation，除非意外触碰 gameplay/balance；若需要触碰则 BLOCKED 等 Controller 决策。
 
-WorkBuddy 仍必须把任何可复用 tooling/environment 发现写进 `LAST_RESULT.toolingObservations`。
+WorkBuddy 继续必须把可复用 tooling/environment 发现写入 `LAST_RESULT.toolingObservations`。
 ## 新 Codex 会话 / 账号接手步骤
 
 1. 确认当前 branch = `dev/tianfu-2.0`。

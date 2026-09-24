@@ -1,11 +1,11 @@
 version: 1
 status: READY
 attempt: 1
-taskId: UI04A
-title: UI04A — Client-Safe Command Wire Boundary
-taskDefinition: .codex/tasks/UI04A.yaml
+taskId: UI04B
+title: UI04B — WeChat Client Runtime Artifact / Packager Bridge
+taskDefinition: .codex/tasks/UI04B.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-UI04A
+workBranch: wb-UI04B
 worktreeRequired: true
 allowSyntheticTreeBase: true
 basePolicy: remote-source-head-at-task-start
@@ -16,26 +16,27 @@ execution:
   updateSourceBranch: false
   startNextTask: false
 controllerReview:
-  previousTask: UI03
+  previousTask: UI04A
   previousStatus: ACCEPTED
-  acceptedResultCommit: 09213468c2de5fa7c74b026b6fb45fa40154872a
+  acceptedResultCommit: d75201b87a9108a2671d91a52f8be6ff75145da9
   acceptanceBasis:
-    - wb-UI03 is a real two-commit descendant of the unchanged dispatched dev head
-    - dedicated UI03 18/18 and all required UI/UI gateway reducer gates passed
-    - aggregate regression added exactly the 18 UI03 tests and had only the same three EBUSY failures proven on untouched base with direct tools green
-    - WeChatRunController keeps gameplay authority server-side and reuses CommandSubmissionController for envelope retry and reconfirmation semantics
-    - the additive authoritative CurrentInteraction.eventId projection is necessary for CHOOSE_EVENT_OPTION and has been aligned into viewmodel.ref by the Controller
+    - wb-UI04A is a real single-commit descendant of the unchanged dispatched dev head
+    - command-wire is the single dependency-free owner of command/envelope validation and canonical serialization while Core is only a compatibility re-export
+    - application-ui and wechat-shell runtime closures no longer reach Core Content or server and the audit has a real forbidden-edge negative control
+    - canonical bytes and validation/error behaviour match the untouched base and UI03 retry restore STATE_CONFLICT semantics remain green
+    - aggregate regression added exactly 16 UI04A tests and had only the same three nested-process sandbox failures re-proven on untouched base with direct tools green
 controllerDecision:
-  strategy: harden-client-runtime-boundary-before-page-wiring
-  rationale: UI03 is accepted, but the inherited CommandSubmissionController runtime import through the Core barrel is not an acceptable packaging boundary for a real miniprogram client; extract the wire codec first, then wire pages and transport in UI04B
+  strategy: prove-WeChat-packaging-boundary-before-live-transport
+  rationale: miniprogramRoot is miniprogram/ while the accepted controller sources are external TypeScript packages; produce a deterministic in-root client runtime artifact before adding network/backend complexity
 controllerIntent:
   mode: STANDARD_IMPLEMENTATION
-  goal: make the UI03 controller dependency closure client-safe without changing any gameplay or command semantics
-  postTask: controller reviews wb-UI04A; do not start UI04B or any page/transport work yourself
+  goal: make the accepted UI03/UI04A client controller physically loadable by the WeChat package without duplicating logic or importing gameplay authority
+  postTask: controller reviews wb-UI04B; do not start UI04C or any live transport/cloud/page session work yourself
 notes:
   - Read .codex/control/TOOLING_RUNBOOK.md before execution.
   - Reusable tooling/environment findings must be committed to LAST_RESULT.toolingObservations; chat-only observations are not durable evidence.
-  - Do not solve this by copying a second command validator into the client. There must remain one protocol definition/validation source of truth.
-  - Do not solve this merely by pointing imports at packages/core/src/command.ts if that still leaves the production client runtime coupled to gameplay Core. The accepted end state is a lower-level client-safe wire boundary outside gameplay Core, with compatibility maintained for Core/server callers.
-  - No miniprogram page wiring, wx.request, cloudfunction deployment or default-route change in UI04A.
-  - If a clean acyclic extraction would require gameplay semantic changes, stop BLOCKED and report the architecture conflict instead of widening scope.
+  - Do not hand-copy the controller or command codec into miniprogram. The artifact must be generated from the accepted source modules.
+  - Do not add esbuild webpack rollup or another new bundler dependency just for this task. Use existing TypeScript/dev tooling or a deterministic repository-local generation approach.
+  - A static literal require from v2-preview is allowed only as a side-effect-free packager visibility seam; the page must remain fixture-driven and visually unchanged.
+  - No wx.request, 2.0 wx.cloud.callFunction, cloud persistence, deployment, default-route switch or production session wiring in UI04B.
+  - If making a WeChat-loadable artifact requires gameplay or server semantic changes, stop BLOCKED and report the exact packaging conflict.

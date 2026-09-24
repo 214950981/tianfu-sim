@@ -81,9 +81,13 @@ node tools/ui04a-client-runtime-audit.mjs --root <file>
 - `npm run test:ui03` / `test:command` / server-gateway / reducer / replay / viewmodel-ui 与聚合
   `npm test` 必须保持通过（沙箱 nested-process EBUSY 按 TOOLING_RUNBOOK 的"双重证明标准"处理）。
 
-## 六、仍然属于 UI04B（UI04A 不做）
+## 六、后续 UI04 系列（UI04A 不做）
 
 - 真实 WeChat transport（`wx.request` / 云函数端点 / 生产云部署）与 `createRunOffer` 接线；
 - 把 `pages/v2-preview/v2-preview`（或新的 2.0 生产页）接到 `WeChatRunController`、替换默认路由；
 - 终局链路 `ENDING → LIFE_BOOK → REBIRTH_RESULT → NEXT_LIFE` 编排；
 - 恢复/超时的产品级交互（弹窗、toast、重试文案）。
+
+## Controller acceptance note
+
+UI04A was accepted. The next task is `UI04B`, narrowed to producing and verifying a WeChat-packager-visible client runtime artifact under `miniprogram/`. Real transport/session wiring is deferred to `UI04C` so packaging and backend authority are not debugged at the same time.

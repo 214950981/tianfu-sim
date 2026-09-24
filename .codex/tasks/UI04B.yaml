@@ -1,0 +1,33 @@
+id: UI04B
+title: UI04B — WeChat Client Runtime Artifact / Packager Bridge
+phase: 2
+requiredContracts: [.codex/contracts/command.ref,.codex/contracts/platform.ref,.codex/contracts/ui.ref,.codex/contracts/viewmodel.ref,.codex/contracts/crosslayer.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [project.config.json,tsconfig.json,package.json,packages/command-wire/src/index.ts,packages/application-ui/src/index.ts,packages/wechat-shell/src/index.ts,tools/ui04a-client-runtime-audit.mjs,docs/UI04A_CLIENT_WIRE_BOUNDARY.md,miniprogram/pages/v2-preview/v2-preview.js,tests/ui04a.test.mjs]
+allowedScope:
+  - create a deterministic build/generation path that emits the accepted client-safe runtime closure needed by WeChatRunController into a committed path under miniprogram so the WeChat packager can load JavaScript without reaching outside miniprogramRoot
+  - generated runtime must come from the accepted source modules rather than a handwritten duplicate; command-wire application-ui and wechat-shell remain the source of truth
+  - use only existing repository/dev tooling; do not add a new external runtime dependency or bundler dependency
+  - emit a bounded runtime artifact/facade exposing only the client orchestration API needed by a later live page, such as WeChatRunController createWeChatPlatformStorage and related public errors; do not expose gameplay Core
+  - keep the generated runtime graph entirely inside miniprogram and free of packages/core packages/content server node builtins filesystem process child_process or other Node-only runtime dependencies
+  - add a reproducible freshness check that fails when accepted source files or generated runtime bytes drift; generation must be deterministic on repeated runs
+  - extend the UI04A dependency audit or add a generated-artifact audit that proves the committed artifact contains/reaches only the approved client runtime closure and has a negative control
+  - add a Node-executable smoke that loads the generated CommonJS-compatible artifact and proves the expected public API exists without executing wx or server code
+  - optionally add a static literal require from the existing v2-preview dev-only page to a side-effect-free runtime smoke/facade so the module is visible to the WeChat packager; this must not change player-facing layout state or convert fixture navigation into live gameplay
+  - document the build command artifact ownership packager seam and what remains for UI04C
+  - add dedicated tests and package script registration plus .codex/control/LAST_RESULT.yaml
+forbiddenScope: [handwritten-second-controller-or-codec,gameplay-Core-runtime-in-client-artifact,Content-runtime-in-client-artifact,server-runtime-in-client-artifact,node-runtime-dependency-in-miniprogram-artifact,new-external-bundler-or-runtime-dependency,wx-request,wx-cloud-callFunction-for-2-0,cloudfunction-2-0-runtime,persistence-design,production-cloud-deployment,live-session-page-wiring,fixture-preview-to-live-gameplay-conversion,default-route-change,legacy-1.0-page-change,Core-rule-change,reducer-behavior-change,RNG-change,Director-change,Cause-semantics,Progression-change,Risk-resolution-change,Build-or-NPC-rule-change,Content-change,server-gateway-semantics-change,server-viewmodel-semantics-change,UI04C,ENDING-LIFE_BOOK-REBIRTH_RESULT-NEXT_LIFE-orchestration,source-branch-push]
+accept:
+  - committed-WeChat-runtime-artifact-lives-under-miniprogramRoot-and-is-produced-from-the-accepted-client-safe-source-modules-not-hand-copied
+  - generation-is-deterministic-and-a-freshness-check-detects-source-or-artifact-drift
+  - generated-runtime-has-no-runtime-edge-or-bundled-copy-of-Core-Content-server-or-Node-only-modules
+  - generated-runtime-loads-in-a-Node-CommonJS-smoke-and-exposes-the-bounded-controller-storage-adapter-surface-needed-by-UI04C
+  - WeChat-packager-seam-uses-static-literal-require-if-v2-preview-is-touched-and-has-no-product-or-gameplay-side-effect
+  - generated-artifact-audit-is-green-and-has-a-negative-control
+  - ui04b-ui04a-ui03-ui02-and-viewmodel-ui-tests-are-green-except-only-proven-sandbox-nested-process-environment-noise-under-the-runbook-two-proof-standard
+  - aggregate-npm-test-is-green-or-has-only-proven-base-reproducible-nested-process-environment-failures-with-underlying-direct-tools-green
+  - typecheck-lint-content-lint-content01-lint-secret-scan-client-runtime-dependency-audit-green
+  - no-gameplay-content-server-semantics-live-transport-default-route-or-legacy-1-0-change
+  - no-600-run-simulation-is-required-when-gameplay-and-balance-code-remain-semantically-unchanged
+tests: [ui04b,ui04a,ui03,ui02,viewmodel-ui,full-npm-test,typecheck,lint,content-lint,content01-lint,secret-scan,client-runtime-dependency-audit,wechat-runtime-artifact-audit]

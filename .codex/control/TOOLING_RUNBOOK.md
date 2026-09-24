@@ -34,7 +34,7 @@ Operational rules:
 - do not assume a fixed proxy port;
 - read the current proxy from `HTTPS_PROXY`.
 
-Proxy ports observed so far include 18036, 23843 and 46226. The port is environment data, not configuration.
+Proxy ports observed so far include 18036, 23843, 46226 and 47905. The port is environment data, not configuration.
 
 ## WeChat DevTools worktree pollution
 
@@ -82,3 +82,29 @@ Run the suspect tests from that extracted tree. This is safer for multi-file tas
 ## Sandbox composite-command artefact
 
 A sandbox-level `decisionRecord missing actual resource subject` error may abort a long composite shell call before any command runs. When it appears with no command output, split the chain into single-purpose calls and retry the pieces before diagnosing repository state.
+
+## Testing CLI tools in this sandbox
+
+UI04A refined the nested-process failure pattern: child `node.exe` failures do not always contain the literal text `EBUSY`. Some tests surface only a null status or missing stderr because the spawn never completed.
+
+Operational rule:
+- classify nested-process failures by exact untouched-base reproduction plus underlying direct-tool success, not by matching the word `EBUSY`;
+- when adding a new audit/tool, prefer exporting a pure function and importing it directly from tests;
+- keep a direct-run guard in the CLI wrapper so importing the module does not set `process.exitCode`;
+- verify the actual CLI exit code separately from the shell.
+
+## Digest-pinned scope tests
+
+UI04A confirmed that legitimate refactors can invalidate old tree digests in tests outside the task's named list.
+After changing a pinned tree:
+- search the full `tests/` and `tools/` tree for the old digest or the pinned path;
+- update only pins whose underlying reviewed tree intentionally changed;
+- run the aggregate regression, not only task-targeted suites.
+
+## Frozen semantic marker audits
+
+If a frozen marker check points at a file that becomes a facade/re-export after a legitimate code move, re-point the marker to the new owning module and retain the check. Do not delete or weaken the audit simply to make it green.
+
+## Compatibility re-export proof
+
+When a module becomes a compatibility re-export, runtime object identity assertions are a cheap guard against accidentally creating a second implementation. Example: assert the compat export's validator/class/constant is `===` the source module binding.
