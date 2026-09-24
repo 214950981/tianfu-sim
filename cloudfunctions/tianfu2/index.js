@@ -119,6 +119,21 @@ exports.main = async (event) => {
       // The envelope is validated by the gateway; the host neither inspects nor rewrites it.
       return await serviceFor().sendCommand(data.command);
     }
+    if (operation === "advanceTerminal") {
+      // UI04E — terminal presentation transitions are NOT routed through CommandGateway (no reducer, no
+      // command log, no STATE_CONFLICT), so the host dispatches them straight to the live service.
+      // The service's terminal-flow module is the only owner of the exactly-once sidecar bump.
+      try {
+        return await serviceFor().advanceTerminal(data.request);
+      } catch (error) {
+        if (error instanceof runtime.TerminalFlowError) {
+          // Map the typed terminal-flow error onto the same settlement envelope sendCommand uses,
+          // so the cloud client sees a consistent shape for every application-level failure.
+          return failure(error.code, error.messageKey, error.retryable === true);
+        }
+        throw error;
+      }
+    }
     return failure("INVALID_COMMAND", "command.unknown_operation", false);
   } catch (error) {
     // Logged, never echoed: the client gets a bounded, retryable envelope and no server detail.

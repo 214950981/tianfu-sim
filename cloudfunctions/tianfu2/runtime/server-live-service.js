@@ -1,7 +1,7 @@
 // GENERATED FILE — DO NOT HAND-EDIT.
 //
 // Source of truth: server/src/live-service.ts
-// Source sha256:   d76389832f81426466ce72cfd9ff616cd7410596a6fd0ef0d19ec0254dd44e68
+// Source sha256:   856572a9fec758d81cd781181719455ac40bd4bdae8f39877bc33d7549f061c7
 // Generator:       tools/ui04d-cloud-runtime-artifact.mjs
 // Regenerate:      node tools/ui04d-cloud-runtime-artifact.mjs --write
 //
@@ -57,6 +57,7 @@ var { CommandGateway } = require("./server-command-gateway.js");
 var { generateServerDestinyOffer } = require("./server-destiny-offer.js");
 var { ServerViewModelBuilder } = require("./server-viewmodel.js");
 var { assertBootstrapId, bootstrapKeyFor, runIdSeedFor } = require("./server-identity.js");
+var { advanceTerminal, TerminalFlowError } = require("./server-terminal-flow.js");
 
 /**
  * Server-only entropy. The host injects it (the cloud function uses `crypto.randomBytes`); a test injects
@@ -141,7 +142,11 @@ class TianfuLiveService {
     this.#metaView = options.metaView ?? { unlocks: [], entitlements: [], discoveries: [] };
     this.#offerFixture = options.offerFixture ?? DEFAULT_LIVE_OFFER_FIXTURE;
     this.#builder = new ServerViewModelBuilder(options.content, options.viewModel);
-    this.#gateway = new CommandGateway({ store: options.store, content: options.content                     , projectView: (state) => this.#builder.build(state) });
+    // The gateway hands us the stored run (state + command log + terminal sidecar). The terminal-aware
+    // overload projects the authoritative stage into the public ViewModel exactly the way fetchView is
+    // supposed to — anything else would ship a PublicViewModel without the ENDING / LIFE_BOOK /
+    // REBIRTH_RESULT / NEXT_LIFE pages a real dying run must reach.
+    this.#gateway = new CommandGateway({ store: options.store, content: options.content                     , projectView: (state, stored) => stored === undefined ? this.#builder.build(state) : this.#builder.buildFromStoredRun(stored) });
   }
 
   /**
@@ -217,6 +222,50 @@ class TianfuLiveService {
   /** Settles one command through the accepted gateway. The envelope is never trusted, only validated. */
   async sendCommand(envelope         )                         {
     return await this.#gateway.sendCommand(this.#auth, envelope);
+  }
+
+  /**
+   * UI04E — settles one *terminal presentation* transition through `terminal-flow.ts`.
+   *
+   * The terminal flow is **not** routed through `CommandGateway` on purpose: there is no reducer, no
+   * `expectedStateVersion`, no command log entry, and no reducer-settled result. The idempotency key
+   * is `terminalTransitionId`, the sidecar bump is the only state change, and a NEXT_LIFE settle
+   * additionally mints a fresh bootstrap key and run id under the trusted player.
+   *
+   * Pure presentation transitions are guaranteed to leave canonical gameplay bytes (stateVersion, age,
+   * nodeIndex, RNG, commandLog, snapshot, causes, NPC state, resources, builds, history) untouched.
+   * The contract tests prove this directly by snapshotting `JSON.stringify(state)` before and after.
+   */
+  async advanceTerminal(request         )                                 {
+    const context                         = {
+      store: this.#store,
+      content: this.#content,
+      entropy: this.#entropy,
+      playerId: this.#auth.playerId,
+      rulesVersion: this.#rulesVersion,
+      contentVersion: this.#contentVersion,
+      schemaVersion: this.#schemaVersion,
+      metaView: this.#metaView,
+      offerFixture: this.#offerFixture
+    };
+    try {
+      return await advanceTerminal(request, context);
+    } catch (error) {
+      if (error instanceof TerminalFlowError) {
+        // Re-throw so the cloud host can map it to its own settlement envelope (same shape as sendCommand).
+        throw error;
+      }
+      // CloudBase transactions can throw PostCommitTimeoutError when the platform commits but loses
+      // the response. For terminal flow this means the transition *did* settle — but we cannot
+      // surface the result here because the document is committed and the receipts are durable. The
+      // caller retries with the same terminalTransitionId and the exactly-once path returns the
+      // recorded result. Map the platform timeout to TRANSIENT/retryable so the cloud host turns it
+      // into a settled, retryable envelope.
+      if (error && typeof error === "object" && (error                     ).name === "PostCommitTimeoutError") {
+        throw new TerminalFlowError("TRANSIENT", "terminal.post_commit_timeout", true);
+      }
+      throw error;
+    }
   }
 }
 

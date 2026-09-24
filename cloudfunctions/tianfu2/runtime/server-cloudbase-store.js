@@ -1,7 +1,7 @@
 // GENERATED FILE — DO NOT HAND-EDIT.
 //
 // Source of truth: server/src/cloudbase-store.ts
-// Source sha256:   40d29c2cac928396e67c257983b79e6cb980a71ba89c80753c65d73cd04de6bc
+// Source sha256:   f06088b65685fb140bfbe44d46529f67ec432113864e542d551d52ffd625f40b
 // Generator:       tools/ui04d-cloud-runtime-artifact.mjs
 // Regenerate:      node tools/ui04d-cloud-runtime-artifact.mjs --write
 //
@@ -40,7 +40,7 @@
  */
 
 var { sha256Utf8 } = require("./core-sha256.js");
-                                                                                                                              
+                                                                                                                                                        
 
 /** The minimal CloudBase document-database surface this store uses. */
                                                                                 
@@ -63,6 +63,8 @@ var { sha256Utf8 } = require("./core-sha256.js");
 const RUNS_COLLECTION = "tianfu2_runs";
 const COMMANDS_COLLECTION = "tianfu2_commands";
 const BOOTSTRAPS_COLLECTION = "tianfu2_bootstraps";
+/** UI04E — exactly-once terminal transition receipts, addressed by `terminalTransitionId`. */
+const TERMINAL_TRANSITIONS_COLLECTION = "tianfu2_terminal_transitions";
 
 const ID_LENGTH = 32;
 
@@ -88,13 +90,14 @@ function asStoredRun(data         )                        {
   return record                        ;
 }
 
-                                                                                                                                                  
+                                                                                                                                                                                
 
 class CloudBaseGatewayStore                         {
            #database               ;
            #runs        ;
            #commands        ;
            #bootstraps        ;
+           #terminalTransitions        ;
 
   constructor(options                              ) {
     if (options === null || typeof options !== "object" || options.database === undefined) throw new RangeError("a CloudBase database handle is required");
@@ -102,6 +105,7 @@ class CloudBaseGatewayStore                         {
     this.#runs = options.collections?.runs ?? RUNS_COLLECTION;
     this.#commands = options.collections?.commands ?? COMMANDS_COLLECTION;
     this.#bootstraps = options.collections?.bootstraps ?? BOOTSTRAPS_COLLECTION;
+    this.#terminalTransitions = options.collections?.terminalTransitions ?? TERMINAL_TRANSITIONS_COLLECTION;
   }
 
   async readRun(runId        )                                 {
@@ -121,6 +125,7 @@ class CloudBaseGatewayStore                         {
       const stagedRuns = new Map                   ();
       const stagedIdempotency = new Map                           ();
       const stagedBootstraps = new Map                         ();
+      const stagedTerminalTransitions = new Map                                  ();
 
       const read = async (collection        , kind        , key        )                   => {
         const snapshot = await transaction.collection(collection).doc(documentIdFor(kind, key)).get();
@@ -144,13 +149,20 @@ class CloudBaseGatewayStore                         {
           if (staged !== undefined) return staged;
           return fromDocument                 (await read(this.#bootstraps, "bootstrap", bootstrapKey));
         },
-        setBootstrap: (bootstrapKey, value) => { stagedBootstraps.set(bootstrapKey, value); }
+        setBootstrap: (bootstrapKey, value) => { stagedBootstraps.set(bootstrapKey, value); },
+        getTerminalTransition: async (terminalTransitionId) => {
+          const staged = stagedTerminalTransitions.get(terminalTransitionId);
+          if (staged !== undefined) return staged;
+          return fromDocument                          (await read(this.#terminalTransitions, "terminal-transition", terminalTransitionId));
+        },
+        setTerminalTransition: (terminalTransitionId, value) => { stagedTerminalTransitions.set(terminalTransitionId, value); }
       };
 
       const result = await operation(view);
       for (const [runId, value] of stagedRuns) await transaction.collection(this.#runs).doc(documentIdFor("run", runId)).set({ data: toDocument(value) });
       for (const [commandId, value] of stagedIdempotency) await transaction.collection(this.#commands).doc(documentIdFor("command", commandId)).set({ data: { ...toDocument(value), commandId } });
       for (const [bootstrapKey, value] of stagedBootstraps) await transaction.collection(this.#bootstraps).doc(documentIdFor("bootstrap", bootstrapKey)).set({ data: { ...toDocument(value), bootstrapKey } });
+      for (const [terminalTransitionId, value] of stagedTerminalTransitions) await transaction.collection(this.#terminalTransitions).doc(documentIdFor("terminal-transition", terminalTransitionId)).set({ data: { ...toDocument(value), terminalTransitionId } });
       return result;
     });
   }
@@ -160,6 +172,7 @@ module.exports = Object.assign({}, {
   RUNS_COLLECTION,
   COMMANDS_COLLECTION,
   BOOTSTRAPS_COLLECTION,
+  TERMINAL_TRANSITIONS_COLLECTION,
   documentIdFor,
   CloudBaseGatewayStore
 });

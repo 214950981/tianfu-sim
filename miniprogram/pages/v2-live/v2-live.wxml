@@ -129,10 +129,57 @@
         </scroll-view>
       </view>
 
-      <!-- ------------------------------------------------ 终局 -->
-      <view wx:elif="{{vm.isTerminal}}" class="block">
+      <!-- ------------------------------------------------ 终局 ENDING -->
+      <view wx:if="{{vm.isTerminal && vm.terminal && vm.terminal.isEnding}}" class="block">
         <view class="block-title">{{vm.pageStateLabel}}</view>
-        <view class="body-text">终局链路（人生书 / 转生结果 / 来世）由后续任务实现，本页面只呈现服务器给出的公开状态。</view>
+        <view wx:if="{{vm.terminal.lifeBook.runName}}" class="body-text">{{vm.terminal.lifeBook.runName}} · {{vm.terminal.lifeBook.age}} / {{vm.terminal.lifeBook.maxAge}} · {{vm.terminal.lifeBook.realm}}</view>
+        <view class="body-text">因果已成定局，{{vm.terminal.lifeBook.eventsCount}} 件往事、{{vm.terminal.lifeBook.peopleCount}} 位故人、{{vm.terminal.lifeBook.buildsCount}} 道道途。</view>
+        <view wx:if="{{vm.terminalCta}}" class="cta" data-action="{{vm.terminalCta.action}}" bindtap="onTerminalAdvance">{{vm.terminalCta.label}}</view>
+      </view>
+
+      <!-- ------------------------------------------------ 人生书 LIFE_BOOK -->
+      <view wx:elif="{{vm.isTerminal && vm.terminal && vm.terminal.isLifeBook}}" class="block">
+        <view class="block-title">{{vm.pageStateLabel}}</view>
+        <view wx:if="{{vm.terminal.lifeBook.runName}}" class="body-text">{{vm.terminal.lifeBook.runName}} · {{vm.terminal.lifeBook.age}} / {{vm.terminal.lifeBook.maxAge}} · {{vm.terminal.lifeBook.realm}}</view>
+        <scroll-view class="bounded" scroll-y="true">
+          <view class="card">
+            <view class="card-title">经历</view>
+            <view class="card-row"><view class="card-key">事件</view><view class="card-value">{{vm.terminal.lifeBook.eventsCount}}</view></view>
+            <view class="card-row"><view class="card-key">故人</view><view class="card-value">{{vm.terminal.lifeBook.peopleCount}}</view></view>
+            <view class="card-row"><view class="card-key">道途</view><view class="card-value">{{vm.terminal.lifeBook.buildsCount}}</view></view>
+            <view class="card-row"><view class="card-key">因果</view><view class="card-value">{{vm.terminal.lifeBook.causesCount}}</view></view>
+          </view>
+          <view wx:if="{{vm.terminal.lifeBook.hasEnding}}" class="card">
+            <view class="card-title">终局</view>
+            <view class="card-row"><view class="card-key">结局</view><view class="card-value">{{vm.terminal.lifeBook.endingId}}</view></view>
+            <view wx:if="{{vm.terminal.lifeBook.hasDeath}}" class="card-row"><view class="card-key">死因</view><view class="card-value">{{vm.terminal.lifeBook.deathCause}}</view></view>
+          </view>
+        </scroll-view>
+        <view wx:if="{{vm.terminalCta}}" class="cta" data-action="{{vm.terminalCta.action}}" bindtap="onTerminalAdvance">{{vm.terminalCta.label}}</view>
+      </view>
+
+      <!-- ------------------------------------------------ 转生结果 REBIRTH_RESULT -->
+      <view wx:elif="{{vm.isTerminal && vm.terminal && vm.terminal.isRebirthResult}}" class="block">
+        <view class="block-title">{{vm.pageStateLabel}}</view>
+        <view wx:if="{{vm.terminal.rebirth.runName}}" class="body-text">{{vm.terminal.rebirth.runName}} · 寿 {{vm.terminal.rebirth.finalAge}} · {{vm.terminal.rebirth.finalRealm}}</view>
+        <scroll-view class="bounded" scroll-y="true">
+          <view class="card">
+            <view class="card-title">此世回望</view>
+            <view class="card-row"><view class="card-key">经历事件</view><view class="card-value">{{vm.terminal.rebirth.eventsExperienced}}</view></view>
+            <view class="card-row"><view class="card-key">结识故人</view><view class="card-value">{{vm.terminal.rebirth.peopleMet}}</view></view>
+            <view class="card-row"><view class="card-key">道途成形</view><view class="card-value">{{vm.terminal.rebirth.buildsFormed}}</view></view>
+            <view wx:if="{{vm.terminal.rebirth.endingId}}" class="card-row"><view class="card-key">终局</view><view class="card-value">{{vm.terminal.rebirth.endingId}}</view></view>
+            <view wx:if="{{vm.terminal.rebirth.deathCause}}" class="card-row"><view class="card-key">死因</view><view class="card-value">{{vm.terminal.rebirth.deathCause}}</view></view>
+          </view>
+        </scroll-view>
+        <view wx:if="{{vm.terminalCta}}" class="cta" data-action="{{vm.terminalCta.action}}" bindtap="onTerminalAdvance">{{vm.terminalCta.label}}</view>
+      </view>
+
+      <!-- ------------------------------------------------ 来世 NEXT_LIFE -->
+      <view wx:elif="{{vm.isTerminal && vm.terminal && vm.terminal.isNextLife}}" class="block">
+        <view class="block-title">{{vm.pageStateLabel}}</view>
+        <view class="body-text">此生已入卷宗，新的（命已由服务器开启。请返回起始页面以开始新的（命局。</view>
+        <view wx:if="{{vm.terminal.nextLife.completedRunId}}" class="card-row"><view class="card-key">已结之世</view><view class="card-value">{{vm.terminal.nextLife.completedRunId}}</view></view>
       </view>
 
       <view wx:else class="block">

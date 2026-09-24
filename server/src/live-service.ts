@@ -42,6 +42,7 @@ import type { GatewayStore } from "./gateway-store.ts";
 import { generateServerDestinyOffer } from "./destiny-offer.ts";
 import { ServerViewModelBuilder, type ServerViewModelBuilderOptions } from "./viewmodel.ts";
 import { assertBootstrapId, bootstrapKeyFor, runIdSeedFor } from "./identity.ts";
+import { advanceTerminal, TerminalFlowError, type AdvanceTerminalContext, type AdvanceTerminalRequest, type AdvanceTerminalResult } from "./terminal-flow.ts";
 
 /**
  * Server-only entropy. The host injects it (the cloud function uses `crypto.randomBytes`); a test injects
@@ -126,7 +127,11 @@ export class TianfuLiveService {
     this.#metaView = options.metaView ?? { unlocks: [], entitlements: [], discoveries: [] };
     this.#offerFixture = options.offerFixture ?? DEFAULT_LIVE_OFFER_FIXTURE;
     this.#builder = new ServerViewModelBuilder(options.content, options.viewModel);
-    this.#gateway = new CommandGateway({ store: options.store, content: options.content as unknown as object, projectView: (state) => this.#builder.build(state) });
+    // The gateway hands us the stored run (state + command log + terminal sidecar). The terminal-aware
+    // overload projects the authoritative stage into the public ViewModel exactly the way fetchView is
+    // supposed to — anything else would ship a PublicViewModel without the ENDING / LIFE_BOOK /
+    // REBIRTH_RESULT / NEXT_LIFE pages a real dying run must reach.
+    this.#gateway = new CommandGateway({ store: options.store, content: options.content as unknown as object, projectView: (state, stored) => stored === undefined ? this.#builder.build(state) : this.#builder.buildFromStoredRun(stored) });
   }
 
   /**
@@ -202,6 +207,50 @@ export class TianfuLiveService {
   /** Settles one command through the accepted gateway. The envelope is never trusted, only validated. */
   async sendCommand(envelope: unknown): Promise<CommandResult> {
     return await this.#gateway.sendCommand(this.#auth, envelope);
+  }
+
+  /**
+   * UI04E — settles one *terminal presentation* transition through `terminal-flow.ts`.
+   *
+   * The terminal flow is **not** routed through `CommandGateway` on purpose: there is no reducer, no
+   * `expectedStateVersion`, no command log entry, and no reducer-settled result. The idempotency key
+   * is `terminalTransitionId`, the sidecar bump is the only state change, and a NEXT_LIFE settle
+   * additionally mints a fresh bootstrap key and run id under the trusted player.
+   *
+   * Pure presentation transitions are guaranteed to leave canonical gameplay bytes (stateVersion, age,
+   * nodeIndex, RNG, commandLog, snapshot, causes, NPC state, resources, builds, history) untouched.
+   * The contract tests prove this directly by snapshotting `JSON.stringify(state)` before and after.
+   */
+  async advanceTerminal(request: unknown): Promise<AdvanceTerminalResult> {
+    const context: AdvanceTerminalContext = {
+      store: this.#store,
+      content: this.#content,
+      entropy: this.#entropy,
+      playerId: this.#auth.playerId,
+      rulesVersion: this.#rulesVersion,
+      contentVersion: this.#contentVersion,
+      schemaVersion: this.#schemaVersion,
+      metaView: this.#metaView,
+      offerFixture: this.#offerFixture
+    };
+    try {
+      return await advanceTerminal(request, context);
+    } catch (error) {
+      if (error instanceof TerminalFlowError) {
+        // Re-throw so the cloud host can map it to its own settlement envelope (same shape as sendCommand).
+        throw error;
+      }
+      // CloudBase transactions can throw PostCommitTimeoutError when the platform commits but loses
+      // the response. For terminal flow this means the transition *did* settle — but we cannot
+      // surface the result here because the document is committed and the receipts are durable. The
+      // caller retries with the same terminalTransitionId and the exactly-once path returns the
+      // recorded result. Map the platform timeout to TRANSIENT/retryable so the cloud host turns it
+      // into a settled, retryable envelope.
+      if (error && typeof error === "object" && (error as { name?: string }).name === "PostCommitTimeoutError") {
+        throw new TerminalFlowError("TRANSIENT", "terminal.post_commit_timeout", true);
+      }
+      throw error;
+    }
   }
 }
 

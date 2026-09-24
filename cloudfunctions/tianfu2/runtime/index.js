@@ -15,7 +15,8 @@ var dep3 = require("./server-gateway-store.js");
 var dep4 = require("./server-identity.js");
 var dep5 = require("./server-live-content.js");
 var dep6 = require("./server-live-service.js");
-var dep7 = require("./server-viewmodel.js");
+var dep7 = require("./server-terminal-flow.js");
+var dep8 = require("./server-viewmodel.js");
 
 module.exports = {
   BOOTSTRAPS_COLLECTION: dep0.BOOTSTRAPS_COLLECTION,
@@ -27,7 +28,9 @@ module.exports = {
   LIVE_RULES_VERSION: dep5.LIVE_RULES_VERSION,
   RUNS_COLLECTION: dep0.RUNS_COLLECTION,
   RunUnavailableError: dep6.RunUnavailableError,
-  ServerViewModelBuilder: dep7.ServerViewModelBuilder,
+  ServerViewModelBuilder: dep8.ServerViewModelBuilder,
+  TERMINAL_TRANSITIONS_COLLECTION: dep0.TERMINAL_TRANSITIONS_COLLECTION,
+  TerminalFlowError: dep7.TerminalFlowError,
   TianfuLiveService: dep6.TianfuLiveService,
   assertTrustedOpenid: dep4.assertTrustedOpenid,
   bootstrapKeyFor: dep4.bootstrapKeyFor,
@@ -36,5 +39,6 @@ module.exports = {
   derivePlayerId: dep4.derivePlayerId,
   documentIdFor: dep0.documentIdFor,
   generateServerDestinyOffer: dep2.generateServerDestinyOffer,
+  parseAdvanceTerminalRequest: dep7.parseAdvanceTerminalRequest,
   runIdSeedFor: dep4.runIdSeedFor
 };

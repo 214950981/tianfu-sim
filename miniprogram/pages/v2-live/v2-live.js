@@ -43,6 +43,9 @@ var DIAGNOSTIC_MAX_CHARS = 160;
  * -> authoritative opaque playerId); the page never stores, guesses or transmits a player id of its own.
  */
 var BOOTSTRAP_ID_KEY = "tianfu2:bootstrap-id";
+/** UI04E — the next-life bootstrap key. Written when REBIRTH_RESULT -> NEXT_LIFE settles, then re-sent
+ *  to `createRunOffer` so the same device starts the next life without manufacturing a second one. */
+var NEXT_LIFE_BOOTSTRAP_KEY = "tianfu2:next-life-bootstrap-id";
 var CLIENT_BUILD = "v2-live-dev";
 var RPC_FUNCTION_NAME = "tianfu2";
 
@@ -75,7 +78,7 @@ function describeFailure(stage, error) {
 }
 
 /**
- * The generated runtime must actually publish the UI04C surface. A stale or partial artifact would
+ * The generated runtime must actually publish the UI04E surface. A stale or partial artifact would
  * otherwise fail later as a confusing `undefined is not a function`; naming the stage and the
  * regenerate command here is the difference between a diagnosable defect and a blank page.
  */
@@ -85,6 +88,7 @@ function runtimeSurfaceProblem() {
   if (typeof runtime.createWeChatPlatformStorage !== "function") missing.push("createWeChatPlatformStorage");
   if (typeof runtime.createWeChatCloudTransport !== "function") missing.push("createWeChatCloudTransport");
   if (typeof runtime.bootstrapWeChatRun !== "function") missing.push("bootstrapWeChatRun");
+  if (typeof runtime.TerminalUnavailableError !== "function") missing.push("TerminalUnavailableError");
   return missing.length === 0 ? null : missing;
 }
 
@@ -267,6 +271,7 @@ function buildRenderModel(controller, notice) {
   var run = record(view === undefined ? null : view.state.publicRun);
   var interaction = model.interaction === undefined ? null : model.interaction;
   var realm = record(run.realm);
+  var terminal = record(view === undefined ? null : view.state.terminal);
   var submission = controller.submission();
   var pageState = model.pageState;
 
@@ -307,8 +312,67 @@ function buildRenderModel(controller, notice) {
     decisionBody: interaction === null ? "" : presentLabel(CONTENT_COPY, str(record(interaction.body).bodyKey)),
     decisionEventId: interaction === null ? "" : str(interaction.eventId),
     options: buildInteractionOptions(interaction),
-    isTerminal: pageState === "ENDING" || pageState === "LIFE_BOOK" || pageState === "REBIRTH_RESULT" || pageState === "NEXT_LIFE"
+    isTerminal: pageState === "ENDING" || pageState === "LIFE_BOOK" || pageState === "REBIRTH_RESULT" || pageState === "NEXT_LIFE",
+    terminal: buildTerminal(terminal, pageState),
+    terminalCta: buildTerminalCta(terminal, pageState)
   };
+}
+
+/** UI04E — projects the server-published terminal slice to a render model. Never invents a field:
+ *  a value the server did not publish is omitted, so a missing sidecar renders as an empty block. */
+function buildTerminal(terminal, pageState) {
+  if (terminal === null) return null;
+  var lifeBook = record(terminal.lifeBook);
+  var rebirth = record(terminal.rebirthResult);
+  var nextLife = record(terminal.nextLife);
+  return {
+    stage: str(terminal.stage),
+    version: num(terminal.version, 0),
+    isEnding: pageState === "ENDING",
+    isLifeBook: pageState === "LIFE_BOOK",
+    isRebirthResult: pageState === "REBIRTH_RESULT",
+    isNextLife: pageState === "NEXT_LIFE",
+    lifeBook: {
+      runName: str(lifeBook.runName),
+      age: num(lifeBook.age, 0),
+      maxAge: num(lifeBook.maxAge, 0),
+      realm: str(record(lifeBook.realm).id),
+      buildsCount: Array.isArray(lifeBook.builds) ? lifeBook.builds.length : 0,
+      peopleCount: Array.isArray(lifeBook.people) ? lifeBook.people.length : 0,
+      eventsCount: Array.isArray(lifeBook.events) ? lifeBook.events.length : 0,
+      causesCount: Array.isArray(lifeBook.causes) ? lifeBook.causes.length : 0,
+      hasEnding: typeof lifeBook.ending === "object" && lifeBook.ending !== null,
+      hasDeath: typeof lifeBook.death === "object" && lifeBook.death !== null,
+      endingId: str(record(lifeBook.ending).endingId),
+      deathCause: str(record(lifeBook.death).directCause)
+    },
+    rebirth: {
+      completedRunId: str(rebirth.completedRunId),
+      runName: str(rebirth.runName),
+      finalAge: num(rebirth.finalAge, 0),
+      finalRealm: str(record(rebirth.finalRealm).id),
+      endingId: str(rebirth.endingId),
+      deathCause: str(rebirth.deathCause),
+      peopleMet: num(rebirth.peopleMet, 0),
+      buildsFormed: num(rebirth.buildsFormed, 0),
+      eventsExperienced: num(rebirth.eventsExperienced, 0),
+      nextLifeAffordance: rebirth.nextLifeAffordance === true
+    },
+    nextLife: {
+      completedRunId: str(nextLife.completedRunId),
+      terminalStage: str(nextLife.terminalStage),
+      terminalVersion: num(nextLife.terminalVersion, 0)
+    }
+  };
+}
+
+/** UI04E — one CTA per terminal stage. A stage without a CTA (NEXT_LIFE's confirmation) renders nothing. */
+function buildTerminalCta(terminal, pageState) {
+  if (terminal === null) return null;
+  if (pageState === "ENDING") return { label: "翻阅人生书", action: "advance-to-life-book" };
+  if (pageState === "LIFE_BOOK") return { label: "转生结果", action: "advance-to-rebirth-result" };
+  if (pageState === "REBIRTH_RESULT") return { label: "迎来世", action: "advance-to-next-life" };
+  return null;
 }
 
 // ---------------------------------------------------------------- page
@@ -498,6 +562,52 @@ Page({
     if (this.controller === null || this.controller === undefined) return;
     this.controller.closeArchive();
     this.refresh();
+  },
+
+  /**
+   * UI04E — terminal advance. The controller refuses any advance whose authoritative `expectedTerminalStage`
+   * does not match the current view, so the page can only ever submit a forward edge the server itself
+   * has put on screen. The `terminalTransitionId` is generated locally and persists for the duration of
+   * the install so an exact retry after a lost response recovers the same settled stage.
+   */
+  onTerminalAdvance: function (event) {
+    var self = this;
+    if (this.controller === null || this.controller === undefined) return;
+    var action = event.currentTarget.dataset.action;
+    if (typeof action !== "string") { this.refresh(); return; }
+    if (typeof this.terminalTransitionId !== "string" || this.terminalTransitionId.length === 0) {
+      this.terminalSequence = (this.terminalSequence || 0) + 1;
+      this.terminalTransitionId = "term:" + Date.now().toString(36) + ":" + this.terminalSequence;
+    }
+    Promise.resolve()
+      .then(function () { return self.controller.advanceTerminal({ terminalTransitionId: self.terminalTransitionId, action: action }); })
+      .then(function (result) {
+        if (result === undefined || result === null) { self.refresh(); return; }
+        if (result.ok === true && result.nextBootstrapId !== undefined && result.nextRunId !== undefined) {
+          // UI04E — NEXT_LIFE settled: persist the freshly minted bootstrap key and rotate into the new run.
+          self.persistNextLifeBootstrap(result.nextBootstrapId);
+          self.terminalTransitionId = "";
+          return self.controller.startNextLife(result.nextBootstrapId);
+        }
+        if (result.ok === true) {
+          // Pure presentation transition: the controller already refreshed the view inside advanceTerminal.
+          self.terminalTransitionId = result.terminalTransitionId;
+        }
+        self.refresh();
+        return undefined;
+      })
+      .then(function () { self.refresh(); })
+      .catch(function (error) {
+        if (error !== undefined && error !== null && error.name === "TerminalUnavailableError") self.notice = "此终局阶段无法前进：" + sanitizeDiagnostic(error.message);
+        else self.notice = "终局前进失败：" + sanitizeDiagnostic(error === null || error === undefined ? "" : error.message);
+        self.refresh();
+      });
+  },
+
+  /** UI04E — writes the next-life bootstrap key to local storage. Best-effort, like the first bootstrap. */
+  persistNextLifeBootstrap: function (nextBootstrapId) {
+    try { wx.setStorageSync(NEXT_LIFE_BOOTSTRAP_KEY, nextBootstrapId); } catch (error) { /* ignored */ }
+    try { wx.setStorageSync(BOOTSTRAP_ID_KEY, nextBootstrapId); } catch (error) { /* ignored */ }
   },
 
   onReload: function () {

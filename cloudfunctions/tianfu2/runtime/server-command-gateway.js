@@ -1,7 +1,7 @@
 // GENERATED FILE — DO NOT HAND-EDIT.
 //
 // Source of truth: server/src/command-gateway.ts
-// Source sha256:   0cf256e4eec5a4e679810eb9fe321b6baacf3a7901bd338342de08f64bcdc3db
+// Source sha256:   6b949bb96c862a432f9777977cdb3fca58f4e2332e03d5ab37b76b899cd0f0ec
 // Generator:       tools/ui04d-cloud-runtime-artifact.mjs
 // Regenerate:      node tools/ui04d-cloud-runtime-artifact.mjs --write
 //
@@ -50,7 +50,7 @@ function identifiersWithinLimit(envelope                 )          {
                                                                 
                                                                      
                                                                     
-                                              
+                                                                  
  
 
 class CommandGateway {
@@ -64,7 +64,7 @@ class CommandGateway {
 
   async fetchView(auth                    , runId        )                   {
     const stored = await this.#store.readRun(runId); if (stored === undefined || stored.state.run.playerId !== auth.playerId) throw new Error("UNAUTHORIZED");
-    if (this.#projectView === undefined) throw new Error("ViewModel builder is not configured"); return this.#projectView(stored.state);
+    if (this.#projectView === undefined) throw new Error("ViewModel builder is not configured"); return this.#projectView(stored.state, stored);
   }
 
   async sendCommand(auth                    , envelopeValue         )                         {
