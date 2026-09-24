@@ -1,14 +1,14 @@
 version: 1
 status: READY
 attempt: 1
-taskId: UI02COPY
-title: UI02COPY — Chinese Player-Facing Copy / Raw-Key Cleanup
-taskDefinition: .codex/tasks/UI02COPY.yaml
-sourceBranch: wb-UI02ENTRY
-workBranch: wb-UI02COPY
+taskId: UI02FINAL
+title: UI02FINAL — Final Regression / Merge Readiness Audit
+taskDefinition: .codex/tasks/UI02FINAL.yaml
+sourceBranch: wb-UI02COPY
+workBranch: wb-UI02FINAL
 worktreeRequired: true
 allowSyntheticTreeBase: true
-basePolicy: explicit-ui02entry-result-head
+basePolicy: explicit-ui02copy-result-head
 execution:
   readProtocolFirst: true
   commitTaskResult: true
@@ -16,26 +16,22 @@ execution:
   updateSourceBranch: false
   startNextTask: false
 controllerReview:
-  previousTask: UI02ENTRY
-  previousStatus: ACCEPTED_PENDING_FINAL_UI02_MERGE
-  previousResultCommit: 3da45910001246dd8336a5b632cf408d9b63207a
+  previousTask: UI02COPY
+  previousStatus: ACCEPTED_BY_HUMAN_VISUAL_REVIEW
+  previousResultCommit: 8d9931b9be00a8f221fb9f723af6d10ef8fb8cba
   acceptanceBasis:
-    - human DevTools review confirms START MODE_SELECT DESTINY_OFFER RUN_OPENING all render correctly and share the accepted 2.0 visual system
-    - DESTINY_OFFER uses real public server projection and entry screens remain one-screen
-    - targeted UI fast-lane suites are green
-  postAcceptanceFinding:
-    - human review of the same preview exposes raw dev.* narrative keys in EVENT and SPECIAL_NODE
-    - LIFE_ARCHIVE exposes raw history/build-fact keys
-    - MODE_SELECT exposes internal capability enum names in unavailable-state helper text
+    - START MODE_SELECT DESTINY_OFFER RUN_OPENING RUN_HOME EVENT SPECIAL_NODE and LIFE_ARCHIVE all render as coherent player-facing Chinese screens in WeChat DevTools
+    - raw dev content keys and internal Capability enum names are no longer visible
+    - EVENT SPECIAL_NODE and LIFE_ARCHIVE wording is readable and the accepted one-screen layout remains intact
 controllerDecision:
-  strategy: final-player-facing-copy-pass-before-full-regression
-  rationale: do not lock or live-wire a visually coherent UI that still leaks developer identifiers; clean only presentation copy, then run the single deferred full regression after human acceptance
+  strategy: one-final-full-regression-before-merge
+  rationale: the UI chain has completed human visual review; pay the full regression cost once now, then fast-forward the accumulated chain into dev and resume UI03
 controllerIntent:
-  mode: UI_FAST_LANE
-  goal: make every currently reviewable 2.0 screen read like a player-facing Chinese game screen without changing any gameplay or server authority
-  postTask: controller/user visually reviews all preview screens; if accepted, dispatch one final UI02 full-regression/audit task and then resume UI03
+  mode: FINAL_AUDIT
+  goal: prove merge readiness without adding features or changing visuals
+  postTask: if PASS, controller will fast-forward dev/tianfu-2.0 to the accepted UI02 chain and dispatch UI03; do not start UI03 yourself
 notes:
-  - Open this in a fresh WorkBuddy conversation. Read Git as the only task memory.
-  - Do not run full npm regression in this task. Use only the targeted tests listed in UI02COPY.yaml.
-  - This is not permission to rewrite content rules or invent new story branches. It is a bounded presentation-copy cleanup for keys already exposed by the current preview fixtures.
-  - UI03 remains blocked and must not be started.
+  - This is deliberately the one expensive regression after the UI_FAST_LANE iterations. Do not optimize it away.
+  - Do not run a 600-run simulation because the accumulated UI chain changed no gameplay rule or balance code.
+  - The known nested-process EBUSY sandbox issue may be classified as environment noise only with exact base reproduction plus direct-tool success, as specified in UI02FINAL.yaml.
+  - Make no product changes beyond aggregate test registration for ui02copy if needed.
