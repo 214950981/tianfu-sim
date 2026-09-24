@@ -972,6 +972,7 @@ module.exports = {
         "currentInteraction": {
           "interactionId": "inst-ui02-event",
           "kind": "event",
+          "eventId": "dev.first-choice",
           "titleKey": "dev.first-choice.title",
           "body": {
             "bodyKey": "dev.first-choice.body",
@@ -1466,6 +1467,7 @@ module.exports = {
         "currentInteraction": {
           "interactionId": "inst-ui02-special",
           "kind": "event",
+          "eventId": "dev.ordinary-fallback",
           "titleKey": "dev.ordinary-fallback.title",
           "body": {
             "bodyKey": "dev.ordinary-fallback.body"

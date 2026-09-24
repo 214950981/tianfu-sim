@@ -1,412 +1,544 @@
 version: 1
-taskId: UI02FINAL
+taskId: UI03
 attempt: 1
 status: PASS
-sourceBranch: wb-UI02COPY
-workBranch: wb-UI02FINAL
-baseCommit: 71f36b658805da386169c840ebda44fae36bc262
-baseTreeSha: d716344dc399a39084fb66b0a8c9e6323770b674
+sourceBranch: dev/tianfu-2.0
+workBranch: wb-UI03
+baseCommit: ce916d7c38f03f2459cb94fda63313fd6a80d37b
+baseTreeSha: 4404c019a22b5963a6cca1d25d299b840ca8f04a
 historyMode: real-ancestry
 sourceHeadVerifiedBy: >-
-  The dispatch sets sourceBranch to wb-UI02COPY and basePolicy to explicit-ui02copy-result-head.
-  git ls-remote origin refs/heads/wb-UI02COPY reports 71f36b658805da386169c840ebda44fae36bc262, and a
-  git fetch of that branch resolved FETCH_HEAD to the same commit, so the remote source branch was read
-  directly and not from cache. PROTOCOL.md, NEXT_TASK.yaml and .codex/tasks/UI02FINAL.yaml were all read
-  out of that fetched commit (git show FETCH_HEAD:<path>). The worktree was positioned with
-  `git read-tree -u --reset 71f36b658...` plus a written HEAD file, and `git write-tree` over the
-  untouched tree returned d716344dc399a39084fb66b0a8c9e6323770b674, byte-identical to
-  `71f36b658...^{tree}`. That equality is the byte-identity proof. git rev-parse HEAD then reported
-  exactly 71f36b658... with a clean status (the only change made during the task was the permitted
-  package.json registration). The base is confirmed to be the controller's dispatch tip: 71f36b658 has
-  four control commits on top of the accepted UI02COPY result commit 8d9931b9be (chore: dispatch UI02
-  final regression audit -> chore: register UI02FINAL -> chore: gate UI03 on final UI02 audit -> chore:
-  dispatch UI02FINAL), and those four commits touch ONLY .codex/control/NEXT_TASK.yaml,
-  .codex/tasks/INDEX.yaml, .codex/tasks/UI02FINAL.yaml and .codex/tasks/UI03.yaml, so no product code
-  moved between the accepted result and this base. No source drift was observed: ls-remote was re-checked
-  before the push and still reported 71f36b658. Note the previousResultCommit 8d9931b9be is an ANCESTOR
-  of this base, not the base itself.
+  NEXT_TASK.yaml sets sourceBranch to dev/tianfu-2.0, workBranch to wb-UI03, attempt 1, status READY,
+  basePolicy remote-source-head-at-task-start. The remote source HEAD was read over the network, not from
+  cache: `git fetch --no-tags origin dev/tianfu-2.0` succeeded on the FIRST attempt (the sandbox proxy
+  accepted it immediately this session) and resolved FETCH_HEAD to
+  ce916d7c38f03f2459cb94fda63313fd6a80d37b, matching what `git ls-remote origin refs/heads/dev/tianfu-2.0`
+  reported. PROTOCOL.md, NEXT_TASK.yaml, LAST_RESULT.yaml, TOOLING_RUNBOOK.md, tasks/INDEX.yaml,
+  tasks/UI03.yaml and docs/dev-status.md were all read straight out of that fetched commit via
+  `git show ce916d7:<path>`. `git ls-remote origin refs/heads/wb-UI03` returned NOTHING, so this task
+  started a brand-new work branch. The worktree was positioned with `git read-tree -u --reset ce916d7`
+  plus a self-written worktree HEAD file (no ref write through git), and `git write-tree` over the
+  untouched tree returned 4404c019a22b5963a6cca1d25d299b840ca8f04a, byte-identical to `ce916d7^{tree}`.
+  That equality is the byte-identity proof. `git merge-base --is-ancestor 3ca1cab ce916d7` succeeded, so
+  the worktree's previous tip was already an ancestor of the dispatch tip; no synthetic tree was needed
+  and the result commit has baseCommit as its real parent.
 
 summary: >-
-  UI02FINAL is the single deferred full regression and merge-readiness audit for the accumulated
-  UI02 -> UI02R1 -> UI02R2 -> UI02R2A2 -> UI02ENTRY -> UI02COPY chain, run after the controller accepted
-  UI02COPY on human visual review. This task is verification-only: no product behaviour, visual or copy
-  change was made. The only non-audit edit is the one the task explicitly permits - registering
-  tests/ui02copy.test.mjs in the aggregate npm test command, where it was deliberately absent (UI02COPY
-  added it as test:ui02copy but left the frozen aggregate list to the controller).
+  UI03 wires the accepted UI02 presentation layer to a reusable live-session controller. A new
+  `WeChatRunController` (packages/wechat-shell) consumes only PublicViewModel + ApplicationTransport +
+  PlatformStorage + the accepted shell mappers: it loads the authoritative ViewModel, maps a player
+  intent to a GameCommand, submits it, exposes the pending/retry/reconfirmation state, and projects the
+  next page model. Gameplay authority stays entirely server-side - the controller rolls no RNG, resolves
+  no outcome and computes no eligibility, risk or breakthrough odds.
 
-  MERGE-READINESS VERDICT: PASS. The accumulated chain is safe to fast-forward into dev/tianfu-2.0 and
-  UI03 may start.
+  The controller owns only the in-life UI02 loop: RUN_HOME core actions, EVENT option submission,
+  ATTEMPT_BREAKTHROUGH, SPECIAL_NODE option submission, and LIFE_ARCHIVE as a local read-only side-page
+  overlay over RUN_HOME.
 
-  Why the verdict is safe to act on:
+  CommandSubmissionController remains the SINGLE owner of the envelope, commandId generation and
+  persistence, retry, and STATE_CONFLICT reconfirmation. WeChatRunController wraps exactly one instance,
+  persists nothing itself, and passes its snapshot straight through - proven both structurally (the shell
+  never calls the storage port) and behaviourally (a fresh controller recovers the identical pending
+  commandId over the same raw storage).
 
-  1. Ancestry is real, not asserted. dev/tianfu-2.0 (07548318289ca120296090d74650ed79f5274bd5) is a
-     genuine ancestor of the chain head 71f36b658; `git merge-base --is-ancestor` succeeds and the
-     merge-base IS dev itself, so the chain is a fast-forwardable descendant (not a divergent branch
-     requiring a synthetic-tree transplant). There are 10 commits on the chain since dev.
+  ONE SERVER-SIDE PROJECTION DEFECT HAD TO BE FIXED TO MAKE THE TASK POSSIBLE. The COMMAND contract keys
+  CHOOSE_EVENT_OPTION by `eventId`, but the public CurrentInteraction only exposed `interactionId`, which
+  is an *instance* identity: a real reducer-produced event carries
+  `instanceId = "event:<commandId>:<eventId>"` (verified empirically, not assumed), so it is not equal to
+  `eventId` and cannot be parsed back into one without guessing. Before UI03 the public ViewModel could
+  therefore not construct the contract's own command at all: a client had to rebuild the id from
+  `interactionId` or from a presentation key. The fix is the smallest additive one - the server projects
+  the authoritative `state.run.events.current.eventId` verbatim onto the decision interaction - and it
+  publishes nothing new: past event ids are already public through `history[].data.eventId`, and an event
+  id is content identity, not authority or hidden state. `destinyOffer` deliberately carries no `eventId`
+  because it precedes any run event. See scope / contractExtension / disclosedScopeNotes.
 
-  2. The chain changed nothing it was not allowed to change. The complete dev -> chain-head diff touches
-     19 paths and every one of them is the 2.0 dev-preview surface, its UI02 docs, its UI02 tests, the
-     two UI02 audit tools, package.json, or .codex control/task metadata. A per-path check confirms ZERO
-     changed files under packages/core, packages/content, packages/wechat-shell, packages/application-ui,
-     packages/platform-contract, server, miniprogram/pages/start, miniprogram/pages/game,
-     miniprogram/pages/rank, miniprogram/app.json and miniprogram/app.wxss. So no gameplay rule, no
-     Director behaviour, no server projection, no content, no legacy 1.0 page and no default route
-     entered through the UI chain. That is also why a 600-run balance simulation is not required, per the
-     task: no gameplay or balance code changed anywhere in the chain.
+  All E2E evidence uses the REAL CommandGateway + GatewayApplicationTransport + ServerViewModelBuilder;
+  only PlatformStorage and the commandId factory are injected doubles, exactly as the platform boundary
+  requires. Verified end to end: a real core action -> EVENT -> event-choice round trip on the real
+  gateway; a real ATTEMPT_BREAKTHROUGH round trip from a server-projected available state (mortal ->
+  qi-refining); retry of a transient failure reusing the identical commandId and payload with exactly one
+  commit; STATE_CONFLICT refreshing the latest ViewModel and demanding an explicit reconfirmation with a
+  fresh commandId against the latest stateVersion; unresolved EVENT and SPECIAL_NODE back protection; and
+  LIFE_ARCHIVE navigation that submits nothing and mutates nothing.
 
-  3. The full regression is green except for one proven environment artefact. `npm test` now runs 375
-     tests: 372 pass, 3 fail. All three failures are the previously documented nested-process EBUSY
-     class, and they were classified as environment noise only after BOTH proofs the task requires:
-     base reproduction and direct-tool success (see ebusyEvidence and the gates list).
-
-  4. Every dedicated UI suite, every lint/audit gate and the typecheck are green, with the UI02COPY guard
-     now inside the aggregate run rather than only alongside it.
+  NOT DONE, BY DESIGN: the production WeChat transport is not wired and the default route is unchanged.
+  The integration seam and the UI04 boundary are documented in docs/UI03_LIVE_CONTROLLER.md.
 
 changedFiles:
   - .codex/control/LAST_RESULT.yaml
+  - packages/wechat-shell/src/index.ts
+  - packages/platform-contract/src/index.ts
+  - server/src/viewmodel.ts
+  - docs/UI03_LIVE_CONTROLLER.md
+  - tests/ui03.test.mjs
+  - tests/ui02r1.test.mjs
   - package.json
+  - miniprogram/pages/v2-preview/v2-fixtures.json
+  - miniprogram/pages/v2-preview/v2-fixtures.js
 
 changes:
   - id: C1
+    file: packages/wechat-shell/src/index.ts
+    kind: feature
+    detail: >-
+      Adds WeChatRunController plus the injected WeChat storage boundary. The controller exposes load(),
+      restore(), view(), submission(), pageModel(), openArchive(), closeArchive(), submit(intent),
+      reconfirm(intent) and retry(). Intents are named the way the projection names them
+      (coreAction/specialAction/interactionOption) and are resolved against the CURRENT authoritative
+      ViewModel every time, so a reconfirmation after STATE_CONFLICT is automatically re-derived from the
+      latest state. `createWeChatPlatformStorage(api)` binds an injected {getStorageSync,setStorageSync}
+      to the platform-neutral PlatformStorage port; the package references no platform global (asserted on
+      comment-stripped source). pageModel() feeds the accepted buildWeChatPageShell a corrected
+      interaction state (see C5). Fails closed: an intent the server has not projected, has projected as
+      disabled/unavailable, an option the current interaction does not offer, or an interaction whose
+      authoritative eventId was not published all raise IntentUnavailableError and send nothing.
+  - id: C2
+    file: server/src/viewmodel.ts
+    kind: fix
+    detail: >-
+      eventInteraction() now projects `eventId: current.eventId` - the authoritative public id of the run's
+      current event - alongside the existing `interactionId`. This is what makes the contract's own
+      CHOOSE_EVENT_OPTION command constructible from the public ViewModel. It is an additive optional
+      field; nothing else in the projection changed, no rule state is read or exposed, and the projection
+      still resolves nothing.
+  - id: C3
+    file: packages/platform-contract/src/index.ts
+    kind: type
+    detail: >-
+      CurrentInteraction gains the optional `eventId?: string` with a doc comment stating that it is the
+      authoritative current-event id, that it carries no rule state, and that it is absent for
+      destinyOffer. Existing consumers are unaffected because the field is optional.
+  - id: C4
+    file: docs/UI03_LIVE_CONTROLLER.md
+    kind: docs
+    detail: >-
+      New task-required document: what the controller owns and what it refuses to own, the intent
+      vocabulary and its fail-closed conditions, why the authoritative eventId had to be published, how
+      the submission semantics stay single-owned, how LIFE_ARCHIVE and back protection behave, the
+      three injected integration seams for an eventual real WeChat transport, and what explicitly remains
+      UI04 work. It states that the production transport is not wired.
+  - id: C5
+    file: packages/wechat-shell/src/index.ts
+    kind: fix
+    detail: >-
+      `#effectiveInteractionState`: the surface must act on the state of the *authoritative interaction*,
+      not on the state of the last settled command. CommandSubmissionController reports "confirmed" after a
+      command lands, but the refreshed ViewModel already carries the NEXT interaction; projecting
+      "confirmed" onto it would hand the player an ordinary back out of a fresh, unresolved EVENT, which
+      the page-state contract forbids ("an unresolved EVENT cannot be escaped through ordinary back
+      navigation"). Client-side in-flight/failure states (submitting / retryableError / fatalError) are
+      still reported verbatim. This is a controller-local correction: buildWeChatPageShell and
+      canOrdinaryBack are untouched, and tests/ui03.test.mjs pins the corrected behaviour.
+  - id: C6
+    file: tests/ui03.test.mjs
+    kind: test
+    detail: >-
+      New 18-test dedicated suite (task-required). Every gameplay round trip runs through the real
+      CommandGateway + GatewayApplicationTransport + ServerViewModelBuilder over an authoritative active
+      run seeded by the real reducer, with the injected WeChat storage adapter on the persistence path.
+      Covers the port seam, single-ownership of submission, the core-action -> EVENT -> choice -> refreshed
+      RUN_HOME round trip, the fail-closed intent controls, the breakthrough round trip from a
+      server-projected available state and its two refusal modes, SPECIAL_NODE parity with the EVENT
+      boundary, back protection, the in-flight lock, transient retry, STATE_CONFLICT reconfirmation,
+      read-only LIFE_ARCHIVE, the storage adapter, the client-model secret boundary, the docs, the
+      registration and the route scope.
+  - id: C7
     file: package.json
     kind: tooling
     detail: >-
-      The only non-audit change, and the one this task explicitly permits: tests/ui02copy.test.mjs is
-      appended to the aggregate `npm test` command, so the copy guard introduced by UI02COPY is exercised
-      by the full regression instead of only by its own targeted run. `npm test` therefore went from 364
-      to 375 tests (the 11 ui02copy tests). No dependency change, no other script changed, no version
-      change.
-  - id: C2
+      Registers the dedicated suite: a `test:ui03` script plus tests/ui03.test.mjs appended to the frozen
+      aggregate `npm test` list. No dependency, version or other script changed.
+  - id: C8
+    file: miniprogram/pages/v2-preview/v2-fixtures.json
+    kind: generated
+    detail: >-
+      Regenerated by the real production chain (node tools/ui02-preview-fixtures.mjs --write) because the
+      preview fixture is a projection of the real ViewModel and therefore now carries the new eventId on
+      the EVENT / SPECIAL_NODE interactions. 86680 bytes. Its sibling JS module
+      (miniprogram/pages/v2-preview/v2-fixtures.js, 87569 bytes) was regenerated with
+      node tools/ui02-preview-fixture-module.mjs --write. No fixture generator or preview page source was
+      edited; both writers just re-run buildPreviewFixtures().
+  - id: C9
+    file: tests/ui02r1.test.mjs
+    kind: test
+    detail: >-
+      The FOUR base-tree digests that legitimately moved were updated on purpose, and only those four:
+      packages/wechat-shell/src, packages/platform-contract/src, server/src and
+      v2-preview/v2-fixtures.json. The doc comment above BASE_TREE records why, so the pin stays a real
+      scope guard rather than a rubber stamp. The pinned FILE LISTS are unchanged (no file was added to or
+      removed from any pinned tree). Every other pinned tree - 1.0 start/game/rank, app.json, app.wxss,
+      pages/, packages/core/src, packages/content/src, packages/application-ui/src,
+      tools/ui02-preview-fixtures.mjs - is untouched and was verified byte-identical by that same test.
+  - id: C10
     file: .codex/control/LAST_RESULT.yaml
     kind: result
     detail: >-
-      Replaced with the UI02FINAL merge-readiness verdict and the exact test/gate evidence required by the
-      task definition.
+      Replaced with the UI03 result, the exact test/gate evidence, the EBUSY proof pair, the explicit
+      scope disclosure including the one client-model field added, and the task-required
+      toolingObservations.
 
 tests:
-  - name: full-npm-test (aggregate, now including ui02copy)
+  - name: ui03 (dedicated, task-required)
+    result: "18 tests, 18 pass, 0 fail."
+  - name: ui02 (A12/UI02 regression, must stay green)
+    result: "18 tests, 18 pass, 0 fail."
+  - name: ui02r1 (base-tree scope guard)
     result: >-
-      375 tests, 372 pass, 3 fail, exit 1. The 3 failures are ALL the nested-process EBUSY class:
-      "clean Core passes the import boundary" and "forbidden Core fixture fails the import boundary"
-      (tests/import-boundary.test.mjs) and "replay CLI returns the verified final hash"
-      (tests/replay.test.mjs). See ebusyEvidence for the required base reproduction and direct-tool proof.
-      No other suite failed.
-  - name: tests/ui02copy.test.mjs
-    result: "11/11 pass, 0 fail (exit 0)"
-  - name: tests/ui02entry.test.mjs
-    result: "20/20 pass, 0 fail (exit 0)"
-  - name: tests/ui02r2a2.test.mjs
-    result: "15/15 pass, 0 fail (exit 0)"
-  - name: tests/ui02r2.test.mjs
-    result: "15/15 pass, 0 fail (exit 0)"
-  - name: tests/ui02r1.test.mjs
-    result: "32/32 pass, 0 fail (exit 0)"
-  - name: tests/ui02.test.mjs
-    result: "18/18 pass, 0 fail (exit 0)"
-  - name: tests/viewmodel-ui.test.mjs
-    result: "6/6 pass, 0 fail (exit 0)"
-  - name: tsc --noEmit (typecheck)
-    result: "exit 0, clean, typescript 5.9.3 (the version pinned in package.json)"
-  - name: tools/check-import-boundaries.mjs (lint)
-    result: "exit 0, 'Core import boundary: PASS'"
-  - name: tools/content-lint.mjs packages/content/dev-fixtures/minimal-pack.json
-    result: "exit 0, 'Content lint: PASS (1 pack)'"
-  - name: tools/content01-lint.mjs
+      32 tests, 32 pass, 0 fail - including UI02R1_scope, which now verifies the four deliberately updated
+      digests and still verifies that every other pinned tree is byte-equivalent to the task base.
+  - name: ui02r2 / ui02r2a2 / ui02entry / ui02copy
+    result: "15/15, 15/15, 20/20, 11/11 - all pass, 0 fail."
+  - name: viewmodel-ui (A12)
+    result: "6 tests, 6 pass, 0 fail."
+  - name: server-gateway (A11)
+    result: "6 tests, 6 pass, 0 fail."
+  - name: reducer
+    result: "10 tests, 10 pass, 0 fail."
+  - name: replay
     result: >-
-      exit 0; prints the sealed content summary contentVersion content01.v1, 66 events, 10 causeTemplates,
-      5 npcDefinitions, 8 npcArchetypes (the tool exits non-zero on a lint error)
-  - name: tools/scan-secrets.mjs
-    result: "exit 0, 'Secret scan: PASS'"
-  - name: tools/ui02r1-layout-audit.mjs
-    result: "exit 0, 143/143 structural checks green, zero failures"
-  - name: tools/wxss-compat-audit.mjs
-    result: "exit 0, 14/14 checks green, 167 selectors, at-rules media only, RESULT: PASS"
-  - name: tools/ui02-preview-fixture-module.mjs (fixture freshness)
+      6 tests, 5 pass, 1 fail. The failure is the nested-process EBUSY CLI test ("replay CLI returns the
+      verified final hash"), classified as environment noise only after both proofs in ebusyEvidence.
+  - name: full-npm-test (aggregate, now including ui03)
     result: >-
-      exit 0; fixture module and JSON up to date; v2-preview.js still requires "./v2-fixtures.js" with a
-      static literal and no miniprogram module uses a non-literal require; payload 87482 bytes,
-      4 entry screens + 4 states + 2 variants
-  - name: tools/participant-bridge-audit.mjs
-    result: "exit 0, 0 knowledgeLeakViolations, 0 directorSideEffectViolations"
-  - name: tools/recurrence-audit.mjs
-    result: "exit 0, 0 occurrenceCountViolations, 0 cooldownViolations, 0 repeatSafeViolations, 0 contentIdHardcodingViolations"
-  - name: tools/director-audit.mjs
-    result: "exit 0, 0 precedenceViolations, 0 pacingViolations, 0 dangerPacingViolations, 0 securityViolations"
-  - name: tools/phase2-drift-audit.mjs
-    result: >-
-      exit 0, 'status: PASS'; PROG01 / RISK01 / BUILD01 / NPC01 / DIRECTOR01 all PASS with zero contract
-      conflicts
-  - name: tools/content-playability-audit.mjs
-    result: "exit 0, 0 AIorNetworkDependencies"
-  - name: context-loader (node .codex/context.mjs UI02FINAL + tests/context-loader.test.mjs)
-    result: >-
-      context smoke exit 0 (it printed the UI02FINAL task context; the only MALFORMED_TASK string in the
-      output is the accept-criterion text itself), and tests/context-loader.test.mjs 16/16 pass, 0 fail,
-      exit 0, so UI02FINAL and every task definition parse under the current schema.
-  - name: 600-run simulation (SIM02 / PLAYCHECK02)
-    result: >-
-      NOT RUN, deliberately, as the task specifies. The chain changed no gameplay rule or balance code
-      (evidenced by the zero-changed-file check on packages/core, packages/content, server and the
-      Director surfaces), so there is nothing for a balance simulation to measure.
+      393 tests, 390 pass, 3 fail, exit 1. The +18 over UI02FINAL's 375 is exactly the new ui03 suite, so
+      no existing test regressed. The 3 failures are the documented nested-process EBUSY class:
+      "clean Core passes the import boundary", "forbidden Core fixture fails the import boundary" and
+      "replay CLI returns the verified final hash". 600-run simulation NOT run, per the task and because
+      no Core/Content/Director/Progression/Risk code changed.
 
 gates:
-  - name: full-npm-test
-    result: >-
-      GREEN apart from 3 proven environment failures (375 tests, 372 pass). See ebusyEvidence.
   - name: typecheck
-    result: PASS
-  - name: lint
-    result: PASS
+    command: npx --yes --package typescript@5.9.3 tsc --noEmit
+    result: "exit 0, clean."
+  - name: lint (Core import boundary)
+    command: node tools/check-import-boundaries.mjs
+    result: "exit 0, 'Core import boundary: PASS'."
+  - name: lint negative control
+    command: node tools/check-import-boundaries.mjs --root tests/fixtures/core-forbidden
+    result: "exit 1 with 'forbidden.ts: forbidden import ../../../packages/platform-contract/src/index.ts' - the gate is not vacuous."
   - name: content-lint
-    result: PASS
+    command: node tools/content-lint.mjs packages/content/dev-fixtures/minimal-pack.json
+    result: "exit 0, 'Content lint: PASS (1 pack)'."
   - name: content01-lint
-    result: PASS
+    command: node tools/content01-lint.mjs
+    result: "exit 0, content01.v1 intact: 66 events, 10 cause templates, 5 npc definitions, 8 archetypes."
   - name: secret-scan
-    result: PASS
-  - name: layout-audit
-    result: "PASS (143/143)"
-  - name: wxss-compat-audit
-    result: "PASS (14/14)"
-  - name: fixture-freshness
-    result: PASS
-  - name: participant-bridge-audit
-    result: PASS
-  - name: recurrence-audit
-    result: PASS
-  - name: director-audit
-    result: PASS
-  - name: phase2-drift-audit
-    result: PASS
-  - name: content-playability-audit
-    result: PASS
-  - name: context-loader
-    result: PASS
-  - name: dedicated UI suites (ui02copy, ui02entry, ui02r2a2, ui02r2, ui02r1, ui02, viewmodel-ui)
-    result: "PASS (11+20+15+15+32+18+6 = 117 tests, 0 fail)"
-  - name: ancestry / merge-readiness
+    command: node tools/scan-secrets.mjs
+    result: "exit 0, 'Secret scan: PASS'."
+  - name: UI02R1 layout audit
+    command: node tools/ui02r1-layout-audit.mjs
+    result: "exit 0, RESULT: PASS - 143 checks green."
+  - name: WXSS compatibility audit
+    command: node tools/wxss-compat-audit.mjs
     result: >-
-      PASS. dev/tianfu-2.0 is an ancestor of the chain head (merge-base == dev), 10 commits, chain is a
-      fast-forwardable descendant, and no unreviewed gameplay/server/legacy-1.0/default-route change
-      exists anywhere on it.
-  - name: 600-run simulation
-    result: "NOT REQUIRED (no gameplay rule or balance code changed in the UI chain)"
+      exit 0, RESULT: PASS - 14 checks green. This remains a curated subset check, not the WeChat DevTools
+      WXSS compiler; no .wxss file was touched by UI03, so the stylesheet position is unchanged.
+  - name: preview fixture freshness
+    command: node tools/ui02-preview-fixture-module.mjs
+    result: >-
+      exit 0: both v2-fixtures.js and v2-fixtures.json report "up to date", the preview page requires
+      "./v2-fixtures.js" with a static literal, and no miniprogram module uses a non-literal require.
 
 ebusyEvidence:
-  classification: environment-noise-proven
-  taskRequirement: >-
-    The task permits classifying the known nested-process EBUSY failures as environment noise ONLY with
-    exact base reproduction AND underlying direct-tool success. Both were performed.
-  aggregateFailures:
-    - "tests/import-boundary.test.mjs :: clean Core passes the import boundary (assert.equal(result.status, 0), actual null)"
-    - "tests/import-boundary.test.mjs :: forbidden Core fixture fails the import boundary (status null, not a real tool failure)"
-    - "tests/replay.test.mjs :: replay CLI returns the verified final hash (execFileSync returned status null)"
-  errorSignature: >-
-    error: 'spawnSync <node.exe> EBUSY' with code 'EBUSY' and errno -4082. The tests reach their tool
-    through spawnSync/execFileSync(process.execPath, ...); spawning node.exe from inside a Node process is
-    what this sandbox blocks.
-  baseReproduction:
-    how: >-
-      The worktree was returned to the pristine task base (the only task change, package.json, was
-      reverted with git checkout so `git write-tree` again equalled the base tree
-      d716344dc399a39084fb66b0a8c9e6323770b674 and status was clean), then both suites were re-run with no
-      task change present.
-    result: >-
-      Identical failure set on the untouched base: 8 tests, 5 pass, 3 fail - "clean Core passes the import
-      boundary", "forbidden Core fixture fails the import boundary", "replay CLI returns the verified final
-      hash", with EBUSY present. The failures are therefore independent of this task and of the UI02 chain.
-  directToolSuccess:
+  summary: >-
+    Classified as environment noise only after BOTH proofs the task requires, exactly as UI02FINAL did.
+    Proof 1 - the exact three failures reproduce on the UNTOUCHED base tree. Proof 2 - every underlying
+    direct tool succeeds when invoked from the shell.
+  proof1_base_reproduction: >-
+    The pristine base was materialised without touching any git ref: `mkdir .b2base/base && git archive
+    ce916d7 | tar -x -C .b2base/base`, then `node --test tests/import-boundary.test.mjs tests/replay.test.mjs`
+    with cwd inside that extracted tree. Result: identical failure names and identical class - "clean Core
+    passes the import boundary", "forbidden Core fixture fails the import boundary", "replay CLI returns
+    the verified final hash", with the last one printing
+    `spawnSync C:\\Users\\...\\node.exe EBUSY`, code EBUSY. 8 tests, 5 pass, 3 fail - the same 3.
+  proof1_reason: >-
+    tests/import-boundary.test.mjs and tests/replay.test.mjs use spawnSync/execFileSync to launch a nested
+    node.exe, which is the spawn class this sandbox blocks with EBUSY; they fail identically on code that
+    UI03 never touched.
+  proof2_direct_tools:
     - tool: tools/check-import-boundaries.mjs
-      command: "node tools/check-import-boundaries.mjs"
-      result: "exit 0, stdout 'Core import boundary: PASS'"
-    - tool: tools/check-import-boundaries.mjs --root tests/fixtures/core-forbidden
-      command: "node tools/check-import-boundaries.mjs --root tests/fixtures/core-forbidden"
-      result: >-
-        exit 1, stderr 'forbidden.ts: forbidden import ../../../packages/platform-contract/src/index.ts'
-        - i.e. the negative control behaves exactly as the test asserts (non-zero status plus /forbidden
-        import/ in stderr).
+      result: "exit 0, 'Core import boundary: PASS'."
+    - tool: "tools/check-import-boundaries.mjs --root tests/fixtures/core-forbidden"
+      result: "exit 1 with 'forbidden import' on stderr - the negative control the blocked test asserts."
     - tool: tools/replay.mjs
-      command: "node tools/replay.mjs <input.json> <pack.json>"
       result: >-
-        exit 0. The input was rebuilt through the same public modules and the same helper bodies the test
-        uses (ContentRegistry / sealContentPack / createOfferedRun / reduce / executeLoggedCommand /
-        createCommandLog / createSnapshot, plus the test's own contentPack/setup/envelope/journey bodies),
-        then the real CLI was invoked from the shell. It returned finalRuleStateHash
-        978d3e8b3caa46ced017a8e4d593af8a6f11b34107caafb1c1f871ca3a184534 - identical to the in-process
-        ruleStateHash of the final state and to what the test asserts - with checkpoints.length === 2.
-        REPLAY_DIRECT_TOOL_OK.
-  conclusion: >-
-    Both proofs pass: the 3 failures reproduce identically on the untouched base and every underlying
-    direct tool works when invoked from the shell. They are sandbox environment noise, not repository
-    defects, and they are the only non-green part of the full regression.
+        exit 0. The blocked test's contentPack/setup/envelope/journey bodies were copied verbatim into a
+        throwaway generator under .b2base/, which writes .b2base/replay-input.json and
+        .b2base/replay-pack.json; the CLI was then run from the shell as
+        `node tools/replay.mjs .b2base/replay-input.json .b2base/replay-pack.json`. It printed
+        finalRuleStateHash 978d3e8b3caa46ced017a8e4d593af8a6f11b34107caafb1c1f871ca3a184534 with
+        2 checkpoints; the in-process ruleStateHash(finalState) computed by the same verbatim journey is
+        the identical 978d3e8b...534, which is exactly what the blocked test asserts (it also asserts
+        checkpoints.length === 2). The throwaway generator is disclosed here as the substitute for the
+        blocked in-process call; it is scratch, not a committed deliverable.
 
 scope:
-  featureWork: false
-  visualRedesign: false
-  copyWork: false
   coreChanged: false
-  contentGameplayChanged: false
+  contractsChanged: false
   directorChanged: false
-  causeSemanticsChanged: false
+  contentChanged: false
   progressionChanged: false
   riskResolutionChanged: false
-  buildOrNpcRuleChanged: false
-  serverViewModelChanged: false
-  wechatShellIntentMappingChanged: false
-  applicationUiControllerChanged: false
-  legacy1_0PagesChanged: false
+  buildOrNpcChanged: false
+  serverGatewayChanged: false
+  serverViewModelChanged: true
+  platformContractTypeChanged: true
+  applicationUiChanged: false
+  legacy10PagesChanged: false
   defaultRouteChanged: false
-  ui03Started: false
-  newRuntimeDependency: false
+  appJsonChanged: false
+  productionTransportWired: false
+  cloudDeploymentChanged: false
+  simulationRun: false
   sourceBranchPushed: false
-  onlyNonAuditChange: "package.json aggregate test registration for tests/ui02copy.test.mjs"
-  simulation600RunExecuted: false
-  note: >-
-    Verification-only task. The working tree differs from the task base by exactly two files: package.json
-    (the permitted registration) and .codex/control/LAST_RESULT.yaml (this result). Nothing under
-    packages, server, miniprogram/app.json, miniprogram/app.wxss or the legacy 1.0 pages was touched, and
-    the dev -> chain-head diff independently proves no such path changed anywhere across the whole
-    accumulated UI chain.
+
+contractExtension:
+  contractFileEdited: false
+  detail: >-
+    No file under .codex/contracts/ was edited - that is a controller decision, not an implementer one.
+    The implementation nevertheless extends one client-visible type: CurrentInteraction gains the optional
+    public field `eventId` (packages/platform-contract/src/index.ts) which .codex/contracts/viewmodel.ref
+    does not yet list. The controller should decide whether to fold the field into the contract text. The
+    field is additive and optional, so every existing reader of the contract still type-checks and the
+    pre-run destinyOffer interaction does not carry it (pinned by tests/ui02entry.test.mjs, which asserts
+    the exact key set of DESTINY_OFFER's currentInteraction and stayed green).
 
 disclosedScopeNotes:
-  - >-
-    This task made one non-audit edit, package.json, which the task definition explicitly allows ("adding
-    tests/ui02copy.test.mjs to the aggregate npm test command if it is not already registered there"). It
-    was not registered: UI02COPY added test:ui02copy but deliberately left the aggregate list alone because
-    the full regression was deferred. Registering it is what makes the aggregate run now include the copy
-    guard.
-  - >-
-    The full regression's three failures are reported as GREEN-WITH-PROVEN-ENVIRONMENT-NOISE rather than
-    fully green. `npm test` exits 1 because of them, so the aggregate gate is not literally exit-zero.
-    Reported as such rather than hidden, because the task's accept criterion is explicitly the conditional
-    one (green OR only proven base-reproducible nested-process EBUSY environment failures with underlying
-    direct tools green), and both required proofs are recorded in ebusyEvidence.
-  - >-
-    The replay direct-tool proof uses a small harness that copies the failing test's helper bodies verbatim
-    and drives the real CLI from the shell. It is a deliberate, disclosed substitute for the in-process
-    call the sandbox blocks; it asserts the same two facts the test asserts (the finalRuleStateHash and
-    checkpoints.length === 2). The harness lives under the git-excluded scratch directory and is not part of
-    the task commit.
-  - >-
-    The worktree arrived polluted by a previous WeChat DevTools session: a modified project.config.json and
-    project.private.config.json, and an untracked miniprogram/pages/game/game.js stub (the stock
-    Page({}) template DevTools generates for a page app.json declares but the repo does not implement).
-    That stub would shadow the real 1.0 game page and would break the digest-pinned tests/ui02.test.mjs
-    check on miniprogram/pages/game. All three files were copied to the git-excluded scratch directory with
-    a sha256 manifest and moved aside BEFORE verification, and the tracked config files were restored to
-    their base content. None of them is in this commit, and the worktree was confirmed clean apart from the
-    untracked session memory log before the base was positioned.
+  - id: D1
+    severity: INFO
+    title: one public client-model field was added, and this is the reason it was unavoidable
+    detail: >-
+      CHOOSE_EVENT_OPTION is keyed by eventId; the public ViewModel exposed only interactionId, which is an
+      instance identity (`event:<commandId>:<eventId>` in a real run - verified by driving the real
+      reducer and gateway, see the probe evidence below). The task explicitly requires an EVENT option
+      mapping derived only from the authoritative currentInteraction and forbids fabricating eventId, and
+      it explicitly requires a real-gateway event-choice round trip - both impossible without the server
+      publishing the current event id. The alternative (silently reinterpreting interactionId as the event
+      id) was rejected: it would have repurposed an accepted field, broken an accepted UI02 assertion and
+      an accepted key-set pin, and still left instance identity unavailable.
+    probeEvidence: >-
+      A throwaway script ran START_RUN then CHOOSE_ACTION cultivate through the real server stack. It
+      printed events.current =
+      {"eventId":"dev.first-choice","kind":"choice","instanceId":"event:cmd:probe-cultivate-1:dev.first-choice","participantBindings":{}}
+      and currentInteraction.interactionId = that same instanceId - i.e. interactionId != eventId in the
+      only path that matters.
+  - id: D2
+    severity: INFO
+    title: an accepted UI02R1 digest pin was updated on purpose, four times
+    detail: >-
+      tests/ui02r1.test.mjs pins the task base byte-equivalence of several trees, and its own comment
+      permits a later task to update a digest deliberately. Exactly four digests moved
+      (packages/wechat-shell/src, packages/platform-contract/src, server/src, v2-fixtures.json) and no
+      pinned file list changed. The other ten pinned entries - including packages/core/src,
+      packages/content/src, packages/application-ui/src, the 1.0 pages, app.json, app.wxss and
+      tools/ui02-preview-fixtures.mjs - are untouched, which the same test still proves. The UI02FINAL
+      controller note that "a later task that is legitimately allowed to change one of these trees must
+      update the digest on purpose" is exactly what happened.
+  - id: D3
+    severity: INFO
+    title: the preview fixture and its JS sibling were regenerated, with zero generator or page edits
+    detail: >-
+      tools/ui02-preview-fixtures.mjs and miniprogram/pages/v2-preview/v2-preview.js were NOT modified.
+      The fixture is a projection of the real production chain, so it necessarily changed once the
+      projection changed; both writers were simply re-run. A digest pin on tools/ui02-preview-fixtures.mjs
+      in tests/ui02r1.test.mjs stayed green, which is the evidence that the generator itself is untouched.
+  - id: D4
+    severity: INFO
+    title: the production WeChat transport is still not wired, and the default route is still 1.0
+    detail: >-
+      UI03 delivers a reusable controller plus real-gateway E2E evidence. Wiring a live wx.request /
+      cloud-function transport into a page, and any default-route change, is UI04 work and is documented
+      as such in docs/UI03_LIVE_CONTROLLER.md. UI03 did not widen into UI04, CHAL01, leaderboard,
+      commerce/ads, ITEM01, TECH01, SECT01 or WORLD01.
 
 toolingObservations:
   - id: T1
-    severity: ENVIRONMENT
-    inherited: true
-    title: nested node process spawn fails with EBUSY in this sandbox
+    severity: INFO
+    title: this session's proxy port is 127.0.0.1:46226 and reads succeeded on the first attempt
     evidence: >-
-      Reproduced exactly as the task requires - identical failures on the untouched base plus green direct
-      tools. See ebusyEvidence.
+      `env | grep -i _proxy` reported http_proxy/https_proxy/HTTP_PROXY/HTTPS_PROXY all as
+      http://127.0.0.1:46226 (a THIRD port after the 18036 and 23843 recorded in TOOLING_RUNBOOK.md).
+      `git fetch --no-tags origin dev/tianfu-2.0` succeeded on attempt 1 with no 502 and no retry needed,
+      and both `git ls-remote` calls also succeeded first try. The documented 40x retry loop was prepared
+      but never entered.
     impact: >-
-      The full regression can never be literally exit-zero in this sandbox. Anyone re-running `npm test`
-      here should expect exactly these 3 failures and judge them as environment noise; on a normal machine
-      the same tests would pass.
+      Reinforces the runbook rule: read the port from the environment, never hard-code it. Network
+      quality varies per session, so the retry loop must stay in place even when one session is clean.
+    workaround: >-
+      Use the runbook's bounded background retry loop; it remains correct and cost nothing here.
   - id: T2
-    severity: TOOLING
-    inherited: true
-    title: WeChat DevTools pollutes the worktree and can break digest-pinned tests
+    severity: INFO
+    title: positioning a worktree on a remote HEAD without any ref write works and is the safest recipe
     evidence: >-
-      Observed again on arrival: modified project.config.json / project.private.config.json and an
-      untracked miniprogram/pages/game/game.js stub. tests/ui02.test.mjs hashes the whole
-      miniprogram/pages/game directory, so the stub alone would have failed the regression for a reason
-      that has nothing to do with the chain.
+      `git read-tree -u --reset <sha>` followed by writing the worktree HEAD file (<common>/.git/worktrees/
+      <name>/HEAD) with "<sha>\n" produced a clean status and `git rev-parse HEAD` == the sha, with zero
+      git-side ref writes. `git write-tree` then equalled `<sha>^{tree}`, which is the byte-identity proof.
+      Object, index and worktree state were all unaffected by the documented ref-write deletion issue.
     impact: >-
-      Anyone opening this project in DevTools between an implementer run and the controller's review must
-      move those artefacts aside before trusting a regression result, and must not commit them.
+      The synthetic-tree fallback (allowSyntheticTreeBase: true) was NOT needed this session, but this
+      recipe is what made real-ancestry base setup safe and is worth keeping as the default.
+    workaround: >-
+      Position worktrees this way; only fall back to synthetic-tree if the remote commit object truly
+      cannot be fetched.
   - id: T3
-    severity: TOOLING
-    title: pushing requires an explicit credential helper in this sandbox
+    severity: INFO
+    title: reproducing an untouched-base failure without git ref writes, via git archive
     evidence: >-
-      ~/.gitconfig ends its credential section with an empty `helper =`, which RESETS the helper list that
-      PortableGit's gitconfig sets, so a plain `git push` finds no credential, falls back to an interactive
-      prompt, and hangs with no output. The Windows Git Credential Manager does hold a working GitHub
-      credential and supplies it non-interactively. The push for this task used
-      `GCM_INTERACTIVE=never git -c credential.helper=manager -c
-      credential.https://github.com.helper=manager push origin HEAD:refs/heads/wb-UI02FINAL` with each
-      attempt bounded by `timeout` and retried for the flaky proxy.
+      `mkdir .b2base/base && git archive <baseCommit> | tar -x -C .b2base/base` materialises an exact
+      pristine base tree read-only, and the failing suites can then be run with cwd inside it. This
+      reproduced the 3 EBUSY failures identically (see ebusyEvidence.proof1_base_reproduction).
     impact: >-
-      Informational for the controller, actionable for the next implementer run. Also note the proxy port
-      is not stable (observed 23843 here, 18036 previously) - read it from HTTPS_PROXY.
+      This is a strictly safer alternative to `cp package.json .b2base/... && git checkout -- package.json`
+      for a task whose diff spans more than one file, and it needs no ref write and no stash.
+    workaround: >-
+      Prefer git archive for base reproduction; remove the extracted .git directory if a stray
+      `git init` was run inside the scratch tree, so the outer repo does not see a nested repository.
+  - id: T4
+    severity: INFO
+    title: a transient sandbox error can abort a multi-command Bash call with no side effects
+    evidence: >-
+      Two composite Bash calls (several chained commands with `&&`/`;`) failed as a whole with
+      `Error: sandbox-center cmd decisionRecord missing actual resource subject` and printed no command
+      output; splitting them into single-purpose calls succeeded immediately. One of the aborted calls
+      included a `git status`, so no partial state was written.
+    impact: >-
+      A composite command is all-or-nothing at the sandbox layer, so a failure there can look like a
+      command failure. It is a harness artefact, not a repo or test problem.
+    workaround: >-
+      Split long chains into single-purpose Bash calls when this appears; re-run the pieces rather than
+      debugging the command itself.
+  - id: T5
+    severity: INFO
+    title: nested-node EBUSY is unchanged this session and still needs the two-proof standard
+    evidence: >-
+      3 aggregate failures, all spawnSync/execFileSync EBUSY, reproduced identically on the untouched base
+      (proof 1) with every direct tool green (proof 2). See ebusyEvidence.
+    impact: >-
+      The aggregate `npm test` exits 1 in this sandbox. Report it as "green apart from proven environment
+      noise", never as plain green.
+    workaround: >-
+      Keep the two-proof standard. This session added a reusable base-reproduction recipe (T3) that makes
+      proof 1 cheap for multi-file tasks.
+  - id: T6
+    severity: INFO
+    title: WeChat DevTools worktree pollution did NOT occur this session
+    evidence: >-
+      `git status` after all edits shows exactly the 8 intended task files plus the two new files, and no
+      `miniprogram/project.config.json`, no page-level `project.config.json`, and no
+      `miniprogram/pages/game/game.js` stub. No DevTools session touched this worktree.
+    impact: >-
+      The digest-pinned suites could be trusted as-is; the DEVTOOLS_ARTIFACTS exclusion in
+      tests/ui02r1.test.mjs was not exercised.
+    workaround: >-
+      None needed. The runbook's guidance (inspect status, isolate, never commit the stub) still applies.
+  - id: T7
+    severity: INFO
+    title: node --test per-suite counts are the cheapest way to state evidence
+    evidence: >-
+      `node --test tests/<name>.test.mjs | grep -E "^# (tests|pass|fail)"` gives exact counts per suite and
+      was used for every number in this file; the aggregate run writes to a log and is grepped the same way.
+    impact: >-
+      Avoids quoting planned or remembered numbers.
+    workaround: >-
+      Reuse the one-liner.
 
 blockers: []
 
 backlog:
-  - id: U1
+  - id: B1
     severity: BACKLOG
-    title: the aggregate regression cannot be made literally exit-zero inside this sandbox
-    evidence: >-
-      The 3 nested-process EBUSY failures are environmental and reproduce on the untouched base, but they
-      mean `npm test` exits 1 here. A CI or developer machine run is the only way to see a fully green
-      aggregate.
-    impact: >-
-      Recommendation for the controller: run `npm test` once in a normal environment before or alongside
-      the fast-forward into dev/tianfu-2.0, so the merge carries a literally-green regression record. It is
-      not a blocker - the task's own accept criterion allows this conditional outcome, and both required
-      proofs are recorded.
-    suggestedOwner: controller at merge time
-  - id: U2
+    title: the contract text and the implemented public field now differ by one optional key
+    detail: >-
+      .codex/contracts/viewmodel.ref still describes CurrentInteraction without `eventId`, while
+      packages/platform-contract/src/index.ts exports it. The controller should decide whether to add it
+      to the contract. This is a documentation/spec alignment item, not a behavioural gap: the field is
+      optional, additive, and pinned by tests/ui03.test.mjs and the regenerated fixtures.
+    suggestedOwner: controller
+  - id: B2
     severity: BACKLOG
-    title: the 2.0 preview is still a dev-preview route with unwired transport
-    evidence: >-
-      miniprogram/pages/v2-preview is registered last and is not the default page; it holds no live
-      transport, no START_RUN settlement and no real session. This is by design and is documented in
-      docs/UI02_PREVIEW.md section 7.
-    impact: >-
-      Fast-forwarding the chain into dev adds a reviewable preview surface, not a playable 2.0 flow. UI03
-      is the task that wires it. Do not treat merge acceptance as gameplay acceptance.
-    suggestedOwner: UI03
+    title: the real WeChat transport, page wiring and terminal flow are still ahead
+    detail: >-
+      createRunOffer / a live wx.request or cloud-function transport, wiring the controller into a real
+      2.0 page, and the ENDING -> LIFE_BOOK -> REBIRTH_RESULT -> NEXT_LIFE orchestration are all UI04.
+      docs/UI03_LIVE_CONTROLLER.md names the exact seams. Do not read UI03 acceptance as gameplay
+      acceptance: the controller is proven against a local authoritative gateway, not against production.
+    suggestedOwner: UI04
+  - id: B3
+    severity: BACKLOG
+    title: a SPECIAL_NODE with a non-active run cannot be submitted, by rule
+    detail: >-
+      A dying run projects as SPECIAL_NODE but CHOOSE_EVENT_OPTION is refused with RUN_NOT_ACTIVE by the
+      authoritative reducer. UI03 pins this honestly (the command mapping is still exercised and asserted)
+      rather than papering over it. Any dedicated "dying run" decision surface is gameplay design work
+      outside this task.
+    suggestedOwner: controller
 
 recommendedCommitMessage: |-
-  chore(ui02final): full regression and merge-readiness audit for the UI02 chain
+  feat(ui03): wire the 2.0 presentation layer to a live session controller
 
-  Verification-only task. No product behaviour, visual or copy change. The single
-  non-audit edit is the one the task explicitly permits: tests/ui02copy.test.mjs is
-  registered in the aggregate `npm test` command, where UI02COPY had deliberately
-  left it out because the full regression was deferred to this task.
+  Adds WeChatRunController (packages/wechat-shell): a reusable live-session
+  controller that consumes only PublicViewModel + ApplicationTransport +
+  PlatformStorage + the accepted shell mappers. It loads the authoritative
+  ViewModel, maps a player intent to a GameCommand, submits it, exposes the
+  pending/retry/reconfirmation state and projects the next page model.
 
-  Verdict: PASS - the accumulated chain (UI02 -> UI02R1 -> UI02R2 -> UI02R2A2 ->
-  UI02ENTRY -> UI02COPY, 10 commits) is safe to fast-forward into dev/tianfu-2.0 and
-  UI03 may start.
+  Gameplay authority does not move: the controller rolls no RNG, resolves no
+  outcome, computes no eligibility, risk or breakthrough odds, and every page
+  transition comes from a refreshed PublicViewModel. CommandSubmissionController
+  stays the single owner of the envelope, commandId persistence, retry and
+  STATE_CONFLICT reconfirmation; the shell wraps exactly one instance and
+  persists nothing itself. The production WeChat transport is NOT wired and the
+  default route is unchanged - both are UI04, documented in
+  docs/UI03_LIVE_CONTROLLER.md.
 
-  Merge readiness:
-  - ancestry is real, not asserted: dev/tianfu-2.0 is a genuine ancestor of the chain
-    head and the merge-base IS dev, so this is a fast-forwardable descendant.
-  - the full dev -> chain-head diff touches 19 paths, all of them the 2.0 dev-preview
-    surface, its UI02 docs/tests/audit tools, package.json, or .codex metadata. ZERO
-    changed files under packages/core, packages/content, packages/wechat-shell,
-    packages/application-ui, packages/platform-contract, server, the legacy 1.0 pages,
-    app.json or app.wxss. No gameplay, Director, server, content, legacy-page or
-    default-route change entered through the UI chain.
+  This task also had to fix ONE server-side projection defect to be possible at
+  all: CHOOSE_EVENT_OPTION is keyed by eventId, but the public CurrentInteraction
+  only exposed interactionId, which is an instance identity
+  ("event:<commandId>:<eventId>" in a real run) and therefore not the event id.
+  The public ViewModel could not construct the contract's own command. The
+  smallest additive fix: the server now projects the authoritative
+  state.run.events.current.eventId verbatim onto the decision interaction. It is
+  not new information - past event ids are already public in
+  history[].data.eventId - and it is optional, so destinyOffer does not carry it.
 
-  Evidence:
-  - full regression: 375 tests, 372 pass, 3 fail. All 3 failures are the documented
-    nested-process EBUSY class and are classified environment noise only after BOTH
-    required proofs: they reproduce identically on the untouched task base (reverted
-    package.json, tree == base tree, clean status), and every underlying direct tool
-    succeeds when run from the shell (check-import-boundaries exit 0 clean / exit 1 +
-    "forbidden import" on the negative-control root; replay.mjs exit 0 with the same
-    finalRuleStateHash the test asserts and 2 checkpoints).
-  - dedicated suites: ui02copy 11/11, ui02entry 20/20, ui02r2a2 15/15, ui02r2 15/15,
-    ui02r1 32/32, ui02 18/18, viewmodel-ui 6/6 (117 tests, 0 fail).
-  - gates: typecheck clean, lint PASS, content-lint PASS, content01-lint PASS,
-    secret-scan PASS, layout audit 143/143, wxss compat 14/14, fixture freshness green,
-    participant-bridge 0 violations, recurrence 0 violations, director 0 violations,
-    phase2-drift PASS with 0 conflicts, content-playability 0 AI/network deps,
-    context-loader 16/16 plus the UI02FINAL smoke.
-  - 600-run simulation NOT run, per the task: no gameplay rule or balance code changed
-    anywhere in the chain.
+  Evidence - all E2E through the real CommandGateway +
+  GatewayApplicationTransport + ServerViewModelBuilder, with only PlatformStorage
+  and the commandId factory injected:
+  - real core action -> EVENT -> event choice -> refreshed RUN_HOME round trip;
+  - real ATTEMPT_BREAKTHROUGH round trip from a server-projected available state
+    (mortal -> qi-refining), plus both refusal modes when it is not projected;
+  - a transient failure retried with the identical commandId and payload,
+    settling exactly once;
+  - STATE_CONFLICT refreshing the latest ViewModel and requiring an explicit
+    reconfirmation with a fresh commandId against the latest stateVersion;
+  - unresolved EVENT and SPECIAL_NODE back protection, and the in-flight lock;
+  - LIFE_ARCHIVE as a local read-only overlay that submits nothing and mutates
+    nothing, and is dropped the moment the authoritative page state moves on.
 
-  Also handled: the worktree arrived polluted by a WeChat DevTools session (modified
-  project.config.json / project.private.config.json and an untracked
-  miniprogram/pages/game/game.js stub that would have shadowed the real 1.0 page and
-  broken the digest-pinned regression). All three were copied to a scratch directory
-  with a sha256 manifest and moved aside before verification; none is in this commit.
+  Tests and gates:
+  - ui03 18/18 (new); ui02 18/18; ui02r1 32/32; ui02r2 15/15; ui02r2a2 15/15;
+    ui02entry 20/20; ui02copy 11/11; viewmodel-ui 6/6; server-gateway 6/6;
+    reducer 10/10.
+  - aggregate npm test: 393 tests, 390 pass, 3 fail. The +18 over UI02FINAL's
+    375 is exactly the new suite, so nothing regressed. The 3 failures are the
+    documented nested-node EBUSY class, classified as environment noise only
+    after BOTH required proofs: they reproduce identically on the untouched base
+    tree, and every underlying direct tool is green from the shell
+    (check-import-boundaries exit 0 clean / exit 1 + "forbidden import" on the
+    negative control; replay.mjs exit 0 with finalRuleStateHash 978d3e8b...534
+    equal to the in-process ruleStateHash and 2 checkpoints).
+  - typecheck clean; lint, content-lint, content01-lint, secret-scan PASS;
+    layout audit 143/143; wxss compat 14/14; preview fixture freshness green.
+  - 600-run simulation NOT run: no Core/Content/Director/Progression/Risk code
+    changed.
 
-  UI03 was not started.
+  Scope disclosure: the only client-visible model change is the additive public
+  eventId described above. Four tests/ui02r1.test.mjs base-tree digests were
+  updated on purpose (wechat-shell, platform-contract, server, v2-fixtures.json)
+  and its own comment permits exactly that; the other ten pinned entries,
+  including packages/core/src, packages/content/src, the 1.0 pages, app.json,
+  app.wxss and the UI02 preview generator, are byte-identical. The preview
+  fixture JSON and its JS sibling were regenerated by re-running the existing
+  writers; no generator or page source was edited. UI04, cloud deployment, the
+  default route and all gameplay rules were left alone.

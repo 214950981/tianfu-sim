@@ -26,6 +26,16 @@ export interface PublicOption { optionId: string; labelKey: string; riskPresenta
 export interface CurrentInteraction {
   interactionId: string; kind: "destinyOffer" | "event" | "specialNode" | "ending" | "rebirth";
   titleKey: string; body: PublicJson; options: PublicOption[]; interactionState: InteractionState; retryCommandId?: string;
+  /**
+   * UI03 — the authoritative public id of the event this interaction is bound to, projected verbatim
+   * from the run's current event. The COMMAND contract keys CHOOSE_EVENT_OPTION by `eventId`, so this
+   * field is what lets a client build that command from the public ViewModel alone instead of
+   * reconstructing the id from `interactionId` (which is an *instance* identity) or from a
+   * presentation key. It carries no rule state: past event ids are already public in `history`.
+   *
+   * Absent for `destinyOffer`, which precedes any run event. See docs/UI03_LIVE_CONTROLLER.md.
+   */
+  eventId?: string;
 }
 export interface PublicHistoryEntry { entryId: string; kind: string; titleKey: string; summaryKey: string; data?: Record<string, PublicJson> }
 export interface PublicHistory { entries: PublicHistoryEntry[] }
