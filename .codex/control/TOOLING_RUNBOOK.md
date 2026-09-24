@@ -143,3 +143,14 @@ Arm a simulated post-commit timeout immediately before the transaction/operation
 ## Negative controls must drift the enforced property
 
 A negative control should mutate the boundary the tool actually guarantees. For generated artifacts, ordinary legal source edits belong to freshness checks; dependency-closure or facade-surface violations belong to generator/audit negative controls. Do not expect a valid derivation to fail merely because source content changed.
+
+## Resource / credit efficiency
+
+Protocol v1.4 makes bounded tool use the default.
+- Prefer targeted symbol/range reads over repeated full-file reads.
+- Fix a red test with the smallest test-name pattern; do not rerun the whole suite after every edit.
+- Full dedicated suite: normally <=2 runs. Typecheck: normally <=2. Final audits/generators: batch once after source stabilizes.
+- Push: one preflight if needed, one push, at most one retry on transient network failure. Two failures => stop and report PUSH_BLOCKED with the local commit SHA.
+- Never use an unbounded shell/network retry loop.
+- LAST_RESULT records concise evidence, not command transcripts or duplicated logs.
+- If the same symptom survives 3 attempts, stop looping and reassess or BLOCK.

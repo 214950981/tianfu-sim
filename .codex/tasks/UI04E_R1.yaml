@@ -2,10 +2,20 @@ id: UI04E_R1
 title: UI04E-R1 — Explicit NEXT_LIFE Start Boundary
 phase: 2
 verificationProfile: fast-lane
+executionProfile: credit-efficient
 requiredContracts: [.codex/contracts/state.ref,.codex/contracts/command.ref,.codex/contracts/platform.ref,.codex/contracts/viewmodel.ref,.codex/contracts/ui.ref,.codex/contracts/crosslayer.ref]
 optionalContracts: [.codex/contracts/qa.yaml]
 blockers: []
 inspect_first: [.codex/tasks/UI04E.yaml,server/src/terminal-flow.ts,server/src/gateway-store.ts,server/src/live-service.ts,server/src/viewmodel.ts,packages/platform-contract/src/index.ts,packages/wechat-shell/src/index.ts,miniprogram/pages/v2-live/v2-live.js,miniprogram/pages/v2-live/v2-live.wxml,tests/ui04e.test.mjs,docs/UI04E_TERMINAL_LIFECYCLE.md]
+executionBudget:
+  preferredImplementationPath: transplant-rejected-UI04E-once-then-minimal-R1-diff
+  fullDedicatedSuiteMaxRuns: 2
+  typecheckMaxRuns: 2
+  artifactRegenerationMaxRounds: 2
+  pushMaxAttempts: 2
+  sameSymptomMaxIterations: 3
+  longFilePolicy: targeted-symbol-or-range-reads
+  lastResultPolicy: concise-evidence-no-logs
 allowedScope:
   - use rejected UI04E result commit e978ac0619a1c71d25454eb1705d75c7543d33b7 only as implementation reference or transplant source; it is not accepted and must not be treated as source truth over this task
   - carry forward the valid UI04E terminal sidecar, public projection, advanceTerminal exactly-once, ownership, cloud runtime and four-stage rendering work while correcting the NEXT_LIFE start boundary below
@@ -26,6 +36,7 @@ allowedScope:
   - regenerate and verify miniprogram/runtime and cloudfunctions/tianfu2/runtime after source changes
   - preserve all valid UI04E acceptance properties: sidecar outside RuleState, pure-stage zero gameplay diff, terminalTransitionId exactly-once, stale/conflicting reuse fail-closed, public-only LIFE_BOOK, no meta reward semantics, cross-player refusal
   - update docs/UI04E_TERMINAL_LIFECYCLE.md to describe the corrected two-step boundary and update LAST_RESULT
+  - execute the repair resource-efficiently: use the rejected UI04E commit as a one-time transplant/reference, batch the narrow semantic changes, use test-name-pattern while red, and defer full targeted gates/artifact regeneration until the source is stable
 forbiddenScope: [next-run-creation-inside-advanceTerminal,nextBootstrapId-or-nextRunId-in-advanceTerminal-success,automatic-run-switch-on-REBIRTH_RESULT-to-NEXT_LIFE,terminal-stage-in-RuleState,terminal-navigation-as-GameCommand,new-fifth-cloud-RPC,reducer-gameplay-change,RNG-algorithm-change,Director-policy-change,Cause-semantics-change,Progression-balance-change,Risk-balance-change,Build-or-NPC-rule-change,CONTENT01-rebalance,new-metaCurrency,new-permanent-power,new-rebirth-reward-system,daily-challenge,monetization,raw-OPENID-to-client,client-trusted-playerId,default-route-replacement,legacy-1.0-page-change,tabBar-change,real-production-deployment,UI04FINAL,source-branch-push]
 accept:
   - REBIRTH_RESULT-to-NEXT_LIFE-advance-is-sidecar-only-and-creates-no-new-run-bootstrap-document-or-mapping

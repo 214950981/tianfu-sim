@@ -10,6 +10,7 @@ worktreeRequired: true
 allowSyntheticTreeBase: true
 basePolicy: remote-source-head-at-task-start
 verificationProfile: fast-lane
+executionProfile: credit-efficient
 execution:
   readProtocolFirst: true
   commitTaskResult: true
@@ -19,6 +20,12 @@ execution:
   runAggregateNpmTest: false
   rerunKnownSandboxBaseline: false
   run600Simulation: false
+  maxFullDedicatedSuiteRuns: 2
+  maxTypecheckRuns: 2
+  maxArtifactRegenerationRounds: 2
+  maxPushAttempts: 2
+  preferTargetedTestNamePattern: true
+  prohibitUnboundedRetryLoops: true
 controllerReview:
   previousTask: UI04E
   previousStatus: REJECTED
@@ -41,3 +48,10 @@ notes:
   - Keep FAST_LANE. Do not run aggregate npm test, 600-run, or known sandbox-baseline reproof.
   - The central invariant is simple: arriving at NEXT_LIFE is not the same operation as starting the next life.
   - Record only genuinely new tooling observations.
+  - CREDIT EFFICIENCY: do not reimplement UI04E from scratch. Prefer one transplant/cherry-pick-no-commit of rejected UI04E as the starting tree, then make the narrow R1 corrections.
+  - Do not repeatedly dump long files. Search symbols and read only the ranges needed for the repair.
+  - During repair, use node --test --test-name-pattern for the failing R1/UI04E cases. Do not rerun the full ui04e suite after every edit.
+  - Run the full dedicated repair/UI04E verification only after the narrow cases are green, then once more only if a fix was required.
+  - Batch client/cloud artifact regeneration + freshness/audit/smoke after source stabilizes; do not regenerate on every edit.
+  - Before push, do one bounded remote/credential preflight if needed. Push once; at most one retry. If both fail, stop PUSH_BLOCKED instead of looping.
+  - Keep LAST_RESULT concise: one result per gate, no pasted logs, no repeated known-environment narratives.

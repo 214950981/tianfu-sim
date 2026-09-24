@@ -296,7 +296,7 @@ Required correction:
 - prove no next run exists before the explicit NEXT_LIFE action, and prove retry after response loss recovers the same new run;
 - preserve all accepted UI04E terminal sidecar exactly-once / gameplay-zero-diff behavior.
 
-Use the rejected UI04E result as implementation reference, not as accepted source truth. Source remains `dev/tianfu-2.0`. FAST_LANE applies. If UI04E_R1 passes, Controller will dispatch UI04FINAL.## 新 Codex 会话 / 账号接手步骤
+Use the rejected UI04E result as implementation reference, not as accepted source truth. Source remains `dev/tianfu-2.0`. FAST_LANE + credit-efficient execution apply: no repeated full-suite/typecheck/artifact/push loops. If UI04E_R1 passes, Controller will dispatch UI04FINAL.## 新 Codex 会话 / 账号接手步骤
 
 1. 确认当前 branch = `dev/tianfu-2.0`。
 2. 查看 `git status`。

@@ -1,4 +1,4 @@
-# Tianfu Agent Handoff Protocol v1.3
+# Tianfu Agent Handoff Protocol v1.4
 
 This directory is the Git-based handoff bus between the controller (ChatGPT) and the implementer (WorkBuddy).
 
@@ -34,6 +34,25 @@ For fast-lane tasks:
 - `LAST_RESULT.tests` should list only tests actually executed;
 - `toolingObservations` records only NEW reusable findings. Proxy-port changes or repeated confirmation of an already documented workaround are not new findings;
 - controller schedules a later `final-audit` checkpoint to pay the deferred regression cost once, not on every intermediate commit.
+
+## Resource-efficient execution
+
+All implementation tasks default to resource-efficient execution unless NEXT_TASK explicitly opts out. This is about reducing tool churn, not lowering correctness.
+
+Rules:
+- Read the task/context/contracts once at the start. For large source files, use search/targeted ranges; do not repeatedly dump whole files after the relevant symbols are known.
+- Before editing, form one implementation plan and batch related edits. Do not alternate tiny edits with full-suite reruns.
+- While fixing a failing dedicated suite, run the smallest failing test or `--test-name-pattern` first. Do not rerun the whole dedicated file for every edit.
+- A full dedicated task suite should normally run at most twice: once when the implementation is believed complete, once as final confirmation. If the same full suite fails twice, diagnose with targeted tests rather than immediately running it again.
+- Typecheck should normally run at most twice per task. Lint/secret/audit gates should normally run once after source changes stabilize, with one repeat only if that gate itself found an issue that was then fixed.
+- Generated runtime/artifact regeneration should happen after source code stabilizes. Regenerate + freshness/audit/smoke as one batch; repeat only if source changes after that batch.
+- Do not repeatedly inspect generated files line-by-line when freshness/hash/audit tools already prove their contents. Inspect source of truth instead.
+- Git/network operations must be bounded. Do one credential/remote preflight if needed, then one push. On a transient network failure, make at most one additional push attempt. Never spin a 5/10/20-attempt push loop. If two bounded attempts fail, stop with BLOCKED/PUSH_BLOCKED and preserve the local commit SHA.
+- Do not repeatedly run `git status`, `rev-parse`, `write-tree`, or ancestry probes after every edit. Verify source/base once at start and final tree/commit once before push unless a real inconsistency appears.
+- LAST_RESULT is evidence, not a transcript. Do not paste full test logs, long source excerpts, or repeated observations. Record one concise result per executed gate plus genuinely new blockers/tooling findings.
+- Already documented environment behavior is not re-investigated on fast-lane tasks unless it changes the task result.
+
+If an iteration loop reaches 3 attempts on the same unresolved symptom, stop rerunning commands and reassess the root cause. If still unresolved, report BLOCKED rather than consuming budget by repetition.
 
 ## Task states
 
@@ -150,4 +169,4 @@ Implementer must stop and return BLOCKED instead of widening scope when:
 - task contracts conflict;
 - a P0/P1 issue appears.
 
-This protocol favors bounded, reviewable progress. Use fast-lane vertical slices between explicit final-audit checkpoints so safety does not consume most implementation time.
+This protocol favors bounded, reviewable progress. Use fast-lane vertical slices and resource-efficient execution between explicit final-audit checkpoints so safety and tool churn do not consume most implementation time.
