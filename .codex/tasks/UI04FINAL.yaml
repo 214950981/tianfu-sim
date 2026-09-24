@@ -1,0 +1,40 @@
+id: UI04FINAL
+title: UI04FINAL — Terminal Lifecycle Completion + Final Audit
+phase: 2
+verificationProfile: final-audit
+executionProfile: credit-efficient
+requiredContracts: [.codex/contracts/state.ref,.codex/contracts/command.ref,.codex/contracts/platform.ref,.codex/contracts/viewmodel.ref,.codex/contracts/ui.ref,.codex/contracts/crosslayer.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [.codex/tasks/UI04E.yaml,.codex/tasks/UI04E_R1.yaml,.codex/tasks/UI04E_R2.yaml,server/src/live-service.ts,server/src/viewmodel.ts,server/src/gateway-store.ts,tests/ui04e-r2.test.mjs,tests/ui04e-r1.test.mjs,tests/ui04e.test.mjs,tools/ui04d-cloud-runtime-artifact.mjs,tools/ui04b-wechat-runtime-artifact.mjs]
+allowedScope:
+  - use blocked R2 commit 83c4882bd9e087208cba0492350f48e736cd8cf9 as the one-time implementation transplant source, excluding every .workbuddy path and preserving dev/tianfu-2.0 as source truth
+  - first repair the known bootstrap recovery defect: TianfuLiveService.createRunOffer must preserve the complete StoredRun including terminal sidecar on mapped-existing and deterministic-existing recovery paths and project it through the same terminal-aware builder path as fetchView
+  - newly generated offered runs may also be represented/projected through the same StoredRun path to keep one projection rule
+  - keep bootstrap idempotency, authoritative OPENID-derived player identity, runId derivation, entropy, terminal sidecar, terminalTransitionId exactly-once, and NEXT_LIFE pending-bootstrap semantics unchanged except where required to fix a newly proven in-scope defect
+  - make the existing ui04e-r2 real page-level proof pass without diagnostic controller.load workarounds: old bootstrap reloads to authoritative NEXT_LIFE, first CTA persists pending, server commits new run then response is lost, reload recovers old NEXT_LIFE, retry reuses same pending, exactly one new run is recovered, success promotes/clears and renders DESTINY_OFFER
+  - preserve the accepted terminal contract ENDING -> LIFE_BOOK -> REBIRTH_RESULT -> NEXT_LIFE -> explicit start-next-life -> fresh DESTINY_OFFER with prior run immutable
+  - if the targeted terminal/client/server chain reveals another bounded UI04 implementation bug, fix it in this same task rather than stopping for another micro-task, provided the fix does not change gameplay balance/Core rules/Content semantics
+  - once all targeted implementation tests are green, stabilize source and regenerate required generated artifacts once: cloudfunctions/tianfu2 runtime for server changes and miniprogram/runtime only if client-safe source changed
+  - then run the UI04 milestone final audit as one end-stage batch, not after each edit
+  - final audit must include aggregate npm test plus the full directly relevant UI chain UI04E-R2/UI04E-R1/UI04E/UI04D/UI04C/UI04B/UI04A/UI03/UI02 and viewmodel/server gateway/replay/reducer coverage through existing package scripts or direct suites
+  - final audit must include cloud runtime freshness/dependency/smoke, miniprogram runtime freshness/artifact audit/smoke, client-runtime dependency audit, route guard, typecheck, lint, secret scan, content lint/content01 lint, context-loader, phase2 drift and other existing merge-readiness audits already registered for UI02FINAL or later UI work
+  - if aggregate final audit reproduces only the known nested-process sandbox failure signature, re-establish the minimum final-audit proof required by PROTOCOL/TOOLING_RUNBOOK in one bounded batch; do not repeat untouched-base investigations multiple times
+  - if final audit finds a bounded UI04-scope regression, fix it in the same work branch with targeted test first, then rerun the affected final gate; aggregate full suite may be rerun at most once after the fix
+  - do not run 600-run simulation unless gameplay/Core/Content semantics are actually modified; UI/server/presentation/infrastructure-only changes do not require it
+  - update final docs so dev-status records UI04E and UI04FINAL acceptance evidence, deployment readiness, known environment caveats, and remaining manual cloud/DevTools steps
+  - update LAST_RESULT with concise final evidence, merge-readiness, resourceUsage, changedFiles and zero undeclared .workbuddy artifacts
+forbiddenScope: [gameplay-balance-change,reducer-outcome-change,RNG-algorithm-change,Director-policy-change,Cause-semantics-change,Progression-balance-change,Risk-balance-change,Build-or-NPC-rule-change,CONTENT01-rebalance,new-meta-progression,new-monetization,daily-challenge,default-route-replacement,legacy-1.0-page-rewrite,tabBar-change,real-production-deployment,main-branch-change,unbounded-test-loop,unbounded-push-retry,.workbuddy-commit,source-branch-push]
+accept:
+  - bootstrap-recovery-and-fetchView-project-the-same-terminal-aware-PublicViewModel-for-the-same-StoredRun
+  - ui04e-r2-real-lost-response-reload-proof-passes-without-workaround-and-never-creates-more-than-one-new-run
+  - complete-terminal-chain-END-to-LIFE_BOOK-to-REBIRTH_RESULT-to-NEXT_LIFE-to-explicit-new-life-to-DESTINY_OFFER-is-proven
+  - prior-run-remains-gameplay-byte-identical-and-terminal-stage-NEXT_LIFE-after-new-life-creation
+  - UI04E-R1/UI04E/UI04D/UI04C/UI04B/UI04A/UI03/UI02/viewmodel/server-gateway/reducer/replay-regressions-are-green-except-only-bounded-proven-sandbox-process-noise
+  - cloud-and-miniprogram-generated-artifacts-are-fresh-deterministic-audited-and-smoke-green
+  - client-runtime-dependency-route-guard-typecheck-lint-secret-content-context-and-phase2-drift-gates-are-green
+  - aggregate-npm-test-is-green-or-has-only-the-exact-known-sandbox-process-failures-with-one-bounded-proof-batch
+  - no-gameplay-Content-balance-default-route-legacy-1.0-tabBar-or-production-deployment-scope-drift
+  - work-branch-is-merge-ready-from-the-current-source-head-and-LAST_RESULT-status-is-PASS
+  - resourceUsage-reports-aggregateFullRuns-at-most-2-pushAttempts-at-most-2-and-no-unbounded-loops
+tests: [ui04e-r2,ui04e-r1,ui04e,ui04d,ui04c,ui04b,ui04a,ui03,ui02,viewmodel-ui,server-gateway,reducer,replay,aggregate-npm-test,cloud-runtime-artifact-freshness,cloud-runtime-dependency-audit,cloud-runtime-smoke,ui04b-artifact-freshness,ui04b-artifact-audit,ui04b-smoke,client-runtime-dependency-audit,route-guard,typecheck,lint,secret-scan,content-lint,content01-lint,context-loader,phase2-drift]

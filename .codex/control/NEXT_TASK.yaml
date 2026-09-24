@@ -1,15 +1,15 @@
 version: 1
 status: READY
 attempt: 1
-taskId: UI04E_R3
-title: UI04E-R3 — Preserve Terminal Sidecar on Bootstrap Recovery
-taskDefinition: .codex/tasks/UI04E_R3.yaml
+taskId: UI04FINAL
+title: UI04FINAL — Terminal Lifecycle Completion + Final Audit
+taskDefinition: .codex/tasks/UI04FINAL.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-UI04E-R3
+workBranch: wb-UI04FINAL
 worktreeRequired: true
 allowSyntheticTreeBase: true
 basePolicy: remote-source-head-at-task-start
-verificationProfile: fast-lane
+verificationProfile: final-audit
 executionProfile: credit-efficient
 execution:
   readProtocolFirst: true
@@ -17,33 +17,38 @@ execution:
   pushWorkBranch: true
   updateSourceBranch: false
   startNextTask: false
-  runAggregateNpmTest: false
-  rerunKnownSandboxBaseline: false
-  run600Simulation: false
-  maxFullDedicatedSuiteRuns: 2
-  maxTypecheckRuns: 1
-  maxArtifactRegenerationRounds: 1
+  runAggregateNpmTest: true
+  runAggregateOnlyAfterTargetedGreen: true
+  maxAggregateFullRuns: 2
+  rerunKnownSandboxBaseline: only-if-final-aggregate-matches-known-signature
+  run600Simulation: only-if-gameplay-or-content-semantics-change
+  maxTypecheckRuns: 2
+  maxArtifactRegenerationRounds: 2
   maxPushAttempts: 2
   preferTargetedTestNamePattern: true
   prohibitUnboundedRetryLoops: true
 controllerReview:
-  previousTask: UI04E_R2
-  previousStatus: BLOCKED
-  blockedResultCommit: 83c4882bd9e087208cba0492350f48e736cd8cf9
-  blocker:
-    - createRunOffer drops the persisted terminal sidecar on existing-run recovery, so reload projects ENDING while fetchView correctly projects NEXT_LIFE
+  supersedesTask: UI04E_R3
+  reason:
+    - do not stop after a one-line repair and create another review cycle
+    - fix the known terminal-sidecar bootstrap bug, continue the full terminal/multi-life implementation proof, then pay the final regression cost once
+  implementationSourceCommit: 83c4882bd9e087208cba0492350f48e736cd8cf9
+  knownDefect:
+    - createRunOffer recovery drops StoredRun.terminal and therefore reload projects ENDING instead of NEXT_LIFE
 controllerDecision:
-  strategy: single-projection-fix
-  rationale: R2 proved the terminal and pending-bootstrap design is otherwise sound; fix the one server projection gap and then proceed to final audit
+  strategy: combined-repair-completion-final-audit
+  rationale: close UI04 in one substantial task instead of serial micro-patches
 controllerIntent:
-  mode: FAST_LANE_REPAIR
-  goal: make bootstrap recovery and fetchView project the same complete StoredRun
-  postTask: controller reviews wb-UI04E-R3; if accepted dispatch UI04FINAL final-audit
+  mode: FINISH_AND_AUDIT
+  goal: finish the terminal/multi-life loop and leave the entire UI04 chain merge-ready in one work branch
+  postTask: controller reviews wb-UI04FINAL; do not self-dispatch a new feature
 notes:
-  - Run node .codex/context.mjs UI04E_R3 once.
-  - Transplant R2 once; do not rebuild R1/R2 manually.
-  - The intended fix is narrow: preserve StoredRun including terminal sidecar through createRunOffer recovery and use terminal-aware projection.
-  - Do not change client code unless the R2 proof remains red for a second independently demonstrated bug.
-  - Regenerate cloud runtime once after source stabilizes. Do not regenerate miniprogram runtime if client source is unchanged.
-  - Hard push limit is 2 attempts. If both fail, stop PUSH_BLOCKED with local commit SHA.
-  - LAST_RESULT must include resourceUsage. Do not commit .workbuddy paths.
+  - Run node .codex/context.mjs UI04FINAL once.
+  - Transplant R2 once, excluding .workbuddy/**. Do not rebuild UI04E/R1/R2 manually.
+  - Fix the known createRunOffer terminal-sidecar recovery defect first, prove R2 green, then continue directly into final audit. Do NOT stop just because the bug is fixed.
+  - If another bounded UI04-scope bug appears during targeted or final audit, fix it in this same task with targeted proof. Do not create an R4/R5 micro-cycle yourself.
+  - Run expensive aggregate/final gates only after source is stable. Aggregate npm test max 2 total runs.
+  - Regenerate artifacts after source stabilizes, not on every edit.
+  - 600-run is skipped unless gameplay/Core/Content semantics actually change.
+  - Push max 2 attempts. After two failures stop PUSH_BLOCKED with local commit SHA.
+  - LAST_RESULT must include resourceUsage and merge-readiness. Do not commit .workbuddy paths.

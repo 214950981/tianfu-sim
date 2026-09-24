@@ -281,22 +281,23 @@ Full regression：264 / 264 PASS；全部 reported audits PASS。
 
 ## Next
 
-UI04E_R2 result `83c4882bd9e087208cba0492350f48e736cd8cf9` is BLOCKED and was NOT merged into `dev/tianfu-2.0`.
+Controller strategy changed before UI04E_R3 execution: do not spend another cycle on a one-bug micro-task.
 
-R2 successfully added the real page-level response-loss/reload proof and exposed a single production defect: `TianfuLiveService.createRunOffer` recovers an existing terminal run as `{ runId, state }` and projects it with `builder.build(state)`, dropping the persisted terminal sidecar. `fetchView` correctly projects the same run as NEXT_LIFE via `buildFromStoredRun`, so a reload through bootstrap shows ENDING instead of NEXT_LIFE and strands the player.
+The known bootstrap-recovery defect from UI04E_R2 remains valid: `createRunOffer` drops the terminal sidecar when recovering an existing run. But the next task now combines that repair with completion of the UI04E chain and the UI04 milestone final audit.
 
-Repair task: `UI04E_R3` — Preserve Terminal Sidecar on Bootstrap Recovery.
+Current task: `UI04FINAL` — Terminal Lifecycle Completion + Final Audit.
 
-R3 is a narrow product fix:
-- transplant R2 once, excluding any non-task memory/log paths;
-- in createRunOffer, preserve the complete StoredRun for mapped-existing and deterministic-existing recovery paths, and project through the terminal-aware builder; newly generated offered runs should use the same StoredRun-shaped path;
-- do not change terminal-flow graph, next-life pending-bootstrap logic, database schema, gameplay state, reducer, Content or client UI semantics;
-- regenerate only the cloud runtime because server source changes; miniprogram runtime is unchanged unless a real client bug is discovered;
-- the existing R2 page-level test must pass without the diagnostic controller.load() workaround, including server-commit + lost-response + reload + same-pending recovery;
-- run R1 and UI04E targeted regressions, UI04D bootstrap regression, cloud artifact freshness/audit/smoke, and one typecheck;
-- remain credit-efficient and max two push attempts.
+Execution order:
+1. Transplant the reviewed UI04E_R2 candidate once (excluding `.workbuddy/**`).
+2. Fix the known `createRunOffer` StoredRun/terminal-sidecar recovery bug.
+3. Run the R2 page-level lost-response/reload proof and the UI04E targeted chain until green.
+4. Continue, do not stop: regenerate cloud/miniprogram artifacts only as needed after source stabilizes.
+5. Run one milestone final audit for the whole UI04 chain: aggregate regression + UI04 chain suites + packaging/runtime/dependency/route/type/lint/secret/content gates.
+6. If that final audit finds a bounded UI04-scope defect, fix it inside the same task with targeted proof, then rerun only the affected final gate / aggregate once more. Do not create another R4/R5 micro-task.
+7. Stop BLOCKED only for a genuinely new out-of-scope/P0/P1 architecture conflict.
 
-If R3 passes, Controller should accept the entire UI04E chain and dispatch `UI04FINAL` final-audit.## 新 Codex 会话 / 账号接手步骤
+Credit-efficient final audit applies: expensive full regression happens at the end, not after each edit. Aggregate full-suite runs max 2, push attempts max 2. 600-run remains unnecessary unless gameplay/Content semantics are actually changed.
+## 新 Codex 会话 / 账号接手步骤
 
 1. 确认当前 branch = `dev/tianfu-2.0`。
 2. 查看 `git status`。

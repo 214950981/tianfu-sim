@@ -1,4 +1,4 @@
-# Tianfu Agent Handoff Protocol v1.5
+# Tianfu Agent Handoff Protocol v1.6
 
 This directory is the Git-based handoff bus between the controller (ChatGPT) and the implementer (WorkBuddy).
 
@@ -24,7 +24,7 @@ NEXT_TASK may set `verificationProfile`:
 
 - `fast-lane`: default for bounded implementation slices after a stable milestone. Run the dedicated task suite, directly affected predecessor suites, and the specific boundary/audit gates named by the task. Do NOT run aggregate `npm test`, 600-run simulation, untouched-base reproduction, or unrelated historical suites unless the task explicitly requires them or the implementation unexpectedly touches gameplay/content/server semantics.
 - `standard`: broader verification for architecture changes whose blast radius is not yet narrow.
-- `final-audit`: milestone/full-chain regression. Run the aggregate suite and all task-specified release gates; re-establish environment-noise evidence as needed.
+- `final-audit`: milestone/full-chain regression. Run the aggregate suite and all task-specified release gates; re-establish environment-noise evidence as needed. A final-audit task MAY include explicitly listed bounded pre-audit repairs. In that case, fix those repairs first with targeted tests, then continue directly into the final audit in the same task. Do not stop and ask for another micro-task merely because the known repair is complete.
 
 Fast-lane is a throughput policy, not permission to weaken contracts. A dedicated test failure, scope drift, unexpected dependency edge, or new P0/P1 issue still blocks acceptance.
 
@@ -55,6 +55,14 @@ Rules:
 - Already documented environment behavior is not re-investigated on fast-lane tasks unless it changes the task result.
 
 If an iteration loop reaches 3 attempts on the same unresolved symptom, stop rerunning commands and reassess the root cause. If still unresolved, report BLOCKED rather than consuming budget by repetition.
+
+For combined repair + final-audit tasks:
+- do all source repair first;
+- use targeted tests until the known defect is green;
+- regenerate artifacts once after source stabilizes;
+- run the expensive aggregate/final gates only after implementation is stable;
+- if final audit reveals a bounded in-scope defect, fix it in the same task with targeted proof and rerun the affected final gate, rather than dispatching another tiny repair task;
+- stop only for a genuinely new out-of-scope/P0/P1 architecture issue or when the task's bounded retry budget is exhausted.
 
 ## Task states
 
