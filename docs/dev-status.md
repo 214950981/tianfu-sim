@@ -366,7 +366,45 @@ This is not a one-line catch-only task. It must close the full empty-database fi
 - prove missing collection still fails loudly;
 - regenerate/audit/smoke the cloud runtime once after source stabilizes.
 
-After LIVEFIX01 passes, Controller will merge it and return to a manual HOLD for redeploying `tianfu2` and continuing the same real-device smoke. No new feature work should start before that smoke.## 新 Codex 会话 / 账号接手步骤
+After LIVEFIX01 passes, Controller will merge it and return to a manual HOLD for redeploying `tianfu2` and continuing the same real-device smoke. No new feature work should start before that smoke.
+
+## LIVEFIX01 验收证据（本次实现）
+
+修复点只有一个：`server/src/cloudbase-store.ts` 的持久化边界。新增 `isMissingDocumentError()` 分类器与
+`readDocumentData()` 单一助手，`readRun` 与事务内的 run / command / bootstrap / terminal-transition
+四种读取**共用同一语义**：集合存在、文档不存在 → `undefined`；其他一切 → 原样 rethrow（fail-closed）。
+
+分类器刻意窄：`-502005` 只是 ResourceNotFound **码族**，实机已观察到**集合缺失**落在同一码族，因此
+判据是「报文点名 document 的 `_id` 且声明其不存在」+（码恰为 `-502005` 或报文为实机那句字面原文）。
+凡报文点名 `collection` 缺失的一律致命——吞掉它等于把“部署没建集合”伪装成“你的数据是空的”。
+
+夹具同步改真：`tools/ui04d-cloud-harness.mjs` 现在默认 `missingDocumentMode: "reject"`，对不存在文档
+直接抛 `errCode -502005` 的 `document ... _id ... does not exist`，与生产一致；旧行为保留为
+`"empty"` 仅供对照。`provisionedCollections` 让缺失集合单独可复现。
+
+新增 `tests/livefix01.test.mjs`（15 项，已注册 `test:livefix01` 与聚合 `npm test`）：
+
+* 分类器：两种被接受的缺失文档形状 + 集合缺失同码、权限、网络、事务冲突、无 message、字符串/数字/null
+  等 14 类必须致命；
+* 四种读取共用空读语义，且全程无 `where()`；
+* 集合未开通仍响亮失败，且一个字节都不写；
+* 空四集合首次 `createRunOffer` → 恰好 1 条 run + 1 条 bootstrap 映射（同一事务）；
+* 同 bootstrap 重试 / 冷启动 → 同一 run，不多造命；
+* 首次 `sendCommand`（幂等回执尚不存在）→ 结算一次，精确重试仍一次；
+* 首次 `advanceTerminal`（终局回执尚不存在）→ 结算一次，精确重试不二次推进，canonical 字节不变；
+* `readRun` 未知 run → `undefined`，而 `fetchView` 对“不存在”与“别人的”仍是同一个 `UNAUTHORIZED`；
+* 可部署云函数 `cloudfunctions/tianfu2/index.js` 在完全空的数据库上跑通首条命。
+
+云运行时**只重新生成一次**（`--write`），随后 freshness / dependency audit / smoke 全绿（15 项）。
+
+定向验证：`livefix01` 15/15、`ui04d` 20/20、`server-gateway` 6/6、`ui04e` 26/26、
+`ui04e-r1` + `ui04e-r2` 12/12，`tsc --noEmit`、`check-import-boundaries`、`scan-secrets`、
+`content01-lint` 全绿。未跑聚合 `npm test`、未跑 600 局（credit-efficient 约束）。
+
+部署文档 `docs/UI04D_CLOUD_BACKEND.md` 已补「空库首次使用（LIVEFIX01）」一节：四张集合允许为空，
+首次请求自动创建文档；集合缺失是部署前置未完成，去控制台建集合，不要放宽分类器。
+
+## 新 Codex 会话 / 账号接手步骤
 
 1. 确认当前 branch = `dev/tianfu-2.0`。
 2. 查看 `git status`。

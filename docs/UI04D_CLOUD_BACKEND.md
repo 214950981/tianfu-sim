@@ -119,8 +119,9 @@ v2-live 里的 dev 本地 player id（`tianfu2:dev-player-id`）已删除：身�
 | `tianfu2_runs` | `documentIdFor("run", runId)` = `sha256("tianfu2/run/<runId>")` 前 32 位 hex | `{ state, commandLog, lastSnapshot?, successfulCommandsSinceSnapshot }` |
 | `tianfu2_commands` | `documentIdFor("command", commandId)` | `{ commandId, payloadHash, result, runId, playerId }`（幂等记录） |
 | `tianfu2_bootstraps` | `documentIdFor("bootstrap", "<playerId>::<bootstrapId>")` | `{ playerId, bootstrapId, runId }` |
+| `tianfu2_terminal_transitions` | `documentIdFor("terminal-transition", "<terminalTransitionId>")` | `{ payloadHash, action, fromStage, toStage, playerId, sequence }`（终局流转回执，UI04E） |
 
-三条硬性质：
+四条硬性质：
 
 1. **确定性文档 id**：事务路径只按 id 寻址，从不查询。`cloudbase-store.ts` 里没有 `.where(`，
    源码级断言 + 夹具（事务内 `where()` 抛错）双重保证。CloudBase 事务支持服务端 `doc()` 读写，
@@ -128,6 +129,37 @@ v2-live 里的 dev 本地 player id（`tianfu2:dev-player-id`）已删除：身�
 2. **事务内读己所写**：写先暂存，operation resolve 后再 flush（仍在 `runTransaction` 内）。
    operation 抛错则一个字节都不提交，不会留下半结算的 run。
 3. **冷启动安全**：请求间不缓存任何状态，每次事务重新读库，所以超时的那一次与新实例看到的是同一份文档。
+4. **集合由部署创建，不由代码创建**：代码里没有 `createCollection`。四张集合是**部署前置**条件，
+   集合缺失必须是响亮的运维错误，绝不能被当成“这个文档还不存在”。
+
+### 空库首次使用（LIVEFIX01）
+
+**四张集合允许为空**——这正是受支持的首次使用状态，**首次请求会自动创建**它需要的文档：
+
+* 空的 `tianfu2_bootstraps` + 空的 `tianfu2_runs`：正常首次使用，不是错误。第一次
+  `createRunOffer` 在同一个事务里写出**一条 run 文档 + 一条 bootstrap 映射**，然后才返回 `runId`。
+* 空的 `tianfu2_commands`：第一次 `sendCommand` 时幂等回执尚不存在，正常结算并写出回执；
+  精确重试仍然只结算一次。
+* 空的 `tianfu2_terminal_transitions`：第一次 `advanceTerminal` 时终局回执尚不存在，正常结算并写出
+  回执，精确重试不会二次推进。
+
+**为什么需要这一节**：真实 CloudBase 在集合存在、文档不存在时，`collection(name).doc(id).get()`
+可能**直接 reject**（`errCode -502005`，`document.get failed because document with deterministic _id
+does not exist`），而不是像本地夹具那样返回 `{ data: undefined }`。环境 `cloud1-8glg1sird4d40bc0`
+首次空库实机验证时，每一次首次读取都被这个 reject 打断，客户端只看到
+`createRunOffer result.runId must be a non-empty string`。修复点在 `server/src/cloudbase-store.ts`
+的持久化边界，不在客户端。
+
+**分类器是窄的**（`isMissingDocumentError`）：
+
+* 只把「集合存在、文档不存在」规范化成 `undefined`，且四种读取（run / command / bootstrap /
+  terminal-transition）共用同一语义；
+* **不看 `-502005` 一个码就下结论**：实机已观察到**集合缺失**也落在同一个 ResourceNotFound 码族，
+  所以集合缺失仍然致命——把它吞掉会把“部署没建集合”伪装成“你的数据是空的”；
+* 权限、网络、事务冲突、畸形响应、没有 message、以及任何无法正面识别的错误一律 rethrow（fail-closed）。
+
+集合缺失的判据是**错误报文点名 collection**，不是数值码：请把 `-502005` 且报文含 `collection` 的
+报错当作部署前置未完成来处理，去控制台建集合，不要改代码放宽分类器。
 
 ---
 
@@ -153,9 +185,11 @@ v2-live 里的 dev 本地 player id（`tianfu2:dev-player-id`）已删除：身�
 3. **上传并部署**：微信开发者工具 → 云开发 → 云函数 → 右键 `cloudfunctions/tianfu2`
    → “上传并部署：云端安装依赖”（或命令行 `tcb fn deploy`）。
 
-4. **建集合与索引**：云开发控制台 → 数据库，新建三个集合 `tianfu2_runs`、`tianfu2_commands`、
-   `tianfu2_bootstraps`。文档 id 由代码写入（32 位 hex），无需自定义索引；权限建议保持
-   “仅管理端可读写”，客户端只经云函数访问。
+4. **建集合与索引**：云开发控制台 → 数据库，新建四个集合 `tianfu2_runs`、`tianfu2_commands`、
+   `tianfu2_bootstraps`、`tianfu2_terminal_transitions`。**四张集合建好后允许为空**，首次请求会
+   自动创建它需要的文档，不需要预插任何数据（见第 5 节“空库首次使用”）。文档 id 由代码写入
+   （32 位 hex），无需自定义索引；权限建议保持“仅管理端可读写”，客户端只经云函数访问。
+   若日志出现 `-502005` 且报文点名 `collection`，说明这一步没做完——去建集合，不要改代码。
 
 5. **在小程序端接线**：`miniprogram/pages/v2-live/v2-live.js` 已使用
    `createWeChatCloudTransport` + `bootstrapWeChatRun`；真机/开发者工具里确认

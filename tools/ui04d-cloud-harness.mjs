@@ -52,13 +52,58 @@ export class PostCommitTimeoutError extends Error {
 function jsonClone(value) { return JSON.parse(JSON.stringify(value)); }
 
 /**
+ * LIVEFIX01 — the four collections a correct deployment provisions before the first request.
+ *
+ * They start EMPTY, which is the supported first-use state: the first `createRunOffer` must create its
+ * documents itself. A read against a collection that is *not* provisioned is a deployment error, not a
+ * first-use absence, so the harness reproduces that separately below.
+ */
+export const CLOUDBASE_COLLECTIONS = ["tianfu2_runs", "tianfu2_commands", "tianfu2_bootstraps", "tianfu2_terminal_transitions"];
+
+/** The one numeric family real CloudBase used for BOTH missing-document and missing-collection reads. */
+export const RESOURCE_NOT_FOUND_CODE = -502005;
+
+function cloudError(message) {
+  const error = new Error(message);
+  error.errCode = RESOURCE_NOT_FOUND_CODE;
+  error.errMsg = message;
+  return error;
+}
+
+/** Shape A of the accepted missing-document rejection: coded, names the document `_id` as absent. */
+export function missingDocumentError(id) {
+  return cloudError(`[ResourceNotFound] document.get failed because document with _id ${id} does not exist`);
+}
+
+/**
+ * The near-miss that must stay FATAL: same numeric family, but the COLLECTION is absent. This is the
+ * negative control the classifier is built around — swallowing it would hide a broken deployment.
+ */
+export function missingCollectionError(name) {
+  return cloudError(`[ResourceNotFound] collection.get failed because collection ${name} does not exist`);
+}
+
+/**
  * An in-memory CloudBase-like document database.
  *
  * Documents are addressed by id only. `runTransaction` stages writes and commits them after the
  * operation resolves, so an operation that throws leaves the collection untouched, and a read inside the
  * transaction sees its own writes.
  */
-export function createFakeCloudDatabase({ throwOnWhereInTransaction = true } = {}) {
+/**
+ * @param throwOnWhereInTransaction   keeps the no-query-inside-a-transaction invariant enforced.
+ * @param provisionedCollections      collections that exist. Read/write against anything else fails.
+ * @param missingDocumentMode         "reject" reproduces real CloudBase (default, and the whole point of
+ *                                    LIVEFIX01); "empty" restores the old fake behaviour of returning
+ *                                    `{ data: undefined }`, kept only so a test can contrast the two.
+ */
+export function createFakeCloudDatabase({
+  throwOnWhereInTransaction = true,
+  provisionedCollections = CLOUDBASE_COLLECTIONS,
+  missingDocumentMode = "reject"
+} = {}) {
+  if (missingDocumentMode !== "reject" && missingDocumentMode !== "empty") throw new RangeError('missingDocumentMode must be "reject" or "empty"');
+  const provisioned = new Set(provisionedCollections);
   const collections = new Map();
   const audits = { transactions: 0, attempts: 0, whereCalls: 0, writes: 0, documentIds: new Set(), postCommitTimeouts: 0 };
   let commitTimeoutPending = false;
@@ -80,12 +125,20 @@ export function createFakeCloudDatabase({ throwOnWhereInTransaction = true } = {
     const committed = documentsOf(name);
     return {
       async get() {
+        // LIVEFIX01: a missing COLLECTION is a deployment error and is never normalized.
+        if (provisioned.has(name) === false) throw missingCollectionError(name);
         const pending = staged === null ? undefined : staged.get(name);
         if (pending !== undefined && pending.has(id)) return { data: jsonClone(pending.get(id)) };
         const value = committed.get(id);
-        return { data: value === undefined ? undefined : jsonClone(value) };
+        if (value === undefined) {
+          // Real CloudBase rejects this read instead of handing back an empty snapshot.
+          if (missingDocumentMode === "reject") throw missingDocumentError(id);
+          return { data: undefined };
+        }
+        return { data: jsonClone(value) };
       },
       async set(input) {
+        if (provisioned.has(name) === false) throw missingCollectionError(name);
         audits.writes += 1;
         audits.documentIds.add(`${name}/${id}`);
         const data = jsonClone(input.data);
