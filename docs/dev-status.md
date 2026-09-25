@@ -9,9 +9,9 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `f309c384d0ba9b23f880680b6ca9aa96387b783e`
+- lastReviewedCommit: `814f0b646277f5dc3639e64a6de13f015d7a7fee`
 - reviewedDate: `2026-09-25`
-- ui04FinalWorkBranch: `wb-UI04FINAL`（Controller 验收后再把 `lastReviewedCommit` 推进到验收 commit）
+- ui04FinalWorkBranch: `wb-UI04FINAL`（Controller 已验收并 fast-forward 到 dev）
 
 不要修改 `main` / 1.0，除非未来任务明确要求。
 
@@ -344,13 +344,29 @@ Full regression：264 / 264 PASS；全部 reported audits PASS。
 
 ## Next
 
-UI04FINAL 已完成并推送到 `wb-UI04FINAL`，等待 Controller 验收。
+UI04FINAL 已由 Controller 验收并合入 `dev/tianfu-2.0`，accepted result commit：
+`814f0b646277f5dc3639e64a6de13f015d7a7fee`。
 
-验收后建议顺序：
+当前进入 **人工云部署 / 真机 smoke HOLD**，暂不派新的 WorkBuddy 实现任务。
 
-1. Controller review `wb-UI04FINAL`（tree diff + LAST_RESULT）；
-2. 验收通过后由 Controller 决定下一步派发（本实现方不自行派发新任务）；
-3. 进入真人试玩前先完成上面的「剩余人工步骤」。
+2026-09-25 真机/开发者工具截图已确认当前阻塞为：
+`cloud.callFunction:fail ... -501000 ... FunctionName parameter could not be found`。
+
+仓库事实：
+- v2-live 实际调用云函数名：`tianfu2`
+- `cloudfunctions/tianfu2` 已存在且 final-audit 的 artifact/dependency/smoke 全部通过
+- `miniprogram/app.js` 当前初始化云环境：`cloud1-8glg1sird4d40bc0`
+- 因此当前错误表示该微信云环境中尚未部署/识别 `tianfu2`，不是已知代码回归
+
+人工 gate：
+1. 在微信开发者工具/云开发控制台确认当前环境为 `cloud1-8glg1sird4d40bc0`；
+2. 在 `cloudfunctions/tianfu2` 安装依赖；
+3. 上传并部署 `tianfu2`，选择云端安装依赖；
+4. 确认云函数列表中存在 `tianfu2`；
+5. 回到 `pages/v2-live` 点击“重新连接”；
+6. 把成功后的首屏或新的错误截图交给 Controller。
+
+完成此人工 gate 前，WorkBuddy 不应继续写新功能。
 
 ## 新 Codex 会话 / 账号接手步骤
 
