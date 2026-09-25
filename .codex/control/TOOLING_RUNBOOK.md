@@ -160,3 +160,11 @@ Protocol v1.4 makes bounded tool use the default.
 UI04E_R2 exposed a general server projection rule: if a bootstrap/recovery endpoint returns an already-persisted run, it must project the complete stored run, not only its canonical gameplay state. Otherwise server-side presentation/session sidecars can disappear on reload even though fetchView is correct.
 
 For terminal runs specifically, `createRunOffer` recovery and `fetchView` must agree on the same terminal-aware ViewModel projection.
+
+## Real CloudBase missing-document semantics
+
+Real WeChat CloudBase differs from the original fake DB used by UI04D tests: `collection(name).doc(id).get()` may reject when the collection exists but the document does not. The observed production error is `-502005` with a message equivalent to `document with _id ... does not exist`.
+
+Important: `-502005` is not sufficient by itself to mean an empty document. The same broad ResourceNotFound family was also observed for a missing collection. A compatibility layer must distinguish a missing-document read from a missing collection and from permission/network/transaction errors. Only the exact missing-document case may be normalized to `undefined`.
+
+Cloud harnesses for persistence code should emulate the real missing-document rejection path, not only return `{data: undefined}`. Keep a negative control proving collection-not-found remains fatal.

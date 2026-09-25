@@ -344,32 +344,29 @@ Full regression：264 / 264 PASS；全部 reported audits PASS。
 
 ## Next
 
-UI04FINAL 已由 Controller 验收并合入 `dev/tianfu-2.0`，accepted result commit：
-`814f0b646277f5dc3639e64a6de13f015d7a7fee`。
+UI04FINAL remains accepted. Real WeChat cloud smoke advanced far enough to expose a production CloudBase compatibility defect, so the manual HOLD is lifted for one bounded live-fix task.
 
-当前进入 **人工云部署 / 真机 smoke HOLD**，暂不派新的 WorkBuddy 实现任务。
+Observed real environment sequence on 2026-09-25:
+- `tianfu2` cloud function is deployed and callable in `cloud1-8glg1sird4d40bc0`;
+- required collections now exist: `tianfu2_runs`, `tianfu2_commands`, `tianfu2_bootstraps`, `tianfu2_terminal_transitions`;
+- first empty-database bootstrap fails inside CloudBase `document.get` with `-502005` and message equivalent to `document with _id ... does not exist`;
+- client then surfaces `TransportProtocolError: createRunOffer result.runId must be a non-empty string` because no run was created.
 
-2026-09-25 真机/开发者工具截图已确认当前阻塞为：
-`cloud.callFunction:fail ... -501000 ... FunctionName parameter could not be found`。
+Root cause confirmed in `server/src/cloudbase-store.ts`: the store assumes a missing document is returned as an empty snapshot, while real CloudBase rejects `doc(id).get()` for a nonexistent document. This was hidden by the fake database used in tests.
 
-仓库事实：
-- v2-live 实际调用云函数名：`tianfu2`
-- `cloudfunctions/tianfu2` 已存在且 final-audit 的 artifact/dependency/smoke 全部通过
-- `miniprogram/app.js` 当前初始化云环境：`cloud1-8glg1sird4d40bc0`
-- 因此当前错误表示该微信云环境中尚未部署/识别 `tianfu2`，不是已知代码回归
+Current task: `LIVEFIX01` — Real CloudBase Empty-Read Semantics + First-Run Recovery.
 
-人工 gate：
-0. 在同一云环境的数据库中创建 4 个集合：`tianfu2_runs`、`tianfu2_commands`、`tianfu2_bootstraps`、`tianfu2_terminal_transitions`；无需手工插入文档或自定义索引，权限建议仅管理端可读写；
-1. 在微信开发者工具/云开发控制台确认当前环境为 `cloud1-8glg1sird4d40bc0`；
-2. 在 `cloudfunctions/tianfu2` 安装依赖；
-3. 上传并部署 `tianfu2`，选择云端安装依赖；
-4. 确认云函数列表中存在 `tianfu2`；
-5. 回到 `pages/v2-live` 点击“重新连接”；
-6. 把成功后的首屏或新的错误截图交给 Controller。
+This is not a one-line catch-only task. It must close the full empty-database first-run compatibility gap:
+- normalize a real CloudBase *missing document* read to `undefined` on all store read paths;
+- do NOT swallow missing-collection, permission, network, transaction, or other database errors, even when they share `-502005`;
+- make the fake CloudBase harness reproduce real missing-document rejection semantics;
+- prove empty database first bootstrap creates exactly one offered run + bootstrap mapping;
+- prove same bootstrap retry returns the same run;
+- prove empty idempotency lookup allows first command settlement and empty terminal-transition lookup allows first terminal settlement;
+- prove missing collection still fails loudly;
+- regenerate/audit/smoke the cloud runtime once after source stabilizes.
 
-完成此人工 gate 前，WorkBuddy 不应继续写新功能。
-
-## 新 Codex 会话 / 账号接手步骤
+After LIVEFIX01 passes, Controller will merge it and return to a manual HOLD for redeploying `tianfu2` and continuing the same real-device smoke. No new feature work should start before that smoke.## 新 Codex 会话 / 账号接手步骤
 
 1. 确认当前 branch = `dev/tianfu-2.0`。
 2. 查看 `git status`。

@@ -1,0 +1,43 @@
+id: LIVEFIX01
+title: LIVEFIX01 — Real CloudBase Empty-Read Semantics + First-Run Recovery
+phase: 2
+verificationProfile: fast-lane
+executionProfile: credit-efficient
+requiredContracts: [.codex/contracts/platform.ref,.codex/contracts/viewmodel.ref,.codex/contracts/crosslayer.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [server/src/cloudbase-store.ts,server/src/live-service.ts,server/src/gateway-store.ts,tools/ui04d-cloud-harness.mjs,tests/ui04d.test.mjs,tests/ui04e.test.mjs,cloudfunctions/tianfu2/index.js,tools/ui04d-cloud-runtime-artifact.mjs,docs/UI04D_CLOUD_BACKEND.md]
+allowedScope:
+  - fix the real CloudBase compatibility mismatch where an existing collection plus nonexistent document rejects doc(id).get() instead of returning an empty snapshot
+  - centralize missing-document normalization in the CloudBase store boundary so readRun and transactional reads for runs commands bootstraps and terminal-transition receipts all behave consistently
+  - treat only an actual missing DOCUMENT as not-found/undefined; do not classify a missing COLLECTION permission failure network failure transaction failure malformed response or any other database error as an empty document
+  - do not use errCode -502005 alone as the discriminator because real smoke has observed the same broad ResourceNotFound family for collection-not-found; require stable document-not-found evidence from the SDK error shape/message and add negative controls
+  - keep the store fail-closed for unknown error shapes: if unsure whether an error is the exact benign missing-document case, rethrow it
+  - update the fake CloudBase harness so doc(id).get() for a nonexistent document can reproduce the real rejection path rather than only returning data undefined
+  - add explicit tests for both accepted missing-document error shapes actually supported by the classifier and rejected near-miss shapes, including collection-not-found with the same numeric code
+  - prove a completely empty but correctly provisioned four-collection database supports first createRunOffer: no bootstrap doc and no run doc are normal first-use absence, one offered run and one bootstrap mapping are created atomically
+  - prove repeating createRunOffer with the same trusted identity plus bootstrapId returns the exact same run without creating another run
+  - prove first sendCommand works when the idempotency command document does not yet exist, then exact retry remains exactly-once
+  - prove first advanceTerminal settlement works when its terminal-transition receipt document does not yet exist, while preserving terminal exactly-once semantics
+  - prove readRun for an unknown run returns undefined only for exact document-not-found and ownership/service layers continue to fail closed as designed
+  - preserve deterministic document ids transaction doc-only access no-where invariant bootstrap idempotency command idempotency OPENID authority and terminal sidecar semantics
+  - do not create missing collections from code; the four collections remain an explicit deployment prerequisite and a missing collection must surface as an operational error
+  - regenerate cloudfunctions/tianfu2 runtime/artifact after source stabilizes and keep freshness dependency audit and smoke green
+  - update deployment/live-smoke docs to state that all four empty collections are valid and first request must create documents automatically
+  - update package test registration only if a new dedicated test file is added, and update LAST_RESULT with concise real-environment provenance and resourceUsage
+forbiddenScope: [swallow-all-502005,auto-create-cloudbase-collections,client-workaround-for-server-db-error,gameplay-rule-change,reducer-change,RNG-change,Director-change,Cause-change,Progression-change,Risk-change,Build-or-NPC-rule-change,Content-change,database-schema-redesign,new-cloud-RPC,default-route-change,legacy-1.0-change,tabBar-change,production-feature-work,aggregate-npm-test,600-run,unbounded-push-retry,.workbuddy-commit,source-branch-push]
+accept:
+  - exact-real-missing-document-rejection-is-normalized-to-undefined-at-the-store-boundary
+  - missing-collection-with-the-same-broad-resource-not-found-code-is-not-swallowed-and-remains-fatal
+  - permission-network-transaction-and-unknown-errors-remain-fatal
+  - all-four-store-read-kinds-run-command-bootstrap-terminal-transition-share-the-correct-empty-read-semantics
+  - empty-four-collection-database-first-createRunOffer-creates-one-valid-offered-run-and-one-bootstrap-mapping
+  - same-bootstrap-retry-recovers-the-same-run-and-does-not-create-a-second-run
+  - first-command-idempotency-miss-settles-once-and-exact-retry-remains-exactly-once
+  - first-terminal-transition-receipt-miss-settles-once-and-exact-retry-remains-exactly-once
+  - missing-run-read-remains-compatible-with-existing-ownership-and-service-fail-closed-behaviour
+  - cloud-runtime-artifact-is-regenerated-fresh-audited-and-smoke-green
+  - livefix01-ui04d-server-gateway-ui04e-targeted-tests-typecheck-lint-secret-scan-and-content01-lint-are-green
+  - no-client-gameplay-content-default-route-or-schema-redesign-scope-drift
+  - resourceUsage-respects-credit-efficient-bounds-and-pushAttempts-at-most-2
+tests: [livefix01,ui04d,server-gateway,ui04e,cloud-runtime-artifact-freshness,cloud-runtime-dependency-audit,cloud-runtime-smoke,typecheck,lint,secret-scan,content01-lint]

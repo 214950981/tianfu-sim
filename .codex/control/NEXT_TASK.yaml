@@ -1,31 +1,58 @@
 version: 1
-status: HOLD
+status: READY
+attempt: 1
+taskId: LIVEFIX01
+title: LIVEFIX01 — Real CloudBase Empty-Read Semantics + First-Run Recovery
+taskDefinition: .codex/tasks/LIVEFIX01.yaml
 sourceBranch: dev/tianfu-2.0
-reason: UI04FINAL accepted; waiting for manual WeChat cloud deployment and real-device smoke before any new implementation task
+workBranch: wb-LIVEFIX01
+worktreeRequired: true
+allowSyntheticTreeBase: true
+basePolicy: remote-source-head-at-task-start
+verificationProfile: fast-lane
+executionProfile: credit-efficient
+execution:
+  readProtocolFirst: true
+  commitTaskResult: true
+  pushWorkBranch: true
+  updateSourceBranch: false
+  startNextTask: false
+  runAggregateNpmTest: false
+  rerunKnownSandboxBaseline: false
+  run600Simulation: false
+  maxFullDedicatedSuiteRuns: 2
+  maxTypecheckRuns: 1
+  maxArtifactRegenerationRounds: 1
+  maxPushAttempts: 2
+  preferTargetedTestNamePattern: true
+  prohibitUnboundedRetryLoops: true
 controllerReview:
   previousTask: UI04FINAL
   previousStatus: ACCEPTED
   acceptedResultCommit: 814f0b646277f5dc3639e64a6de13f015d7a7fee
-manualGate:
+realEnvironmentEvidence:
   cloudEnvironment: cloud1-8glg1sird4d40bc0
-  requiredFunction: tianfu2
-  observedError: "-501000 FunctionName parameter could not be found"
-  requiredCollections:
-    - tianfu2_runs
-    - tianfu2_commands
-    - tianfu2_bootstraps
-    - tianfu2_terminal_transitions
-  steps:
-    - confirm WeChat DevTools/cloud console is using cloud1-8glg1sird4d40bc0
-    - install dependencies in cloudfunctions/tianfu2
-    - upload and deploy tianfu2 using cloud-side dependency installation
-    - confirm tianfu2 exists in the selected cloud environment
-    - create all four required CloudBase collections in that same environment; no manual documents or custom indexes are required
-    - retry pages/v2-live
-    - return successful first screen or next error evidence to Controller
-execution:
-  workBuddyMayRun: false
-  startNextTask: false
+  function: tianfu2
+  functionReachable: true
+  collectionsProvisioned: true
+  observedFailure:
+    codeFamily: -502005
+    message: document.get failed because document with deterministic _id does not exist
+  clientSymptom: createRunOffer result.runId must be a non-empty string
+controllerDecision:
+  strategy: close-real-cloudbase-empty-read-gap
+  rationale: fake CloudBase semantics hid a production first-use incompatibility; normalize only exact missing-document reads and prove the complete empty-database first-run path
+controllerIntent:
+  mode: FAST_LANE_LIVE_FIX
+  goal: make a correctly provisioned but empty real CloudBase environment support first bootstrap and subsequent authoritative settlement without masking operational errors
+  postTask: controller reviews wb-LIVEFIX01; if accepted merge and HOLD for tianfu2 redeploy plus real-device smoke
 notes:
-  - This HOLD is environmental/manual, not a code failure.
-  - Do not dispatch another coding task until the real cloud function is reachable from v2-live.
+  - Run node .codex/context.mjs LIVEFIX01 once.
+  - Do not solve this in the client. The bug belongs at the CloudBase persistence boundary.
+  - Do not treat every -502005 as document-not-found. Missing collection has already been observed under the same broad code family.
+  - Prefer one small classifier/helper plus store-wide use rather than four copy-pasted catches.
+  - Update the fake harness to behave like real CloudBase on missing docs, then prove first-run bootstrap command idempotency and terminal receipt misses.
+  - Stabilize source before regenerating the cloud runtime; regenerate once.
+  - No aggregate npm test or 600-run. Use targeted suites only.
+  - Push max 2 attempts. If both fail, stop PUSH_BLOCKED with local commit SHA.
+  - Do not commit .workbuddy paths and record only genuinely new tooling observations.
