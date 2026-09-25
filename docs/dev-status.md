@@ -359,6 +359,7 @@ UI04FINAL 已由 Controller 验收并合入 `dev/tianfu-2.0`，accepted result c
 - 因此当前错误表示该微信云环境中尚未部署/识别 `tianfu2`，不是已知代码回归
 
 人工 gate：
+0. 在同一云环境的数据库中创建 4 个集合：`tianfu2_runs`、`tianfu2_commands`、`tianfu2_bootstraps`、`tianfu2_terminal_transitions`；无需手工插入文档或自定义索引，权限建议仅管理端可读写；
 1. 在微信开发者工具/云开发控制台确认当前环境为 `cloud1-8glg1sird4d40bc0`；
 2. 在 `cloudfunctions/tianfu2` 安装依赖；
 3. 上传并部署 `tianfu2`，选择云端安装依赖；

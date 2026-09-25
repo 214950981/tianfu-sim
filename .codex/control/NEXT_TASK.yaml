@@ -10,11 +10,17 @@ manualGate:
   cloudEnvironment: cloud1-8glg1sird4d40bc0
   requiredFunction: tianfu2
   observedError: "-501000 FunctionName parameter could not be found"
+  requiredCollections:
+    - tianfu2_runs
+    - tianfu2_commands
+    - tianfu2_bootstraps
+    - tianfu2_terminal_transitions
   steps:
     - confirm WeChat DevTools/cloud console is using cloud1-8glg1sird4d40bc0
     - install dependencies in cloudfunctions/tianfu2
     - upload and deploy tianfu2 using cloud-side dependency installation
     - confirm tianfu2 exists in the selected cloud environment
+    - create all four required CloudBase collections in that same environment; no manual documents or custom indexes are required
     - retry pages/v2-live
     - return successful first screen or next error evidence to Controller
 execution:
