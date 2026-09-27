@@ -9,7 +9,7 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `814f0b646277f5dc3639e64a6de13f015d7a7fee`
+- lastReviewedCommit: `f8d5450f847f3629dc8728d678a12c3f56ae76ec`
 - reviewedDate: `2026-09-25`
 - ui04FinalWorkBranch: `wb-UI04FINAL`（Controller 已验收并 fast-forward 到 dev）
 
@@ -72,6 +72,7 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - UI04D: PASS（Controller 已验收；OPENID 权威身份 / bootstrap 幂等 / CloudBase 事务 store / deployable tianfu2 cloud runtime 纵切片通过）
 - UI04E: PASS（随 UI04FINAL 一次性验收；终端链路 ENDING → LIFE_BOOK → REBIRTH_RESULT → NEXT_LIFE → 显式开启下一世 → 全新 DESTINY_OFFER，并修复 createRunOffer bootstrap 恢复丢弃 terminal sidecar 的缺陷）
 - UI04FINAL: PASS（UI04 里程碑终审；aggregate 回归 + UI04E-R2/R1/UI04E/UI04D/UI04C/UI04B/UI04A/UI03/UI02 + 生成物/依赖/路由/类型/lint/secret/content/context/phase2-drift 全绿）
+- LIVEFIX01: PASS（Controller 已验收；真实 CloudBase 空集合首次读取语义、空库首局创建、bootstrap/command/terminal 幂等与云运行时回归通过）
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
 
@@ -344,67 +345,20 @@ Full regression：264 / 264 PASS；全部 reported audits PASS。
 
 ## Next
 
-UI04FINAL remains accepted. Real WeChat cloud smoke advanced far enough to expose a production CloudBase compatibility defect, so the manual HOLD is lifted for one bounded live-fix task.
+LIVEFIX01 已由 Controller 验收并 fast-forward 合入 `dev/tianfu-2.0`，accepted result commit：
+`f8d5450f847f3629dc8728d678a12c3f56ae76ec`。
 
-Observed real environment sequence on 2026-09-25:
-- `tianfu2` cloud function is deployed and callable in `cloud1-8glg1sird4d40bc0`;
-- required collections now exist: `tianfu2_runs`, `tianfu2_commands`, `tianfu2_bootstraps`, `tianfu2_terminal_transitions`;
-- first empty-database bootstrap fails inside CloudBase `document.get` with `-502005` and message equivalent to `document with _id ... does not exist`;
-- client then surfaces `TransportProtocolError: createRunOffer result.runId must be a non-empty string` because no run was created.
+当前重新进入 **人工云部署 / 真机 smoke HOLD**，不派新的 WorkBuddy 代码任务。
 
-Root cause confirmed in `server/src/cloudbase-store.ts`: the store assumes a missing document is returned as an empty snapshot, while real CloudBase rejects `doc(id).get()` for a nonexistent document. This was hidden by the fake database used in tests.
+下一步人工 gate：
+1. 在 `cloudfunctions/tianfu2` 安装依赖；
+2. 重新上传并部署 `tianfu2`，选择云端安装依赖；
+3. 保持四个集合存在且允许为空：`tianfu2_runs`、`tianfu2_commands`、`tianfu2_bootstraps`、`tianfu2_terminal_transitions`；
+4. 回到 `pages/v2-live` 点击“重新连接”；
+5. 预期首次空库 `createRunOffer` 现在应直接创建 1 条 run + 1 条 bootstrap mapping 并返回有效 runId；
+6. 把成功首屏或新的真实云错误截图交给 Controller。
 
-Current task: `LIVEFIX01` — Real CloudBase Empty-Read Semantics + First-Run Recovery.
-
-This is not a one-line catch-only task. It must close the full empty-database first-run compatibility gap:
-- normalize a real CloudBase *missing document* read to `undefined` on all store read paths;
-- do NOT swallow missing-collection, permission, network, transaction, or other database errors, even when they share `-502005`;
-- make the fake CloudBase harness reproduce real missing-document rejection semantics;
-- prove empty database first bootstrap creates exactly one offered run + bootstrap mapping;
-- prove same bootstrap retry returns the same run;
-- prove empty idempotency lookup allows first command settlement and empty terminal-transition lookup allows first terminal settlement;
-- prove missing collection still fails loudly;
-- regenerate/audit/smoke the cloud runtime once after source stabilizes.
-
-After LIVEFIX01 passes, Controller will merge it and return to a manual HOLD for redeploying `tianfu2` and continuing the same real-device smoke. No new feature work should start before that smoke.
-
-## LIVEFIX01 验收证据（本次实现）
-
-修复点只有一个：`server/src/cloudbase-store.ts` 的持久化边界。新增 `isMissingDocumentError()` 分类器与
-`readDocumentData()` 单一助手，`readRun` 与事务内的 run / command / bootstrap / terminal-transition
-四种读取**共用同一语义**：集合存在、文档不存在 → `undefined`；其他一切 → 原样 rethrow（fail-closed）。
-
-分类器刻意窄：`-502005` 只是 ResourceNotFound **码族**，实机已观察到**集合缺失**落在同一码族，因此
-判据是「报文点名 document 的 `_id` 且声明其不存在」+（码恰为 `-502005` 或报文为实机那句字面原文）。
-凡报文点名 `collection` 缺失的一律致命——吞掉它等于把“部署没建集合”伪装成“你的数据是空的”。
-
-夹具同步改真：`tools/ui04d-cloud-harness.mjs` 现在默认 `missingDocumentMode: "reject"`，对不存在文档
-直接抛 `errCode -502005` 的 `document ... _id ... does not exist`，与生产一致；旧行为保留为
-`"empty"` 仅供对照。`provisionedCollections` 让缺失集合单独可复现。
-
-新增 `tests/livefix01.test.mjs`（15 项，已注册 `test:livefix01` 与聚合 `npm test`）：
-
-* 分类器：两种被接受的缺失文档形状 + 集合缺失同码、权限、网络、事务冲突、无 message、字符串/数字/null
-  等 14 类必须致命；
-* 四种读取共用空读语义，且全程无 `where()`；
-* 集合未开通仍响亮失败，且一个字节都不写；
-* 空四集合首次 `createRunOffer` → 恰好 1 条 run + 1 条 bootstrap 映射（同一事务）；
-* 同 bootstrap 重试 / 冷启动 → 同一 run，不多造命；
-* 首次 `sendCommand`（幂等回执尚不存在）→ 结算一次，精确重试仍一次；
-* 首次 `advanceTerminal`（终局回执尚不存在）→ 结算一次，精确重试不二次推进，canonical 字节不变；
-* `readRun` 未知 run → `undefined`，而 `fetchView` 对“不存在”与“别人的”仍是同一个 `UNAUTHORIZED`；
-* 可部署云函数 `cloudfunctions/tianfu2/index.js` 在完全空的数据库上跑通首条命。
-
-云运行时**只重新生成一次**（`--write`），随后 freshness / dependency audit / smoke 全绿（15 项）。
-
-定向验证：`livefix01` 15/15、`ui04d` 20/20、`server-gateway` 6/6、`ui04e` 26/26、
-`ui04e-r1` + `ui04e-r2` 12/12，`tsc --noEmit`、`check-import-boundaries`、`scan-secrets`、
-`content01-lint` 全绿。未跑聚合 `npm test`、未跑 600 局（credit-efficient 约束）。
-
-部署文档 `docs/UI04D_CLOUD_BACKEND.md` 已补「空库首次使用（LIVEFIX01）」一节：四张集合允许为空，
-首次请求自动创建文档；集合缺失是部署前置未完成，去控制台建集合，不要放宽分类器。
-
-## 新 Codex 会话 / 账号接手步骤
+在这次真实 smoke 之前，不继续新功能开发。## 新 Codex 会话 / 账号接手步骤
 
 1. 确认当前 branch = `dev/tianfu-2.0`。
 2. 查看 `git status`。

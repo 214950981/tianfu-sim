@@ -1,58 +1,32 @@
 version: 1
-status: READY
-attempt: 1
-taskId: LIVEFIX01
-title: LIVEFIX01 — Real CloudBase Empty-Read Semantics + First-Run Recovery
-taskDefinition: .codex/tasks/LIVEFIX01.yaml
+status: HOLD
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-LIVEFIX01
-worktreeRequired: true
-allowSyntheticTreeBase: true
-basePolicy: remote-source-head-at-task-start
-verificationProfile: fast-lane
-executionProfile: credit-efficient
-execution:
-  readProtocolFirst: true
-  commitTaskResult: true
-  pushWorkBranch: true
-  updateSourceBranch: false
-  startNextTask: false
-  runAggregateNpmTest: false
-  rerunKnownSandboxBaseline: false
-  run600Simulation: false
-  maxFullDedicatedSuiteRuns: 2
-  maxTypecheckRuns: 1
-  maxArtifactRegenerationRounds: 1
-  maxPushAttempts: 2
-  preferTargetedTestNamePattern: true
-  prohibitUnboundedRetryLoops: true
+reason: LIVEFIX01 accepted; waiting for tianfu2 redeploy and real CloudBase empty-database smoke
 controllerReview:
-  previousTask: UI04FINAL
+  previousTask: LIVEFIX01
   previousStatus: ACCEPTED
-  acceptedResultCommit: 814f0b646277f5dc3639e64a6de13f015d7a7fee
-realEnvironmentEvidence:
+  acceptedResultCommit: f8d5450f847f3629dc8728d678a12c3f56ae76ec
+manualGate:
   cloudEnvironment: cloud1-8glg1sird4d40bc0
-  function: tianfu2
-  functionReachable: true
-  collectionsProvisioned: true
-  observedFailure:
-    codeFamily: -502005
-    message: document.get failed because document with deterministic _id does not exist
-  clientSymptom: createRunOffer result.runId must be a non-empty string
-controllerDecision:
-  strategy: close-real-cloudbase-empty-read-gap
-  rationale: fake CloudBase semantics hid a production first-use incompatibility; normalize only exact missing-document reads and prove the complete empty-database first-run path
-controllerIntent:
-  mode: FAST_LANE_LIVE_FIX
-  goal: make a correctly provisioned but empty real CloudBase environment support first bootstrap and subsequent authoritative settlement without masking operational errors
-  postTask: controller reviews wb-LIVEFIX01; if accepted merge and HOLD for tianfu2 redeploy plus real-device smoke
+  requiredFunction: tianfu2
+  requiredCollections:
+    - tianfu2_runs
+    - tianfu2_commands
+    - tianfu2_bootstraps
+    - tianfu2_terminal_transitions
+  expectedFirstUse:
+    - all four collections may be empty
+    - first createRunOffer creates exactly one run document and one bootstrap mapping
+    - response contains a non-empty runId
+  steps:
+    - install dependencies in cloudfunctions/tianfu2 if needed
+    - redeploy tianfu2 with cloud-side dependency installation
+    - confirm all four collections exist in cloud1-8glg1sird4d40bc0
+    - retry pages/v2-live
+    - return successful first screen or next real cloud error evidence to Controller
+execution:
+  workBuddyMayRun: false
+  startNextTask: false
 notes:
-  - Run node .codex/context.mjs LIVEFIX01 once.
-  - Do not solve this in the client. The bug belongs at the CloudBase persistence boundary.
-  - Do not treat every -502005 as document-not-found. Missing collection has already been observed under the same broad code family.
-  - Prefer one small classifier/helper plus store-wide use rather than four copy-pasted catches.
-  - Update the fake harness to behave like real CloudBase on missing docs, then prove first-run bootstrap command idempotency and terminal receipt misses.
-  - Stabilize source before regenerating the cloud runtime; regenerate once.
-  - No aggregate npm test or 600-run. Use targeted suites only.
-  - Push max 2 attempts. If both fail, stop PUSH_BLOCKED with local commit SHA.
-  - Do not commit .workbuddy paths and record only genuinely new tooling observations.
+  - This HOLD is for real-environment verification after an accepted server fix.
+  - Do not dispatch new feature work until the first-run smoke succeeds or exposes a new production defect.
