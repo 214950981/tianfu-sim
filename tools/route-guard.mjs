@@ -47,6 +47,7 @@ import process from "node:process";
 
 import { FIXTURE_MODULE_SPECIFIER, listRuntimeModules, nonLiteralRequireArguments, requireArguments } from "./ui02-preview-fixture-module.mjs";
 import { auditPackageClosure } from "./miniprogram-package-closure.mjs";
+import { auditWxssIntegrity } from "./wxss-integrity-audit.mjs";
 
 export const REPO_ROOT = path.resolve(new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
 export const APP_JSON_PATH = "miniprogram/app.json";
@@ -194,6 +195,19 @@ export function runRouteGuard({ read = defaultRead, exists = defaultExists } = {
   const closure = auditPackageClosure({ read, exists });
   for (const violation of closure.violations) violations.push(`package closure: ${violation}`);
   for (const line of closure.report) report.push(`package closure: ${line}`);
+
+  // ---------------------------------------------------------------- J. WXSS integrity
+  // LIVEFIX03: the closure audit proves every referenced file EXISTS and is committed. It cannot tell
+  // whether a committed stylesheet is structurally complete — a truncated `game.wxss` satisfied every
+  // check above and still aborted the build with `game.wxss(253:14): unexpected token`. So the same
+  // injected read/exists seam runs the WXSS integrity audit too, which is what makes "the package is
+  // closed" imply "the package compiles as far as we can mechanically verify".
+  const integrity = auditWxssIntegrity({ read, exists });
+  for (const violation of integrity.violations) violations.push(`wxss integrity: ${violation}`);
+  report.push(
+    `wxss integrity: ${integrity.checked.length} stylesheets structurally complete ` +
+    `(registered page styles + every mirrored WXSS source/target)`
+  );
 
   return { ok: violations.length === 0, violations, report, pages };
 }

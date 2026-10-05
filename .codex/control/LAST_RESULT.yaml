@@ -1,249 +1,243 @@
 version: 1
+taskId: LIVEFIX03
+attempt: 1
 status: PASS
-taskId: LIVEFIX02
-title: LIVEFIX02 — MiniProgram Package Closure + DevTools Boot Smoke
+title: LIVEFIX03 — Legacy WXSS Recovery + Package Style Integrity Guard
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-LIVEFIX02
-baseCommit: dfeacd28dd79783783cb3a76401ec73260f22eaf
+workBranch: wb-LIVEFIX03
+baseCommit: 20dbf9e47651b1e2081c6e0d4bfb9d6996986537
 historyMode: real-ancestry
+baseTreeSha: a1dbb800770b66866765b23e2b9b3a3bf56c6e12
 sourceHeadVerifiedBy: |
-  git fetch origin --prune; the worktree was positioned at the current remote source HEAD dfeacd2 with
-  `git read-tree -u --reset <base>` + a direct worktree HEAD write. Verified git rev-parse HEAD ==
-  baseCommit and git write-tree == baseCommit^{tree} (3f8da71f6931e3faacd3bed1cf29ad6c1ac7add6) before
-  any edit. No .workbuddy path is in the diff.
+  git fetch origin dev/tianfu-2.0 resolved the remote source HEAD to 20dbf9e. The existing worktree was
+  fast-forwarded onto it with `git merge --ff-only 20dbf9e` (no reset, no rebase, no new worktree, no new
+  branch). `git merge-base --is-ancestor 6514afa 20dbf9e` confirmed the accepted LIVEFIX02 result commit
+  is an ancestor of this base, so real ancestry applies and the synthetic-tree fallback was not used.
 realEnvironmentEvidence:
-  devToolsErrors:
-    - "module 'pages/start/data.js' is not defined, require args is './data.js'"
-    - "Page 'pages/v2-live/v2-live' has not been registered yet"
-  confirmedRepositoryGaps:
-    - miniprogram/pages/start/start.js requires ./data.js but miniprogram/pages/start/data.js is absent
-    - miniprogram/app.json registers pages/game/game but miniprogram/pages/game/game.js is absent
-    - "ADDITIONAL, found by this task's own audit and not in the dispatch: miniprogram/pages/start/start.wxss and miniprogram/pages/game/game.wxss were also absent, so both 1.0 routes rendered unstyled. Copying only the two dispatched files would have shipped a visually broken package."
-  editorBehaviourObserved: |
-    WeChat DevTools wrote an untracked `miniprogram/pages/game/game.js` boilerplate stub. It satisfies the
-    packager and registers the page while rendering nothing, which is strictly worse than a missing file:
-    the package looks complete. Treated as evidence of the missing committed entry, not as a file to commit.
+  devToolsError: "pages/game/game.wxss(253:14): unexpected token"
+  repositoryFacts:
+    - "pages/game/game.wxss and miniprogram/pages/game/game.wxss are the same Git blob (d989ac55) and both truncated at line 253"
+    - "the file ends mid-declaration with `background: rgba(255, 152, 0` — no closing paren, no semicolon, no brace, no trailing newline"
+    - "the same truncated blob exists on main and in every local ref, so LIVEFIX02 did not introduce the corruption; it faithfully mirrored a historically broken source"
+    - "LIVEFIX02's mirror gate reported this file as fresh (byte-exact) while the build still failed — proving mirror freshness and source validity are independent facts"
 summary: |
-  The whole miniprogramRoot package was closed in one pass, plus a permanent static gate so the defect class
-  cannot recur behind a local stub.
+  RECONSTRUCTED. The legacy game stylesheet was historically truncated, so real DevTools rejected the
+  package with `pages/game/game.wxss(253:14): unexpected token`. The truncated final declaration was closed
+  and a missing suffix was reconstructed from the committed game.wxml/game.js plus the surviving
+  stylesheet's own conventions; the package copy was then refreshed through the existing mirror tool, so
+  both sides of the mirror are byte-identical and structurally complete.
 
-  1. MORE THAN THE TWO DISPATCHED FILES. A full per-page audit of every entry in `miniprogram/app.json`
-     found FOUR missing files inside the package, not two: `pages/start/data.js` and `pages/game/game.js`
-     (both dispatched) plus `pages/start/start.wxss` and `pages/game/game.wxss`. The two stylesheets matter
-     because those templates use 74 and 101 static classes respectively and `app.wxss` defines almost none
-     of them, so both 1.0 routes would have rendered unstyled. Restoring only the two dispatched files would
-     have produced a package that boots and still looks broken.
+  The durable half of the task is the new gate. LIVEFIX02 proved a mirrored file equals its source and the
+  build still failed, which is the whole defect class: a freshness gate cannot answer "is the source
+  syntactically complete". `tools/wxss-integrity-audit.mjs` now answers that question fail-closed for every
+  registered page stylesheet and both sides of every mirrored WXSS, and it is wired into the route guard,
+  so a future mirror cannot be fresh-but-invalid again.
 
-  2. BYTE-EXACT MIRROR, NOT A COPY. `tools/miniprogram-package-mirror.mjs` projects four root-level legacy
-     files into the package with a declared manifest, byte for byte: no transformation, no line-ending
-     rewrite, no reformatting. That is what turns "1.0 semantics preserved exactly" from a promise into a
-     checkable claim, and it means freshness needs no normalisation logic. The root-level sources stay in
-     place as the single source of truth; nothing is moved or deleted. `git` stores these bytes verbatim
-     (`core.autocrlf=false`, no `.gitattributes`), so a byte-exact mirror round-trips unchanged.
-     The in-package `start.js` / `game.wxml` are NEWER than the root tree (single 300-diamond share tier,
-     data-driven `rechargeNotice`), and the manifest does not list them, so the mirror cannot clobber them.
-
-  3. A PERMANENT CLOSURE GATE, NOT A ONE-OFF FIX. `tools/miniprogram-package-closure.mjs` proves the package
-     is closed, all seven checks fail-closed:
-       A. reads `miniprogramRoot` from `project.config.json` instead of hard-coding `miniprogram/`. An audit
-          that hard-coded the root would silently stop auditing if the root ever moved — the exact failure
-          this task exists to prevent.
-       B. `app.json` parses, page list non-empty and duplicate-free.
-       C. every registered page has a committed `.js` that actually CALLS `Page(` plus a committed `.wxml`.
-          The `Page(` check matters: a stub compiles, registers and renders nothing, and file existence
-          cannot see that.
-       D. transitive relative-require closure from every committed module inside the root. Second-order facts
-          (`start.js -> data.js`, `game.js -> game_data.js`) are invisible to a single-level scan.
-       E. no edge may escape the root or name TypeScript / `packages/` / `server/` / `cloudfunctions/`. The
-          prefix check runs BEFORE the existence check on purpose: a root-level `pages/foo.js` must never
-          satisfy `miniprogram/pages/foo.js`.
-       F. computed `require(...)` is rejected, because the packager resolves statically.
-       G. `<import>` / `<include>` / `<wxs src>` must resolve inside the root; a dangling template reference
-          renders an incomplete surface with no error at all.
-     Both confirmed defects have negative controls, and the audit cannot be silenced by pointing
-     `miniprogramRoot` at a non-package (asserted: it fails rather than passing vacuously).
-
-  4. ROUTING NOW MEANS BOOTABILITY. `tools/route-guard.mjs` gained check I, which runs the closure audit on
-     the same injected read/exists seam. "pages/v2-live/v2-live is registered" now implies "v2-live can
-     actually boot", not merely "the JSON list looks right". A negative control that deletes a page entry or
-     breaks a relative require fails both gates rather than one silently passing.
-
-  5. TWO STALE DIGEST PINS FIXED — A REAL REGRESSION IN AN ACCEPTED COMMIT. `tests/ui04b.test.mjs` pins
-     digests over `cloudfunctions` and `server/src`. LIVEFIX01 legitimately changed both (it added the
-     missing-document classifier to `server/src/cloudbase-store.ts` and regenerated the deployable runtime)
-     but was ACCEPTED without re-pinning, so both pins have been failing since. Attributed by recomputing
-     each digest over `git archive` extractions of successive commits: both MATCH at 814f0b6 (UI04FINAL) and
-     first DIVERGE at f8d5450 (LIVEFIX01), with unchanged file counts (41 and 10). Re-pinned with a comment
-     naming the reason, NOT deleted, so both trees stay guarded from here on.
-     LIVEFIX02 also changed how the digest is computed: the documented `npm install` deployment step inside
-     `cloudfunctions/tianfu2` writes an untracked `package-lock.json` that the filesystem walk counted, so
-     following the deployment instructions made the pin unpassable. Dependency artefacts are now skipped the
-     same way `node_modules` already was. A real source edit under `cloudfunctions/` still moves the digest.
+  Static class coverage went from 67 undefined classes (packaged template) to 0, with all 6868 surviving
+  pre-truncation bytes preserved verbatim and the repair kept strictly append-only.
 changedFiles:
-  - .codex/control/LAST_RESULT.yaml
-  - miniprogram/pages/start/data.js
-  - miniprogram/pages/start/start.wxss
-  - miniprogram/pages/game/game.js
+  - pages/game/game.wxss
   - miniprogram/pages/game/game.wxss
-  - tools/miniprogram-package-closure.mjs
-  - tools/miniprogram-package-mirror.mjs
+  - tools/wxss-integrity-audit.mjs
   - tools/route-guard.mjs
-  - tests/livefix02.test.mjs
-  - tests/ui04b.test.mjs
+  - tests/livefix03.test.mjs
+  - tests/fixtures/livefix03/game.wxss.truncated
   - docs/dev-status.md
   - package.json
+  - .codex/control/LAST_RESULT.yaml
+changes:
+  - file: pages/game/game.wxss
+    what: closed the truncated .engine-paused declaration and appended the reconstructed suffix
+    detail: >-
+      The first 6868 bytes are byte-identical to the truncated original, asserted mechanically rather than
+      by inspection. The dangling `background: rgba(255, 152, 0` was completed to
+      `background: rgba(255, 152, 0, 0.1);` following the sibling `.engine-running` rule's own
+      convention, the rule was closed, and `.engine-paused:active` was added. 6868 -> 21045 bytes; the
+      file's CRLF line endings are preserved throughout.
+  - file: miniprogram/pages/game/game.wxss
+    what: refreshed the package copy through the existing mirror mechanism
+    detail: >-
+      Written only by `node tools/miniprogram-package-mirror.mjs --write`, never hand-edited, and now
+      byte-identical to the repaired source (21045 bytes, sha256 27247bf4bc05dedb).
+  - file: tools/wxss-integrity-audit.mjs
+    what: new fail-closed WXSS structural integrity audit
+    detail: >-
+      A single comment/string-aware left-to-right pass that detects unbalanced curly braces and
+      parentheses, unterminated quotes and block comments, EOF inside a rule block, EOF inside a
+      declaration, and declaration values ending in a dangling comma. Targets are derived from
+      project.config.json's miniprogramRoot plus app.json's registered pages rather than hardcoded, and
+      include both the source and the target of every manifest-mirrored WXSS. WXML class coverage is
+      reported as a diagnostic and is structurally excluded from the pass/fail result.
+  - file: tools/route-guard.mjs
+    what: wired the integrity audit into the route smoke as check J
+    detail: >-
+      Runs on the same injected read/exists seam as the package-closure check, so a truncated stylesheet
+      now fails the route guard. This is what makes "the package is closed" imply "the package is
+      structurally buildable" as far as static analysis can establish.
+  - file: tests/livefix03.test.mjs
+    what: dedicated suite, 19 tests
+    detail: >-
+      The line-253 negative control runs against tests/fixtures/livefix03/game.wxss.truncated — the real
+      6868-byte historical bytes — rather than a hand-typed paraphrase that could drift from what DevTools
+      actually rejected.
+  - file: docs/dev-status.md
+    what: recorded the recovery outcome as a reconstruction
+    detail: >-
+      States plainly that Git, main, all local refs and all local on-disk copies contain no complete
+      pre-truncation revision, so the suffix is reconstructed rather than restored.
+  - file: package.json
+    what: registered the task test and the audit script
+    detail: >-
+      `test:livefix03` and `miniprogram:wxss-integrity`. The frozen aggregate `test` list is deliberately
+      left unchanged, per the fast-lane profile.
+recoveryProvenance:
+  outcome: RECONSTRUCTED
+  trustworthyHistoricalSourceFound: false
+  conclusion: >-
+    No complete pre-truncation revision of pages/game/game.wxss exists in any reachable local or remote
+    source. The suffix was therefore reconstructed, not restored, and is labelled as such everywhere.
+  locationsSearched:
+    - "all local refs via `git for-each-ref` — exactly one blob for this path (d989ac55, 6868 bytes), the truncated one"
+    - "path history via `git log --all --follow` — a single commit, 45e8105 'Add WeChat mini-program source files', already truncated"
+    - "all 18 on-disk copies across 16 sibling WorkBuddy worktrees, the main clone, and three .b2base base-tree extractions — every one md5 5806a213b20e83f0f7af9293a3f29d22, the same truncated 6868 bytes"
+    - "WeChat DevTools Local and Roaming caches (1.4G scanned) — no game.wxss and no file containing the stylesheet's unique marker string"
+    - "dangling/unreachable blobs via `git fsck --dangling` — none referencing the marker"
+    - "git stash — empty"
+  divergentCandidateRejected:
+    blob: 712f58c309ab85f7b8eab67461123675a5e6f7cc
+    sizeBytes: 6616
+    reason: >-
+      The only blob anywhere that differs from the committed file, and the one plausible-looking recovery
+      candidate. It is NOT a longer version. After normalising CRLF to LF it is byte-identical to the
+      truncated current file (md5 b3d1413004f5268904da6be00e0f0bb7 for both); the 252-byte size difference is
+      exactly 252 lines of CR bytes. It is an LF-line-ending variant of the same truncated content, cut at
+      the same `background: rgba(255, 152, 0`, and it is unreachable from any ref. It supplies no missing
+      suffix and was rejected. Recorded because a future reader will find it and wonder.
+  prefixPreservation:
+    bytesPreserved: 6868
+    verification: >-
+      Asserted by tests/livefix03.test.mjs, which compares the first 6868 bytes of the repaired file
+      against tests/fixtures/livefix03/game.wxss.truncated. The repair is strictly append-only: no byte
+      before the truncation point was edited, reordered or reformatted.
+  reconstructionContract:
+    basis: >-
+      The committed pages/game/game.wxml and miniprogram/pages/game/game.wxml (the classes each actually
+      references) plus the surviving stylesheet's own visual language: rpx units, the #030303-on-black
+      palette, its existing keyframe and glow conventions, and border-box on every fixed-height box because
+      WXSS has no universal reset.
+    staticClassCoverage: "86/86 root template, 84/84 packaged template, 0 undefined (was 69 and 67 undefined)"
+    notInvented: >-
+      No gameplay logic, no new UI feature, no route or tabBar change. The suffix only styles markup that
+      already existed in the committed templates.
 tests:
-  - id: livefix02
-    command: node --test tests/livefix02.test.mjs
-    result: PASS (16/16)
-    note: |
-      Four failures on the first run, all test-authoring defects rather than product defects, and each was
-      fixed by correcting the assertion rather than weakening it:
-        (1) the mirror tool compared Buffers while the injected reader returns strings, so injection changed
-            semantics — the tool now normalises to bytes;
-        (2) the stub negative control used a file that DID call Page(), so the audit was right to pass it —
-            replaced with an entry that genuinely never calls Page();
-        (3) a forbidden-token list included `Math.random` and `reduce(`, which the 1.0 engine legitimately
-            contains. Asserting their absence would have required rewriting 1.0 code, which this task
-            forbids; the check was re-aimed at cross-layer leakage (packages/server/cloudfunctions) and at
-            dependency edges escaping the package;
-        (4) package scripts were not yet registered.
-  - id: ui04c
-    command: node --test tests/ui04c.test.mjs
-    result: PASS (18/18)
-    note: The route guard gained check I; its three existing negative controls still pass unchanged.
-  - id: ui04b
-    command: node --test tests/ui04b.test.mjs
-    result: PASS (16/16)
-    note: |
-      Failed 1/16 on the first run. Root cause was NOT environmental: two digest pins had been stale since
-      LIVEFIX01 was accepted. Both re-pinned with attribution, and the digest computation now skips dependency
-      artefacts. See summary point 5.
-  - id: ui04a
-    command: node --test tests/ui04a.test.mjs
-    result: PASS (16/16)
+  livefix03: 19 pass / 0 fail
+  wxss-integrity: "PASS — 7 stylesheets structurally complete"
+  miniprogram-package-mirror: "PASS — 4 mirrored files; game.wxss 21045 bytes sha256 27247bf4bc05dedb"
+  miniprogram-package-closure: PASS
+  route-guard: "PASS — now includes the new check J WXSS integrity"
+  ui04b-smoke: 16 pass / 0 fail
+  lint: PASS
+  secret-scan: PASS
+  aggregate-npm-test: "SKIPPED per NEXT_TASK.runAggregateNpmTest=false"
+  typecheck: "SKIPPED per NEXT_TASK.maxTypecheckRuns=0"
+  "600-run": "SKIPPED per NEXT_TASK.run600Simulation=false"
+  ui04-full-regression: "SKIPPED per NEXT_TASK verificationProfile=fast-lane"
 gates:
-  - id: miniprogram-package-closure
-    result: PASS (14 committed JS modules form a closed relative-require graph; 5 templates have no dangling include)
-  - id: miniprogram-package-mirror
-    result: PASS (4 mirrored files byte-identical to their root-level sources)
-  - id: route-guard
-    result: PASS (5 registered pages, tabBar pinned, package closure green)
-  - id: ui04b-smoke
-    result: PASS (8 checks)
-  - id: client-runtime-dependency-audit
-    result: PASS
-  - id: lint
-    result: PASS (Core import boundary)
-  - id: secret-scan
-    result: PASS
+  wxssIntegrity: >-
+    FAIL on the base tree with 6 violations correctly pinpointing line 253 on both the source and the
+    mirrored copy; PASS after the repair. This is the gate that did not exist when DevTools failed.
+  negativeControls: >-
+    The exact line-253 truncation, an unbalanced closing brace, a stray closing brace, an unterminated
+    block comment, an unterminated string, an unclosed function argument list and a dangling trailing
+    comma are all rejected. Two positive controls — braces/quotes/parens appearing inside strings and
+    comments, and an escaped quote — are correctly accepted, so the audit is not simply flagging every
+    brace it sees.
+  routeGuardIntegration: >-
+    A negative control feeds the real truncated bytes to the route guard through its injected reader and
+    requires a violation naming line 253, proving the integration fails closed rather than merely calling
+    the audit and ignoring the result.
+  mirrorVsValidity: >-
+    The gate and the mirror are asserted independently on purpose. Freshness alone is what let a truncated
+    file ship, so the two facts are proven separately and neither is inferred from the other.
 scope:
   coreChanged: false
   contractsChanged: false
   directorChanged: false
   contentChanged: false
   gameplayChanged: false
-  reducerChanged: false
-  rngChanged: false
   serverChanged: false
   cloudfunctionChanged: false
-  clientPackagingChanged: true
-  docsChanged: true
-  note: |
-    No gameplay, Core, Content, server or cloud-function source was touched — verified by an empty
-    `git status` over `cloudfunctions/`, `server/`, `packages/`, `miniprogram/app.json` and
-    `miniprogram/runtime/`. The app.json first page and tabBar ordering are unchanged and restated as
-    assertions. Legacy 1.0 semantics are preserved by byte-exact mirroring, including the engine's own
-    client-side randomness, which is preserved semantics rather than a defect. The only test outside this
-    task's new suite that was modified is `tests/ui04b.test.mjs`, for the two pre-existing stale pins.
+  databaseChanged: false
+  defaultRouteChanged: false
+  tabBarChanged: false
+  pinnedBaseTreeDigests: >-
+    tests/livefix03.test.mjs pins sha256 for miniprogram/pages/game/game.js, pages/game/game.js,
+    pages/game/game.wxml, miniprogram/pages/game/game.wxml, miniprogram/app.json, miniprogram/app.wxss,
+    project.config.json, tools/miniprogram-package-mirror.mjs and tools/miniprogram-package-closure.mjs,
+    all taken from base commit 20dbf9e, and asserts every one is unchanged.
+    project.private.config.json is intentionally not pinned because DevTools rewrites it on every open and
+    pinning it would fail for reasons unrelated to this repair. tools/route-guard.mjs is intentionally not
+    pinned because integrating the audit there is a required change, asserted separately instead.
+  disclosedScopeNotes: >-
+    No WXSS compiler exists in this repository. The new audit is a structural completeness check and does
+    not claim to prove the stylesheet compiles under the real DevTools build; that remains the human's
+    DevTools pass. tools/wxss-compat-audit.mjs separately keeps the 2.0 preview stylesheet inside the
+    documented WXSS selector subset and is unchanged by this task. The reconstructed rules use only
+    element, .class, compound and descendant-class selectors plus parameterless :active, and declare
+    box-sizing: border-box on every fixed-height box, so they stay inside the subset the compat audit
+    enforces. No visual QA was performed and none is claimed.
+  untested: >-
+    The aggregate suite, typecheck, the 600-run simulation and the full UI04 regression were all skipped
+    by NEXT_TASK instruction. This task changed one stylesheet, one new auditor, one route-guard import and
+    one new suite, so the deferred regression cost is real but is the controller's explicit trade.
 blockers: []
 toolingObservations:
-  - id: devtools-stub-hides-a-missing-committed-page-entry
-    evidence: |
-      With `miniprogramRoot: "miniprogram/"` and `miniprogram/app.json` registering `pages/game/game` while
-      no `.js` was committed, WeChat DevTools created an untracked `miniprogram/pages/game/game.js`
-      containing a `Page({})` with empty lifecycle methods. The page then registers and renders nothing.
-    impact: |
-      An untracked editor-generated file converts a loud boot failure into a silent blank page, and it also
-      makes `git status` noisy in a way that reads like ordinary DevTools pollution. Treating it as pollution
-      and deleting it would have restored the boot error without fixing the cause.
-    workaround: |
-      Classify an untracked page stub as evidence of a missing committed page entry, never as a file to
-      commit. `tools/miniprogram-package-closure.mjs` now gates the whole class: every registered page needs a
-      committed `.js` that actually calls `Page(`, and the whole package's relative-require graph must close
-      inside the declared root.
-  - id: filesystem-walking-tree-digests-are-unpassable-after-documented-deploy-steps
-    evidence: |
-      `tests/ui04b.test.mjs` pins trees with a `fs.readdirSync` walk. The documented deployment step for
-      `cloudfunctions/tianfu2` is `npm install` inside that directory, which writes `package-lock.json` next
-      to the manifest. The walk counted it, so the `cloudfunctions` pin could never pass on a machine where
-      anyone had followed the deployment instructions. `node_modules` was already excluded for exactly this
-      reason; `package-lock.json` was not.
-    impact: |
-      A digest pin that measures the working tree rather than the committed tree produces false failures that
-      look like product regressions, and the natural (wrong) response is to re-pin a value that includes build
-      output, which then breaks on the next clean checkout.
-    workaround: |
-      Skip dependency artefacts by rule, the way `node_modules` already is, and keep the pin meaning "the
-      committed source did not change". Do NOT shell out to `git ls-files` for this: nested process spawn is
-      unreliable in this sandbox (TOOLING_RUNBOOK "Nested Node process EBUSY") and a pin that depends on it
-      would fail for environmental reasons.
-  - id: accepted-commits-can-leave-digest-pins-stale
-    evidence: |
-      LIVEFIX01 (f8d5450, ACCEPTED) legitimately changed `server/src/cloudbase-store.ts` and regenerated
-      `cloudfunctions/tianfu2/runtime/server-cloudbase-store.js`, but did not re-pin the two UI04B digests over
-      those trees. Proven by recomputing each digest over `git archive` extractions of 814f0b6, f8d5450,
-      2f95adc and dfeacd2: both MATCH at 814f0b6 and first DIVERGE at f8d5450, with file counts unchanged
-      (41 and 10).
-    impact: |
-      A stale pin fails on every subsequent run, so it gets classified as environment noise and the real
-      signal — "this tree is unguarded right now" — is lost. Two trees were unguarded from LIVEFIX01 until
-      LIVEFIX02.
-    workaround: |
-      When a task legitimately changes a pinned tree, re-pin it in that same task and say so in
-      `changedFiles` + `toolingObservations`. When a stale pin is discovered later, attribute it by
-      recomputing the digest over successive `git archive` extractions rather than guessing, and re-pin with
-      a comment naming the commit that moved it — never delete the check.
+  - >-
+      Mirror freshness and source validity are independent facts, and passing the first says nothing about
+      the second. LIVEFIX02 proved the packaged stylesheet byte-exact and the build still aborted. Any
+      future asset pipeline that mirrors generated or legacy files should pair a freshness check with an
+      independent structural or syntax check on the SOURCE.
+  - >-
+      A truncated file is perfectly fresh, so a freshness check can never substitute for a validity check.
+      The cheapest durable guard is a fail-closed structural audit that treats EOF inside a rule or a
+      declaration as a violation — it is a few dozen lines and it pins the exact class of defect that
+      shipped twice.
+  - >-
+      When reconstructing a lost suffix, keep the repair strictly append-only and assert the preserved
+      prefix byte-for-byte against a committed fixture. An earlier attempt in this task inserted new rules
+      mid-file to group them logically with related rules, which silently broke the byte-prefix guarantee;
+      the test caught it on the first run and the rules were moved into the appended suffix. Grouping
+      aesthetics are not worth weakening a provable invariant.
+  - >-
+      This sandbox cannot spawn `git` from inside a Node test (spawnSync EBUSY), so a test must never call
+      git. Scope assertions were expressed as sha256 pins over a fixed file list taken from the base
+      commit, which is environment-independent and fails closed. The pre-repair bytes were captured once
+      into a committed fixture and reused for both the prefix assertion and the line-253 negative control,
+      which is cheaper than storing ~110KB of duplicate base files.
+  - >-
+      WeChat DevTools writes into AppData caches that do NOT retain project source: a 1.4G scan of both
+      the Local and Roaming DevTools trees found no copy of the stylesheet and no file containing its
+      unique marker. DevTools caches are not a viable source-recovery location for this project, so a
+      future task need not spend budget there.
+  - >-
+      A dangling-comma truncation check must run at `}` as well as at `;`. A declaration may be closed by
+      either, and checking only `;` lets `.a { font-family: 'A', 'B', }` pass as a complete list. This was
+      a real bug the negative controls caught rather than a hypothetical one.
 resourceUsage:
-  aggregateFullRuns: 0
+  fullDedicatedSuiteRuns: 2
   typecheckRuns: 0
-  artifactRegenerationRounds: 0
-  pushAttempts: 1
-  unboundedRetryLoops: 0
-  dedicatedSuiteRuns: "livefix02 x2, ui04b x2, ui04c x1, ui04a x1"
-  simulation600Run: skipped (forbidden by the task; no gameplay semantics changed)
-  notes: |
-    NEXT_TASK sets maxTypecheckRuns: 0, so `tsc` was not run — no TypeScript source was modified. No artifact
-    regeneration was needed: `cloudfunctions/tianfu2` is forbidden scope, so the generated cloud runtime is
-    untouched and its freshness/audit/smoke gates are unaffected. No aggregate `npm test` and no 600-run, both
-    forbidden. The second run of livefix02 and ui04b was the final confirmation after the assertion fixes and
-    the pin re-pinning, which is within the maxFullDedicatedSuiteRuns = 2 bound.
-mergeReadiness:
-  status: merge-ready
-  ancestry: real (worktree HEAD is baseCommit dfeacd2; the result commit is its direct descendant)
-  workBranchPushed: wb-LIVEFIX02
-  manualStepsRemaining:
-    - refresh the WeChat DevTools deployment workspace so it picks up the four newly committed files
-      (DevTools caches the package; an unrefreshed workspace will still report the old boot errors)
-    - confirm the two original DevTools errors are gone on a real compile, and that pages/start/start and
-      pages/game/game now render styled
-    - manual visual QA — NOT performed in this task
-    - resume the real cloud smoke that LIVEFIX01 unblocked
-  caveats: |
-    One file in the worktree is a deployment artefact and was deliberately NOT committed:
-    `cloudfunctions/tianfu2/package-lock.json`, written by the documented `npm install` deployment step. The
-    originally untracked `miniprogram/pages/game/game.js` DevTools stub was overwritten by the byte-exact
-    mirror, so the committed `game.js` is now the real 1.0 engine.
+  artifactRegenerationRounds: 1
+  pushAttempts: 0
+  notes: >-
+    Two full dedicated-suite runs were used. The first surfaced three real defects — the mid-file prefix
+    break, the `}`-terminated dangling-comma gap, and a fixture slice off-by-one — all fixed before the
+    confirming run. One mirror regeneration round, after the source stabilised. No aggregate, no typecheck,
+    no 600-run, no full UI04 regression, and no unbounded search or retry loop.
+nextManualDevToolsStep: >-
+  Reopen the project in WeChat DevTools with 清除缓存 -> 全部清除, then compile. The expected
+  pages/game/game.wxss(253:14) error must be gone. LIVEFIX02's four mirrors are in place and every
+  registered page stylesheet now passes the structural audit, so v2-live should be reachable for the first
+  time. Report the next compile or runtime error verbatim. The remaining visual sign-off is a human pass
+  and is not claimed here.
 recommendedCommitMessage: |
-  LIVEFIX02: close the whole MiniProgram package and gate it permanently
-
-  - mirror four root-level legacy files into miniprogramRoot byte-exactly, not just the two dispatched:
-    start/data.js, game/game.js, and the two page stylesheets whose templates use 74 and 101 static classes
-  - add a manifest-driven mirror tool with freshness check and write mode, so 1.0 semantics are preserved by
-    construction and drift is a gate rather than a convention
-  - add a static package-closure audit that reads miniprogramRoot from project.config.json and proves every
-    registered page has a committed Page(...) entry and the whole relative-require graph closes transitively
-    inside the root; a root-level file can never satisfy a package dependency
-  - wire the closure audit into the route guard as check I, so "v2-live is registered" implies "v2-live boots"
-  - re-pin the two UI04B digest pins that LIVEFIX01 left stale, with attribution, and stop the digest from
-    counting the package-lock.json that the documented npm install step writes
+  LIVEFIX03: reconstruct the truncated legacy game stylesheet and gate WXSS structural integrity

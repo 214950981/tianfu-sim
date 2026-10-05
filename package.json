@@ -79,9 +79,11 @@
     "test:ui04e-r2": "node --test tests/ui04e-r2.test.mjs",
     "test:livefix01": "node --test tests/livefix01.test.mjs",
     "test:livefix02": "node --test tests/livefix02.test.mjs",
+    "test:livefix03": "node --test tests/livefix03.test.mjs",
     "miniprogram:package-closure": "node tools/miniprogram-package-closure.mjs",
     "miniprogram:package-mirror": "node tools/miniprogram-package-mirror.mjs",
-    "miniprogram:package-mirror:write": "node tools/miniprogram-package-mirror.mjs --write"
+    "miniprogram:package-mirror:write": "node tools/miniprogram-package-mirror.mjs --write",
+    "miniprogram:wxss-integrity": "node tools/wxss-integrity-audit.mjs"
   },
   "devDependencies": {
     "typescript": "5.9.3"

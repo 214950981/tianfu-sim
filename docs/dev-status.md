@@ -344,27 +344,87 @@ Full regression：264 / 264 PASS；全部 reported audits PASS。
 注意：微信开发者工具会在工作区写入 `project.config.json`、`project.private.config.json`
 与 `miniprogram/pages/game/game.js` stub，会污染 digest-pinned 回归，验收前先检查 `git status`。
 
+## LIVEFIX03 验收证据：RECONSTRUCTED —— 重建被截断的 legacy 样式表 + 永久 WXSS 完整性门禁
+
+### 实机现象（微信开发者工具）
+
+```
+pages/game/game.wxss(253:14): unexpected token
+```
+
+源文件在声明中间断掉，没有右括号、没有分号、没有右花括号、没有结尾换行：
+
+```css
+.engine-paused {
+  background: rgba(255, 152, 0
+```
+
+### 这是 RECONSTRUCTED，不是恢复 —— 恢复来源已穷尽
+
+| 检索位置 | 结果 |
+| --- | --- |
+| 全部本地 ref（`git for-each-ref`） | 该路径只有一个 blob（`d989ac55`，6868 字节），就是被截断那个 |
+| 路径历史（`git log --all --follow`） | 只有一条提交 `45e8105`，加入时**已**被截断 |
+| 磁盘上 18 份副本（16 个兄弟 worktree + 主 clone + 3 份 `.b2base` 基线提取） | md5 全为 `5806a213…`，同样是那 6868 字节 |
+| 微信开发者工具 Local + Roaming 缓存（扫描 1.4G） | 没有 `game.wxss`，也没有任何含该样式表特征字符串的文件 |
+| 悬挂 / 不可达 blob（`git fsck --dangling`） | 无相关对象 |
+| `git stash` | 空 |
+
+**唯一看起来像候选的 blob 已拒绝**：`712f58c3…`，6616 字节。它**不是更长的版本**——
+CRLF 归一化后与当前被截断文件逐字节相同（两者 md5 均为 `b3d14130…`），252 字节的差值正好是
+252 行 CR。它是同一份截断内容的 LF 变体，在同一位置截断，且不被任何 ref 引用，不提供任何缺失后缀。
+
+结论：**Git、main、全部本地 ref 与全部本地磁盘副本都不存在完整的截断前版本**，因此后缀是
+**重建**的，不是恢复的。此事实在 `LAST_RESULT.yaml` 与本文档中均明确标注。
+
+### 修复方式
+
+前 **6868 字节逐字节保留**（由测试断言，非人工检查），修复严格**只追加**：
+
+- 把悬空的 `background: rgba(255, 152, 0` 补成 `background: rgba(255, 152, 0, 0.1);`，
+  写法沿用同一文件里兄弟规则 `.engine-running` 自己的约定；
+- 闭合该规则并补 `.engine-paused:active`；
+- 按已提交的 `game.wxml` / `game.js` 与存留样式表自身的视觉语言（rpx、`#030303` 暗底、
+  既有 keyframe 与发光约定、固定高度盒子全部显式 `border-box`）重建缺失后缀；
+- 包内副本**只由** `node tools/miniprogram-package-mirror.mjs --write` 刷新，绝不手改；
+- 6868 → 21045 字节，CRLF 行尾全程保持。
+
+静态类覆盖：root 模板 86/86、包内模板 84/84，**未定义类 0 个**（修复前分别为 69 / 67 个）。
+未新增任何玩法逻辑、UI 功能、路由或 tabBar 变更——后缀只为模板中**已存在**的标签提供样式。
+
+### 永久门禁：mirror freshness ≠ source validity
+
+LIVEFIX02 已经证明包内副本与源**逐字节一致**，构建**仍然失败**。这就是整类缺陷：
+freshness 门禁回答「target == source」，永远不回答「source 语法完整」。
+
+`tools/wxss-integrity-audit.mjs` 补上了这一半，单次注释/字符串感知的从左到右扫描，fail-closed：
+花括号与括号不平衡、引号与块注释未闭合、EOF 落在规则块内、EOF 落在声明内、声明值以悬空逗号结尾。
+
+- 目标从 `project.config.json` 的 `miniprogramRoot` 与 `app.json` 注册页**推导**，不写死；
+- 覆盖**每个注册页样式** + **每个镜像 WXSS 的源与目标两侧**；
+- 类覆盖率只作**诊断**输出，**不参与**判定（动态类名与 `app.wxss` 继承让 100% 覆盖不成立）；
+- 已接入 `tools/route-guard.mjs`（检查项 J），所以「包是闭合的」从此蕴含「包在静态可验证范围内是可构建的」。
+
+负控包含**真实的 253 行截断字节**（提交为 `tests/fixtures/livefix03/game.wxss.truncated`），
+外加不平衡花括号、游离右花括号、未闭合块注释、未闭合字符串、未闭合参数列表、悬空逗号；
+两个正控（字符串/注释内的花括号与转义引号）确认审计不会见到花括号就报错。
+
+### 诚实的边界
+
+仓库内**不存在 WXSS 编译器**。新审计是**结构完整性**检查，不声称能证明样式表在真实
+DevTools 构建下编译通过——那仍然是人的 DevTools pass。`tools/wxss-compat-audit.mjs` 另行把
+2.0 preview 样式表限制在文档化的 WXSS 选择器子集内，本任务未改动它。**未执行视觉验收。**
+
+未跑 aggregate / typecheck / 600-run / UI04 全量回归（NEXT_TASK 显式要求）。
+
 ## Next
 
-Real WeChat DevTools smoke after accepted LIVEFIX02 exposed a new source-integrity blocker before v2-live could load:
-`pages/game/game.wxss(253:14): unexpected token`.
+LIVEFIX03 已交付待验收。Controller 验收 `wb-LIVEFIX03` 后**立即**回到 DevTools 编译/smoke，
+不要继续功能开发。
 
-Repository evidence:
-- both `pages/game/game.wxss` and its accepted mirror `miniprogram/pages/game/game.wxss` end at line 253 with `background: rgba(255, 152, 0`;
-- the files are the same Git blob and the same truncation already exists on `main`, so LIVEFIX02 did not introduce the corruption; it faithfully mirrored a historically truncated source;
-- Git history for this path contains only the original 2026-08-20 add, already truncated; no complete remote version is available to restore;
-- the game WXML references many classes not defined in the surviving stylesheet tail, so this is likely loss of an entire suffix, not a one-token typo.
-
-Current task: `LIVEFIX03` — Legacy WXSS Recovery + Package Style Integrity Guard.
-
-Priority order:
-1. Search deterministic local recovery sources first: sibling Tianfu WorkBuddy worktrees, backups/caches/archives that can be tied to this repository, and any previously materialized source copy. Do not search broadly across unrelated user files.
-2. If a complete pre-truncation stylesheet is found, prove provenance/hash/length and restore from it.
-3. If no trustworthy complete source exists, reconstruct only the missing suffix from committed WXML/JS behavior and existing visual conventions, with no gameplay/logic changes. Record explicitly that this is reconstruction, not historical recovery.
-4. Add a permanent WXSS integrity audit for all registered MiniProgram page styles: fail on EOF inside a declaration/rule, unbalanced braces/parens/quotes/comments, and obviously truncated declarations. Also verify the mirrored legacy styles are syntax-valid after mirroring.
-5. Keep validation targeted: LIVEFIX03 tests + mirror + package closure + route guard + WXSS integrity. No aggregate, no typecheck, no 600-run, no UI04 full regression.
-
-After LIVEFIX03 is accepted, return immediately to DevTools compile/smoke. Do not continue feature work.## 新 Codex 会话 / 账号接手步骤
+人工步骤：用微信开发者工具打开项目，先「清缓存 → 全部清除」，再编译。
+`pages/game/game.wxss(253:14): unexpected token` 必须消失；下一个编译或运行时报错请逐字回报。
+## 新 Codex 会话 / 账号接手步骤
 
 1. 确认当前 branch = `dev/tianfu-2.0`。
 2. 查看 `git status`。
