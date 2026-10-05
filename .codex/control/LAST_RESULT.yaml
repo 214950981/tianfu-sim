@@ -1,243 +1,219 @@
 version: 1
-taskId: LIVEFIX03
+taskId: LIVEFIX04
 attempt: 1
 status: PASS
-title: LIVEFIX03 — Legacy WXSS Recovery + Package Style Integrity Guard
+title: LIVEFIX04 — CloudBase errCode=-1 Missing-Document Shape
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-LIVEFIX03
-baseCommit: 20dbf9e47651b1e2081c6e0d4bfb9d6996986537
+workBranch: wb-LIVEFIX04
+baseCommit: ea0571ce62b803b1dce499f147ec6a897adb8feb
 historyMode: real-ancestry
-baseTreeSha: a1dbb800770b66866765b23e2b9b3a3bf56c6e12
+baseTreeSha: eeb03eeaa12a28e5a797f9a33773afcc5f7bdd65
 sourceHeadVerifiedBy: |
-  git fetch origin dev/tianfu-2.0 resolved the remote source HEAD to 20dbf9e. The existing worktree was
-  fast-forwarded onto it with `git merge --ff-only 20dbf9e` (no reset, no rebase, no new worktree, no new
-  branch). `git merge-base --is-ancestor 6514afa 20dbf9e` confirmed the accepted LIVEFIX02 result commit
-  is an ancestor of this base, so real ancestry applies and the synthetic-tree fallback was not used.
+  git fetch origin dev/tianfu-2.0 resolved the remote source HEAD to ea0571c. The existing worktree was
+  fast-forwarded onto it with `git merge --ff-only ea0571c` (no reset, no rebase, no new worktree, no new
+  branch). `git merge-base --is-ancestor 6a1266d ea0571c` confirmed the accepted LIVEFIX03 result commit is
+  an ancestor of this base, so real ancestry applies and the synthetic-tree fallback was not used.
 realEnvironmentEvidence:
-  devToolsError: "pages/game/game.wxss(253:14): unexpected token"
-  repositoryFacts:
-    - "pages/game/game.wxss and miniprogram/pages/game/game.wxss are the same Git blob (d989ac55) and both truncated at line 253"
-    - "the file ends mid-declaration with `background: rgba(255, 152, 0` — no closing paren, no semicolon, no brace, no trailing newline"
-    - "the same truncated blob exists on main and in every local ref, so LIVEFIX02 did not introduce the corruption; it faithfully mirrored a historically broken source"
-    - "LIVEFIX02's mirror gate reported this file as fresh (byte-exact) while the build still failed — proving mirror freshness and source validity are independent facts"
+  devTools:
+    startPage: PASS
+    gamePage: PASS
+    previousWxssCompileErrorGone: true
+    v2LiveReachedCloud: true
+  cloudFunction:
+    function: tianfu2
+    errCode: -1
+    errMsg: "document.get:fail document with _id 3ce20f6c196afe9afe03504165d51dcf does not exist"
+    clientSymptom: "createRunOffer result.runId must be a non-empty string"
+    note: >-
+      The observed _id is exactly 32 hex characters, which is what `documentIdFor` produces, so the failing
+      read is provably one this store issued.
 summary: |
-  RECONSTRUCTED. The legacy game stylesheet was historically truncated, so real DevTools rejected the
-  package with `pages/game/game.wxss(253:14): unexpected token`. The truncated final declaration was closed
-  and a missing suffix was reconstructed from the committed game.wxml/game.js plus the surviving
-  stylesheet's own conventions; the package copy was then refreshed through the existing mirror tool, so
-  both sides of the mirror are byte-identical and structurally complete.
+  Narrow persistence-boundary compatibility fix. The condition real CloudBase reported on 2026-10-05 is the
+  SAME benign first-use absence LIVEFIX01 already handles — a document that is not there yet — but wrapped
+  in the generic `errCode: -1` instead of the ResourceNotFound family. Because the platform returns `-1`
+  for permission failures, network faults, transaction conflicts and malformed requests too, the code
+  alone carries no information and is never treated as the discriminator.
 
-  The durable half of the task is the new gate. LIVEFIX02 proved a mirrored file equals its source and the
-  build still failed, which is the whole defect class: a freshness gate cannot answer "is the source
-  syntactically complete". `tools/wxss-integrity-audit.mjs` now answers that question fail-closed for every
-  registered page stylesheet and both sides of every mirrored WXSS, and it is wired into the route guard,
-  so a future mirror cannot be fresh-but-invalid again.
+  The fix accepts `-1` (numeric or stringified) ONLY when the message matches, fully anchored:
 
-  Static class coverage went from 67 undefined classes (packaged template) to 0, with all 6868 surviving
-  pre-truncation bytes preserved verbatim and the repair kept strictly append-only.
+      ^document\.get:fail\s+document\s+with\s+_id\s+[0-9a-f]{32}\s+does\s+not\s+exist$
+
+  That single regex requires the `document.get:fail` operation prefix, the `_id` subject, a 32-hex
+  deterministic id and the absence claim, in that order and with nothing around them. A generic `-1`
+  therefore cannot normalize: it cannot pass an anchored match, so permission, network, transaction,
+  malformed, wrong-id-format and wrong-operation `-1`s all still throw. Collection absence is rejected
+  before the `-1` branch is even reached, so a broken deployment still fails closed.
+
+  The harness gained a selectable `missingDocumentShape` so the SAME store, service and host run under both
+  the LIVEFIX01 shape and the production `errCode: -1` shape. All four read kinds, the empty-database
+  first `createRunOffer`, the exactly-once bootstrap retry, command idempotency and the committed
+  deployable cloud host are proven under the new shape; the cloud runtime was regenerated exactly once.
 changedFiles:
-  - pages/game/game.wxss
-  - miniprogram/pages/game/game.wxss
-  - tools/wxss-integrity-audit.mjs
-  - tools/route-guard.mjs
-  - tests/livefix03.test.mjs
-  - tests/fixtures/livefix03/game.wxss.truncated
-  - docs/dev-status.md
+  - server/src/cloudbase-store.ts
+  - tools/ui04d-cloud-harness.mjs
+  - cloudfunctions/tianfu2/runtime/server-cloudbase-store.js
+  - tests/livefix04.test.mjs
   - package.json
   - .codex/control/LAST_RESULT.yaml
 changes:
-  - file: pages/game/game.wxss
-    what: closed the truncated .engine-paused declaration and appended the reconstructed suffix
+  - file: server/src/cloudbase-store.ts
+    what: added the exact production errCode=-1 missing-document shape to isMissingDocumentError
     detail: >-
-      The first 6868 bytes are byte-identical to the truncated original, asserted mechanically rather than
-      by inspection. The dangling `background: rgba(255, 152, 0` was completed to
-      `background: rgba(255, 152, 0, 0.1);` following the sibling `.engine-running` rule's own
-      convention, the rule was closed, and `.engine-paused:active` was added. 6868 -> 21045 bytes; the
-      file's CRLF line endings are preserved throughout.
-  - file: miniprogram/pages/game/game.wxss
-    what: refreshed the package copy through the existing mirror mechanism
+      Added CLOUDBASE_GENERIC_ERROR_CODE = -1 as a named constant (so the branch reads as a deliberate
+      exception rather than a magic number) and the fully anchored GENERIC_MINUS_ONE_MISSING_DOCUMENT
+      regex. The `-1` branch runs after the existing collection-absence guard and returns only on that
+      anchored match, so it cannot widen what the LIVEFIX01 shapes accept and cannot swallow anything else.
+      Every other read path is untouched: no schema field, no RNG draw, no new query, no new collection.
+  - file: tools/ui04d-cloud-harness.mjs
+    what: selectable missing-document wire shape
     detail: >-
-      Written only by `node tools/miniprogram-package-mirror.mjs --write`, never hand-edited, and now
-      byte-identical to the repaired source (21045 bytes, sha256 27247bf4bc05dedb).
-  - file: tools/wxss-integrity-audit.mjs
-    what: new fail-closed WXSS structural integrity audit
+      Added MISSING_DOCUMENT_SHAPES = ["resourceNotFound", "genericMinusOne"], the
+      genericMinusOneMissingDocumentError / ...StringCode helpers, and a missingDocumentShape option on
+      createFakeCloudDatabase that throws the selected shape. An unrecognised shape throws rather than
+      defaulting, so a typo cannot silently weaken a test. The default stays the LIVEFIX01 shape, so every
+      existing suite is unaffected.
+  - file: cloudfunctions/tianfu2/runtime/server-cloudbase-store.js
+    what: regenerated deployable cloud runtime
     detail: >-
-      A single comment/string-aware left-to-right pass that detects unbalanced curly braces and
-      parentheses, unterminated quotes and block comments, EOF inside a rule block, EOF inside a
-      declaration, and declaration values ending in a dangling comma. Targets are derived from
-      project.config.json's miniprogramRoot plus app.json's registered pages rather than hardcoded, and
-      include both the source and the target of every manifest-mirrored WXSS. WXML class coverage is
-      reported as a diagnostic and is structurally excluded from the pass/fail result.
-  - file: tools/route-guard.mjs
-    what: wired the integrity audit into the route smoke as check J
+      Produced solely by `node tools/ui04d-cloud-runtime-artifact.mjs --write` after the source stabilised,
+      exactly one regeneration round. The freshness check confirms a fresh generation matches the committed
+      bytes byte for byte.
+  - file: tests/livefix04.test.mjs
+    what: dedicated suite, 13 tests
     detail: >-
-      Runs on the same injected read/exists seam as the package-closure check, so a truncated stylesheet
-      now fails the route guard. This is what makes "the package is closed" imply "the package is
-      structurally buildable" as far as static analysis can establish.
-  - file: tests/livefix03.test.mjs
-    what: dedicated suite, 19 tests
-    detail: >-
-      The line-253 negative control runs against tests/fixtures/livefix03/game.wxss.truncated — the real
-      6868-byte historical bytes — rather than a hand-typed paraphrase that could drift from what DevTools
-      actually rejected.
-  - file: docs/dev-status.md
-    what: recorded the recovery outcome as a reconstruction
-    detail: >-
-      States plainly that Git, main, all local refs and all local on-disk copies contain no complete
-      pre-truncation revision, so the suffix is reconstructed rather than restored.
+      Most assertions are about what must STILL fail: a bare `-1`, permission denied, auth failure, network
+      timeout, socket hang up, transaction conflict, transaction aborted, malformed document, a truncated
+      sentence, trailing junk, a leading platform prefix, a wrong operation, no absence claim, a
+      collection absence wearing `-1`, and six bad id shapes (31/33 chars, non-hex, ObjectId, uuid, empty).
   - file: package.json
-    what: registered the task test and the audit script
-    detail: >-
-      `test:livefix03` and `miniprogram:wxss-integrity`. The frozen aggregate `test` list is deliberately
-      left unchanged, per the fast-lane profile.
-recoveryProvenance:
-  outcome: RECONSTRUCTED
-  trustworthyHistoricalSourceFound: false
-  conclusion: >-
-    No complete pre-truncation revision of pages/game/game.wxss exists in any reachable local or remote
-    source. The suffix was therefore reconstructed, not restored, and is labelled as such everywhere.
-  locationsSearched:
-    - "all local refs via `git for-each-ref` — exactly one blob for this path (d989ac55, 6868 bytes), the truncated one"
-    - "path history via `git log --all --follow` — a single commit, 45e8105 'Add WeChat mini-program source files', already truncated"
-    - "all 18 on-disk copies across 16 sibling WorkBuddy worktrees, the main clone, and three .b2base base-tree extractions — every one md5 5806a213b20e83f0f7af9293a3f29d22, the same truncated 6868 bytes"
-    - "WeChat DevTools Local and Roaming caches (1.4G scanned) — no game.wxss and no file containing the stylesheet's unique marker string"
-    - "dangling/unreachable blobs via `git fsck --dangling` — none referencing the marker"
-    - "git stash — empty"
-  divergentCandidateRejected:
-    blob: 712f58c309ab85f7b8eab67461123675a5e6f7cc
-    sizeBytes: 6616
-    reason: >-
-      The only blob anywhere that differs from the committed file, and the one plausible-looking recovery
-      candidate. It is NOT a longer version. After normalising CRLF to LF it is byte-identical to the
-      truncated current file (md5 b3d1413004f5268904da6be00e0f0bb7 for both); the 252-byte size difference is
-      exactly 252 lines of CR bytes. It is an LF-line-ending variant of the same truncated content, cut at
-      the same `background: rgba(255, 152, 0`, and it is unreachable from any ref. It supplies no missing
-      suffix and was rejected. Recorded because a future reader will find it and wonder.
-  prefixPreservation:
-    bytesPreserved: 6868
-    verification: >-
-      Asserted by tests/livefix03.test.mjs, which compares the first 6868 bytes of the repaired file
-      against tests/fixtures/livefix03/game.wxss.truncated. The repair is strictly append-only: no byte
-      before the truncation point was edited, reordered or reformatted.
-  reconstructionContract:
-    basis: >-
-      The committed pages/game/game.wxml and miniprogram/pages/game/game.wxml (the classes each actually
-      references) plus the surviving stylesheet's own visual language: rpx units, the #030303-on-black
-      palette, its existing keyframe and glow conventions, and border-box on every fixed-height box because
-      WXSS has no universal reset.
-    staticClassCoverage: "86/86 root template, 84/84 packaged template, 0 undefined (was 69 and 67 undefined)"
-    notInvented: >-
-      No gameplay logic, no new UI feature, no route or tabBar change. The suffix only styles markup that
-      already existed in the committed templates.
+    what: registered test:livefix04
+    detail: The frozen aggregate `test` list is deliberately left unchanged, per the fast-lane profile.
+recoveryProvenance: not-applicable
 tests:
-  livefix03: 19 pass / 0 fail
-  wxss-integrity: "PASS — 7 stylesheets structurally complete"
-  miniprogram-package-mirror: "PASS — 4 mirrored files; game.wxss 21045 bytes sha256 27247bf4bc05dedb"
-  miniprogram-package-closure: PASS
-  route-guard: "PASS — now includes the new check J WXSS integrity"
-  ui04b-smoke: 16 pass / 0 fail
-  lint: PASS
+  livefix04: 13 pass / 0 fail
+  livefix01: 15 pass / 0 fail
+  cloud-runtime-artifact-freshness: "PASS — a fresh generation matches the committed bytes"
+  cloud-runtime-dependency-audit: "PASS — UI04D cloud runtime audit"
+  cloud-runtime-smoke: "PASS — 15 checks"
+  lint: "PASS — Core import boundary"
   secret-scan: PASS
   aggregate-npm-test: "SKIPPED per NEXT_TASK.runAggregateNpmTest=false"
   typecheck: "SKIPPED per NEXT_TASK.maxTypecheckRuns=0"
   "600-run": "SKIPPED per NEXT_TASK.run600Simulation=false"
   ui04-full-regression: "SKIPPED per NEXT_TASK verificationProfile=fast-lane"
 gates:
-  wxssIntegrity: >-
-    FAIL on the base tree with 6 violations correctly pinpointing line 253 on both the source and the
-    mirrored copy; PASS after the repair. This is the gate that did not exist when DevTools failed.
-  negativeControls: >-
-    The exact line-253 truncation, an unbalanced closing brace, a stray closing brace, an unterminated
-    block comment, an unterminated string, an unclosed function argument list and a dangling trailing
-    comma are all rejected. Two positive controls — braces/quotes/parens appearing inside strings and
-    comments, and an escaped quote — are correctly accepted, so the audit is not simply flagging every
-    brace it sees.
-  routeGuardIntegration: >-
-    A negative control feeds the real truncated bytes to the route guard through its injected reader and
-    requires a violation naming line 253, proving the integration fails closed rather than merely calling
-    the audit and ignoring the result.
-  mirrorVsValidity: >-
-    The gate and the mirror are asserted independently on purpose. Freshness alone is what let a truncated
-    file ship, so the two facts are proven separately and neither is inferred from the other.
+  exactProductionShapeAccepted: >-
+    The literal dispatch evidence is accepted for numeric -1, string "-1", and the message reported on
+    `message` rather than `errMsg`; surrounding whitespace is tolerated because the regex is applied to a
+    trimmed message.
+  livfix01ShapesUnchanged: >-
+    Every previously accepted shape still normalizes, including the short concrete _id
+    ("document.get failed because document with _id abc does not exist") that the new 32-hex rule would
+    have rejected had it been applied to that branch. This is asserted explicitly so LIVEFIX04 cannot
+    silently tighten LIVEFIX01.
+  nearMissMinusOneFatal: >-
+    19 fatal `-1` near-misses, plus six bad id shapes, plus a collection absence carrying `-1`. The
+    generic code is never sufficient on its own.
+  allFourReadKinds: >-
+    readRun outside a transaction and getRun / getIdempotency / getBootstrap / getTerminalTransition inside
+    one all answer `undefined` under the new shape, with `whereCalls === 0` and every collection addressed
+    by deterministic id.
+  emptyDatabaseFirstRun: >-
+    A completely empty four-collection database publishes a non-empty runId and pageState DESTINY_OFFER
+    under the new shape, writing exactly one run and one bootstrap mapping.
+  bootstrapExactlyOnce: >-
+    The same-bootstrap retry recovers the same run, a cold handler recovers it again with an identical
+    view, and a different OPENID yields a different player and a different run.
+  commandIdempotency: >-
+    Reusing the SAME envelope object returns the recorded result with no second receipt, no second
+    settlement and no state advance; a changed payload under the same commandId is still refused with
+    command.idempotency_conflict, so normalizing the missing receipt did not weaken idempotency.
+  bothShapesSameCodePath: >-
+    MISSING_DOCUMENT_SHAPES is iterated and each shape drives an identical first-run plus exactly-once
+    retry through the same store, service and host. An unrecognised shape throws.
+  deployableHost: >-
+    The committed `cloudfunctions/tianfu2` runtime returns a non-empty runId on the new shape. With an
+    unprovisioned collection it returns the bounded `{ok:false, error:{code:"INTERNAL"}}` envelope, writes
+    nothing, and leaks no collection detail to the client — proving fail-closed.
+  artifactCarriesTheFix: >-
+    A source-level assertion requires the committed runtime to contain the anchored matcher, so a stale
+    artifact cannot pass as a fix.
 scope:
   coreChanged: false
   contractsChanged: false
   directorChanged: false
   contentChanged: false
   gameplayChanged: false
-  serverChanged: false
-  cloudfunctionChanged: false
-  databaseChanged: false
+  clientChanged: false
+  uiChanged: false
+  databaseSchemaChanged: false
+  newRpc: false
   defaultRouteChanged: false
   tabBarChanged: false
-  pinnedBaseTreeDigests: >-
-    tests/livefix03.test.mjs pins sha256 for miniprogram/pages/game/game.js, pages/game/game.js,
-    pages/game/game.wxml, miniprogram/pages/game/game.wxml, miniprogram/app.json, miniprogram/app.wxss,
-    project.config.json, tools/miniprogram-package-mirror.mjs and tools/miniprogram-package-closure.mjs,
-    all taken from base commit 20dbf9e, and asserts every one is unchanged.
-    project.private.config.json is intentionally not pinned because DevTools rewrites it on every open and
-    pinning it would fail for reasons unrelated to this repair. tools/route-guard.mjs is intentionally not
-    pinned because integrating the audit there is a required change, asserted separately instead.
+  forbiddenTreeDriftCheck: >-
+    `git diff --name-only ea0571c` over packages/core, packages/content, packages/wechat-shell,
+    packages/application-ui, packages/platform-contract, miniprogram and server/src/identity.ts returns 0
+    for every one. The only source change is the persistence boundary in server/src/cloudbase-store.ts.
   disclosedScopeNotes: >-
-    No WXSS compiler exists in this repository. The new audit is a structural completeness check and does
-    not claim to prove the stylesheet compiles under the real DevTools build; that remains the human's
-    DevTools pass. tools/wxss-compat-audit.mjs separately keeps the 2.0 preview stylesheet inside the
-    documented WXSS selector subset and is unchanged by this task. The reconstructed rules use only
-    element, .class, compound and descendant-class selectors plus parameterless :active, and declare
-    box-sizing: border-box on every fixed-height box, so they stay inside the subset the compat audit
-    enforces. No visual QA was performed and none is claimed.
+    The commit is one source file (the store boundary), one test harness option, the generated artifact it
+    implies, the new suite, package.json and this result file. No client or UI workaround was added, no
+    collection is auto-created, no schema field was added, and no new RPC was introduced. The store still
+    never calls createCollection and never issues a where() query, asserted at source level and against the
+    generated artifact.
   untested: >-
-    The aggregate suite, typecheck, the 600-run simulation and the full UI04 regression were all skipped
-    by NEXT_TASK instruction. This task changed one stylesheet, one new auditor, one route-guard import and
-    one new suite, so the deferred regression cost is real but is the controller's explicit trade.
+    The aggregate suite, typecheck, the 600-run simulation and the full UI04 regression were all skipped by
+    NEXT_TASK instruction. The deferred regression cost is real but is the controller's explicit trade.
 blockers: []
 toolingObservations:
   - >-
-      Mirror freshness and source validity are independent facts, and passing the first says nothing about
-      the second. LIVEFIX02 proved the packaged stylesheet byte-exact and the build still aborted. Any
-      future asset pipeline that mirrors generated or legacy files should pair a freshness check with an
-      independent structural or syntax check on the SOURCE.
+      A generic platform error code must never be a discriminator. `-1` is what the platform returns for
+      permission, network, transaction and malformed failures too, so any rule of the form "code === -1
+      means empty" would silently convert operational outages into data loss. Pair the code with a fully
+      anchored message that pins the operation, the subject, a well-formed id and the claim.
   - >-
-      A truncated file is perfectly fresh, so a freshness check can never substitute for a validity check.
-      The cheapest durable guard is a fail-closed structural audit that treats EOF inside a rule or a
-      declaration as a violation — it is a few dozen lines and it pins the exact class of defect that
-      shipped twice.
+      Anchor the whole message, not just the interesting substring. The new regex is anchored at both ends
+      so a truncated sentence, a trailing "(retrying)", a leading platform prefix or a wrong operation all
+      stay fatal. A substring match would have accepted every one of those.
   - >-
-      When reconstructing a lost suffix, keep the repair strictly append-only and assert the preserved
-      prefix byte-for-byte against a committed fixture. An earlier attempt in this task inserted new rules
-      mid-file to group them logically with related rules, which silently broke the byte-prefix guarantee;
-      the test caught it on the first run and the rules were moved into the appended suffix. Grouping
-      aesthetics are not worth weakening a provable invariant.
+      Requiring a well-formed id is a cheap, high-value discriminator. Because the store only ever addresses
+      `documentIdFor` output, a 32-hex id proves the failing read is one this store issued; the six bad-id
+      near-misses (31/33 chars, non-hex, ObjectId, uuid, empty) all stay fatal for free.
   - >-
-      This sandbox cannot spawn `git` from inside a Node test (spawnSync EBUSY), so a test must never call
-      git. Scope assertions were expressed as sha256 pins over a fixed file list taken from the base
-      commit, which is environment-independent and fails closed. The pre-repair bytes were captured once
-      into a committed fixture and reused for both the prefix assertion and the line-253 negative control,
-      which is cheaper than storing ~110KB of duplicate base files.
+      Keep the new branch AFTER the collection-absence guard and give it its own anchored match rather than
+      extending the shared SUBJECT/CLAIM regexes. Sharing them would have let `-1` reach the old uncoded
+      literal-message branch and widened what `-1` accepts; keeping it separate means the LIVEFIX01 branch
+      still accepts its short `_id abc` form, which the new 32-hex rule would otherwise have rejected.
   - >-
-      WeChat DevTools writes into AppData caches that do NOT retain project source: a 1.4G scan of both
-      the Local and Roaming DevTools trees found no copy of the stylesheet and no file containing its
-      unique marker. DevTools caches are not a viable source-recovery location for this project, so a
-      future task need not spend budget there.
+      A selectable error shape in a fake harness is how you prove one code path serves two real wire
+      shapes. `missingDocumentShape` drives the same store, service and host under both, and an
+      unrecognised value throws so a typo cannot silently fall back to the permissive default.
   - >-
-      A dangling-comma truncation check must run at `}` as well as at `;`. A declaration may be closed by
-      either, and checking only `;` lets `.a { font-family: 'A', 'B', }` pass as a complete list. This was
-      a real bug the negative controls caught rather than a hypothetical one.
+      The committed cloud host does NOT throw on an operational error: `cloudfunctions/tianfu2/index.js`
+      logs and returns a bounded `{ok:false, error:{code:"INTERNAL", retryable:true}}` envelope. A test that
+      asserts "it must reject" against the host is asserting the wrong contract — assert the envelope, the
+      absence of a runId, that nothing was written, and that no server detail leaked. Probing the real
+      return value first is faster than reasoning about it.
+  - >-
+      Idempotency assertions must reuse the SAME envelope object. Rebuilding an "identical" command with a
+      fresh commandId (or a stale expectedStateVersion) yields STATE_CONFLICT, which looks like a
+      persistence bug and is not one. Two of this task's own failures were this mistake.
 resourceUsage:
   fullDedicatedSuiteRuns: 2
   typecheckRuns: 0
   artifactRegenerationRounds: 1
   pushAttempts: 0
   notes: >-
-    Two full dedicated-suite runs were used. The first surfaced three real defects — the mid-file prefix
-    break, the `}`-terminated dangling-comma gap, and a fixture slice off-by-one — all fixed before the
-    confirming run. One mirror regeneration round, after the source stabilised. No aggregate, no typecheck,
-    no 600-run, no full UI04 regression, and no unbounded search or retry loop.
+    Two full dedicated-suite runs. The first surfaced three real defects, all in the new suite rather than
+    the fix: a read test that called store methods which do not exist (only readRun and transact are
+    public), an idempotency assertion that rebuilt the envelope instead of reusing it, and a host
+    assertion that expected a throw where the real host returns a bounded envelope. One cloud-runtime
+    regeneration round, after the source stabilised. No aggregate, no typecheck, no 600-run, no full UI04
+    regression, and no unbounded search or retry loop.
 nextManualDevToolsStep: >-
-  Reopen the project in WeChat DevTools with 清除缓存 -> 全部清除, then compile. The expected
-  pages/game/game.wxss(253:14) error must be gone. LIVEFIX02's four mirrors are in place and every
-  registered page stylesheet now passes the structural audit, so v2-live should be reachable for the first
-  time. Report the next compile or runtime error verbatim. The remaining visual sign-off is a human pass
-  and is not claimed here.
+  Redeploy ONLY the `tianfu2` cloud function (npm install inside `cloudfunctions/tianfu2` first, then
+  deploy that directory), then repeat the v2-live smoke. No MiniProgram change is required, so the DevTools
+  workspace does not need re-syncing or re-clearing for this fix. The first `createRunOffer` on an empty
+  database should now return a real runId instead of failing with `createRunOffer result.runId must be a
+  non-empty string`. Report the next real error verbatim; do not speculate past it.
 recommendedCommitMessage: |
-  LIVEFIX03: reconstruct the truncated legacy game stylesheet and gate WXSS structural integrity
+  LIVEFIX04: accept the exact CloudBase errCode=-1 missing-document shape without swallowing generic -1

@@ -63,6 +63,22 @@ export const CLOUDBASE_COLLECTIONS = ["tianfu2_runs", "tianfu2_commands", "tianf
 /** The one numeric family real CloudBase used for BOTH missing-document and missing-collection reads. */
 export const RESOURCE_NOT_FOUND_CODE = -502005;
 
+/**
+ * LIVEFIX04 — the generic code the same benign missing-document condition arrived wrapped in on the
+ * deployed function. Carries no information by itself: the platform returns it for permission, network
+ * and transaction failures too.
+ */
+export const GENERIC_ERROR_CODE = -1;
+
+/**
+ * LIVEFIX04 — the exact production sentence, with a 32-hex id because that is what `documentIdFor`
+ * produces. Kept as a template so the harness, the classifier and the tests cannot drift apart.
+ */
+export const GENERIC_MINUS_ONE_MESSAGE_ID = "3ce20f6c196afe9afe03504165d51dcf";
+
+/** Selectable missing-document error shapes. "resourceNotFound" is the LIVEFIX01 default. */
+export const MISSING_DOCUMENT_SHAPES = ["resourceNotFound", "genericMinusOne"];
+
 function cloudError(message) {
   const error = new Error(message);
   error.errCode = RESOURCE_NOT_FOUND_CODE;
@@ -73,6 +89,27 @@ function cloudError(message) {
 /** Shape A of the accepted missing-document rejection: coded, names the document `_id` as absent. */
 export function missingDocumentError(id) {
   return cloudError(`[ResourceNotFound] document.get failed because document with _id ${id} does not exist`);
+}
+
+/**
+ * LIVEFIX04 — the production shape: generic `errCode: -1` with the `document.get:fail` sentence.
+ *
+ * The code is set both numerically and as a string across the two helpers below so a test can prove that
+ * `-1` and `"-1"` are both accepted for this exact message while every other `-1` stays fatal.
+ */
+export function genericMinusOneMissingDocumentError(id) {
+  const error = new Error(`document.get:fail document with _id ${id} does not exist`);
+  error.errCode = GENERIC_ERROR_CODE;
+  error.errMsg = `document.get:fail document with _id ${id} does not exist`;
+  return error;
+}
+
+/** The same production shape with a stringified code, as an SDK that stringifies would report it. */
+export function genericMinusOneMissingDocumentErrorStringCode(id) {
+  const error = new Error(`document.get:fail document with _id ${id} does not exist`);
+  error.errCode = String(GENERIC_ERROR_CODE);
+  error.errMsg = `document.get:fail document with _id ${id} does not exist`;
+  return error;
 }
 
 /**
@@ -96,13 +133,21 @@ export function missingCollectionError(name) {
  * @param missingDocumentMode         "reject" reproduces real CloudBase (default, and the whole point of
  *                                    LIVEFIX01); "empty" restores the old fake behaviour of returning
  *                                    `{ data: undefined }`, kept only so a test can contrast the two.
+ * @param missingDocumentShape        which real missing-document wire shape a "reject" throws:
+ *                                    "resourceNotFound" (LIVEFIX01, the -502005 family) or
+ *                                    "genericMinusOne" (LIVEFIX04, the production errCode -1 wrapper).
+ *                                    Both drive the SAME store, service and host, so a test can prove the
+ *                                    boundary handles the real runtime shape without a special code path.
  */
 export function createFakeCloudDatabase({
   throwOnWhereInTransaction = true,
   provisionedCollections = CLOUDBASE_COLLECTIONS,
-  missingDocumentMode = "reject"
+  missingDocumentMode = "reject",
+  missingDocumentShape = "resourceNotFound"
 } = {}) {
   if (missingDocumentMode !== "reject" && missingDocumentMode !== "empty") throw new RangeError('missingDocumentMode must be "reject" or "empty"');
+  if (!MISSING_DOCUMENT_SHAPES.includes(missingDocumentShape)) throw new RangeError(`missingDocumentShape must be one of ${MISSING_DOCUMENT_SHAPES.join(", ")}`);
+  const missingDocument = missingDocumentShape === "genericMinusOne" ? genericMinusOneMissingDocumentError : missingDocumentError;
   const provisioned = new Set(provisionedCollections);
   const collections = new Map();
   const audits = { transactions: 0, attempts: 0, whereCalls: 0, writes: 0, documentIds: new Set(), postCommitTimeouts: 0 };
@@ -132,7 +177,7 @@ export function createFakeCloudDatabase({
         const value = committed.get(id);
         if (value === undefined) {
           // Real CloudBase rejects this read instead of handing back an empty snapshot.
-          if (missingDocumentMode === "reject") throw missingDocumentError(id);
+          if (missingDocumentMode === "reject") throw missingDocument(id);
           return { data: undefined };
         }
         return { data: jsonClone(value) };

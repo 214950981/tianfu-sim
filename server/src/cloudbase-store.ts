@@ -96,6 +96,30 @@ function asStoredRun(data: unknown): StoredRun | undefined {
 export const CLOUDBASE_RESOURCE_NOT_FOUND_CODE = -502005;
 
 /**
+ * LIVEFIX04 — the generic code the SAME benign missing-document condition arrived wrapped in, observed
+ * on the deployed `tianfu2` function on 2026-10-05:
+ *
+ *     errCode: -1
+ *     errMsg:  "document.get:fail document with _id 3ce20f6c196afe9afe03504165d51dcf does not exist"
+ *
+ * `-1` on its own carries no information at all — it is what the platform also returns for permission
+ * failures, network faults, transaction conflicts and malformed requests. It is therefore NEVER a
+ * discriminator here. This constant exists only so the narrow `-1` branch below reads as a deliberate,
+ * named exception rather than a magic number.
+ */
+export const CLOUDBASE_GENERIC_ERROR_CODE = -1;
+
+/**
+ * The exact production `errMsg`. Anchored end to end so a truncated, prefixed or otherwise different
+ * sentence cannot slip in: the `document.get:fail` operation prefix, the `_id` subject, a 32-hex
+ * deterministic id and the absence claim must ALL be present, in this order and with nothing else around
+ * them. The 32-hex id requirement is what ties this to `documentIdFor` — an id the store could not have
+ * produced is not a read this store issued.
+ */
+const GENERIC_MINUS_ONE_MISSING_DOCUMENT =
+  /^document\.get:fail\s+document\s+with\s+_id\s+[0-9a-f]{32}\s+does\s+not\s+exist$/;
+
+/**
  * Text of the observed production rejection. Kept as a literal so the classifier, the harness and the
  * tests all agree on one shape instead of three loosely similar regexes.
  */
@@ -126,9 +150,11 @@ function fieldOf(error: Record<string, unknown>, keys: string[]): string | undef
 /**
  * True only for the exact benign "this document is not there yet" rejection.
  *
- * Two shapes are accepted, because the SDK has been observed reporting the same condition both with and
- * without a numeric code. Anything else — including anything the classifier cannot positively identify —
- * returns false so the caller rethrows.
+ * Three shapes are accepted, because the SDK has been observed reporting the same condition three ways:
+ * twice already covered by LIVEFIX01 (the `-502005` ResourceNotFound family, with and without a code)
+ * and once wrapped in the generic `-1` (LIVEFIX04). Anything else — including anything the classifier
+ * cannot positively identify, and every generic `-1` that lacks the exact message — returns false so the
+ * caller rethrows.
  */
 export function isMissingDocumentError(error: unknown): boolean {
   if (error === null || typeof error !== "object") return false;
@@ -138,6 +164,20 @@ export function isMissingDocumentError(error: unknown): boolean {
 
   // Collection absence always wins: it is never a first-use empty document.
   if (COLLECTION_ABSENCE.test(message) === true) return false;
+
+  const coded = fieldOf(record, ["errCode", "code", "errorCode"]) ?? record.errCode ?? record.code ?? record.errorCode;
+  const codedValue = coded === undefined ? undefined : typeof coded === "number" ? coded : Number(coded);
+
+  // LIVEFIX04 — the generic `-1` wrapper. This branch is reached ONLY for a message that is the exact
+  // production sentence: the collection guard above already ran, the regex is fully anchored, and it
+  // demands the `document.get:fail` operation, the `_id` subject, a 32-hex id and the absence claim. A
+  // generic `-1` therefore never normalizes, because it cannot pass that anchored match — permission,
+  // network, transaction, malformed and wrong-operation `-1`s all still throw. A `-1` carrying the
+  // LIVEFIX01 sentence is left to the branches below, so this does not widen what those accept.
+  if (codedValue === CLOUDBASE_GENERIC_ERROR_CODE) {
+    return GENERIC_MINUS_ONE_MISSING_DOCUMENT.test(message.trim());
+  }
+
   if (DOCUMENT_ABSENCE_SUBJECT.test(message) !== true) return false;
   if (ABSENCE_CLAIM.test(message) !== true) return false;
 
@@ -147,10 +187,8 @@ export function isMissingDocumentError(error: unknown): boolean {
 
   // Shape A — coded. The code must be the observed ResourceNotFound family and nothing else, and an error
   // with no code at all is not this shape.
-  const coded = fieldOf(record, ["errCode", "code", "errorCode"]) ?? record.errCode ?? record.code ?? record.errorCode;
-  if (coded === undefined) return false;
-  const numeric = typeof coded === "number" ? coded : Number(coded);
-  return numeric === CLOUDBASE_RESOURCE_NOT_FOUND_CODE;
+  if (codedValue === undefined) return false;
+  return codedValue === CLOUDBASE_RESOURCE_NOT_FOUND_CODE;
 }
 
 /** Reads one document, normalizing ONLY a real missing-document rejection to `undefined`. */
