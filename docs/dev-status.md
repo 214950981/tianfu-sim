@@ -346,22 +346,25 @@ Full regression：264 / 264 PASS；全部 reported audits PASS。
 
 ## Next
 
-LIVEFIX02 已由 Controller 验收并 fast-forward 合入 `dev/tianfu-2.0`，accepted result commit：
-`6514afa3229d602bbbc3cff086a10bb4af8d9de4`。
+Real WeChat DevTools smoke after accepted LIVEFIX02 exposed a new source-integrity blocker before v2-live could load:
+`pages/game/game.wxss(253:14): unexpected token`.
 
-代码侧结论：PASS。下一步不是继续开发，而是一次真实 WeChat DevTools boot/live smoke，先证明刚修的包闭包和 LIVEFIX01 云端路径在真实环境共同成立。
+Repository evidence:
+- both `pages/game/game.wxss` and its accepted mirror `miniprogram/pages/game/game.wxss` end at line 253 with `background: rgba(255, 152, 0`;
+- the files are the same Git blob and the same truncation already exists on `main`, so LIVEFIX02 did not introduce the corruption; it faithfully mirrored a historically truncated source;
+- Git history for this path contains only the original 2026-08-20 add, already truncated; no complete remote version is available to restore;
+- the game WXML references many classes not defined in the surviving stylesheet tail, so this is likely loss of an entire suffix, not a one-token typo.
 
-人工/本地 smoke gate（低成本，不跑大回归）：
-1. 让 DevTools 使用包含 accepted LIVEFIX02 的最新 dev 工作区；不要继续使用停在旧 commit 的工作区缓存；
-2. 只运行/确认 `node tools/miniprogram-package-mirror.mjs`、`node tools/miniprogram-package-closure.mjs`、`node tools/route-guard.mjs` 三个快速 gate；
-3. 微信 DevTools 重新编译，确认不再出现 `pages/start/data.js is not defined` 和 `v2-live has not been registered yet`；
-4. 打开 start/game，确认页面不是裸样式或空白 stub；
-5. 进入 `pages/v2-live/v2-live` 并重试真实 `tianfu2` 云调用，继续 LIVEFIX01 的 empty-database smoke；
-6. 把成功画面或新的首个真实错误交给 Controller。
+Current task: `LIVEFIX03` — Legacy WXSS Recovery + Package Style Integrity Guard.
 
-暂不运行 aggregate npm test、600-run、typecheck 或整条 UI04 回归；这些在本轮没有新增价值。
+Priority order:
+1. Search deterministic local recovery sources first: sibling Tianfu WorkBuddy worktrees, backups/caches/archives that can be tied to this repository, and any previously materialized source copy. Do not search broadly across unrelated user files.
+2. If a complete pre-truncation stylesheet is found, prove provenance/hash/length and restore from it.
+3. If no trustworthy complete source exists, reconstruct only the missing suffix from committed WXML/JS behavior and existing visual conventions, with no gameplay/logic changes. Record explicitly that this is reconstruction, not historical recovery.
+4. Add a permanent WXSS integrity audit for all registered MiniProgram page styles: fail on EOF inside a declaration/rule, unbalanced braces/parens/quotes/comments, and obviously truncated declarations. Also verify the mirrored legacy styles are syntax-valid after mirroring.
+5. Keep validation targeted: LIVEFIX03 tests + mirror + package closure + route guard + WXSS integrity. No aggregate, no typecheck, no 600-run, no UI04 full regression.
 
-非阻塞维护债务：`tools/miniprogram-package-mirror.mjs` 的注释声称能发现 manifest 删除后遗留的任意旧 mirror target，但当前实现并未枚举/扫描这类未列 target。当前 4 个 manifest target 均已正确且 byte-identical，不影响 LIVEFIX02 验收；后续维护工具时再修，不为此阻断实机 smoke。## 新 Codex 会话 / 账号接手步骤
+After LIVEFIX03 is accepted, return immediately to DevTools compile/smoke. Do not continue feature work.## 新 Codex 会话 / 账号接手步骤
 
 1. 确认当前 branch = `dev/tianfu-2.0`。
 2. 查看 `git status`。

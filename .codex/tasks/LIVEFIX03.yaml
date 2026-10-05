@@ -1,0 +1,38 @@
+id: LIVEFIX03
+title: LIVEFIX03 — Legacy WXSS Recovery + Package Style Integrity Guard
+phase: 2
+verificationProfile: fast-lane
+executionProfile: credit-efficient
+requiredContracts: [.codex/contracts/ui.ref,.codex/contracts/platform.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [pages/game/game.wxss,miniprogram/pages/game/game.wxss,pages/game/game.wxml,pages/game/game.js,miniprogram/pages/game/game.wxml,miniprogram/pages/game/game.js,tools/miniprogram-package-mirror.mjs,tools/miniprogram-package-closure.mjs,tools/wxss-compat-audit.mjs,package.json]
+allowedScope:
+  - first determine whether a complete trustworthy pre-truncation pages/game/game.wxss exists in local Tianfu-specific recovery sources such as sibling WorkBuddy worktrees, Tianfu backups, DevTools caches tied to this project, or archived source copies; do not crawl unrelated user directories
+  - any recovered candidate must be provenance-recorded and compared against the committed prefix; accept only a candidate whose prefix matches the current file up to the truncation point unless there is stronger repository evidence explaining divergence
+  - if a complete trustworthy historical source exists, restore pages/game/game.wxss from it and refresh the miniprogram mirror through the existing mirror tool
+  - if no trustworthy historical source exists, reconstruct only the missing suffix needed to complete the legacy stylesheet, using committed game.wxml/game.js and the surviving stylesheet as the design contract; do not alter game logic or invent new UI features
+  - when reconstruction is necessary, explicitly label it in LAST_RESULT and docs as a reconstruction because Git/main/history contain no full original source
+  - preserve every byte of the surviving 1.0 stylesheet prefix before the truncation point unless a concrete syntax defect in that prefix is independently proven
+  - repair both source-of-truth and package mirror through the existing mirror mechanism, never hand-edit only the miniprogram copy
+  - add a static WXSS integrity audit for all registered MiniProgram page styles and all manifest-mirrored WXSS sources/targets
+  - the WXSS audit must fail closed on EOF inside a rule/declaration, unbalanced curly braces, parentheses, quotes or block comments, and malformed/truncated property values such as the observed `background: rgba(255, 152, 0`
+  - add negative controls reproducing the exact line-253 truncation and at least one unbalanced-brace/comment case
+  - optionally report WXML class coverage as diagnostic only; do not make 100-percent class-definition coverage a hard gate because dynamic/global classes may be legitimate
+  - integrate the WXSS integrity check into the existing MiniProgram packaging/route smoke so future mirrors cannot be fresh-but-invalid
+  - keep start/game/default routes and tabBar unchanged
+  - do not touch server cloudfunctions database Core Content gameplay rules RPC or generated cloud runtime
+  - after source stabilizes run only LIVEFIX03 targeted tests, WXSS integrity, package mirror, package closure, route guard, and directly affected UI04B smoke if the task changes a pinned MiniProgram tree
+  - update LAST_RESULT with recovery provenance, whether the result is recovered or reconstructed, changedFiles, resourceUsage and next manual DevTools compile step
+forbiddenScope: [gameplay-change,server-change,cloudfunction-change,database-change,Core-change,Content-change,default-route-change,tabBar-change,legacy-JS-rewrite,UI-feature-redesign,aggregate-npm-test,typecheck,600-run,full-UI04-regression,unbounded-local-file-search,unbounded-push-retry,.workbuddy-commit,source-branch-push]
+accept:
+  - pages/game/game.wxss no longer ends mid-declaration and parses under the new WXSS integrity audit
+  - miniprogram/pages/game/game.wxss is refreshed through the mirror mechanism and is byte-identical to the repaired source
+  - the repair provenance is explicit: historical recovery with source proof or reconstruction with justification
+  - the exact observed truncation fails the negative control
+  - all registered MiniProgram page WXSS files pass balanced-rule/declaration/comment/quote/parenthesis integrity checks
+  - mirror package-closure route-guard and directly affected packaging smoke remain green
+  - no gameplay server cloud database Core Content route or tabBar drift
+  - aggregate/typecheck/600-run/full-UI04-regression remain skipped
+  - resourceUsage remains bounded and final delivery uses global autonomous Git delivery
+tests: [livefix03,wxss-integrity,miniprogram-package-mirror,miniprogram-package-closure,route-guard,ui04b-smoke,lint,secret-scan]

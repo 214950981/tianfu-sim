@@ -182,3 +182,9 @@ DevTools creating an untracked page stub such as miniprogram/pages/game/game.js 
 LIVEFIX02's current mirror tool correctly enforces freshness for all entries present in MIRROR_MANIFEST. Its comment also claims it detects an arbitrary old mirror target left behind after removing a manifest entry, but the current implementation does not enumerate historical/unlisted targets, so that specific promise is not yet mechanically enforced.
 
 This is non-blocking for the accepted four current mirrors, which are byte-identical to their sources and covered by the package-closure audit. If mirror-manifest maintenance is revisited, either implement explicit target discovery/ownership metadata or narrow the comment to the behavior actually enforced.
+
+## Mirror freshness does not prove source validity
+
+LIVEFIX03 was triggered because LIVEFIX02 correctly proved a byte-exact mirror was fresh while the root source itself was historically truncated. A mirror gate answers 'target equals source'; it does not answer 'source is syntactically complete'.
+
+For MiniProgram style assets, pair mirror freshness with a syntax/integrity gate that at minimum catches EOF inside a rule/declaration, unbalanced braces/parentheses/quotes/comments, and malformed property values caused by truncation.
