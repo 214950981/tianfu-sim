@@ -375,6 +375,72 @@ After LIVEFIX02 passes, Controller will merge it and return to manual HOLD for d
 9. 不重新实现已 PASS 模块。
 10. 如果 `lastReviewedCommit` 之后还有新 commit，先识别这些新增工作，再继续任务。
 
+## LIVEFIX02 验收证据：miniprogramRoot 必须是闭合的运行时包
+
+### 实机现象（微信开发者工具，`cloud1-8glg1sird4d40bc0`）
+
+```
+module 'pages/start/data.js' is not defined, require args is './data.js'
+Page 'pages/v2-live/v2-live' has not been registered yet
+```
+
+### 根因是结构性的，不是偶发
+
+`project.config.json` 的 `miniprogramRoot` 是 `miniprogram/`，**打包器只构建这棵子树**。因此：
+
+* 只存在于 root 级 `pages/` 树的文件对运行时**不可见**，不能顶替包内文件；
+* `miniprogram/app.json` 注册了但没有提交 `.js` 的页面**根本无法注册**——而开发者工具会
+  自动写一个未跟踪的 `miniprogram/pages/game/game.js` 样板 stub 把它"修好"。stub 比缺文件更糟：
+  包看起来完整，实际发出去一个空白页。
+
+补上那两个已知文件只能治今天的症状，缺陷类别原样留着。本轮因此交付**永久门禁**。
+
+### 补齐的四个文件（字节级镜像）
+
+| 源（唯一事实源，保留在原地） | 目标（包内） | 为什么必须在包内 |
+| --- | --- | --- |
+| `pages/start/data.js` | `miniprogram/pages/start/data.js` | `start.js` 解构 `{MASTER_TALENTS, ROOT_POOL, GAME_HELP}`；缺失即默认路由抛错 |
+| `pages/game/game.js` | `miniprogram/pages/game/game.js` | `app.json` 注册 + tabBar 项；缺失即页面无法注册 |
+| `pages/start/start.wxss` | `miniprogram/pages/start/start.wxss` | 模板用到 74 个静态类，缺样式即默认路由裸奔 |
+| `pages/game/game.wxss` | `miniprogram/pages/game/game.wxss` | 模板用到 101 个静态类 |
+
+镜像由 `tools/miniprogram-package-mirror.mjs` 驱动：**字节级完全一致**，无换行/格式化改写。
+这是"精确保留 1.0 语义"从承诺变成可验证断言的方式。root 级源文件**不删不移**。
+
+注意：包内 `start.js` / `game.wxml` 比 root 树**更新**（单档 300 钻分享、`rechargeNotice` 数据驱动文案），
+镜像不会覆盖它们——`MIRROR_MANIFEST` 只列了 4 个文件。
+
+### 永久门禁
+
+`tools/miniprogram-package-closure.mjs` 静态证明整包自洽，七项全部 fail-closed：
+
+* **A 根目录**：从 `project.config.json` 读 `miniprogramRoot`，不写死 `miniprogram/`。写死的话，
+  根目录一改，这个门禁就静默变成空转——那正是本任务要防的失败。
+* **B 清单**：`app.json` 可解析、页面数组非空无重复。
+* **C 页面入口**：每个注册页面都有已提交的 `.js` **且真的调用 `Page(`**，以及已提交的 `.wxml`。
+  只查文件存在会漏掉 stub 的另一半：能编译、能注册、渲染空白。
+* **D 传递闭包**：从包内每个 `.js` 出发，字面量相对 `require`/`import` 必须解析到根内已提交文件，
+  **递归**走完。`start.js → data.js`、`game.js → game_data.js` 都是二阶事实，单层扫描看不到。
+* **E 禁止逃逸**：越出根、或指向 `.ts` / `packages/` / `server/` / `cloudfunctions/` 一律违规。
+  **先判前缀再判存在**是刻意的——root 级 `pages/foo.js` 绝不能顶替 `miniprogram/pages/foo.js`。
+* **F 只认字面量**：计算式 `require(变量)` 打包器无法静态解析。
+* **G 模板依赖**：`<import>` / `<include>` / `<wxs src>` 必须解析到根内，悬空 include 不报错但渲染残缺。
+
+该门禁已接入 `tools/route-guard.mjs`（检查项 I），所以**"`v2-live` 已注册"从此蕴含
+"`v2-live` 能启动"**，而不是"JSON 列表看起来对"。
+
+### 新增文件
+
+`tests/livefix02.test.mjs`（16 项）、`tools/miniprogram-package-closure.mjs`、
+`tools/miniprogram-package-mirror.mjs`；package scripts：`test:livefix02`、
+`miniprogram:package-closure`、`miniprogram:package-mirror[:write]`。
+
+### 未动的东西
+
+`cloudfunctions/tianfu2`、`server/`、Core、Content、玩法规则、数据库集合、实时 RPC 语义、
+`miniprogram/app.json` 的首屏与 tabBar 顺序——全部未触碰。1.0 语义按原样镜像，
+包括其既有的客户端随机（镜像文件与源字节相同，**不要求**重写为 2.0 规则）。
+
 ## 维护方式
 
 每完成一个关键任务，只需更新：

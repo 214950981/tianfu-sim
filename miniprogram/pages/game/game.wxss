@@ -1,0 +1,253 @@
+/* pages/game/game.wxss */
+
+/* ==========================================================
+   1. 基础布局与极暗黑环境
+   ========================================================== */
+.container {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: #030303; /* 极致深邃的虚空背景 */
+  color: #eeeeee;
+  overflow: hidden;
+  font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', 'PingFang SC', sans-serif;
+}
+
+/* ==========================================================
+   2. 顶部监控台 (境界、兵解与经验)
+   ========================================================== */
+.header-monitor {
+  flex-shrink: 0;
+  padding: max(30rpx, env(safe-area-inset-top)) 40rpx 20rpx;
+  background: linear-gradient(180deg, #151515 0%, #030303 100%);
+  border-bottom: 2rpx solid #1a1a1a;
+  position: relative;
+  z-index: 10;
+}
+
+.realm-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  position: relative;
+  margin-bottom: 25rpx;
+}
+
+.realm-title {
+  font-size: 56rpx;
+  font-weight: 900;
+  letter-spacing: 4rpx;
+  text-shadow: 0 0 20rpx rgba(255,255,255,0.1);
+}
+
+.suicide-btn {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 22rpx;
+  color: #888;
+  background: #111;
+  padding: 8rpx 24rpx;
+  border-radius: 12rpx;
+  border: 1rpx solid #333;
+  transition: all 0.2s;
+}
+.suicide-btn:active { background: #d32f2f; color: #fff; border-color: #d32f2f; }
+
+/* 经验条系统 */
+.exp-progress-wrap {
+  height: 6rpx;
+  background: #222;
+  border-radius: 6rpx;
+  overflow: hidden;
+  margin-bottom: 12rpx;
+  box-shadow: inset 0 0 5rpx #000;
+}
+
+.exp-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #4facfe 0%, #00f2fe 100%);
+  border-radius: 6rpx;
+  transition: width 0.3s ease-out; 
+  box-shadow: 0 0 10rpx rgba(0, 242, 254, 0.5);
+}
+
+.exp-text {
+  display: flex;
+  justify-content: space-between;
+  font-size: 20rpx;
+  color: #777;
+  font-family: 'Courier New', Courier, monospace;
+}
+
+/* ==========================================================
+   3. 全面扩展的数值雷达 (5宫格)
+   ========================================================== */
+.stats-grid {
+  flex-shrink: 0;
+  display: flex;
+  padding: 20rpx 10rpx;
+  background: #0a0a0a;
+  border-bottom: 2rpx solid #1a1a1a;
+  box-shadow: 0 5rpx 20rpx rgba(0,0,0,0.5);
+  z-index: 9;
+}
+
+.stat-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  border-right: 2rpx solid #1a1a1a;
+}
+.stat-card:last-child { border-right: none; }
+
+.stat-label {
+  font-size: 20rpx;
+  color: #666;
+  margin-bottom: 8rpx;
+}
+
+.stat-val {
+  font-size: 26rpx;
+  font-weight: bold;
+  font-family: 'Courier New', Courier, monospace; 
+  text-align: center;
+}
+
+/* 核心数值发光色系 */
+.text-danger { color: #ff5252; animation: blink-red 0.8s infinite alternate; }
+.text-blue { color: #448aff; text-shadow: 0 0 10rpx rgba(68,138,255,0.4); }
+.text-gold { color: #ffd700; text-shadow: 0 0 10rpx rgba(255,215,0,0.3); }
+.text-diamond { color: #00e5ff; text-shadow: 0 0 15rpx rgba(0,229,255,0.5); font-weight: 900; }
+
+@keyframes blink-red {
+  0% { opacity: 0.6; text-shadow: 0 0 0 transparent; }
+  100% { opacity: 1; text-shadow: 0 0 15rpx #ff5252; transform: scale(1.05); }
+}
+
+/* 灵根与境界共用的发光色系 */
+.Gray { color: #888; }
+.Green { color: #4caf50; text-shadow: 0 0 10rpx rgba(76,175,80,0.3); }
+.Blue { color: #2196f3; text-shadow: 0 0 10rpx rgba(33,150,243,0.3); }
+.Purple { color: #9c27b0; text-shadow: 0 0 15rpx rgba(156,39,176,0.5); }
+.Orange { color: #ff9800; text-shadow: 0 0 20rpx rgba(255,152,0,0.6); }
+.Gold { color: #ffd700; text-shadow: 0 0 25rpx rgba(255,215,0,0.8); }
+.Red { color: #ff3333; text-shadow: 0 0 25rpx rgba(255,51,51,0.8); }
+
+/* ==========================================================
+   4. 岁月信息流 (修仙日志池)
+   ========================================================== */
+.log-scroll-view {
+  flex: 1;
+  height: 0; 
+  padding: 20rpx 30rpx;
+  box-sizing: border-box;
+  background: #050505;
+}
+
+.log-row {
+  margin-bottom: 20rpx;
+  line-height: 1.6;
+  font-size: 26rpx;
+  animation: logFadeIn 0.3s ease-out forwards; 
+}
+
+@keyframes logFadeIn {
+  from { opacity: 0; transform: translateX(-10rpx); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.log-year {
+  color: #555;
+  font-family: 'Courier New', Courier, monospace;
+  margin-right: 12rpx;
+  font-size: 24rpx;
+}
+
+/* 日志基础底色 (高亮部分由 WXS 处理) */
+.log-row.normal .log-content { color: #bbbbbb; }
+.log-row.event-epic .log-content { color: #ffb300; font-weight: bold; }
+.log-row.event-breakthrough .log-content { color: #00e676; font-weight: bold; }
+.log-row.event-deadly .log-content { color: #ef5350; }
+
+.anchor-point { height: 30rpx; width: 100%; }
+
+/* ==========================================================
+   5. 底部中央控制台 (双排交互布局)
+   ========================================================== */
+.footer-control-panel {
+  flex-shrink: 0;
+  padding: 20rpx 30rpx calc(20rpx + env(safe-area-inset-bottom));
+  background: #0d0d0d;
+  border-top: 2rpx solid #1a1a1a;
+  box-shadow: 0 -10rpx 30rpx rgba(0,0,0,0.8);
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx; /* 两排按钮之间的间距 */
+  z-index: 10;
+}
+
+/* --- 第一排：功能入口 --- */
+.action-row-top {
+  display: flex;
+  justify-content: space-between;
+  gap: 15rpx;
+}
+
+.btn-minor {
+  flex: 1;
+  background: #161616;
+  color: #aaa;
+  font-size: 24rpx;
+  padding: 16rpx 0;
+  text-align: center;
+  border-radius: 12rpx;
+  border: 1rpx solid #333;
+  transition: all 0.2s;
+}
+.btn-minor:active { background: #222; transform: scale(0.95); }
+
+/* 一键飞升专属土豪金高亮 */
+.btn-skip {
+  background: rgba(255, 215, 0, 0.05);
+  color: #ffd700;
+  border-color: rgba(255, 215, 0, 0.3);
+  font-weight: bold;
+}
+.btn-skip:active { background: rgba(255, 215, 0, 0.15); }
+
+/* --- 第二排：核心引擎控制 --- */
+.engine-controls {
+  display: flex;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.btn-engine, .btn-speed {
+  flex: 1;
+  height: 96rpx;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 48rpx;
+  font-size: 30rpx;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.icon { margin-right: 12rpx; font-size: 34rpx; }
+
+/* 挂机中 */
+.engine-running {
+  background: rgba(0, 230, 118, 0.1);
+  color: #00e676;
+  border: 2rpx solid rgba(0, 230, 118, 0.4);
+}
+.engine-running:active { background: rgba(0, 230, 118, 0.2); transform: scale(0.96); }
+
+/* 暂停中 */
+.engine-paused {
+  background: rgba(255, 152, 0

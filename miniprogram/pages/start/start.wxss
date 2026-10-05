@@ -1,0 +1,471 @@
+/* pages/start/start.wxss */
+page {
+  background-color: #050508; /* 纯正深渊黑，带一点点极暗的紫蓝调 */
+  color: #d0d0d0;
+  font-family: 'PingFang SC', 'Helvetica Neue', sans-serif;
+  height: 100%;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  padding: 20rpx 20rpx 40rpx 20rpx;
+  box-sizing: border-box;
+}
+
+/* ==========================================
+   1. 顶部资产区 (奢华风)
+   ========================================== */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24rpx;
+  padding: 0 10rpx;
+}
+.title {
+  font-size: 38rpx;
+  font-weight: 900;
+  color: #FFD700;
+  text-shadow: 0 0 15rpx rgba(255, 215, 0, 0.4);
+  letter-spacing: 2rpx;
+  display: flex;
+  align-items: center;
+}
+.help-icon {
+  font-size: 22rpx;
+  color: #a0a0a0;
+  border: 1px solid #444;
+  border-radius: 20rpx;
+  padding: 4rpx 12rpx;
+  margin-left: 16rpx;
+  font-weight: normal;
+  text-shadow: none;
+  background: rgba(255,255,255,0.05);
+}
+.assets {
+  display: flex;
+  gap: 20rpx;
+}
+.asset-item {
+  background: linear-gradient(145deg, #2a2a35 0%, #111115 100%);
+  padding: 10rpx 24rpx;
+  border-radius: 30rpx;
+  border: 1px solid rgba(255,215,0,0.2);
+  font-size: 28rpx;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  box-shadow: 0 4rpx 10rpx rgba(0,0,0,0.6), inset 0 2rpx 5rpx rgba(255,255,255,0.05);
+  font-weight: bold;
+  transition: all 0.2s;
+}
+.asset-item:active { transform: scale(0.95);
+  box-shadow: 0 2rpx 5rpx rgba(0,0,0,0.8); }
+.icon { margin-right: 8rpx; font-size: 30rpx; }
+.add-btn {
+  color: #FFD700;
+  font-size: 24rpx;
+  margin-left: 10rpx;
+  animation: pulse 2s infinite;
+}
+
+/* ==========================================
+   2. 中间：面板展示区 (高科技修仙感)
+   ========================================== */
+.display-board {
+  flex: 1;
+  background: rgba(18, 18, 22, 0.85);
+  border-radius: 20rpx;
+  border: 1px solid #2a2a35;
+  padding: 30rpx;
+  overflow-y: auto;
+  box-shadow: inset 0 0 40rpx rgba(0, 0, 0, 0.9);
+}
+
+.section-title {
+  font-size: 28rpx;
+  color: #aaa;
+  border-left: 8rpx solid #FFD700;
+  padding-left: 12rpx;
+  margin-bottom: 20rpx;
+  font-weight: bold;
+  letter-spacing: 2rpx;
+  text-shadow: 0 0 10rpx rgba(255,215,0,0.2);
+}
+.mt-20 { margin-top: 36rpx;
+}
+.total-pts { font-size: 22rpx; color: #777; font-weight: normal; margin-left: 10rpx;}
+
+/* 仙路奇缘列表 */
+.traits-list { display: flex; flex-direction: column; gap: 16rpx;
+}
+.trait-item {
+  background: linear-gradient(90deg, #18181c 0%, #111115 100%);
+  padding: 20rpx;
+  border-radius: 12rpx;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid #2a2a30;
+  box-shadow: 0 4rpx 8rpx rgba(0,0,0,0.3);
+}
+.trait-content { display: flex; flex-direction: column; flex: 1;
+}
+.trait-content.empty { opacity: 0.4; }
+.trait-name { font-size: 32rpx; font-weight: 900; margin-bottom: 8rpx; letter-spacing: 2rpx;}
+.trait-desc { font-size: 24rpx; color: #999;
+  line-height: 1.4; padding-right: 20rpx;}
+
+/* 锁定按钮特效 */
+.lock-btn {
+  background: linear-gradient(180deg, #2a2a35 0%, #15151a 100%);
+  border: 1px solid #444;
+  color: #aaa;
+  font-size: 22rpx;
+  padding: 10rpx 18rpx;
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 4rpx 6rpx rgba(0,0,0,0.4);
+}
+.lock-btn:active { transform: scale(0.9); }
+.lock-btn.locked {
+  background: linear-gradient(180deg, rgba(255, 68, 68, 0.15) 0%, rgba(150, 20, 20, 0.3) 100%);
+  border-color: rgba(255, 68, 68, 0.6);
+  color: #ff6b6b;
+  box-shadow: 0 0 20rpx rgba(255, 68, 68, 0.2), inset 0 0 10rpx rgba(255, 68, 68, 0.1);
+  text-shadow: 0 0 5rpx rgba(255, 68, 68, 0.5);
+}
+.lock-icon { margin-right: 6rpx;
+  font-size: 24rpx;}
+
+/* 灵根展示盒 */
+.root-box {
+  background: linear-gradient(135deg, #1a1a20 0%, #111115 100%);
+  padding: 30rpx;
+  border-radius: 16rpx;
+  border: 1px solid #333;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  box-shadow: 0 6rpx 12rpx rgba(0,0,0,0.4);
+}
+.root-info { display: flex; flex-direction: column;
+}
+.root-name { font-size: 42rpx; font-weight: 900; margin-bottom: 12rpx; letter-spacing: 4rpx;}
+.root-desc { font-size: 26rpx; color: #aaa; }
+.root-lock { padding: 14rpx 28rpx;
+  font-size: 24rpx; border-radius: 12rpx;}
+
+/* 属性九宫格 */
+.attr-grid {
+  display: flex;
+  justify-content: space-between;
+  background: linear-gradient(180deg, #1c1c22 0%, #111115 100%);
+  padding: 24rpx;
+  border-radius: 16rpx;
+  border: 1px solid #2a2a35;
+  box-shadow: 0 4rpx 10rpx rgba(0,0,0,0.3);
+}
+.attr-box { display: flex; flex-direction: column; align-items: center;
+}
+.attr-label { font-size: 24rpx; color: #888; margin-bottom: 12rpx;}
+.attr-val { 
+  font-size: 38rpx; 
+  font-weight: 900; 
+  color: #fff;
+  text-shadow: 0 0 15rpx rgba(255,255,255,0.4);
+}
+
+/* ==========================================
+   品阶霓虹色彩 (极品发光特效)
+   ========================================== */
+.color-Gray { color: #888888;
+}
+.color-Green { color: #55ff55; text-shadow: 0 0 10rpx rgba(85,255,85,0.3); }
+.color-Blue { color: #55ccff; text-shadow: 0 0 12rpx rgba(85,204,255,0.4);
+}
+.color-Purple { color: #dd55ff; text-shadow: 0 0 15rpx rgba(221,85,255,0.5); }
+.color-Orange { color: #ffaa00; text-shadow: 0 0 18rpx rgba(255,170,0,0.6);
+}
+.color-Gold { color: #ffff55; text-shadow: 0 0 20rpx rgba(255,255,0,0.8); font-weight: 900 !important; }
+.color-Red { 
+  color: #ff4444;
+  text-shadow: 0 0 25rpx rgba(255,68,68,1); 
+  font-weight: 900 !important; animation: redFlash 1.5s infinite;
+}
+
+.border-Gold { border-color: rgba(255,215,0,0.6) !important;
+  box-shadow: 0 0 15rpx rgba(255,215,0,0.2), inset 0 0 20rpx rgba(255,215,0,0.1);}
+.border-Red { border-color: rgba(255,68,68,0.6) !important;
+  box-shadow: 0 0 20rpx rgba(255,68,68,0.3), inset 0 0 30rpx rgba(255,68,68,0.15);}
+
+@keyframes redFlash { 0%{opacity:0.8;} 50%{opacity:1;} 100%{opacity:0.8;} }
+
+/* ==========================================
+   3. 底部操作区 (视觉分层)
+   ========================================== */
+.action-zone { margin-top: 30rpx;
+}
+
+/* 洗髓区 - 低调冷酷 */
+.reroll-area {
+  background: rgba(255,255,255,0.02);
+  padding: 24rpx;
+  border-radius: 20rpx;
+  margin-bottom: 30rpx; 
+  border: 1px dashed rgba(255,255,255,0.1);
+}
+.ticket-info {
+  text-align: center; font-size: 26rpx; color: #aaa; margin-bottom: 24rpx;
+  display: flex; justify-content: center; align-items: center;
+}
+.highlight { color: #FFD700; font-weight: 900; font-size: 34rpx; margin: 0 8rpx; text-shadow: 0 0 10rpx rgba(255,215,0,0.4);}
+.add-icon { color: #FFD700;
+  font-size: 28rpx; margin-left: 8rpx; background: rgba(255,215,0,0.1); border-radius: 50%; width: 40rpx; height: 40rpx; line-height: 40rpx; text-align: center;}
+
+.btn-row { display: flex;
+  gap: 24rpx; }
+.btn-reroll {
+  flex: 1;
+  background: linear-gradient(180deg, #2a2a35 0%, #15151a 100%) !important;
+  color: #ddd !important;
+  font-size: 32rpx;
+  font-weight: bold;
+  padding: 18rpx 0;
+  border: 1px solid #444;
+  border-radius: 16rpx;
+  box-shadow: 0 6rpx 12rpx rgba(0,0,0,0.6);
+  transition: all 0.2s;
+}
+.btn-reroll:active { transform: translateY(4rpx); box-shadow: 0 2rpx 4rpx rgba(0,0,0,0.8); }
+.btn-danger { 
+  background: linear-gradient(180deg, #5a1a1a 0%, #2a0808 100%) !important;
+  color: #ffcccc !important; 
+  border-color: #aa3333;
+  box-shadow: 0 6rpx 12rpx rgba(100,0,0,0.4);
+}
+.hint-text { text-align: center; font-size: 20rpx; color: #666;
+  margin-top: 20rpx;}
+
+/* 启程区 - 核弹级视觉焦点 */
+.start-area { padding: 0 10rpx; }
+.btn-start {
+  width: 100% !important;
+  background: linear-gradient(135deg, #FFDF00 0%, #D4AF37 50%, #FFF59D 80%, #FFDF00 100%) !important;
+  color: #3E2723 !important;
+  font-size: 48rpx !important;
+  font-weight: 900 !important;
+  letter-spacing: 12rpx;
+  padding: 30rpx 0 !important;
+  border-radius: 60rpx;
+  border: 4rpx solid #fffdf0;
+  box-shadow: 0 10rpx 30rpx rgba(255, 215, 0, 0.5), inset 0 -10rpx 20rpx rgba(180, 130, 0, 0.4), inset 0 10rpx 20rpx rgba(255,255,255,0.8);
+  animation: goldenBreath 2s infinite ease-in-out;
+  text-shadow: 0 2rpx 4rpx rgba(255,255,255,0.6);
+}
+.btn-start:active { transform: scale(0.96) !important; animation: none;
+  box-shadow: 0 2rpx 10rpx rgba(255, 215, 0, 0.5);}
+
+@keyframes goldenBreath {
+  0% { transform: scale(1);
+  box-shadow: 0 5rpx 20rpx rgba(255, 215, 0, 0.4); }
+  50% { transform: scale(1.02);
+  box-shadow: 0 15rpx 40rpx rgba(255, 215, 0, 0.8), 0 0 30rpx rgba(255,255,255,0.5); }
+  100% { transform: scale(1);
+  box-shadow: 0 5rpx 20rpx rgba(255, 215, 0, 0.4); }
+}
+
+/* ==========================================
+   4. 系统全量弹窗区 (极致精美·仙侠高定版)
+   ========================================== */
+.modal-mask {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex; justify-content: center; align-items: center;
+  z-index: 999;
+  backdrop-filter: blur(8px); /* 玻璃毛玻璃特效 */
+}
+.modal-content {
+  background: linear-gradient(180deg, #1f1f27 0%, #0d0d12 100%);
+  width: 85%;
+  border-radius: 24rpx;
+  border: 2rpx solid rgba(255, 215, 0, 0.3);
+  box-shadow: 0 20rpx 60rpx rgba(0,0,0,0.9), inset 0 0 30rpx rgba(255, 215, 0, 0.05);
+  overflow: hidden;
+  position: relative;
+}
+.small-modal { width: 78%; }
+.scroll-modal { max-height: 80vh; display: flex; flex-direction: column;}
+
+.modal-title {
+  text-align: center;
+  font-size: 36rpx; font-weight: 900; color: #FFD700;
+  padding: 32rpx 0; 
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.1), transparent);
+  border-bottom: 1rpx solid rgba(255, 215, 0, 0.2);
+  position: relative;
+  text-shadow: 0 0 15rpx rgba(255,215,0,0.5);
+}
+.close-btn {
+  position: absolute;
+  right: 30rpx; top: 28rpx;
+  font-size: 44rpx; color: #888; line-height: 1; transition: color 0.2s;
+}
+.close-btn:active { color: #fff;
+}
+.modal-body { padding: 40rpx 36rpx; }
+.text-center { text-align: center; }
+
+/* 充值商城网格 - ⭐ 增强单按钮居中排版 */
+.recharge-grid { display: flex; flex-wrap: wrap;
+  gap: 24rpx; justify-content: space-between; }
+
+.recharge-grid.single-item { justify-content: center !important; }
+
+.recharge-item, button.recharge-item {
+  width: 46%;
+  background: linear-gradient(135deg, #262630 0%, #15151a 100%) !important;
+  border: 2rpx solid rgba(255,255,255,0.05) !important;
+  border-radius: 16rpx !important;
+  padding: 36rpx 0 24rpx 0 !important;
+  text-align: center !important;
+  position: relative !important;
+  transition: all 0.2s !important;
+  box-shadow: 0 8rpx 20rpx rgba(0,0,0,0.5) !important;
+  line-height: normal !important;
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+
+/* ⭐ 针对单按钮的独尊金边样式 */
+.recharge-grid.single-item button.recharge-item {
+  width: 280rpx !important;
+  border: 2rpx solid #FFD700 !important;
+  box-shadow: 0 0 20rpx rgba(255,215,0,0.3) !important;
+}
+
+button.recharge-item::after { border: none !important; }
+
+.recharge-item:active { 
+  background: linear-gradient(135deg, #333340 0%, #1a1a20 100%) !important; 
+  transform: scale(0.95) !important; 
+  border-color: rgba(255,215,0,0.4) !important;
+}
+.r-icon { font-size: 56rpx; margin-bottom: 12rpx; text-shadow: 0 10rpx 10rpx rgba(0,0,0,0.8);}
+.r-base { font-size: 34rpx; font-weight: 900; color: #fff;
+  text-shadow: 0 2rpx 4rpx #000;}
+.r-bonus {
+  position: absolute; top: -12rpx; right: -12rpx;
+  background: linear-gradient(135deg, #ff4444 0%, #aa0000 100%);
+  color: #fff; font-size: 20rpx;
+  padding: 6rpx 14rpx; 
+  border-radius: 16rpx 16rpx 16rpx 0; 
+  font-weight: bold;
+  box-shadow: 0 4rpx 10rpx rgba(255,0,0,0.4);
+  border: 1rpx solid #ffaaaa;
+}
+.r-price { font-size: 28rpx; color: #FFD700; margin-top: 16rpx;
+  font-weight: bold;}
+
+/* 购买次数区 - ⭐ 彻底解决 image_5ceb7b 确认购买按钮消失问题 */
+.buy-section .btn-confirm {
+  display: block !important;
+  width: 100% !important;
+  background: linear-gradient(135deg, #FFD700 0%, #b8860b 100%) !important;
+  color: #000 !important;
+  font-weight: 900 !important;
+  border-radius: 12rpx !important;
+  padding: 24rpx 0 !important;
+  margin-top: 20rpx !important;
+  box-shadow: 0 6rpx 15rpx rgba(255,215,0,0.3) !important;
+  text-shadow: none !important;
+  border: none !important;
+  font-size: 32rpx !important;
+}
+
+.modal-text { font-size: 28rpx; color: #bbb; display: block; margin-bottom: 24rpx;}
+.input-row { display: flex; align-items: center;
+  gap: 20rpx; margin-bottom: 30rpx; }
+.num-input {
+  background: #08080a; color: #FFD700; border: 2rpx solid #444;
+  height: 80rpx; border-radius: 12rpx;
+  text-align: center; font-size: 40rpx; font-weight: 900;
+  box-shadow: inset 0 4rpx 15rpx rgba(0,0,0,0.9);
+  transition: border-color 0.3s;
+}
+.num-input:focus { border-color: #FFD700;
+  box-shadow: inset 0 4rpx 15rpx rgba(0,0,0,0.9), 0 0 10rpx rgba(255,215,0,0.3); }
+.flex-1 { flex: 1;
+}
+.btn-mini { 
+  background: linear-gradient(180deg, #3a3a45 0%, #222 100%) !important; 
+  color: #eee !important; font-size: 26rpx; padding: 0 36rpx;
+  line-height: 80rpx; 
+  border-radius: 12rpx; border: 1rpx solid #555;
+  box-shadow: 0 4rpx 10rpx rgba(0,0,0,0.4);
+}
+.btn-mini:active { transform: scale(0.95);
+}
+
+.divider { text-align: center; color: #555; font-size: 24rpx; margin: 40rpx 0; position: relative; font-style: italic;}
+.divider::before, .divider::after {
+  content: '';
+  position: absolute; top: 50%; width: 38%; height: 1px; background: rgba(255,255,255,0.1);
+}
+.divider::before { left: 0; }
+.divider::after { right: 0;
+}
+
+.free-section { display: flex; flex-direction: column; gap: 24rpx; }
+.btn-ad { 
+  background: linear-gradient(135deg, #1e3c28 0%, #0d1f14 100%) !important;
+  color: #88ffaa !important; border: 2rpx solid #3a7a4c !important;
+  font-size: 32rpx; font-weight: bold; padding: 20rpx 0; border-radius: 16rpx;
+  box-shadow: 0 6rpx 15rpx rgba(30, 60, 40, 0.4), inset 0 2rpx 5rpx rgba(255,255,255,0.1);
+}
+.btn-ad:active { transform: translateY(4rpx);
+}
+.btn-share { 
+  background: linear-gradient(135deg, #2b2b4b 0%, #141428 100%) !important; 
+  color: #aaaaff !important; border: 2rpx solid #5a5a8c !important;
+  font-size: 32rpx; font-weight: bold; padding: 20rpx 0; border-radius: 16rpx;
+  box-shadow: 0 6rpx 15rpx rgba(40, 40, 80, 0.4), inset 0 2rpx 5rpx rgba(255,255,255,0.1);
+}
+.btn-share:active { transform: translateY(4rpx); }
+
+/* 帮助文档 */
+.help-scroll { max-height: 55vh; padding: 0 36rpx 36rpx 36rpx; box-sizing: border-box;}
+.help-text { font-size: 28rpx;
+  color: #ccc; line-height: 1.8; white-space: pre-wrap; text-align: justify;}
+
+/* 弹窗通用底部操作 - ⭐ 仅供关闭弹窗等简单菜单使用 */
+.modal-footer { display: flex; border-top: 1rpx solid rgba(255,215,0,0.15);
+  background: rgba(0,0,0,0.4);}
+.btn-cancel, .footer-confirm {
+  flex: 1; background: transparent !important; font-size: 34rpx; padding: 28rpx 0; border-radius: 0; transition: background 0.2s;
+}
+.btn-cancel { color: #888 !important; }
+.btn-cancel:active { background: rgba(255,255,255,0.05) !important;}
+.footer-confirm { color: #FFD700 !important; font-weight: 900;
+  border-left: 1rpx solid rgba(255,215,0,0.15);}
+.footer-confirm:active { background: rgba(255,215,0,0.1) !important;}
+.full-width { border: none !important; }
+.mt-10 { margin-top: 10rpx;}
+
+/* 传道文案特效 */
+.recharge-notice {
+  background: rgba(255,215,0,0.08) !important;
+  border-radius: 12rpx !important;
+  padding: 20rpx !important;
+  line-height: 1.6 !important;
+  text-align: left !important;
+  border: 1rpx dashed rgba(255,215,0,0.3) !important;
+  color: #FFD700 !important;
+  font-size: 24rpx !important;
+}

@@ -28,6 +28,11 @@
  *     `../../runtime/index.js`, and nothing outside that page loads the runtime at all.
  *  H. PREVIEW GUARD. The fixture-driven preview still loads its fixture module, so adding the live page
  *     did not quietly convert the accepted preview into a live surface.
+ *  I. PACKAGE CLOSURE (LIVEFIX02). The declared `miniprogramRoot` is a closed runtime package: every
+ *     registered page has a committed `Page(...)` entry, and every literal relative require reachable from
+ *     the package resolves inside the root. This is what makes "v2-live is registered" mean "v2-live can
+ *     actually boot" — a route table is worthless if the packager cannot build the pages it names, and the
+ *     1.0 pages it also registers are exactly where a missing entry hides.
  *
  * Usage:
  *   node tools/route-guard.mjs
@@ -41,6 +46,7 @@ import path from "node:path";
 import process from "node:process";
 
 import { FIXTURE_MODULE_SPECIFIER, listRuntimeModules, nonLiteralRequireArguments, requireArguments } from "./ui02-preview-fixture-module.mjs";
+import { auditPackageClosure } from "./miniprogram-package-closure.mjs";
 
 export const REPO_ROOT = path.resolve(new URL("..", import.meta.url).pathname.replace(/^\/([A-Za-z]:)/, "$1"));
 export const APP_JSON_PATH = "miniprogram/app.json";
@@ -180,6 +186,14 @@ export function runRouteGuard({ read = defaultRead, exists = defaultExists } = {
     violations.push(`${extra}: loads the generated runtime, but only ${expectedConsumers[0]} is allowed to`);
   }
   if (runtimeConsumers.length > 0) report.push(`runtime consumers: ${[...new Set(runtimeConsumers)].join(", ")}`);
+
+  // ---------------------------------------------------------------- I. package closure
+  // Deliberately last, and deliberately on the same injected read/exists seam, so a negative control that
+  // deletes a page entry or breaks a relative require fails BOTH this gate and the closure audit rather
+  // than one silently passing.
+  const closure = auditPackageClosure({ read, exists });
+  for (const violation of closure.violations) violations.push(`package closure: ${violation}`);
+  for (const line of closure.report) report.push(`package closure: ${line}`);
 
   return { ok: violations.length === 0, violations, report, pages };
 }

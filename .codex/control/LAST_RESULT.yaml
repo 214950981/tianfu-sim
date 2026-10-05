@@ -1,124 +1,141 @@
 version: 1
 status: PASS
-taskId: LIVEFIX01
-title: LIVEFIX01 — Real CloudBase Empty-Read Semantics + First-Run Recovery
+taskId: LIVEFIX02
+title: LIVEFIX02 — MiniProgram Package Closure + DevTools Boot Smoke
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-LIVEFIX01
-baseCommit: bceb14dde5d8bd891da29bc2985eda812727dd84
+workBranch: wb-LIVEFIX02
+baseCommit: dfeacd28dd79783783cb3a76401ec73260f22eaf
 historyMode: real-ancestry
 sourceHeadVerifiedBy: |
-  git fetch origin --prune; the worktree was positioned at the current remote source HEAD bceb14d with
+  git fetch origin --prune; the worktree was positioned at the current remote source HEAD dfeacd2 with
   `git read-tree -u --reset <base>` + a direct worktree HEAD write. Verified git rev-parse HEAD ==
-  baseCommit and git write-tree == baseCommit^{tree} (8aa0af50fa23e1ad08ac3079cf3f1cc13a2b10f4) before
+  baseCommit and git write-tree == baseCommit^{tree} (3f8da71f6931e3faacd3bed1cf29ad6c1ac7add6) before
   any edit. No .workbuddy path is in the diff.
 realEnvironmentEvidence:
-  cloudEnvironment: cloud1-8glg1sird4d40bc0
-  function: tianfu2
-  functionReachable: true
-  collectionsProvisioned: true
-  databaseStateAtFailure: empty (all four collections provisioned, zero documents)
-  observedFailure:
-    codeFamily: -502005
-    message: document.get failed because document with deterministic _id does not exist
-    shape: collection(name).doc(id).get() REJECTS instead of returning an empty snapshot
-  clientSymptom: createRunOffer result.runId must be a non-empty string
-  negativeControlObserved: |
-    The same broad ResourceNotFound family has also been observed for a missing COLLECTION, which is why
-    the numeric code alone is never the discriminator in this fix.
+  devToolsErrors:
+    - "module 'pages/start/data.js' is not defined, require args is './data.js'"
+    - "Page 'pages/v2-live/v2-live' has not been registered yet"
+  confirmedRepositoryGaps:
+    - miniprogram/pages/start/start.js requires ./data.js but miniprogram/pages/start/data.js is absent
+    - miniprogram/app.json registers pages/game/game but miniprogram/pages/game/game.js is absent
+    - "ADDITIONAL, found by this task's own audit and not in the dispatch: miniprogram/pages/start/start.wxss and miniprogram/pages/game/game.wxss were also absent, so both 1.0 routes rendered unstyled. Copying only the two dispatched files would have shipped a visually broken package."
+  editorBehaviourObserved: |
+    WeChat DevTools wrote an untracked `miniprogram/pages/game/game.js` boilerplate stub. It satisfies the
+    packager and registers the page while rendering nothing, which is strictly worse than a missing file:
+    the package looks complete. Treated as evidence of the missing committed entry, not as a file to commit.
 summary: |
-  One bounded live fix at the CloudBase persistence boundary, plus the proofs that make it trustworthy.
+  The whole miniprogramRoot package was closed in one pass, plus a permanent static gate so the defect class
+  cannot recur behind a local stub.
 
-  1. FIX, IN ONE PLACE. `server/src/cloudbase-store.ts` now owns a single classifier
-     (`isMissingDocumentError`) and a single read helper (`readDocumentData`). `readRun` and the
-     transactional read for ALL FOUR kinds — run, command idempotency receipt, bootstrap mapping,
-     terminal-transition receipt — go through that one helper. A collection that exists but has no such
-     document reads as `undefined`; everything else is rethrown unchanged. No copy-pasted catches, and no
-     change anywhere else: the client, the gameplay layer, the gateway semantics and the schema are
-     untouched.
+  1. MORE THAN THE TWO DISPATCHED FILES. A full per-page audit of every entry in `miniprogram/app.json`
+     found FOUR missing files inside the package, not two: `pages/start/data.js` and `pages/game/game.js`
+     (both dispatched) plus `pages/start/start.wxss` and `pages/game/game.wxss`. The two stylesheets matter
+     because those templates use 74 and 101 static classes respectively and `app.wxss` defines almost none
+     of them, so both 1.0 routes would have rendered unstyled. Restoring only the two dispatched files would
+     have produced a package that boots and still looks broken.
 
-  2. THE CLASSIFIER IS DELIBERATELY NARROW. It requires two independent pieces of evidence — the message
-     is about a *document* (naming its `_id`) AND it says that document is absent — plus either the exact
-     `-502005` code (shape A) or the literal production sentence recorded from the live environment
-     (shape B). A message that names a missing COLLECTION is checked FIRST and always loses: swallowing it
-     would turn "the deployment did not create the collections" into "your data is empty". Permission,
-     network, transaction conflict, malformed, uncoded and unknown errors all fail closed.
+  2. BYTE-EXACT MIRROR, NOT A COPY. `tools/miniprogram-package-mirror.mjs` projects four root-level legacy
+     files into the package with a declared manifest, byte for byte: no transformation, no line-ending
+     rewrite, no reformatting. That is what turns "1.0 semantics preserved exactly" from a promise into a
+     checkable claim, and it means freshness needs no normalisation logic. The root-level sources stay in
+     place as the single source of truth; nothing is moved or deleted. `git` stores these bytes verbatim
+     (`core.autocrlf=false`, no `.gitattributes`), so a byte-exact mirror round-trips unchanged.
+     The in-package `start.js` / `game.wxml` are NEWER than the root tree (single 300-diamond share tier,
+     data-driven `rechargeNotice`), and the manifest does not list them, so the mirror cannot clobber them.
 
-  3. THE HARNESS NOW LIES LESS. `tools/ui04d-cloud-harness.mjs` reproduces the real rejection by default
-     (`missingDocumentMode: "reject"`, `errCode: -502005`); the old friendlier behaviour is kept as
-     `"empty"` only so a test can contrast the two. `provisionedCollections` makes a missing collection
-     separately reproducible. This is why the incompatibility survived every previous suite: the old fake
-     answered `{ data: undefined }`, so nothing ever exercised the rejecting path.
+  3. A PERMANENT CLOSURE GATE, NOT A ONE-OFF FIX. `tools/miniprogram-package-closure.mjs` proves the package
+     is closed, all seven checks fail-closed:
+       A. reads `miniprogramRoot` from `project.config.json` instead of hard-coding `miniprogram/`. An audit
+          that hard-coded the root would silently stop auditing if the root ever moved — the exact failure
+          this task exists to prevent.
+       B. `app.json` parses, page list non-empty and duplicate-free.
+       C. every registered page has a committed `.js` that actually CALLS `Page(` plus a committed `.wxml`.
+          The `Page(` check matters: a stub compiles, registers and renders nothing, and file existence
+          cannot see that.
+       D. transitive relative-require closure from every committed module inside the root. Second-order facts
+          (`start.js -> data.js`, `game.js -> game_data.js`) are invisible to a single-level scan.
+       E. no edge may escape the root or name TypeScript / `packages/` / `server/` / `cloudfunctions/`. The
+          prefix check runs BEFORE the existence check on purpose: a root-level `pages/foo.js` must never
+          satisfy `miniprogram/pages/foo.js`.
+       F. computed `require(...)` is rejected, because the packager resolves statically.
+       G. `<import>` / `<include>` / `<wxs src>` must resolve inside the root; a dangling template reference
+          renders an incomplete surface with no error at all.
+     Both confirmed defects have negative controls, and the audit cannot be silenced by pointing
+     `miniprogramRoot` at a non-package (asserted: it fails rather than passing vacuously).
 
-  4. PROOFS, NOT ASSERTIONS OF INTENT. `tests/livefix01.test.mjs` (15 tests) is registered as
-     `test:livefix01` and in the aggregate. It proves: both accepted shapes; 14 near-miss shapes that must
-     stay fatal (including collection-not-found with the same numeric code); all four read kinds;
-     collection-absence remaining fatal with zero writes; a completely empty four-collection database
-     supporting the first `createRunOffer` (exactly one run + one bootstrap mapping, one transaction);
-     same-bootstrap retry and cold start recovering the same run; first command and first terminal
-     settlement with no prior receipt, each settling exactly once on an exact retry; `readRun` unknown-run
-     compatibility with the existing fail-closed ownership answer; and the deployable host
-     `cloudfunctions/tianfu2/index.js` driving a first run on an empty database.
+  4. ROUTING NOW MEANS BOOTABILITY. `tools/route-guard.mjs` gained check I, which runs the closure audit on
+     the same injected read/exists seam. "pages/v2-live/v2-live is registered" now implies "v2-live can
+     actually boot", not merely "the JSON list looks right". A negative control that deletes a page entry or
+     breaks a relative require fails both gates rather than one silently passing.
 
-  5. ARTIFACT, ONCE. The cloud runtime was regenerated a single time after source stabilised; freshness,
-     dependency/closure audit and the 15-check smoke are all green.
-
-  6. DOCS. `docs/UI04D_CLOUD_BACKEND.md` gained an "空库首次使用（LIVEFIX01）" section stating that all
-     four collections may be empty and the first request creates its own documents, that a missing
-     collection is an unmet deployment prerequisite, and that the response to a `-502005` naming
-     `collection` is to create the collection — never to widen the classifier. The data-model table also
-     gained the fourth collection, which the doc had never listed.
+  5. TWO STALE DIGEST PINS FIXED — A REAL REGRESSION IN AN ACCEPTED COMMIT. `tests/ui04b.test.mjs` pins
+     digests over `cloudfunctions` and `server/src`. LIVEFIX01 legitimately changed both (it added the
+     missing-document classifier to `server/src/cloudbase-store.ts` and regenerated the deployable runtime)
+     but was ACCEPTED without re-pinning, so both pins have been failing since. Attributed by recomputing
+     each digest over `git archive` extractions of successive commits: both MATCH at 814f0b6 (UI04FINAL) and
+     first DIVERGE at f8d5450 (LIVEFIX01), with unchanged file counts (41 and 10). Re-pinned with a comment
+     naming the reason, NOT deleted, so both trees stay guarded from here on.
+     LIVEFIX02 also changed how the digest is computed: the documented `npm install` deployment step inside
+     `cloudfunctions/tianfu2` writes an untracked `package-lock.json` that the filesystem walk counted, so
+     following the deployment instructions made the pin unpassable. Dependency artefacts are now skipped the
+     same way `node_modules` already was. A real source edit under `cloudfunctions/` still moves the digest.
 changedFiles:
   - .codex/control/LAST_RESULT.yaml
-  - server/src/cloudbase-store.ts
-  - tools/ui04d-cloud-harness.mjs
-  - tests/livefix01.test.mjs
-  - cloudfunctions/tianfu2/runtime/server-cloudbase-store.js
-  - docs/UI04D_CLOUD_BACKEND.md
+  - miniprogram/pages/start/data.js
+  - miniprogram/pages/start/start.wxss
+  - miniprogram/pages/game/game.js
+  - miniprogram/pages/game/game.wxss
+  - tools/miniprogram-package-closure.mjs
+  - tools/miniprogram-package-mirror.mjs
+  - tools/route-guard.mjs
+  - tests/livefix02.test.mjs
+  - tests/ui04b.test.mjs
   - docs/dev-status.md
   - package.json
 tests:
-  - id: livefix01
-    command: node --test tests/livefix01.test.mjs
-    result: PASS (15/15)
+  - id: livefix02
+    command: node --test tests/livefix02.test.mjs
+    result: PASS (16/16)
     note: |
-      New dedicated suite. Two initial failures were test-authoring defects, not product defects: the
-      bootstrap document carries a `bootstrapKey` field the deep-equal did not expect, and the harness
-      records document ids on writes only, so the "four kinds addressed documents" assertion now proves
-      the same thing via `snapshot().has(collection)` plus `transactions === 1` and `whereCalls === 0`.
-  - id: ui04d
-    command: node --test tests/ui04d.test.mjs
-    result: PASS (20/20)
+      Four failures on the first run, all test-authoring defects rather than product defects, and each was
+      fixed by correcting the assertion rather than weakening it:
+        (1) the mirror tool compared Buffers while the injected reader returns strings, so injection changed
+            semantics — the tool now normalises to bytes;
+        (2) the stub negative control used a file that DID call Page(), so the audit was right to pass it —
+            replaced with an entry that genuinely never calls Page();
+        (3) a forbidden-token list included `Math.random` and `reduce(`, which the 1.0 engine legitimately
+            contains. Asserting their absence would have required rewriting 1.0 code, which this task
+            forbids; the check was re-aimed at cross-layer leakage (packages/server/cloudfunctions) and at
+            dependency edges escaping the package;
+        (4) package scripts were not yet registered.
+  - id: ui04c
+    command: node --test tests/ui04c.test.mjs
+    result: PASS (18/18)
+    note: The route guard gained check I; its three existing negative controls still pass unchanged.
+  - id: ui04b
+    command: node --test tests/ui04b.test.mjs
+    result: PASS (16/16)
     note: |
-      Failed 7/20 immediately after the harness change and BEFORE the runtime was regenerated, because the
-      generated `runtime/server-cloudbase-store.js` still had the old read path. Green after the single
-      regeneration. No test in this suite was relaxed.
-  - id: server-gateway
-    command: node --test tests/server-gateway.test.mjs
-    result: PASS (6/6)
-  - id: ui04e
-    command: node --test tests/ui04e.test.mjs
-    result: PASS (26/26)
-    note: Failed 8/26 before regeneration for the same reason as ui04d; green after.
-  - id: ui04e-r1-plus-r2
-    command: node --test tests/ui04e-r1.test.mjs tests/ui04e-r2.test.mjs
-    result: PASS (12/12)
-    note: |
-      Not in the task's test list, but both consume the harness, so they were checked once against the new
-      default rejecting mode. Green — the harness change did not regress them.
+      Failed 1/16 on the first run. Root cause was NOT environmental: two digest pins had been stale since
+      LIVEFIX01 was accepted. Both re-pinned with attribution, and the digest computation now skips dependency
+      artefacts. See summary point 5.
+  - id: ui04a
+    command: node --test tests/ui04a.test.mjs
+    result: PASS (16/16)
 gates:
-  - id: cloud-runtime-artifact-freshness
-    result: PASS (deterministic regeneration matches the committed bytes)
-  - id: cloud-runtime-dependency-audit
-    result: PASS (36 generated modules; facade publishes exactly the pinned 22 exports)
-  - id: cloud-runtime-smoke
-    result: PASS (15 checks)
-  - id: typecheck
-    result: PASS (tsc --noEmit clean)
+  - id: miniprogram-package-closure
+    result: PASS (14 committed JS modules form a closed relative-require graph; 5 templates have no dangling include)
+  - id: miniprogram-package-mirror
+    result: PASS (4 mirrored files byte-identical to their root-level sources)
+  - id: route-guard
+    result: PASS (5 registered pages, tabBar pinned, package closure green)
+  - id: ui04b-smoke
+    result: PASS (8 checks)
+  - id: client-runtime-dependency-audit
+    result: PASS
   - id: lint
     result: PASS (Core import boundary)
   - id: secret-scan
-    result: PASS
-  - id: content01-lint
     result: PASS
 scope:
   coreChanged: false
@@ -128,101 +145,105 @@ scope:
   gameplayChanged: false
   reducerChanged: false
   rngChanged: false
-  serverChanged: true
-  clientPresentationChanged: false
+  serverChanged: false
+  cloudfunctionChanged: false
+  clientPackagingChanged: true
   docsChanged: true
   note: |
-    The server change is confined to how `CloudBaseGatewayStore` interprets one rejection shape; no rule,
-    reducer, RNG, Director, Cause, progression/risk/build, ViewModel or client code moved. The client was
-    explicitly NOT worked around: NEXT_TASK forbids a client-side workaround for a server database error,
-    and none was added. No collection is ever created from code.
+    No gameplay, Core, Content, server or cloud-function source was touched — verified by an empty
+    `git status` over `cloudfunctions/`, `server/`, `packages/`, `miniprogram/app.json` and
+    `miniprogram/runtime/`. The app.json first page and tabBar ordering are unchanged and restated as
+    assertions. Legacy 1.0 semantics are preserved by byte-exact mirroring, including the engine's own
+    client-side randomness, which is preserved semantics rather than a defect. The only test outside this
+    task's new suite that was modified is `tests/ui04b.test.mjs`, for the two pre-existing stale pins.
 blockers: []
 toolingObservations:
-  - id: fake-database-semantics-must-match-the-platform-rejection-shape
+  - id: devtools-stub-hides-a-missing-committed-page-entry
     evidence: |
-      Every prior suite passed while the product could not perform a first request on a real empty CloudBase
-      database, because the fake database answered a missing document with `{ data: undefined }` while real
-      CloudBase rejects `collection(name).doc(id).get()` with `-502005`. The gap only surfaced in
-      `cloud1-8glg1sird4d40bc0`.
+      With `miniprogramRoot: "miniprogram/"` and `miniprogram/app.json` registering `pages/game/game` while
+      no `.js` was committed, WeChat DevTools created an untracked `miniprogram/pages/game/game.js`
+      containing a `Page({})` with empty lifecycle methods. The page then registers and renders nothing.
     impact: |
-      A fake that is *friendlier* than the platform is not a neutral test double — it silently deletes an
-      entire error path from coverage, and the first real deployment is what discovers it.
+      An untracked editor-generated file converts a loud boot failure into a silent blank page, and it also
+      makes `git status` noisy in a way that reads like ordinary DevTools pollution. Treating it as pollution
+      and deleting it would have restored the boot error without fixing the cause.
     workaround: |
-      For any persistence seam, make the double reproduce the platform's failure shape (including the error
-      code and the rejection, not just the empty result), and keep the friendlier behaviour only as an
-      explicitly named contrast mode a test can select.
-  - id: regenerate-generated-runtime-after-touching-its-source
+      Classify an untracked page stub as evidence of a missing committed page entry, never as a file to
+      commit. `tools/miniprogram-package-closure.mjs` now gates the whole class: every registered page needs a
+      committed `.js` that actually calls `Page(`, and the whole package's relative-require graph must close
+      inside the declared root.
+  - id: filesystem-walking-tree-digests-are-unpassable-after-documented-deploy-steps
     evidence: |
-      With `server/src/cloudbase-store.ts` fixed, `tests/ui04d.test.mjs` and `tests/ui04e.test.mjs` still
-      failed 7 and 8 tests respectively, because the deployable `cloudfunctions/tianfu2/runtime/*.js` had
-      not been regenerated. One `--write` after source stabilisation turned both fully green with no test
-      edits.
+      `tests/ui04b.test.mjs` pins trees with a `fs.readdirSync` walk. The documented deployment step for
+      `cloudfunctions/tianfu2` is `npm install` inside that directory, which writes `package-lock.json` next
+      to the manifest. The walk counted it, so the `cloudfunctions` pin could never pass on a machine where
+      anyone had followed the deployment instructions. `node_modules` was already excluded for exactly this
+      reason; `package-lock.json` was not.
     impact: |
-      A stale generated artifact produces failures that look like product regressions but are only build
-      drift. Chasing them without regenerating wastes a bounded verification budget.
+      A digest pin that measures the working tree rather than the committed tree produces false failures that
+      look like product regressions, and the natural (wrong) response is to re-pin a value that includes build
+      output, which then breaks on the next clean checkout.
     workaround: |
-      Stabilise the TypeScript source first, regenerate once, and only then attribute any remaining
-      failure. Do not relax a test to accommodate stale generated bytes.
+      Skip dependency artefacts by rule, the way `node_modules` already is, and keep the pin meaning "the
+      committed source did not change". Do NOT shell out to `git ls-files` for this: nested process spawn is
+      unreliable in this sandbox (TOOLING_RUNBOOK "Nested Node process EBUSY") and a pin that depends on it
+      would fail for environmental reasons.
+  - id: accepted-commits-can-leave-digest-pins-stale
+    evidence: |
+      LIVEFIX01 (f8d5450, ACCEPTED) legitimately changed `server/src/cloudbase-store.ts` and regenerated
+      `cloudfunctions/tianfu2/runtime/server-cloudbase-store.js`, but did not re-pin the two UI04B digests over
+      those trees. Proven by recomputing each digest over `git archive` extractions of 814f0b6, f8d5450,
+      2f95adc and dfeacd2: both MATCH at 814f0b6 and first DIVERGE at f8d5450, with file counts unchanged
+      (41 and 10).
+    impact: |
+      A stale pin fails on every subsequent run, so it gets classified as environment noise and the real
+      signal — "this tree is unguarded right now" — is lost. Two trees were unguarded from LIVEFIX01 until
+      LIVEFIX02.
+    workaround: |
+      When a task legitimately changes a pinned tree, re-pin it in that same task and say so in
+      `changedFiles` + `toolingObservations`. When a stale pin is discovered later, attribute it by
+      recomputing the digest over successive `git archive` extractions rather than guessing, and re-pin with
+      a comment naming the commit that moved it — never delete the check.
 resourceUsage:
   aggregateFullRuns: 0
-  typecheckRuns: 1
-  artifactRegenerationRounds: 1
-  pushAttempts: 3
+  typecheckRuns: 0
+  artifactRegenerationRounds: 0
+  pushAttempts: 1
   unboundedRetryLoops: 0
-  targetedSuiteRuns: "livefix01 x2, ui04d x2, server-gateway x2, ui04e x2, ui04e-r1+r2 x1"
-  simulation600Run: skipped (no gameplay/Core/Content semantics changed; forbidden by the task)
+  dedicatedSuiteRuns: "livefix02 x2, ui04b x2, ui04c x1, ui04a x1"
+  simulation600Run: skipped (forbidden by the task; no gameplay semantics changed)
   notes: |
-    No aggregate `npm test` was run, per NEXT_TASK. Each dedicated suite stayed within
-    maxFullDedicatedSuiteRuns = 2; the extra run for ui04d/ui04e was the pre-regeneration attribution
-    step, not a retry loop. Hard maxima respected: aggregate 0 (none requested), typecheck 1 <= 1,
-    artifact regeneration 1 <= 1. pushAttempts is 3, which is one over the NEXT_TASK cap of 2 and is
-    recorded honestly: the third was a single use of the runbook's documented GCM invocation after the
-    first two failed at the proxy layer, and it failed identically. No loop, no further attempts.
+    NEXT_TASK sets maxTypecheckRuns: 0, so `tsc` was not run — no TypeScript source was modified. No artifact
+    regeneration was needed: `cloudfunctions/tianfu2` is forbidden scope, so the generated cloud runtime is
+    untouched and its freshness/audit/smoke gates are unaffected. No aggregate `npm test` and no 600-run, both
+    forbidden. The second run of livefix02 and ui04b was the final confirmation after the assertion fixes and
+    the pin re-pinning, which is within the maxFullDedicatedSuiteRuns = 2 bound.
 mergeReadiness:
-  status: PUSH_BLOCKED
-  ancestry: real (worktree HEAD is baseCommit bceb14d; the result commit is its direct descendant)
-  workBranchPushed: PUSH_BLOCKED — the LIVEFIX01 result commit is local only, not on the remote
-  pushBlockedEvidence: |
-    All three attempts failed before reaching GitHub, at the sandbox egress proxy
-    (http_proxy / https_proxy = http://127.0.0.1:30044):
-      attempt 1: `git push -u origin HEAD:wb-LIVEFIX01` — rejected locally by refspec resolution
-        ("You must fully qualify the ref"); no network round trip.
-      attempt 2: `git push -u origin HEAD:refs/heads/wb-LIVEFIX01` —
-        `fatal: unable to access 'https://github.com/214950981/tianfu-sim.git/': CONNECT tunnel failed,
-        response 502`.
-      attempt 3: the runbook's documented GCM invocation
-        (`GCM_INTERACTIVE=never git -c credential.helper=manager
-        -c credential.https://github.com.helper=manager push origin HEAD:refs/heads/wb-LIVEFIX01`) —
-        identical `CONNECT tunnel failed, response 502`.
-    Two probes prove it is the egress path, not credentials, the refspec or the branch:
-      (a) with the proxy variables removed, `git ls-remote --heads origin` fails with
-          "Failed to connect to github.com:443 after 21062 ms" — there is no direct egress at all;
-      (b) every attempt fails identically regardless of the credential helper or refspec form.
-    No further attempt was made. Push the result commit — the direct child of baseCommit bceb14d; take its
-    SHA from `git rev-parse HEAD` in this worktree — to `wb-LIVEFIX01` from any host with working egress.
-    Nothing about the result depends on this sandbox; the commit has real ancestry and an intact tree.
+  status: merge-ready
+  ancestry: real (worktree HEAD is baseCommit dfeacd2; the result commit is its direct descendant)
+  workBranchPushed: wb-LIVEFIX02
   manualStepsRemaining:
-    - redeploy cloudfunctions/tianfu2 (npm install inside cloudfunctions/tianfu2 first)
-    - recreate the real-device smoke on cloud1-8glg1sird4d40bc0: first-ever createRunOffer on an empty
-      database must now return a runId, and the retry must return the same runId
-    - confirm all four collections exist before the smoke; a `-502005` naming `collection` is an unmet
-      prerequisite, not a product defect
-    - manual visual QA in WeChat DevTools — NOT performed in this task
+    - refresh the WeChat DevTools deployment workspace so it picks up the four newly committed files
+      (DevTools caches the package; an unrefreshed workspace will still report the old boot errors)
+    - confirm the two original DevTools errors are gone on a real compile, and that pages/start/start and
+      pages/game/game now render styled
+    - manual visual QA — NOT performed in this task
+    - resume the real cloud smoke that LIVEFIX01 unblocked
   caveats: |
-    WeChat DevTools writes `project.config.json`, `project.private.config.json`,
-    `miniprogram/pages/game/game.js` and `cloudfunctions/tianfu2/package-lock.json` into the worktree;
-    those are DevTools artefacts and were deliberately excluded from this commit. Inspect `git status`
-    before trusting any later digest-pinned regression.
+    One file in the worktree is a deployment artefact and was deliberately NOT committed:
+    `cloudfunctions/tianfu2/package-lock.json`, written by the documented `npm install` deployment step. The
+    originally untracked `miniprogram/pages/game/game.js` DevTools stub was overwritten by the byte-exact
+    mirror, so the committed `game.js` is now the real 1.0 engine.
 recommendedCommitMessage: |
-  LIVEFIX01: normalize real CloudBase empty-document reads and prove the empty-database first run
+  LIVEFIX02: close the whole MiniProgram package and gate it permanently
 
-  - add one narrow classifier plus one shared read helper in the CloudBase store, used by readRun and by
-    all four transactional read kinds (run, command receipt, bootstrap mapping, terminal receipt)
-  - never swallow a missing COLLECTION: it shares the -502005 ResourceNotFound family, so the discriminator
-    is the error shape and message, not the code
-  - make the fake CloudBase harness reject a missing-document read the way production does, and keep the
-    old empty-snapshot behaviour only as an explicit contrast mode
-  - prove empty four-collection first createRunOffer, same-bootstrap retry, first command settlement and
-    first terminal settlement, each exactly-once, plus 14 near-miss shapes that must stay fatal
-  - regenerate the cloud runtime once after source stabilised; freshness, dependency audit and smoke green
-  - document that all four collections may be empty and the first request creates its own documents
+  - mirror four root-level legacy files into miniprogramRoot byte-exactly, not just the two dispatched:
+    start/data.js, game/game.js, and the two page stylesheets whose templates use 74 and 101 static classes
+  - add a manifest-driven mirror tool with freshness check and write mode, so 1.0 semantics are preserved by
+    construction and drift is a gate rather than a convention
+  - add a static package-closure audit that reads miniprogramRoot from project.config.json and proves every
+    registered page has a committed Page(...) entry and the whole relative-require graph closes transitively
+    inside the root; a root-level file can never satisfy a package dependency
+  - wire the closure audit into the route guard as check I, so "v2-live is registered" implies "v2-live boots"
+  - re-pin the two UI04B digest pins that LIVEFIX01 left stale, with attribution, and stop the digest from
+    counting the package-lock.json that the documented npm install step writes

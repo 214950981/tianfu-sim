@@ -63,8 +63,23 @@ function treeDigestOf(relative) {
       const full = path.join(directory, entry.name);
       return entry.isDirectory() ? walk(full) : [full];
     });
+  // LIVEFIX02: `npm install` inside `cloudfunctions/tianfu2` is the DOCUMENTED deployment step, and npm
+  // writes `package-lock.json` next to the manifest it just installed. A filesystem walk counted it, so
+  // anyone who followed the deployment instructions could never pass this pin — the pin described the
+  // committed tree but measured the working tree.
+  //
+  // Dependency output is not product source, exactly like `node_modules` above, so it is skipped the same
+  // way. This is deliberately a rule about generated dependency artefacts, not a list of "known bad" files:
+  // a real source edit under `cloudfunctions/` still moves the digest, which is the whole point of the pin.
+  // A subprocess (`git ls-files`) would express this more precisely, but nested process spawn is unreliable
+  // in this sandbox (see TOOLING_RUNBOOK "Nested Node process EBUSY"), and a pin that depends on it would
+  // fail for environmental reasons. The companion WeChat DevTools stub
+  // (`miniprogram/pages/game/game.js`) no longer reaches this tree AND is now committed by LIVEFIX02, and
+  // the class of problem it represented is gated by tools/miniprogram-package-closure.mjs.
+  const isDependencyArtefact = (file) => path.basename(file) === "package-lock.json";
   const files = (fs.statSync(absolute).isDirectory() ? walk(absolute) : [absolute])
     .map((file) => path.relative(ROOT, file).replace(/\\/g, "/"))
+    .filter((file) => isDependencyArtefact(file) === false)
     .sort();
   const digest = createHash("sha256");
   for (const file of files) {
@@ -554,9 +569,23 @@ test("UI04B_scope: the trees UI02/UI02R1 do not already pin are untouched by thi
   // plus the createRunOffer bootstrap-projection repair, and the dev preview fixtures are regenerated
   // because the accepted terminal contract now projects a `dying` run as ENDING. The wire package and
   // the preview page manifest remain byte-identical.
+  // LIVEFIX01 re-pins `cloudfunctions` and the `server/src` cross-check, and both are the FIRST commits
+  // that change those trees since UI04FINAL. LIVEFIX01 added the narrow missing-document classifier to
+  // `server/src/cloudbase-store.ts` and regenerated the deployable runtime, so
+  // `cloudfunctions/tianfu2/runtime/server-cloudbase-store.js` legitimately changed with it. That commit was
+  // accepted without re-pinning, so both pins have been stale — attributed by recomputing each digest over
+  // `git archive` extractions of successive commits: both MATCH at 814f0b6 (UI04FINAL) and first DIVERGE at
+  // f8d5450 (LIVEFIX01), with an unchanged file count (41 and 10). Re-pinned here rather than deleted, so
+  // both trees stay guarded from LIVEFIX02 onward; the algorithm is unchanged, only the reviewed values moved.
+  // The wire package and the preview page manifest are still byte-identical to their original pins.
+  //
+  // LIVEFIX02 additionally re-pins nothing else: it touches no tree in this list. It changed how the digest is
+  // COMPUTED, because the documented `npm install` deployment step inside `cloudfunctions/tianfu2` writes an
+  // untracked `package-lock.json` that a filesystem walk counted, making this pin unpassable for anyone who
+  // followed the deployment instructions. See treeDigestOf above.
   const expected = {
     "packages/command-wire/src": "2ec21e2128bf742dea1e89993e10178c4dbade4623b9c7172e03a6711494352f",
-    cloudfunctions: "91a950ec700ac24e53b1971a808564374d7d60e3ba9c577b56c3f5eca3593206",
+    cloudfunctions: "b9e1e056077e3b9ffb004c9b548a0dcb07adccca88226798c101219c74005e80",
     "miniprogram/pages/v2-preview": "39ecf89849741cde926eaac8996b6f77c10d21da9b4affd03ad7665de2cd34a1",
     "miniprogram/pages/v2-preview/v2-preview.json": "b529428057cc32edcc20e4b340b84a680ca674fd9c3e4add8078015f0b02bdd1"
   };
@@ -564,5 +593,6 @@ test("UI04B_scope: the trees UI02/UI02R1 do not already pin are untouched by thi
     assert.equal(treeDigestOf(relative), digest, relative + " must be byte-equivalent to the UI04B task base");
   }
   // Cross-check the algorithm itself against a digest UI02R1 computed independently for the same tree.
-  assert.equal(treeDigestOf("server/src"), "cdcd8f567be31c5a16ec0ac1ed49a1f0731377de233b4573a03504cf0683903b");
+  // Re-pinned for the same LIVEFIX01 reason as `cloudfunctions` above; the file count is still 10.
+  assert.equal(treeDigestOf("server/src"), "39f0ec63a310ad9b4015dda32bc81ee3b6ccbf60f6e61229dc34e2092e3e61ab");
 });
