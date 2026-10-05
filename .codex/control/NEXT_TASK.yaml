@@ -1,50 +1,35 @@
 version: 1
-status: READY
-attempt: 1
-taskId: LIVEFIX03
-title: LIVEFIX03 — Legacy WXSS Recovery + Package Style Integrity Guard
-taskDefinition: .codex/tasks/LIVEFIX03.yaml
+status: HOLD
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-LIVEFIX03
-worktreeRequired: true
-allowSyntheticTreeBase: true
-basePolicy: remote-source-head-at-task-start
-verificationProfile: fast-lane
-executionProfile: credit-efficient
-execution:
-  readProtocolFirst: true
-  commitTaskResult: true
-  pushWorkBranch: true
-  updateSourceBranch: false
-  startNextTask: false
-  runAggregateNpmTest: false
-  run600Simulation: false
-  maxTypecheckRuns: 0
-  maxFullDedicatedSuiteRuns: 2
-  maxArtifactRegenerationRounds: 0
-  maxPushAttempts: 2
-  prohibitUnboundedRetryLoops: true
+reason: LIVEFIX03 accepted with caveats; waiting for real WeChat DevTools compile, visual QA, and live-cloud smoke before new implementation
 controllerReview:
-  previousTask: LIVEFIX02
-  previousStatus: ACCEPTED
-  acceptedResultCommit: 6514afa3229d602bbbc3cff086a10bb4af8d9de4
-realEnvironmentEvidence:
-  devToolsError: "pages/game/game.wxss(253:14): unexpected token"
-  repositoryFacts:
-    - root and miniprogram game.wxss are the same blob and both truncate at line 253
-    - main contains the same truncated blob
-    - path history has no complete remote revision before the truncation
-controllerDecision:
-  strategy: recover-or-reconstruct-source-then-add-style-integrity-gate
-  rationale: this is historical source corruption, not a mirror defect; repair the source of truth and permanently detect fresh-but-invalid WXSS without paying full-regression cost
-controllerIntent:
-  mode: FAST_LANE_LIVE_FIX
-  goal: restore a syntactically complete legacy game stylesheet and make package style integrity mechanically testable
-  postTask: controller reviews wb-LIVEFIX03; if accepted merge and immediately resume DevTools compile/smoke
+  previousTask: LIVEFIX03
+  previousStatus: ACCEPTED_WITH_CAVEATS
+  acceptedResultCommit: 6a1266dcb03415396f833b26f80cf273b7c7ec39
+manualGate:
+  mode: REAL_DEVTOOLS_COMPILE_VISUAL_LIVE_SMOKE
+  expensiveRegressionAllowed: false
+  requiredSteps:
+    - synchronize the DevTools workspace to current dev/tianfu-2.0
+    - clear all DevTools caches
+    - compile
+    - verify the old game.wxss line-253 compile error is gone
+    - visually inspect start and game pages for missing styles, blank surfaces, or obvious layout breakage
+    - open pages/v2-live/v2-live and retry the deployed tianfu2 live flow
+    - return either a successful screen or the first new real error
+  forbiddenDuringSmoke:
+    - aggregate npm test
+    - typecheck
+    - 600-run simulation
+    - full UI04 regression
+    - speculative code fixes before capturing the first real error
+caveats:
+  - game.wxss suffix is RECONSTRUCTED, not historically recovered
+  - repository has no real WXSS compiler; DevTools compile remains authoritative
+  - tests/livefix03.test.mjs is not yet in aggregate npm test; real-file protection still runs through route-guard/UI04C
+execution:
+  workBuddyMayImplement: false
+  startNextTask: false
 notes:
-  - Run node .codex/context.mjs LIVEFIX03 once.
-  - Search only Tianfu-specific local recovery locations before reconstructing. Do not wander the whole disk.
-  - Never patch only miniprogram/pages/game/game.wxss; repair root source then use the mirror tool.
-  - If no exact historical source is found, say RECONSTRUCTED plainly in LAST_RESULT.
-  - No aggregate npm test, no typecheck, no 600-run, no UI04 full regression.
-  - Use the global autonomous Git delivery mechanism for final branch delivery.
+  - Do not create a new coding branch for this smoke.
+  - If smoke fails, stop after capturing the first real error and return to Controller.

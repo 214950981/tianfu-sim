@@ -9,7 +9,7 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `6514afa3229d602bbbc3cff086a10bb4af8d9de4`
+- lastReviewedCommit: `6a1266dcb03415396f833b26f80cf273b7c7ec39`
 - reviewedDate: `2026-09-25`
 - ui04FinalWorkBranch: `wb-UI04FINAL`（Controller 已验收并 fast-forward 到 dev）
 
@@ -74,6 +74,7 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - UI04FINAL: PASS（UI04 里程碑终审；aggregate 回归 + UI04E-R2/R1/UI04E/UI04D/UI04C/UI04B/UI04A/UI03/UI02 + 生成物/依赖/路由/类型/lint/secret/content/context/phase2-drift 全绿）
 - LIVEFIX01: PASS（Controller 已验收；真实 CloudBase 空集合首次读取语义、空库首局创建、bootstrap/command/terminal 幂等与云运行时回归通过）
 - LIVEFIX02: PASS（Controller 已验收；miniprogramRoot 页面/相对依赖闭包、4 个 legacy mirror、永久 package-closure gate 与 route guard 集成通过）
+- LIVEFIX03: PASS WITH CAVEATS（Controller 已验收；历史截断 game.wxss 以 RECONSTRUCTED 方式补全并加入 WXSS integrity gate。非历史恢复，仍需真实 DevTools 编译与视觉验收）
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
 
@@ -419,12 +420,36 @@ DevTools 构建下编译通过——那仍然是人的 DevTools pass。`tools/wx
 
 ## Next
 
-LIVEFIX03 已交付待验收。Controller 验收 `wb-LIVEFIX03` 后**立即**回到 DevTools 编译/smoke，
-不要继续功能开发。
+LIVEFIX03 已由 Controller 验收并 fast-forward 合入 `dev/tianfu-2.0`，accepted result commit：
+`6a1266dcb03415396f833b26f80cf273b7c7ec39`。
 
-人工步骤：用微信开发者工具打开项目，先「清缓存 → 全部清除」，再编译。
-`pages/game/game.wxss(253:14): unexpected token` 必须消失；下一个编译或运行时报错请逐字回报。
-## 新 Codex 会话 / 账号接手步骤
+验收结论：**PASS WITH CAVEATS**。
+
+已确认：
+- `pages/game/game.wxss` 的旧损坏前缀在新文件中完整保留，修复为严格追加；
+- `pages/game/game.wxss` 与 `miniprogram/pages/game/game.wxss` 为同一个 Git blob；
+- 新 WXSS integrity gate 已接入 route-guard，未来 UI04C 常规回归会检查真实包样式结构；
+- LIVEFIX03 19/19、WXSS integrity、mirror、package closure、route guard、UI04B、lint、secret scan 均 PASS；
+- 未跑 aggregate / typecheck / 600-run / UI04 full regression，符合 fast-lane 约束。
+
+重要 caveats：
+1. 这 662 行后缀是 **RECONSTRUCTED**，不是从历史完整原稿恢复；结构与现有 WXML/JS 对齐，但视觉正确性没有历史真值可比，必须由真实 DevTools + 人眼验证。
+2. 仓库内没有 WXSS 编译器，当前 gate 只能证明结构完整，不能替代微信 DevTools 真编译。
+3. `tests/livefix03.test.mjs` 当前有独立 script，但尚未加入 aggregate `npm test`；实际 WXSS integrity 已通过 route-guard 间接进入 UI04C 常规回归，因此当前不是 blocker。后续 final-audit/测试编排维护时应把 dedicated suite 纳入 aggregate，避免 audit 算法负控只在专用测试里运行。
+4. 本轮为了找历史原稿扫描了约 1.4G DevTools cache，结果证明该位置不保存可恢复源码；未来同类任务不要再为此消耗预算。
+
+当前重新进入 **REAL DEVTOOLS COMPILE / VISUAL / LIVE-CLOUD SMOKE HOLD**。不要继续写新功能。
+
+下一步只做真实环境验证：
+1. 将 DevTools 工作区同步到最新 accepted dev；
+2. 清缓存 → 全部清除；
+3. 重新编译；
+4. 确认 `pages/game/game.wxss(253:14): unexpected token` 消失；
+5. 检查 start/game 页面是否正常有样式、无空白/明显错位；
+6. 进入 `pages/v2-live/v2-live`，继续真实 `tianfu2` 调用；
+7. 成功则截图；失败则只记录第一个新的真实错误并交给 Controller。
+
+本轮 HOLD 禁止 aggregate、typecheck、600-run、UI04 全量回归。## 新 Codex 会话 / 账号接手步骤
 
 1. 确认当前 branch = `dev/tianfu-2.0`。
 2. 查看 `git status`。

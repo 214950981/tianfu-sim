@@ -188,3 +188,15 @@ This is non-blocking for the accepted four current mirrors, which are byte-ident
 LIVEFIX03 was triggered because LIVEFIX02 correctly proved a byte-exact mirror was fresh while the root source itself was historically truncated. A mirror gate answers 'target equals source'; it does not answer 'source is syntactically complete'.
 
 For MiniProgram style assets, pair mirror freshness with a syntax/integrity gate that at minimum catches EOF inside a rule/declaration, unbalanced braces/parentheses/quotes/comments, and malformed property values caused by truncation.
+
+## Reconstructed legacy assets require human visual acceptance
+
+LIVEFIX03 repaired a historically truncated stylesheet by reconstruction because no complete source existed in Git, local refs, worktrees or project-specific recovery locations. Static structure/class coverage can prove consistency with current markup, but cannot prove historical visual fidelity.
+
+When an asset is RECONSTRUCTED rather than RECOVERED, keep that distinction explicit and require real platform compile + human visual QA before treating the UI as fully accepted.
+
+Also avoid repeating broad DevTools cache scans for source recovery: LIVEFIX03 scanned about 1.4G of Local/Roaming DevTools cache without finding project source, establishing that cache location as low-value for future recovery attempts.
+
+## Dedicated audit tests and aggregate coverage
+
+A production-facing gate integrated into a routinely-run suite can protect the real current files, but the gate's own negative controls are only protected when its dedicated test suite also participates in a broader final/aggregate test plan. LIVEFIX03 currently relies on UI04C route-guard integration for routine real-file coverage while its dedicated negative-control suite remains separate. Add it to aggregate orchestration during the next test-plan maintenance/final-audit update rather than creating a standalone micro-task.
