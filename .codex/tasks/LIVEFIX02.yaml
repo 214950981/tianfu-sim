@@ -1,0 +1,38 @@
+id: LIVEFIX02
+title: LIVEFIX02 — MiniProgram Package Closure + DevTools Boot Smoke
+phase: 2
+verificationProfile: fast-lane
+executionProfile: credit-efficient
+requiredContracts: [.codex/contracts/ui.ref,.codex/contracts/platform.ref,.codex/contracts/crosslayer.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [project.config.json,miniprogram/app.json,miniprogram/pages/start/start.js,pages/start/data.js,miniprogram/pages/game/game_data.js,pages/game/game.js,miniprogram/pages/rank/rank.js,miniprogram/pages/v2-live/v2-live.js,tools/route-guard.mjs,package.json]
+allowedScope:
+  - make the committed miniprogram/ tree a closed runtime package for every page registered by miniprogram/app.json
+  - fix the confirmed missing start-page dependency: miniprogram/pages/start/start.js requires ./data.js but miniprogram/pages/start/data.js is absent
+  - fix the confirmed missing game page entry: miniprogram/app.json registers pages/game/game but miniprogram/pages/game/game.js is absent
+  - preserve legacy 1.0 behaviour; the purpose is packaging/boot completeness, not rewriting legacy page logic
+  - when bringing legacy runtime files under miniprogramRoot, preserve exact legacy semantics; do not modernize or rebalance 1.0 code
+  - prefer a deterministic mirror/sync manifest or small tool for legacy source files that must exist under miniprogramRoot, with freshness check and write mode
+  - add a static MiniProgram package-closure audit that reads project.config.json and miniprogram/app.json and verifies every registered page has an executable page entry and every literal relative require/import reachable from committed MiniProgram JS resolves inside miniprogramRoot
+  - audit must fail on a missing page entry and a missing relative dependency; add negative controls for both confirmed defects
+  - do not treat files outside miniprogramRoot as satisfying a MiniProgram dependency
+  - extend route/packaging smoke so pages/v2-live/v2-live remains registered only after full page-module closure is valid
+  - keep root-level legacy pages intact unless mirror metadata requires otherwise; do not delete or move stable 1.0 sources
+  - do not change miniprogram/app.json first page or tabBar ordering
+  - do not touch cloudfunctions/tianfu2, server, Core, Content, gameplay rules, database collections or live RPC semantics
+  - add one dedicated LIVEFIX02 test/tool suite and package script registration
+  - run existing route guard, UI04C/UI04B smoke and client runtime audits directly affected by MiniProgram packaging
+  - update docs/dev-status and LAST_RESULT with real DevTools provenance and permanent package-closure rule
+forbiddenScope: [gameplay-change,Core-change,Content-change,server-change,cloudfunction-change,database-change,default-route-replacement,tabBar-change,legacy-1.0-behavior-rewrite,UI-redesign,production-feature-work,aggregate-npm-test,600-run,unbounded-push-retry,.workbuddy-commit,source-branch-push]
+accept:
+  - miniprogram/pages/start/data.js exists inside miniprogramRoot and satisfies start.js relative require without reaching outside package
+  - miniprogram/pages/game/game.js exists inside miniprogramRoot and registered game page no longer depends on a DevTools-generated stub
+  - every miniprogram/app.json page has a valid committed page entry
+  - every literal relative JS dependency reachable from MiniProgram package resolves inside miniprogramRoot
+  - package-closure negative controls catch missing-start-data and missing-game-entry
+  - mirrored legacy files have one documented source of truth and freshness proof if sync tooling is used
+  - v2-live remains registered and route-guard/client-runtime/UI04C packaging regressions stay green
+  - no server/cloud/gameplay/content/default-route/tabBar scope drift
+  - resourceUsage respects credit-efficient bounds and delivery uses global autonomous Git delivery
+tests: [livefix02,miniprogram-package-closure,route-guard,ui04c,ui04b-smoke,client-runtime-dependency-audit,lint,secret-scan]

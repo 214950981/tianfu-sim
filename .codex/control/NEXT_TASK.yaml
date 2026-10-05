@@ -1,32 +1,56 @@
 version: 1
-status: HOLD
+status: READY
+attempt: 1
+taskId: LIVEFIX02
+title: LIVEFIX02 — MiniProgram Package Closure + DevTools Boot Smoke
+taskDefinition: .codex/tasks/LIVEFIX02.yaml
 sourceBranch: dev/tianfu-2.0
-reason: LIVEFIX01 accepted; waiting for tianfu2 redeploy and real CloudBase empty-database smoke
+workBranch: wb-LIVEFIX02
+worktreeRequired: true
+allowSyntheticTreeBase: true
+basePolicy: remote-source-head-at-task-start
+verificationProfile: fast-lane
+executionProfile: credit-efficient
+execution:
+  readProtocolFirst: true
+  commitTaskResult: true
+  pushWorkBranch: true
+  updateSourceBranch: false
+  startNextTask: false
+  runAggregateNpmTest: false
+  rerunKnownSandboxBaseline: false
+  run600Simulation: false
+  maxFullDedicatedSuiteRuns: 2
+  maxTypecheckRuns: 0
+  maxArtifactRegenerationRounds: 1
+  maxPushAttempts: 2
+  preferTargetedTestNamePattern: true
+  prohibitUnboundedRetryLoops: true
 controllerReview:
   previousTask: LIVEFIX01
   previousStatus: ACCEPTED
   acceptedResultCommit: f8d5450f847f3629dc8728d678a12c3f56ae76ec
-manualGate:
-  cloudEnvironment: cloud1-8glg1sird4d40bc0
-  requiredFunction: tianfu2
-  requiredCollections:
-    - tianfu2_runs
-    - tianfu2_commands
-    - tianfu2_bootstraps
-    - tianfu2_terminal_transitions
-  expectedFirstUse:
-    - all four collections may be empty
-    - first createRunOffer creates exactly one run document and one bootstrap mapping
-    - response contains a non-empty runId
-  steps:
-    - install dependencies in cloudfunctions/tianfu2 if needed
-    - redeploy tianfu2 with cloud-side dependency installation
-    - confirm all four collections exist in cloud1-8glg1sird4d40bc0
-    - retry pages/v2-live
-    - return successful first screen or next real cloud error evidence to Controller
-execution:
-  workBuddyMayRun: false
-  startNextTask: false
+realEnvironmentEvidence:
+  devToolsErrors:
+    - "module 'pages/start/data.js' is not defined, require args is './data.js'"
+    - "Page 'pages/v2-live/v2-live' has not been registered yet"
+  confirmedRepositoryGaps:
+    - miniprogram/pages/start/start.js requires ./data.js but miniprogram/pages/start/data.js is absent
+    - miniprogram/app.json registers pages/game/game but miniprogram/pages/game/game.js is absent
+    - corresponding legacy source files exist only outside miniprogramRoot
+controllerDecision:
+  strategy: close-the-entire-miniprogram-package-not-one-file
+  rationale: fix the real boot blocker and add a permanent static closure gate so DevTools cannot hide future missing package files with local stubs
+controllerIntent:
+  mode: FAST_LANE_LIVE_FIX
+  goal: make committed miniprogramRoot self-contained and bootable before resuming real cloud smoke
+  postTask: controller reviews wb-LIVEFIX02; if accepted merge and HOLD for deployment-workspace refresh plus DevTools compile/smoke
 notes:
-  - This HOLD is for real-environment verification after an accepted server fix.
-  - Do not dispatch new feature work until the first-run smoke succeeds or exposes a new production defect.
+  - Run node .codex/context.mjs LIVEFIX02 once.
+  - Do not solve this by manually copying one file and stopping. Audit the full registered MiniProgram package closure.
+  - Do not rely on root-level pages to satisfy files under miniprogramRoot.
+  - Preserve 1.0 semantics exactly. Packaging is the target, not legacy rewrite.
+  - Treat historical untracked miniprogram/pages/game/game.js DevTools stub as evidence to close, not a file to commit blindly.
+  - No cloud runtime regeneration is needed because server/cloud source is forbidden.
+  - Use the global autonomous Git delivery skill/broker for final delivery; do not spend model turns looping push attempts.
+  - Do not commit .workbuddy paths.

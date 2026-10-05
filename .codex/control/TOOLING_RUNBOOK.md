@@ -168,3 +168,11 @@ Real WeChat CloudBase differs from the original fake DB used by UI04D tests: `co
 Important: `-502005` is not sufficient by itself to mean an empty document. The same broad ResourceNotFound family was also observed for a missing collection. A compatibility layer must distinguish a missing-document read from a missing collection and from permission/network/transaction errors. Only the exact missing-document case may be normalized to `undefined`.
 
 Cloud harnesses for persistence code should emulate the real missing-document rejection path, not only return `{data: undefined}`. Keep a negative control proving collection-not-found remains fatal.
+
+## MiniProgram root must be a closed runtime package
+
+Real DevTools smoke exposed that project.config.json points at miniprogram/, while some registered pages inside that root referenced or depended on files that existed only in legacy root-level pages/.
+
+A file outside miniprogramRoot cannot satisfy a MiniProgram runtime require(). Every registered page entry and every literal relative dependency reachable from the MiniProgram package must exist inside miniprogramRoot.
+
+DevTools creating an untracked page stub such as miniprogram/pages/game/game.js can indicate a missing committed page entry, not merely editor pollution. Prefer a static package-closure audit over trusting synthesized local files.

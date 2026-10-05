@@ -345,20 +345,24 @@ Full regression：264 / 264 PASS；全部 reported audits PASS。
 
 ## Next
 
-LIVEFIX01 已由 Controller 验收并 fast-forward 合入 `dev/tianfu-2.0`，accepted result commit：
-`f8d5450f847f3629dc8728d678a12c3f56ae76ec`。
+LIVEFIX01 remains accepted. The next real-device attempt exposed a separate MiniProgram packaging/boot defect before the live cloud path could be exercised.
 
-当前重新进入 **人工云部署 / 真机 smoke HOLD**，不派新的 WorkBuddy 代码任务。
+Observed WeChat DevTools errors:
+- module 'pages/start/data.js' is not defined, require args is './data.js';
+- Page "pages/v2-live/v2-live" has not been registered yet.
 
-下一步人工 gate：
-1. 在 `cloudfunctions/tianfu2` 安装依赖；
-2. 重新上传并部署 `tianfu2`，选择云端安装依赖；
-3. 保持四个集合存在且允许为空：`tianfu2_runs`、`tianfu2_commands`、`tianfu2_bootstraps`、`tianfu2_terminal_transitions`；
-4. 回到 `pages/v2-live` 点击“重新连接”；
-5. 预期首次空库 `createRunOffer` 现在应直接创建 1 条 run + 1 条 bootstrap mapping 并返回有效 runId；
-6. 把成功首屏或新的真实云错误截图交给 Controller。
+Repository facts confirm this is real packaging drift inside miniprogramRoot:
+- project.config.json declares miniprogramRoot = miniprogram/;
+- miniprogram/pages/start/start.js requires ./data.js, but miniprogram/pages/start/data.js is absent;
+- legacy source pages/start/data.js exists outside miniprogramRoot and cannot satisfy the runtime require;
+- miniprogram/app.json registers pages/game/game, but miniprogram/pages/game/game.js is absent while legacy pages/game/game.js exists outside miniprogramRoot;
+- DevTools has repeatedly created an untracked miniprogram/pages/game/game.js stub, now understood as a package-closure symptom rather than random pollution.
 
-在这次真实 smoke 之前，不继续新功能开发。## 新 Codex 会话 / 账号接手步骤
+Current task: LIVEFIX02 — MiniProgram Package Closure + DevTools Boot Smoke.
+
+Goal: make the committed miniprogram/ tree self-contained for every registered page and literal relative require(), then add a permanent package-closure gate. Do not touch gameplay/server/cloud semantics.
+
+After LIVEFIX02 passes, Controller will merge it and return to manual HOLD for deployment-workspace refresh, DevTools recompile, and the same real cloud smoke.## 新 Codex 会话 / 账号接手步骤
 
 1. 确认当前 branch = `dev/tianfu-2.0`。
 2. 查看 `git status`。
