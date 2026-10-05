@@ -9,7 +9,7 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `f8d5450f847f3629dc8728d678a12c3f56ae76ec`
+- lastReviewedCommit: `6514afa3229d602bbbc3cff086a10bb4af8d9de4`
 - reviewedDate: `2026-09-25`
 - ui04FinalWorkBranch: `wb-UI04FINAL`（Controller 已验收并 fast-forward 到 dev）
 
@@ -73,6 +73,7 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - UI04E: PASS（随 UI04FINAL 一次性验收；终端链路 ENDING → LIFE_BOOK → REBIRTH_RESULT → NEXT_LIFE → 显式开启下一世 → 全新 DESTINY_OFFER，并修复 createRunOffer bootstrap 恢复丢弃 terminal sidecar 的缺陷）
 - UI04FINAL: PASS（UI04 里程碑终审；aggregate 回归 + UI04E-R2/R1/UI04E/UI04D/UI04C/UI04B/UI04A/UI03/UI02 + 生成物/依赖/路由/类型/lint/secret/content/context/phase2-drift 全绿）
 - LIVEFIX01: PASS（Controller 已验收；真实 CloudBase 空集合首次读取语义、空库首局创建、bootstrap/command/terminal 幂等与云运行时回归通过）
+- LIVEFIX02: PASS（Controller 已验收；miniprogramRoot 页面/相对依赖闭包、4 个 legacy mirror、永久 package-closure gate 与 route guard 集成通过）
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
 
@@ -345,24 +346,22 @@ Full regression：264 / 264 PASS；全部 reported audits PASS。
 
 ## Next
 
-LIVEFIX01 remains accepted. The next real-device attempt exposed a separate MiniProgram packaging/boot defect before the live cloud path could be exercised.
+LIVEFIX02 已由 Controller 验收并 fast-forward 合入 `dev/tianfu-2.0`，accepted result commit：
+`6514afa3229d602bbbc3cff086a10bb4af8d9de4`。
 
-Observed WeChat DevTools errors:
-- module 'pages/start/data.js' is not defined, require args is './data.js';
-- Page "pages/v2-live/v2-live" has not been registered yet.
+代码侧结论：PASS。下一步不是继续开发，而是一次真实 WeChat DevTools boot/live smoke，先证明刚修的包闭包和 LIVEFIX01 云端路径在真实环境共同成立。
 
-Repository facts confirm this is real packaging drift inside miniprogramRoot:
-- project.config.json declares miniprogramRoot = miniprogram/;
-- miniprogram/pages/start/start.js requires ./data.js, but miniprogram/pages/start/data.js is absent;
-- legacy source pages/start/data.js exists outside miniprogramRoot and cannot satisfy the runtime require;
-- miniprogram/app.json registers pages/game/game, but miniprogram/pages/game/game.js is absent while legacy pages/game/game.js exists outside miniprogramRoot;
-- DevTools has repeatedly created an untracked miniprogram/pages/game/game.js stub, now understood as a package-closure symptom rather than random pollution.
+人工/本地 smoke gate（低成本，不跑大回归）：
+1. 让 DevTools 使用包含 accepted LIVEFIX02 的最新 dev 工作区；不要继续使用停在旧 commit 的工作区缓存；
+2. 只运行/确认 `node tools/miniprogram-package-mirror.mjs`、`node tools/miniprogram-package-closure.mjs`、`node tools/route-guard.mjs` 三个快速 gate；
+3. 微信 DevTools 重新编译，确认不再出现 `pages/start/data.js is not defined` 和 `v2-live has not been registered yet`；
+4. 打开 start/game，确认页面不是裸样式或空白 stub；
+5. 进入 `pages/v2-live/v2-live` 并重试真实 `tianfu2` 云调用，继续 LIVEFIX01 的 empty-database smoke；
+6. 把成功画面或新的首个真实错误交给 Controller。
 
-Current task: LIVEFIX02 — MiniProgram Package Closure + DevTools Boot Smoke.
+暂不运行 aggregate npm test、600-run、typecheck 或整条 UI04 回归；这些在本轮没有新增价值。
 
-Goal: make the committed miniprogram/ tree self-contained for every registered page and literal relative require(), then add a permanent package-closure gate. Do not touch gameplay/server/cloud semantics.
-
-After LIVEFIX02 passes, Controller will merge it and return to manual HOLD for deployment-workspace refresh, DevTools recompile, and the same real cloud smoke.## 新 Codex 会话 / 账号接手步骤
+非阻塞维护债务：`tools/miniprogram-package-mirror.mjs` 的注释声称能发现 manifest 删除后遗留的任意旧 mirror target，但当前实现并未枚举/扫描这类未列 target。当前 4 个 manifest target 均已正确且 byte-identical，不影响 LIVEFIX02 验收；后续维护工具时再修，不为此阻断实机 smoke。## 新 Codex 会话 / 账号接手步骤
 
 1. 确认当前 branch = `dev/tianfu-2.0`。
 2. 查看 `git status`。

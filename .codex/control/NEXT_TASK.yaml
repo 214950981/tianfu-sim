@@ -1,56 +1,34 @@
 version: 1
-status: READY
-attempt: 1
-taskId: LIVEFIX02
-title: LIVEFIX02 — MiniProgram Package Closure + DevTools Boot Smoke
-taskDefinition: .codex/tasks/LIVEFIX02.yaml
+status: HOLD
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-LIVEFIX02
-worktreeRequired: true
-allowSyntheticTreeBase: true
-basePolicy: remote-source-head-at-task-start
-verificationProfile: fast-lane
-executionProfile: credit-efficient
-execution:
-  readProtocolFirst: true
-  commitTaskResult: true
-  pushWorkBranch: true
-  updateSourceBranch: false
-  startNextTask: false
-  runAggregateNpmTest: false
-  rerunKnownSandboxBaseline: false
-  run600Simulation: false
-  maxFullDedicatedSuiteRuns: 2
-  maxTypecheckRuns: 0
-  maxArtifactRegenerationRounds: 1
-  maxPushAttempts: 2
-  preferTargetedTestNamePattern: true
-  prohibitUnboundedRetryLoops: true
+reason: LIVEFIX02 accepted; waiting for real WeChat DevTools boot + live-cloud smoke before any new implementation
 controllerReview:
-  previousTask: LIVEFIX01
+  previousTask: LIVEFIX02
   previousStatus: ACCEPTED
-  acceptedResultCommit: f8d5450f847f3629dc8728d678a12c3f56ae76ec
-realEnvironmentEvidence:
-  devToolsErrors:
-    - "module 'pages/start/data.js' is not defined, require args is './data.js'"
-    - "Page 'pages/v2-live/v2-live' has not been registered yet"
-  confirmedRepositoryGaps:
-    - miniprogram/pages/start/start.js requires ./data.js but miniprogram/pages/start/data.js is absent
-    - miniprogram/app.json registers pages/game/game but miniprogram/pages/game/game.js is absent
-    - corresponding legacy source files exist only outside miniprogramRoot
-controllerDecision:
-  strategy: close-the-entire-miniprogram-package-not-one-file
-  rationale: fix the real boot blocker and add a permanent static closure gate so DevTools cannot hide future missing package files with local stubs
-controllerIntent:
-  mode: FAST_LANE_LIVE_FIX
-  goal: make committed miniprogramRoot self-contained and bootable before resuming real cloud smoke
-  postTask: controller reviews wb-LIVEFIX02; if accepted merge and HOLD for deployment-workspace refresh plus DevTools compile/smoke
+  acceptedResultCommit: 6514afa3229d602bbbc3cff086a10bb4af8d9de4
+manualGate:
+  mode: REAL_DEVTOOLS_SMOKE
+  expensiveRegressionAllowed: false
+  quickChecks:
+    - node tools/miniprogram-package-mirror.mjs
+    - node tools/miniprogram-package-closure.mjs
+    - node tools/route-guard.mjs
+  expectedBoot:
+    - no pages/start/data.js missing-module error
+    - no pages/v2-live/v2-live not-registered error
+    - pages/start/start renders with styles
+    - pages/game/game is a real committed page, not a DevTools stub
+    - pages/v2-live/v2-live can reach the deployed tianfu2 function
+  forbiddenDuringSmoke:
+    - aggregate npm test
+    - 600-run simulation
+    - typecheck
+    - full UI04 regression
+execution:
+  workBuddyMayImplement: false
+  startNextTask: false
 notes:
-  - Run node .codex/context.mjs LIVEFIX02 once.
-  - Do not solve this by manually copying one file and stopping. Audit the full registered MiniProgram package closure.
-  - Do not rely on root-level pages to satisfy files under miniprogramRoot.
-  - Preserve 1.0 semantics exactly. Packaging is the target, not legacy rewrite.
-  - Treat historical untracked miniprogram/pages/game/game.js DevTools stub as evidence to close, not a file to commit blindly.
-  - No cloud runtime regeneration is needed because server/cloud source is forbidden.
-  - Use the global autonomous Git delivery skill/broker for final delivery; do not spend model turns looping push attempts.
-  - Do not commit .workbuddy paths.
+  - First synchronize the DevTools workspace to the accepted dev commit; do not edit product code.
+  - Use only the three quick package/route gates before opening DevTools.
+  - If smoke succeeds, report success and stop. If it fails, capture the first real error and stop; do not start speculative fixes.
+  - The mirror tool has a non-blocking stale-unlisted-target detection caveat recorded in TOOLING_RUNBOOK; do not create a repair task for it during smoke.

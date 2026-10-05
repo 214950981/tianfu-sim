@@ -176,3 +176,9 @@ Real DevTools smoke exposed that project.config.json points at miniprogram/, whi
 A file outside miniprogramRoot cannot satisfy a MiniProgram runtime require(). Every registered page entry and every literal relative dependency reachable from the MiniProgram package must exist inside miniprogramRoot.
 
 DevTools creating an untracked page stub such as miniprogram/pages/game/game.js can indicate a missing committed page entry, not merely editor pollution. Prefer a static package-closure audit over trusting synthesized local files.
+
+## MiniProgram mirror manifest caveat
+
+LIVEFIX02's current mirror tool correctly enforces freshness for all entries present in MIRROR_MANIFEST. Its comment also claims it detects an arbitrary old mirror target left behind after removing a manifest entry, but the current implementation does not enumerate historical/unlisted targets, so that specific promise is not yet mechanically enforced.
+
+This is non-blocking for the accepted four current mirrors, which are byte-identical to their sources and covered by the package-closure audit. If mirror-manifest maintenance is revisited, either implement explicit target discovery/ownership metadata or narrow the comment to the behavior actually enforced.
