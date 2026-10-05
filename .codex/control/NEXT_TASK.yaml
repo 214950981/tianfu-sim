@@ -1,35 +1,56 @@
 version: 1
-status: HOLD
+status: READY
+attempt: 1
+taskId: LIVEFIX04
+title: LIVEFIX04 — CloudBase errCode=-1 Missing-Document Shape
+taskDefinition: .codex/tasks/LIVEFIX04.yaml
 sourceBranch: dev/tianfu-2.0
-reason: LIVEFIX03 accepted with caveats; waiting for real WeChat DevTools compile, visual QA, and live-cloud smoke before new implementation
+workBranch: wb-LIVEFIX04
+worktreeRequired: true
+allowSyntheticTreeBase: true
+basePolicy: remote-source-head-at-task-start
+verificationProfile: fast-lane
+executionProfile: credit-efficient
+execution:
+  readProtocolFirst: true
+  commitTaskResult: true
+  pushWorkBranch: true
+  updateSourceBranch: false
+  startNextTask: false
+  runAggregateNpmTest: false
+  run600Simulation: false
+  maxTypecheckRuns: 0
+  maxFullDedicatedSuiteRuns: 2
+  maxArtifactRegenerationRounds: 1
+  maxPushAttempts: 2
+  prohibitUnboundedRetryLoops: true
 controllerReview:
   previousTask: LIVEFIX03
-  previousStatus: ACCEPTED_WITH_CAVEATS
+  previousStatus: ACCEPTED_WITH_CAVEATS_AND_SMOKE_PARTIAL_PASS
   acceptedResultCommit: 6a1266dcb03415396f833b26f80cf273b7c7ec39
-manualGate:
-  mode: REAL_DEVTOOLS_COMPILE_VISUAL_LIVE_SMOKE
-  expensiveRegressionAllowed: false
-  requiredSteps:
-    - synchronize the DevTools workspace to current dev/tianfu-2.0
-    - clear all DevTools caches
-    - compile
-    - verify the old game.wxss line-253 compile error is gone
-    - visually inspect start and game pages for missing styles, blank surfaces, or obvious layout breakage
-    - open pages/v2-live/v2-live and retry the deployed tianfu2 live flow
-    - return either a successful screen or the first new real error
-  forbiddenDuringSmoke:
-    - aggregate npm test
-    - typecheck
-    - 600-run simulation
-    - full UI04 regression
-    - speculative code fixes before capturing the first real error
-caveats:
-  - game.wxss suffix is RECONSTRUCTED, not historically recovered
-  - repository has no real WXSS compiler; DevTools compile remains authoritative
-  - tests/livefix03.test.mjs is not yet in aggregate npm test; real-file protection still runs through route-guard/UI04C
-execution:
-  workBuddyMayImplement: false
-  startNextTask: false
+realEnvironmentEvidence:
+  devTools:
+    startPage: PASS
+    gamePage: PASS
+    previousWxssCompileErrorGone: true
+    v2LiveReachedCloud: true
+  cloudFunction:
+    function: tianfu2
+    observedErrCode: -1
+    observedErrMsg: "document.get:fail document with _id 3ce20f6c196afe9afe03504165d51dcf does not exist"
+    clientSymptom: "createRunOffer result.runId must be a non-empty string"
+controllerDecision:
+  strategy: add-one-exact-real-sdk-shape-without-broadening-fail-closed-boundary
+  rationale: production evidence proves the same benign missing-document condition can be wrapped as generic -1, so code alone is unstable; exact operation+subject+id+absence evidence is required
+controllerIntent:
+  mode: FAST_LANE_LIVE_FIX
+  goal: make empty-database first run succeed on the exact current CloudBase runtime without masking operational errors
+  postTask: controller reviews wb-LIVEFIX04; if accepted merge, redeploy only tianfu2, then repeat v2-live smoke
 notes:
-  - Do not create a new coding branch for this smoke.
-  - If smoke fails, stop after capturing the first real error and return to Controller.
+  - Run node .codex/context.mjs LIVEFIX04 once.
+  - This is a narrow persistence-boundary compatibility task. Do not touch client/UI.
+  - Do not accept generic errCode -1. Match the exact observed document.get:fail shape with deterministic 32-hex id.
+  - Keep all LIVEFIX01 negative controls and add new -1 near-misses.
+  - Regenerate cloud runtime once, after source stabilises.
+  - No aggregate npm test, no typecheck, no 600-run, no UI04 full regression.
+  - Use global autonomous Git delivery for final branch delivery.

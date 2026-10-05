@@ -1,0 +1,36 @@
+id: LIVEFIX04
+title: LIVEFIX04 — CloudBase errCode=-1 Missing-Document Shape
+phase: 2
+verificationProfile: fast-lane
+executionProfile: credit-efficient
+requiredContracts: [.codex/contracts/platform.ref,.codex/contracts/crosslayer.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [server/src/cloudbase-store.ts,tests/livefix01.test.mjs,tools/ui04d-cloud-harness.mjs,cloudfunctions/tianfu2/runtime/server-cloudbase-store.js,tools/ui04d-cloud-runtime-artifact.mjs,docs/UI04D_CLOUD_BACKEND.md]
+allowedScope:
+  - add support for the exact real CloudBase missing-document shape observed on 2026-10-05: errCode/code -1 plus `document.get:fail document with _id <32-hex> does not exist`
+  - keep the classifier narrow: require the `document.get:fail` operation prefix, the document `_id` subject, a 32-hex deterministic id, and an absence claim; generic -1 must never be normalized
+  - accept numeric -1 and string `-1` only for that exact shape
+  - preserve the existing accepted LIVEFIX01 shapes and all existing fail-closed semantics
+  - explicitly reject near-miss `-1` errors for collection missing, permission denied, timeout/network, transaction conflict, malformed document messages, wrong id length/non-hex ids, and other operations such as collection.get
+  - update the fake CloudBase harness with a selectable missing-document error shape so tests can run the original LIVEFIX01 shape and the new production errCode=-1 shape against the same store/service/host
+  - prove all four store read kinds normalize the new exact shape to undefined without weakening missing-collection behavior
+  - prove a completely empty four-collection database can create the first run/bootstrap under the new exact production shape and the same bootstrap retry remains exactly-once
+  - prove the deployed host harness returns a non-empty runId under the new shape
+  - regenerate cloudfunctions/tianfu2 runtime only after source stabilizes, exactly once
+  - run cloud runtime freshness, dependency audit and smoke after regeneration
+  - update docs/LAST_RESULT with the exact production evidence and narrow matching rationale
+forbiddenScope: [swallow-generic-minus-one,swallow-all-document-not-found-messages,collection-auto-create,client-workaround,MiniProgram-change,UI-change,gameplay-change,Core-change,Content-change,database-schema-change,new-RPC,aggregate-npm-test,typecheck,600-run,full-UI04-regression,unbounded-push-retry,.workbuddy-commit,source-branch-push]
+accept:
+  - classifier accepts the exact production `errCode=-1` + `document.get:fail document with _id <32-hex> does not exist` shape
+  - classifier accepts string `-1` for the same exact shape
+  - classifier still accepts the original LIVEFIX01 production/harness shapes
+  - generic or near-miss -1 errors remain fatal, especially collection absence permission network transaction wrong-id-format and wrong-operation cases
+  - all four read kinds share the new exact empty-read semantics
+  - empty database first createRunOffer returns a non-empty runId under the new production shape
+  - same-bootstrap retry still returns the same run under the new shape
+  - deployable cloud host harness succeeds on first run under the new shape
+  - cloud runtime artifact is fresh and its audit/smoke pass after one regeneration
+  - no MiniProgram UI server-gameplay Content Core database-schema or route drift
+  - aggregate/typecheck/600-run/full-UI04-regression remain skipped
+tests: [livefix04,livefix01,cloud-runtime-artifact-freshness,cloud-runtime-dependency-audit,cloud-runtime-smoke,lint,secret-scan]

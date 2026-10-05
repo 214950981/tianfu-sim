@@ -200,3 +200,9 @@ Also avoid repeating broad DevTools cache scans for source recovery: LIVEFIX03 s
 ## Dedicated audit tests and aggregate coverage
 
 A production-facing gate integrated into a routinely-run suite can protect the real current files, but the gate's own negative controls are only protected when its dedicated test suite also participates in a broader final/aggregate test plan. LIVEFIX03 currently relies on UI04C route-guard integration for routine real-file coverage while its dedicated negative-control suite remains separate. Add it to aggregate orchestration during the next test-plan maintenance/final-audit update rather than creating a standalone micro-task.
+
+## CloudBase missing-document error shapes vary by runtime
+
+A second real WeChat cloud smoke on 2026-10-05 showed the same benign empty-document condition as `errCode: -1` with `errMsg: document.get:fail document with _id <32-hex-id> does not exist`, rather than the earlier `-502005` / `document.get failed because ...` shape.
+
+Do not key absence normalization on one SDK numeric code. Also do not broadly swallow generic `-1`. Accept only positively identified document-not-found shapes with exact operation/message evidence, while keeping collection absence, permission, network, transaction and unknown failures fatal.
