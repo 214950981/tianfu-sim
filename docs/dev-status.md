@@ -9,7 +9,7 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `6a1266dcb03415396f833b26f80cf273b7c7ec39`
+- lastReviewedCommit: `2a10061b1b91db706ad6b64cf9ec4e94311e35ae`
 - reviewedDate: `2026-09-25`
 - ui04FinalWorkBranch: `wb-UI04FINAL`（Controller 已验收并 fast-forward 到 dev）
 
@@ -74,7 +74,8 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - UI04FINAL: PASS（UI04 里程碑终审；aggregate 回归 + UI04E-R2/R1/UI04E/UI04D/UI04C/UI04B/UI04A/UI03/UI02 + 生成物/依赖/路由/类型/lint/secret/content/context/phase2-drift 全绿）
 - LIVEFIX01: PASS（Controller 已验收；真实 CloudBase 空集合首次读取语义、空库首局创建、bootstrap/command/terminal 幂等与云运行时回归通过）
 - LIVEFIX02: PASS（Controller 已验收；miniprogramRoot 页面/相对依赖闭包、4 个 legacy mirror、永久 package-closure gate 与 route guard 集成通过）
-- LIVEFIX03: PASS WITH CAVEATS（Controller 已验收；历史截断 game.wxss 以 RECONSTRUCTED 方式补全并加入 WXSS integrity gate。非历史恢复，仍需真实 DevTools 编译与视觉验收）
+- LIVEFIX03: PASS WITH CAVEATS（Controller 已验收；历史截断 game.wxss 以 RECONSTRUCTED 方式补全并加入 WXSS integrity gate。非历史恢复，真实 DevTools 已验证 start/game 可编译并正常显示）
+- LIVEFIX04: PASS（Controller 已验收；精确支持 CloudBase `errCode=-1` + `document.get:fail ... <32-hex> ... does not exist` 缺文档形状，generic `-1` 仍 fail-closed）
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
 
@@ -420,30 +421,37 @@ DevTools 构建下编译通过——那仍然是人的 DevTools pass。`tools/wx
 
 ## Next
 
-Real DevTools smoke after accepted LIVEFIX03 partially passed:
-- start page renders;
-- legacy game page renders;
-- the previous `pages/game/game.wxss(253:14): unexpected token` is gone;
-- `pages/v2-live/v2-live` reaches the deployed cloud function.
+LIVEFIX04 已由 Controller 验收并 fast-forward 合入 `dev/tianfu-2.0`，accepted result commit：
+`2a10061b1b91db706ad6b64cf9ec4e94311e35ae`。
 
-The live cloud path still fails on the first empty-document read. New production evidence from `tianfu2` log:
-- `errCode: -1`
-- `errMsg: document.get:fail document with _id <32-hex-id> does not exist`
-- host returns INTERNAL, and the client then surfaces `createRunOffer result.runId must be a non-empty string`.
+代码验收结论：PASS。
 
-Root cause is now exact: LIVEFIX01's missing-document classifier recognizes the earlier `-502005` / `document.get failed because ...` shapes, but rejects this real SDK shape because the code is `-1` and the message uses `document.get:fail ...`.
+已独立确认：
+- work branch 是 dev 的真实单提交后代，ahead 1 / behind 0；
+- 改动仅限 CloudBase persistence boundary、fake harness、生成 cloud runtime、LIVEFIX04 测试、package script 与 LAST_RESULT；
+- `-1` 分支必须整条匹配 `document.get:fail document with _id <32-hex> does not exist` 才归一化；
+- generic `-1`、collection missing、permission、network、transaction、wrong operation、wrong id length/non-hex 等近邻形状继续 fail-closed；
+- LIVEFIX01 既有形状保持不变；
+- 空四集合数据库首个 createRunOffer 在新形状下可返回非空 runId，same-bootstrap retry 保持 exactly-once；
+- deployable cloud host harness 在新形状下可创建首局，在缺集合时仍返回 bounded INTERNAL 且不写数据；
+- cloud runtime 已重新生成一次并通过 freshness / dependency audit / smoke。
 
-Current task: `LIVEFIX04` — CloudBase `errCode=-1` Missing-Document Shape.
+测试证据：LIVEFIX04 13/13、LIVEFIX01 15/15、cloud runtime smoke 15 checks、lint、secret scan PASS。
+按 fast-lane 明确跳过 aggregate / typecheck / 600-run / UI04 full regression。
 
-This must be a narrow persistence-boundary compatibility fix:
-- accept only the newly observed exact `document.get:fail document with _id <32-hex> does not exist` shape when `errCode`/`code` is `-1` (numeric or string);
-- keep collection absence, permission, network, transaction and generic `-1` errors fatal;
-- do not broaden to 'any message mentioning document does not exist';
-- update the fake harness to reproduce the exact 2026-10-05 production shape;
-- prove first empty-database createRunOffer succeeds under both the original LIVEFIX01 shape and the new real SDK shape;
-- regenerate the cloud runtime once and run only targeted LIVEFIX01/LIVEFIX04 + cloud artifact/audit/smoke checks.
+非阻塞测试编排债务：`tests/livefix03.test.mjs` 与 `tests/livefix04.test.mjs` 均有 dedicated script，但尚未进入 aggregate `npm test`。当前真实文件/边界已有 route-guard/cloud smoke 保护，因此不阻断部署；下一次 final-audit/测试计划维护时一并纳入 aggregate。
 
-After acceptance, redeploy only `tianfu2` and repeat the same v2-live smoke. No MiniProgram/UI changes are needed.## 新 Codex 会话 / 账号接手步骤
+当前进入 **REAL CLOUD REDEPLOY / V2-LIVE SMOKE HOLD**。不要继续新功能。
+
+下一步：
+1. 将 DevTools/部署工作区同步到最新 accepted dev；
+2. 只重新部署 `cloudfunctions/tianfu2`，选择云端安装依赖；
+3. 不需要重新部署 MiniProgram 代码，不需要清缓存；
+4. 回到 `pages/v2-live/v2-live` 点“重新连接”；
+5. 预期：空库首次 createRunOffer 返回真实 runId，并写入 1 条 run + 1 条 bootstrap mapping；
+6. 成功则截图并检查四个集合数据；失败则只截第一个新的真实云端错误，不做猜测性修复。
+
+本轮 HOLD 禁止 aggregate、typecheck、600-run、UI04 全量回归。## 新 Codex 会话 / 账号接手步骤
 
 1. 确认当前 branch = `dev/tianfu-2.0`。
 2. 查看 `git status`。

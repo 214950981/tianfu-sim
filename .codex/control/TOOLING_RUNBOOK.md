@@ -206,3 +206,9 @@ A production-facing gate integrated into a routinely-run suite can protect the r
 A second real WeChat cloud smoke on 2026-10-05 showed the same benign empty-document condition as `errCode: -1` with `errMsg: document.get:fail document with _id <32-hex-id> does not exist`, rather than the earlier `-502005` / `document.get failed because ...` shape.
 
 Do not key absence normalization on one SDK numeric code. Also do not broadly swallow generic `-1`. Accept only positively identified document-not-found shapes with exact operation/message evidence, while keeping collection absence, permission, network, transaction and unknown failures fatal.
+
+## Fast-lane dedicated suites must rejoin final aggregate
+
+LIVEFIX03 and LIVEFIX04 intentionally used fast-lane dedicated suites and skipped aggregate npm test. Their production-facing checks are still protected by route/cloud smoke gates, but their dedicated negative controls are not automatically rerun by the current aggregate script.
+
+Do not create micro-tasks just to fix this during a live smoke loop. At the next explicit final-audit or test-plan maintenance milestone, add the accepted LIVEFIX03/LIVEFIX04 dedicated suites to aggregate orchestration so boundary-algorithm negative controls are not permanently detached from full regression.
