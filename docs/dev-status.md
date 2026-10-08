@@ -20,10 +20,20 @@
 - **LIVEFIX05 已被 Controller 接受并快进合并**：`wb-LIVEFIX05` 的实际提交 `3a6c6d70be6132147ccb09d9a718ccd5189109c7`，自原 dev HEAD `171a6c690499f66e7333b784a5c7557b61b5096f` 真实单提交后代快进。
 - 改动范围恰好三个文件：`miniprogram/pages/v2-live/v2-live.wxml`、`tests/livefix05.test.mjs`、`.codex/control/LAST_RESULT.yaml`。未改 server/cloudfunction/Core/Content/main，也没有云端部署。
 - Controller 已核验远端 WXML 的显式否定 `wx:if` 与原有选项/CTA 绑定；WorkBuddy `LAST_RESULT` 报告 `livefix05: 6/6`、`ui04c: 18/18`，以及限定范围的静态门禁全部 PASS。**本轮未重新执行测试，也没有新 CI 结果。**
-- **当前控制面：HOLD / LIVEQA06 本地准备完成、人工视觉待验收**；WorkBuddy 报告 DevTools 实际打开的是已有的 WorkBuddy worktree（不是主 clone），其两个 LIVEFIX06 目标文件本已与远端一致；主 clone 仅同步了两个前端文件。实际 DevTools CLI 编译无应用编译或模块错误（由 WorkBuddy 报告，Controller 未直接访问本机日志）；尚需用户截图确认中文事件页面。未修改玩法代码、云函数、数据库；不自动派发下一任务。
+- **当前控制面：READY / PLAYUX01（用户授权的单次一体化改造）**；用户提交的五张实机截图证明中文事件、选项、存档、生平录、终局和人生书都已到达，但玩法区分、叙事逻辑、即时反馈、历史键名及终局计数存在体验缺陷。统一安排为一个 PLAYUX01，WorkBuddy 按行动→事件→选择→反馈→生平录→终局→人生书的顺序内部施工，最终一次验收。禁止派发 PLAYUX02 或其他自动后续任务。
 - **LIVEFIX05 真实视觉验收已通过**：用户截图显示 `DESTINY_OFFER` 页面择命候选正常，旧版“服务器投影”多余提示消失；选择命格后成功进入 `RUN_HOME`。随后点击一次“游历”进入 `EVENT`，页面标注第 4 版，出现新的 LIVEFIX06 文案缺陷。
 - 真实云函数首次开局与数据库持久化验收已在 Issue #2 完成，**不能**把本次仅 UI 条件修复的通过解释成完整游戏正式上线。
 - **LIVEFIX06 已合并（源码 PASS WITH CAVEATS）**：`wb-LIVEFIX06@31bbc5b4e79d5ca447e26062a8c8d00a3969c782` 从 `86707ac5f6ab3f775cd611017441022e59b4589c` 安全快进；新增 340 键中文生成资源及覆盖/负控测试，修复所有现有 Content01 原始键名显示缺陷。WorkBuddy 报告 LIVEFIX06 20/20、UI04C 18/18、UI02COPY 11/11 PASS，静态门禁 PASS；本次 Controller 未重新执行测试。已修复任务定义中的 `evidence`/`goal` 不支持字段及折叠列表写法；历史 UI02R1 两项基线失败待后续统一测试计划处理。**WorkBuddy 已报告真实 DevTools CLI 编译通过；尚未获得人工视觉截图与真实事件选项结算结果。无需云函数部署。**
+
+## PLAYUX01 用户实机问题与新任务基线（2026-10-09）
+
+- 图1 `偏僻岔路`：场景为择路，但「依此磨炼/停步细看/见好便收」泛化选项与情境不通，行为结果也不明确。
+- 图2 `山色`：追索行为却遭遇泛化旅行风景事件，没有交代追索的线索或与当前行为的联系。
+- 图3 生平录：仍显示 `content01.build.fortune.fork.history`、`content01.ordinary.mountain-view.history` 及 `build.build.fortune.latent` 等内部键名；无法说明选择及后果。
+- 图4 终局：同一生先显示 0 件往事、0 位故人、0 道道途，图5 人生书却是事件 11、故人 4、道途 2，原因待以代码和可重现投影查明。
+- 图5 人生书：以数值列表代替人生回顾，`death.death.injury` 和 `threat.critical-injury` 未转换为可理解的死因；缺乏关键事件与因果。
+- Git 代码核查的归因：Director 有 action-affinity 加权，但 P6 ordinary 没有 action 条件，Content01 多数 choice 由通用函数生成并用固定句子续接正文；前端仅部分键表支持历史与终局，生命终局主要显示计数。
+- 改造目标：保持游戏权威规则和确定性前提下，完成行动差异化→事件与选项语义一致→选择后真实结果反馈→生平录和人生书叙事闭环。任务定义见 `.codex/tasks/PLAYUX01.yaml`，禁止再次逐页单点修修补补；不跑 600-run，不自动云部署或派发下一任务。
 
 ## 产品核心
 

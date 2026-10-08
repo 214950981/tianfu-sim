@@ -1,0 +1,60 @@
+id: PLAYUX01
+title: PLAYUX01 - Integrated action event consequence and lifetime UX
+phase: 2
+verificationProfile: standard
+executionProfile: credit-efficient
+requiredContracts: [.codex/contracts/ui.ref, .codex/contracts/platform.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first:
+  - .codex/control/PROTOCOL.md
+  - .codex/control/NEXT_TASK.yaml
+  - .codex/control/LAST_RESULT.yaml
+  - docs/dev-status.md
+  - packages/core/src/director.ts
+  - packages/core/src/reducer.ts
+  - packages/content/src/content01-v1.ts
+  - packages/content/src/registry.ts
+  - server/src/viewmodel.ts
+  - miniprogram/pages/v2-live/v2-live.js
+  - miniprogram/pages/v2-live/v2-live.wxml
+allowedScope:
+  - One integrated work item with internal diagnosis design implementation and validation phases. Do not split into PLAYUX02 or ask for another microtask halfway through. Record a concise implementation design and before-after player examples in Git under docs or review before code edits. Proceed within scope without waiting for a second dispatch; stop BLOCKED only for a real conflict or unsafe invariant.
+  - Establish a reproducible baseline of four actions and the exact published public projection by inspecting real code and bounded tests. Distinguish gameplay-rule defects from presentation defects. Use the five real screenshots in the Controller handoff as evidence, not as permission to invent hidden game facts or change the original cloud database.
+  - Make cultivate retreat, travel exploration, worldly social contact, and pursuit investigation legibly different for players. Inspect P2 P4 P5 P6 precedence, action-affinity weight, ordinary fallback and content tags before changes. Set meaningful action-context gating or selection while preserving legitimate multi-action events and Director priority continuity RNG determinism and reachable fallback. Provide at least one representative complete action-specific path for every action.
+  - Replace generic event option wording and repeated boilerplate where it breaks scene logic. Event text must explain the concrete situation and each available choice must be a plausible action. Its actual server-authoritative outcome must match the displayed choice meaning. Preserve exact command ids risks outcomes and recurrence unless a narrowly justified rule correction is necessary and covered by focused tests. Do not pretend to rewrite every narrative asset; document remaining generic content if any.
+  - After a choice show a concrete understandable result before continuing: what occurred, the visible resource cultivation condition relation or cause changes, and what remains unresolved. Derive only from canonical result/public view or approved public delta; never infer secret RNG or backstage state. Restore and retry must not create duplicate rewards or story output.
+  - Make live archive useful: understandable Chinese names for completed events, selected options and publicly known consequences, current latent versus active build status, known causes and people. Prevent raw content01.*.history keys and build.build.* keys from leaking. Where the public projection omits detail, say it is unknown or use a minimal additive public projection change with stable backward-compatible contracts and tests.
+  - Rework ENDING LIFE_BOOK and rebirth presentation into an evidence-grounded lifetime summary with meaningful key turning points, meaningful distinctions between living history and end-of-life reflection, human-readable conclusion and death cause. Do not fabricate NPCs events achievements or emotional conclusions. Keep event people build cause counters consistent across terminal stages or clearly define differing count bases. Investigate the observed ENDING 0/0/0 versus LIFE_BOOK 11/4/2 mismatch with actual fixtures; fail a focused consistency test if it reproduces.
+  - Add localized human-readable mappings for death.death.injury threat.critical-injury and the other supported public ending and death codes, including fallback that never masquerades as prose. Make unknown keys detectable in a test without exposing opaque ids in normal user-facing pages.
+  - Cover the shared user journey by bounded integration tests from distinct action to fitting event to concrete choice to outcome feedback to persistent archive to death to life book and next-life flow. Include deterministic replay idempotency exactly-once and no-hidden-data guards for touched seams. Keep a negative control for each serious regression class. Prioritize a representative high-quality slice that proves the whole chain, plus system-level fixes to existing reachable content.
+  - Execute one ordered verification batch with focused changed Core Content ViewModel client UI04c and new PLAYUX01 suites as applicable, plus build/package closure static generated-artifact freshness route and secret checks only where touched. If touching gameplay or server run bounded impacted deterministic contract tests, not a 600-run simulation. Report actual commands and outcomes and do not claim manual WeChat screenshot verification.
+  - Keep implementation in a dedicated worktree branch wb-PLAYUX01; submit only work-branch commit and LAST_RESULT with exact files, contract invariants, remaining UX shortcomings, any deployment requirement and actionable visual check steps. Do not merge or dispatch follow-up tasks. Preserve unrelated dirty files and worktree-specific project.config.json as found.
+forbiddenScope:
+  - main-branch-change
+  - source-branch-push
+  - automatic-next-task-dispatch
+  - new-unrelated-feature
+  - unbounded-content-generation
+  - silent-database-migration
+  - hidden-RNG-publication
+  - fake-history-or-fake-event-result
+  - change-authoritative-player-identity
+  - remove-idempotency-or-replay-guards
+  - change-legacy-1-point-0-pages
+  - cloud-deploy-without-user-approval
+  - clear-cache-or-database
+  - full-600-run-simulation
+  - aggregate-npm-test
+  - unbounded-retries
+  - broad-local-clean-or-reset
+accept:
+  - For each of cultivate travel worldly and pursuit a player can see why an event belongs to that action and why the options are relevant. An action-dependent scene must not be delivered by a mismatched generic P6 fallback without a justified multi-action context.
+  - At least one fully finished representative scenario per action and meaningful coverage of current event families, with distinct scene-specific choices and canonical consequences. No repetitive template sentence is blindly appended to unrelated scenes.
+  - A single choice visibly reports only real public outcome and change before returning to RUN_HOME. Repeat submission or refresh cannot settle rewards twice.
+  - Live archive is intelligible and traceable, shows known prior events and effects without raw .history or build identity keys, and does not invent missing facts.
+  - ENDING counts are consistent with the authoritative life book or any intentionally different count basis is explicitly explained; no 0/0/0 versus 11/4/2 discrepancy for the same completed life. Death and ending codes render as understandable Chinese.
+  - LIFE_BOOK is an actual structured lifetime retrospective with turning points and supported details, not only four numbers; final state and terminal/rebirth CTA remain authoritative.
+  - Source gameplay rules and saved run replay remain deterministic. Focused touched-seam tests plus negative controls are green and the actual test scope is disclosed.
+  - At most one WorkBuddy handoff and one Controller code-review/merge decision for the integrated PLAYUX01 task; no other task is autonomously scheduled. Real DevTools visual testing is requested after Controller accepts the work, not fabricated.
+tests: [playux01-dedicated, director-action-candidate-regression, content-choice-effects-regression, visible-result-projection, archive-terminal-consistency, deterministic-idempotency-impacted, ui04c-targeted, runtime-package-closure, lint-boundary-secret-scan]

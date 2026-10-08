@@ -1,62 +1,45 @@
 version: 1
-status: HOLD
+status: READY
 attempt: 1
-taskId: LIVEQA06
-title: LIVEQA06 - Local DevTools synchronization and visual verification
-taskDefinition: .codex/tasks/LIVEQA06.yaml
+taskId: PLAYUX01
+title: PLAYUX01 - Integrated action event consequence and lifetime UX
+taskDefinition: .codex/tasks/PLAYUX01.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-LIVEQA06
-worktreeRequired: false
-allowSyntheticTreeBase: false
+workBranch: wb-PLAYUX01
+worktreeRequired: true
+allowSyntheticTreeBase: true
 basePolicy: remote-source-head-at-task-start
-verificationProfile: fast-lane
+verificationProfile: standard
 executionProfile: credit-efficient
 execution:
   readProtocolFirst: true
-  workBuddyMayImplement: false
-  commitTaskResult: false
-  pushWorkBranch: false
+  workBuddyMayImplement: true
+  commitTaskResult: true
+  pushWorkBranch: true
   updateSourceBranch: false
   startNextTask: false
   runAggregateNpmTest: false
   run600Simulation: false
-  maxTypecheckRuns: 0
-  maxFullDedicatedSuiteRuns: 0
-  maxArtifactRegenerationRounds: 0
-  maxPushAttempts: 0
+  maxTypecheckRuns: 1
+  maxFullDedicatedSuiteRuns: 2
+  maxArtifactRegenerationRounds: 1
+  maxPushAttempts: 2
   prohibitUnboundedRetryLoops: true
 controllerReview:
-  previousTask: LIVEFIX06
-  previousStatus: ACCEPTED_WITH_CAVEATS_AND_FAST_FORWARDED
-  acceptedResultCommit: 31bbc5b4e79d5ca447e26062a8c8d00a3969c782
-  acceptedControlHead: 77ecfb93fb8c53872943c26e6e75265cee4bb161
+  previousTask: LIVEQA06
+  previousStatus: LOCAL_PREPARATION_REPORTED_PASS_VISUAL_PENDING
+  sourceReviewedCommit: 851e1e35b2e9a9d86afe3c2d09224bc6fffe0211
+  userVisualFindings: "Chinese event text renders and gameplay reaches EVENT, archive, ENDING and LIFE_BOOK; serious meaning and consistency problems remain."
 controllerIntent:
-  mode: LOCAL_QA_ONLY_NO_GIT_DELIVERY
-  goal: Synchronize only two already accepted files into the actual local WeChat DevTools workspace and verify the Chinese event copy.
-  postTask: Local preparation reported complete; HOLD while awaiting visual confirmation from the user.
-controllerAcceptance:
-  taskId: LIVEQA06
-  status: LOCAL_PREPARATION_REPORTED_PASS_VISUAL_PENDING
-  reviewedDate: "2026-10-09"
-  dispatchCommit: b7ab1cbf591bf5631b3858a92f39a8daa46bc68a
-  reportOrigin: WorkBuddy user-pasted completion report
-  localWorkspaceUsedByDevTools: "C:\\Users\\Administrator\\WorkBuddy\\Worktrees\\tianfu-sim\\dev-tianfu-2-0-e746fd55"
-  expectedContentCommit: 31bbc5b4e79d5ca447e26062a8c8d00a3969c782
-  localContentHashesReported:
-    miniprogram/pages/v2-live/v2-live.js: "39e547a43983eee65 (reported prefix, full blob SHA not provided)"
-    miniprogram/pages/v2-live/content01-zh-cn.js: "e3ca44faa04e628a (reported prefix, full blob SHA not provided)"
-  localizedStringsReported: "340 generated Content01 keys and 359 merged keys, zero missing keys"
-  devtoolsCompile: "PASS as reported by WorkBuddy CLI and log checks, no direct Controller access to local logs"
-  visualQa: PENDING_USER_SCREENSHOT
-  gameInteractionQa: NOT_RUN
-  cloudDeployment: NOT_PERFORMED
-  sourceCodeModification: NONE
-  nextAction: HOLD_UNTIL_VISUAL_CONFIRMATION_OR_NEW_EXPLICIT_USER_REQUEST
-
+  mode: INTEGRATED_PLAYER_EXPERIENCE_REWORK
+  goal: "One linked action event choice consequences history ending life-book renovation without task splitting"
+  postTask: "Controller reviews and determines acceptance; WorkBuddy must not merge or start next task"
 notes:
-  - User explicitly authorizes WorkBuddy to locate local project and do all possible local syncing and read-only QA rather than asking user for file operations.
-  - This is a one-time local environment operation, not a code implementation task. No Worktree, branch, commit, push or remote delivery should be created; these flags override implementation steps for this operational exception.
-  - Use node .codex/context.mjs LIVEQA06 once in the confirmed repository if available and safe. If the exact new task file has not been synced locally, read its committed remote content directly instead of modifying extra local files.
-  - Preserve all existing unrelated local dirty files and do not redeploy CloudBase. Do not interact with the live game choices automatically.
-  - At most one bounded git fetch. On failure use GitHub API for the two files; avoid retries.
-  - LIVEQA06 local prep has been reported complete; HOLD disallows rerunning this task or starting new work without separate authorization.
+  - User explicitly approved this product UX direction and questioned unnecessary separation. Treat it as a single integrated acceptance task with sequential internal phases and one final outcome.
+  - Read .codex/control/PROTOCOL.md and the task definition. Run node .codex/context.mjs PLAYUX01 once if available; do not roam the whole repository.
+  - No automated WorkBuddy invocation from GitHub writing alone. User manually sends the kickoff message.
+  - Preserve main and all existing local dirty files. The actual WeChat DevTools project may be the WorkBuddy worktree documented in TOOLING_RUNBOOK; do not assume main clone.
+  - GitHub API push fallback on transport failure with bounded attempts and remote SHA ancestry verification. Do not modify dev/tianfu-2.0 directly.
+  - Do not deploy server or cloudfunctions as part of this task without explicit user approval. If needed for real interaction after a server change, report the exact deployment artifacts and block real-environment claims until done.
+  - Do not run aggregate npm test or 600-run. Apply bounded touched-boundary rule tests if Core or server code changes.
+  - No automatic follow-up tasks. Controller will review the result before merging or authorizing real deployment.
