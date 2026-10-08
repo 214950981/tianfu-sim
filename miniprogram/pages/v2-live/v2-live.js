@@ -134,8 +134,14 @@ var PAGE_STATE_LABELS = {
 };
 var CN_NUMERALS = ["零", "一", "二", "三", "四", "五", "六", "七", "八", "九"];
 
-/** Player-facing copy for the public content keys this page can reach, shared with the UI02 copy pass. */
-var CONTENT_COPY = {
+/** Page-specific and dev copy. Content01 wording is NOT listed here — it is generated, see below.
+ *
+ * LIVEFIX06: this table used to be the page's only catalog, covering 18 keys. The 340 committed Content01
+ * keys were absent and `presentLabel` returns the key verbatim on a miss, so the real EVENT the Controller
+ * observed in WeChat DevTools (content01.ordinary.night-rain, stateVersion 4) rendered its title, body and
+ * all three choices as raw `content01.*` keys. The server projection was correct throughout; only the
+ * client's catalog was incomplete. */
+var PAGE_CONTENT_COPY = {
   "destiny.offer.title": "天命所归",
   "innate.offer.selection": "择定此命",
   "dev.first-choice.title": "初入此世",
@@ -156,6 +162,46 @@ var CONTENT_COPY = {
   "cause.hinted.summary": "似有一段因果尚未明朗。",
   "special.attemptBreakthrough": "冲击境界"
 };
+
+/**
+ * The generated Content01 catalog, as `[key, copy]` pairs.
+ *
+ * HARD CONSTRAINT — the argument below must be a plain string literal, never a variable. The WeChat
+ * packager builds the dependency graph by static analysis, so a variable argument packs nothing and the
+ * page dies at runtime with "module is not defined". tools/content01-zh-cn-module.mjs exports the expected
+ * specifier and tests/livefix06.test.mjs asserts the literal below stays equal to it, so the two cannot
+ * drift apart. Note that the route-guard and package-closure audits scan comments as code, so this
+ * paragraph must not spell out the failing form verbatim.
+ */
+var CONTENT01_ZH_CN = require("./content01-zh-cn.js");
+
+/**
+ * The merged catalog every presentation surface reads through `presentLabel(CONTENT_COPY, key)`.
+ *
+ * Merge order is deliberate and load-bearing:
+ *
+ *   - generated Content01 copy first, so the complete committed source catalog is always present;
+ *   - page-specific copy second, so anything this page displays today keeps its exact existing wording.
+ *
+ * Merging by exact key means no entry is invented (nothing maps a key the source does not define) and no
+ * option id, RPC argument or server projection is touched. The result is a fresh object, so the generated
+ * module's own array is never mutated.
+ */
+var CONTENT_COPY = (function mergeContentCopy(generated, pageCopy) {
+  var merged = {};
+  var index;
+  var pair;
+  for (index = 0; index < generated.length; index += 1) {
+    pair = generated[index];
+    if (Object.prototype.hasOwnProperty.call(pair, 0) && Object.prototype.hasOwnProperty.call(pair, 1)) {
+      merged[pair[0]] = pair[1];
+    }
+  }
+  for (var key in pageCopy) {
+    if (Object.prototype.hasOwnProperty.call(pageCopy, key)) merged[key] = pageCopy[key];
+  }
+  return merged;
+})(CONTENT01_ZH_CN, PAGE_CONTENT_COPY);
 
 function presentLabel(table, value) {
   if (typeof value !== "string" || value.length === 0) return "";
