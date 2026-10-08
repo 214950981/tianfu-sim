@@ -212,3 +212,15 @@ Do not key absence normalization on one SDK numeric code. Also do not broadly sw
 LIVEFIX03 and LIVEFIX04 intentionally used fast-lane dedicated suites and skipped aggregate npm test. Their production-facing checks are still protected by route/cloud smoke gates, but their dedicated negative controls are not automatically rerun by the current aggregate script.
 
 Do not create micro-tasks just to fix this during a live smoke loop. At the next explicit final-audit or test-plan maintenance milestone, add the accepted LIVEFIX03/LIVEFIX04 dedicated suites to aggregate orchestration so boundary-algorithm negative controls are not permanently detached from full regression.
+
+## LIVEQA06 real DevTools project detection and two-file local synchronization (reported 2026-10-09)
+
+WorkBuddy's on-machine log inspection found that the **DevTools active project is not necessarily the main Git clone**. The observed open-last-project directory was:
+`C:\Users\Administrator\WorkBuddy\Worktrees\tianfu-sim\dev-tianfu-2-0-e746fd55`.
+A separate main clone at `C:\Users\Administrator\Documents\GitHub\tianfu-sim` existed but was behind the accepted dev branch. Use the path actually referenced by DevTools (`autoOpen/openLastModifiedProject` or its current project config/log), not a guess from `project.config.json` alone. Treat both paths as observed environment details, not permanent conventions.
+
+On this machine the DevTools installation was reported at `D:\微信web开发者工具` with `cli.bat`, and the running IDE HTTP service used port `34863` (`Default\\.ide`). **Detect the current IDE port on each attempt**; do not hard-code it and do not open a duplicate project window.
+
+For accepted LIVEFIX06, WorkBuddy reported the active worktree already at `31bbc5b4` with both `v2-live.js` and `content01-zh-cn.js` matching their remote blobs byte-for-byte. The main clone needed the two-file API sync due to one failed SSL handshake. In the active worktree, CLI compiler logs showed simulator launch, appservice load, and no project compile/module errors. This is *reported local compile evidence*, **not** direct Controller inspection or human visual acceptance. Visual Chinese EVENT check remains pending.
+
+Future local operations should be delegated to WorkBuddy first: discover the *actual* active DevTools project path, inspect dirty files, use narrowly scoped file updates (API fallback when Git transport fails), and leave final game clicks/visual confirmation to the user. Never hard reset, bulk pull, clear database, or override pre-existing dirty files just to sync the client.
