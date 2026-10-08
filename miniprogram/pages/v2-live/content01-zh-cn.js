@@ -259,15 +259,15 @@ module.exports = [
   ],
   [
     "content01.cen.shared-echo.choice.consider",
-    "停步细看"
+    "只说一句今日天凉，不提旧事"
   ],
   [
     "content01.cen.shared-echo.choice.engage",
-    "依此磨炼"
+    "把当年那道伤指给他看"
   ],
   [
     "content01.cen.shared-echo.choice.leave",
-    "见好便收"
+    "各自走进雨里，不等对方开口"
   ],
   [
     "content01.cen.shared-echo.title",
@@ -415,15 +415,15 @@ module.exports = [
   ],
   [
     "content01.jiang.debt-echo.choice.consider",
-    "停步细看"
+    "先核一遍旧账里记的到底是什么"
   ],
   [
     "content01.jiang.debt-echo.choice.engage",
-    "依此磨炼"
+    "按当年记下的数还清"
   ],
   [
     "content01.jiang.debt-echo.choice.leave",
-    "见好便收"
+    "这一页不必翻，就此作罢"
   ],
   [
     "content01.jiang.debt-echo.title",
@@ -591,15 +591,15 @@ module.exports = [
   ],
   [
     "content01.onboarding.rain-shelter.choice.consider",
-    "停步细看"
+    "靠着柱子不动，听这一场雨落完"
   ],
   [
     "content01.onboarding.rain-shelter.choice.engage",
-    "顺势而行"
+    "挪半个身位，先把伞递过去"
   ],
   [
     "content01.onboarding.rain-shelter.choice.leave",
-    "见好便收"
+    "雨脚一转就先行赶路"
   ],
   [
     "content01.onboarding.rain-shelter.title",
@@ -867,15 +867,15 @@ module.exports = [
   ],
   [
     "content01.pei.promise-echo.choice.consider",
-    "停步细看"
+    "先问清当年断的是哪一段"
   ],
   [
     "content01.pei.promise-echo.choice.engage",
-    "依此磨炼"
+    "接下他递来的第二条路"
   ],
   [
     "content01.pei.promise-echo.choice.leave",
-    "见好便收"
+    "不接这条路，转身离开"
   ],
   [
     "content01.pei.promise-echo.title",
@@ -887,15 +887,15 @@ module.exports = [
   ],
   [
     "content01.pei.sparring-rain.choice.consider",
-    "停步细看"
+    "先问清他今日想试的是剑还是人"
   ],
   [
     "content01.pei.sparring-rain.choice.engage",
-    "依此磨炼"
+    "拔剑，但只走到他说的那一步"
   ],
   [
     "content01.pei.sparring-rain.choice.leave",
-    "见好便收"
+    "收剑鞘而不发"
   ],
   [
     "content01.pei.sparring-rain.title",
@@ -1107,15 +1107,15 @@ module.exports = [
   ],
   [
     "content01.road.conflict-echo.choice.consider",
-    "停步细看"
+    "侧身让路，谁都不提那一段"
   ],
   [
     "content01.road.conflict-echo.choice.engage",
-    "顺势而行"
+    "这次先把当年的话说完"
   ],
   [
     "content01.road.conflict-echo.choice.leave",
-    "见好便收"
+    "退回去，等他先走"
   ],
   [
     "content01.road.conflict-echo.title",
@@ -1159,15 +1159,15 @@ module.exports = [
   ],
   [
     "content01.road.kindness-echo.choice.consider",
-    "停步细看"
+    "先问他这些年过得如何"
   ],
   [
     "content01.road.kindness-echo.choice.engage",
-    "顺势而行"
+    "叫回当年的称呼，接过这把伞"
   ],
   [
     "content01.road.kindness-echo.choice.leave",
-    "见好便收"
+    "各走各的路，把这一段雨留给当年"
   ],
   [
     "content01.road.kindness-echo.title",
@@ -1199,15 +1199,15 @@ module.exports = [
   ],
   [
     "content01.xie.divided-spoils.choice.consider",
-    "停步细看"
+    "把中央那件推到一边，先分其余的"
   ],
   [
     "content01.xie.divided-spoils.choice.engage",
-    "依此磨炼"
+    "按当初的约定，先问清那件东西的用途"
   ],
   [
     "content01.xie.divided-spoils.choice.leave",
-    "见好便收"
+    "一样都不取，这次到此为止"
   ],
   [
     "content01.xie.divided-spoils.title",
@@ -1219,15 +1219,15 @@ module.exports = [
   ],
   [
     "content01.xie.map-echo.choice.consider",
-    "停步细看"
+    "先按图走一遍，把路线对清楚"
   ],
   [
     "content01.xie.map-echo.choice.engage",
-    "依此磨炼"
+    "把当年没说完的那半句补上"
   ],
   [
     "content01.xie.map-echo.choice.leave",
-    "见好便收"
+    "承认你已经想不起那句话"
   ],
   [
     "content01.xie.map-echo.title",
@@ -1259,15 +1259,15 @@ module.exports = [
   ],
   [
     "content01.xu.empty-courtyard.choice.consider",
-    "停步细看"
+    "向邻人多问一句他可能去了哪里"
   ],
   [
     "content01.xu.empty-courtyard.choice.engage",
-    "顺势而行"
+    "扫开墙根的落叶，让院子有人住的样子"
   ],
   [
     "content01.xu.empty-courtyard.choice.leave",
-    "见好便收"
+    "把院门掩上，不去问答案"
   ],
   [
     "content01.xu.empty-courtyard.title",
@@ -1295,15 +1295,15 @@ module.exports = [
   ],
   [
     "content01.xu.promise-echo.choice.consider",
-    "停步细看"
+    "先在门前站一会儿，不急着进去"
   ],
   [
     "content01.xu.promise-echo.choice.engage",
-    "顺势而行"
+    "推门进去，把话当面问清"
   ],
   [
     "content01.xu.promise-echo.choice.leave",
-    "见好便收"
+    "转身离开，把这件事留在原处"
   ],
   [
     "content01.xu.promise-echo.title",
