@@ -9,11 +9,21 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `2a10061b1b91db706ad6b64cf9ec4e94311e35ae`
-- reviewedDate: `2026-09-25`
+- lastReviewedCommit: `3a6c6d70be6132147ccb09d9a718ccd5189109c7`
+- reviewedDate: `2026-10-09`
 - ui04FinalWorkBranch: `wb-UI04FINAL`（Controller 已验收并 fast-forward 到 dev）
 
 不要修改 `main` / 1.0，除非未来任务明确要求。
+
+## 当前状态与下一步（2026-10-09）
+
+- **LIVEFIX05 已被 Controller 接受并快进合并**：`wb-LIVEFIX05` 的实际提交 `3a6c6d70be6132147ccb09d9a718ccd5189109c7`，自原 dev HEAD `171a6c690499f66e7333b784a5c7557b61b5096f` 真实单提交后代快进。
+- 改动范围恰好三个文件：`miniprogram/pages/v2-live/v2-live.wxml`、`tests/livefix05.test.mjs`、`.codex/control/LAST_RESULT.yaml`。未改 server/cloudfunction/Core/Content/main，也没有云端部署。
+- Controller 已核验远端 WXML 的显式否定 `wx:if` 与原有选项/CTA 绑定；WorkBuddy `LAST_RESULT` 报告 `livefix05: 6/6`、`ui04c: 18/18`，以及限定范围的静态门禁全部 PASS。**本轮未重新执行测试，也没有新 CI 结果。**
+- **当前控制面：HOLD**；`.codex/control/NEXT_TASK.yaml` 明确 `workBuddyMayImplement: false`、`commitTaskResult: false`、`pushWorkBranch: false`、`startNextTask: false`。**没有 READY 新任务，也不得自动派工。**
+- **待人工验证**：在不覆盖本地脏文件的前提下，让微信开发者工具读取已接受的 dev 前端代码，打开 `pages/v2-live/v2-live`，确认择命选项正常且不再额外显示“当前页面状态由服务器投影给出”。这是 UI 视觉验收，不需要重新部署云函数或清理数据库。
+- 真实云函数首次开局与数据库持久化验收已在 Issue #2 完成，**不能**把本次仅 UI 条件修复的通过解释成完整游戏正式上线。
+- 其他产品工作与新的代码任务，必须等待用户再次明确授权。
 
 ## 产品核心
 
@@ -76,6 +86,7 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - LIVEFIX02: PASS（Controller 已验收；miniprogramRoot 页面/相对依赖闭包、4 个 legacy mirror、永久 package-closure gate 与 route guard 集成通过）
 - LIVEFIX03: PASS WITH CAVEATS（Controller 已验收；历史截断 game.wxss 以 RECONSTRUCTED 方式补全并加入 WXSS integrity gate。非历史恢复，真实 DevTools 已验证 start/game 可编译并正常显示）
 - LIVEFIX04: PASS（Controller 已验收；精确支持 CloudBase `errCode=-1` + `document.get:fail ... <32-hex> ... does not exist` 缺文档形状，generic `-1` 仍 fail-closed）
+- LIVEFIX05: PASS（Controller 于 2026-10-09 验收并 fast-forward；修复 v2-live 终局链 `wx:else` 在择命等正常状态下额外出现的服务器投影提示；真实 DevTools 视觉验收待用户完成）
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
 
@@ -419,7 +430,9 @@ DevTools 构建下编译通过——那仍然是人的 DevTools pass。`tools/wx
 
 未跑 aggregate / typecheck / 600-run / UI04 全量回归（NEXT_TASK 显式要求）。
 
-## Next
+## 历史记录：LIVEFIX04 阶段旧操作（已完成，不再执行）
+
+> 以下仅供追溯过去的云端故障处理流程。**当前任务以文首“当前状态与下一步”及 `.codex/control/NEXT_TASK.yaml` 为准。**
 
 LIVEFIX04 已由 Controller 验收并 fast-forward 合入 `dev/tianfu-2.0`，accepted result commit：
 `2a10061b1b91db706ad6b64cf9ec4e94311e35ae`。
