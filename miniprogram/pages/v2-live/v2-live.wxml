@@ -183,7 +183,11 @@
         <view class="cta" bindtap="onStartNextLife">开启下一世</view>
       </view>
 
-      <view wx:else class="block">
+      <!-- 未知/不受支持的服务器投影态：兜底只在这里出现。
+           必须是显式否定条件，不能是 wx:else —— 紧邻的 wx:elif 属于终局条件链，
+           无条件 wx:else 会在 DESTINY_OFFER / RUN_HOME / EVENT / SPECIAL_NODE
+           各自已渲染出内容之后，再额外插入这个兜底块。 -->
+      <view wx:if="{{!vm.isOffer && !vm.isHome && !vm.isDecision && !vm.isTerminal}}" class="block">
         <view class="block-title">{{vm.pageStateLabel}}</view>
         <view class="body-text">当前页面状态由服务器投影给出，本页面不为它提供本地操作。</view>
       </view>

@@ -1,219 +1,155 @@
 version: 1
-taskId: LIVEFIX04
+taskId: LIVEFIX05
 attempt: 1
 status: PASS
-title: LIVEFIX04 — CloudBase errCode=-1 Missing-Document Shape
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-LIVEFIX04
-baseCommit: ea0571ce62b803b1dce499f147ec6a897adb8feb
+workBranch: wb-LIVEFIX05
+baseCommit: 171a6c690499f66e7333b784a5c7557b61b5096f
 historyMode: real-ancestry
-baseTreeSha: eeb03eeaa12a28e5a797f9a33773afcc5f7bdd65
-sourceHeadVerifiedBy: |
-  git fetch origin dev/tianfu-2.0 resolved the remote source HEAD to ea0571c. The existing worktree was
-  fast-forwarded onto it with `git merge --ff-only ea0571c` (no reset, no rebase, no new worktree, no new
-  branch). `git merge-base --is-ancestor 6a1266d ea0571c` confirmed the accepted LIVEFIX03 result commit is
-  an ancestor of this base, so real ancestry applies and the synthetic-tree fallback was not used.
-realEnvironmentEvidence:
-  devTools:
-    startPage: PASS
-    gamePage: PASS
-    previousWxssCompileErrorGone: true
-    v2LiveReachedCloud: true
-  cloudFunction:
-    function: tianfu2
-    errCode: -1
-    errMsg: "document.get:fail document with _id 3ce20f6c196afe9afe03504165d51dcf does not exist"
-    clientSymptom: "createRunOffer result.runId must be a non-empty string"
-    note: >-
-      The observed _id is exactly 32 hex characters, which is what `documentIdFor` produces, so the failing
-      read is provably one this store issued.
-summary: |
-  Narrow persistence-boundary compatibility fix. The condition real CloudBase reported on 2026-10-05 is the
-  SAME benign first-use absence LIVEFIX01 already handles — a document that is not there yet — but wrapped
-  in the generic `errCode: -1` instead of the ResourceNotFound family. Because the platform returns `-1`
-  for permission failures, network faults, transaction conflicts and malformed requests too, the code
-  alone carries no information and is never treated as the discriminator.
+sourceHeadVerifiedBy: git ls-remote origin refs/heads/dev/tianfu-2.0
 
-  The fix accepts `-1` (numeric or stringified) ONLY when the message matches, fully anchored:
+summary: >-
+  Fixed the v2-live terminal-chain wx:else leak. The fallback block at the bottom of the ready
+  surface was an unconditional wx:else attached to the TERMINAL condition chain (the NEXT_LIFE
+  wx:elif), not to the destiny/home/decision chain. Every non-terminal state therefore fell through
+  the terminal chain into the fallback, so DESTINY_OFFER rendered its offered candidates AND the
+  unrelated "server projection" note. The fallback is now an explicit negated condition that can only
+  match a page state no view claims.
 
-      ^document\.get:fail\s+document\s+with\s+_id\s+[0-9a-f]{32}\s+does\s+not\s+exist$
-
-  That single regex requires the `document.get:fail` operation prefix, the `_id` subject, a 32-hex
-  deterministic id and the absence claim, in that order and with nothing around them. A generic `-1`
-  therefore cannot normalize: it cannot pass an anchored match, so permission, network, transaction,
-  malformed, wrong-id-format and wrong-operation `-1`s all still throw. Collection absence is rejected
-  before the `-1` branch is even reached, so a broken deployment still fails closed.
-
-  The harness gained a selectable `missingDocumentShape` so the SAME store, service and host run under both
-  the LIVEFIX01 shape and the production `errCode: -1` shape. All four read kinds, the empty-database
-  first `createRunOffer`, the exactly-once bootstrap retry, command idempotency and the committed
-  deployable cloud host are proven under the new shape; the cloud runtime was regenerated exactly once.
 changedFiles:
-  - server/src/cloudbase-store.ts
-  - tools/ui04d-cloud-harness.mjs
-  - cloudfunctions/tianfu2/runtime/server-cloudbase-store.js
-  - tests/livefix04.test.mjs
-  - package.json
+  - miniprogram/pages/v2-live/v2-live.wxml
+  - tests/livefix05.test.mjs
   - .codex/control/LAST_RESULT.yaml
+
 changes:
-  - file: server/src/cloudbase-store.ts
-    what: added the exact production errCode=-1 missing-document shape to isMissingDocumentError
-    detail: >-
-      Added CLOUDBASE_GENERIC_ERROR_CODE = -1 as a named constant (so the branch reads as a deliberate
-      exception rather than a magic number) and the fully anchored GENERIC_MINUS_ONE_MISSING_DOCUMENT
-      regex. The `-1` branch runs after the existing collection-absence guard and returns only on that
-      anchored match, so it cannot widen what the LIVEFIX01 shapes accept and cannot swallow anything else.
-      Every other read path is untouched: no schema field, no RNG draw, no new query, no new collection.
-  - file: tools/ui04d-cloud-harness.mjs
-    what: selectable missing-document wire shape
-    detail: >-
-      Added MISSING_DOCUMENT_SHAPES = ["resourceNotFound", "genericMinusOne"], the
-      genericMinusOneMissingDocumentError / ...StringCode helpers, and a missingDocumentShape option on
-      createFakeCloudDatabase that throws the selected shape. An unrecognised shape throws rather than
-      defaulting, so a typo cannot silently weaken a test. The default stays the LIVEFIX01 shape, so every
-      existing suite is unaffected.
-  - file: cloudfunctions/tianfu2/runtime/server-cloudbase-store.js
-    what: regenerated deployable cloud runtime
-    detail: >-
-      Produced solely by `node tools/ui04d-cloud-runtime-artifact.mjs --write` after the source stabilised,
-      exactly one regeneration round. The freshness check confirms a fresh generation matches the committed
-      bytes byte for byte.
-  - file: tests/livefix04.test.mjs
-    what: dedicated suite, 13 tests
-    detail: >-
-      Most assertions are about what must STILL fail: a bare `-1`, permission denied, auth failure, network
-      timeout, socket hang up, transaction conflict, transaction aborted, malformed document, a truncated
-      sentence, trailing junk, a leading platform prefix, a wrong operation, no absence claim, a
-      collection absence wearing `-1`, and six bad id shapes (31/33 chars, non-hex, ObjectId, uuid, empty).
-  - file: package.json
-    what: registered test:livefix04
-    detail: The frozen aggregate `test` list is deliberately left unchanged, per the fast-lane profile.
-recoveryProvenance: not-applicable
+  - file: miniprogram/pages/v2-live/v2-live.wxml
+    what: >-
+      Replaced the terminal chain's trailing <view wx:else class="block"> with
+      <view wx:if="{{!vm.isOffer && !vm.isHome && !vm.isDecision && !vm.isTerminal}}" class="block">.
+      An wx:if opens its own chain, so the block is now evaluated on its own condition instead of
+      inheriting the terminal chain's fall-through. Added a comment recording why it must not become
+      a wx:else again. Body copy, pageStateLabel binding and the block's class are unchanged.
+  - file: tests/livefix05.test.mjs
+    what: >-
+      New narrow WXML regression suite, 6 tests. Models real WXML chain semantics (a run of
+      wx:if/wx:elif/wx:else siblings where exactly one member renders) over the direct children of the
+      ready-surface container, then asserts: no known page state renders the fallback (8 states); only
+      an unknown state does; the fallback is a wx:if chain head negating all four view discriminators;
+      the original terminal-chain wx:else leaks on exactly DESTINY_OFFER/RUN_HOME/EVENT/SPECIAL_NODE;
+      and every server-projected option, handler binding and terminal/next-life CTA is preserved.
+      The negative control is an anchored single-token mutation that is asserted to have applied.
+
 tests:
-  livefix04: 13 pass / 0 fail
-  livefix01: 15 pass / 0 fail
-  cloud-runtime-artifact-freshness: "PASS — a fresh generation matches the committed bytes"
-  cloud-runtime-dependency-audit: "PASS — UI04D cloud runtime audit"
-  cloud-runtime-smoke: "PASS — 15 checks"
-  lint: "PASS — Core import boundary"
-  secret-scan: PASS
-  aggregate-npm-test: "SKIPPED per NEXT_TASK.runAggregateNpmTest=false"
-  typecheck: "SKIPPED per NEXT_TASK.maxTypecheckRuns=0"
-  "600-run": "SKIPPED per NEXT_TASK.run600Simulation=false"
-  ui04-full-regression: "SKIPPED per NEXT_TASK verificationProfile=fast-lane"
+  - name: livefix05
+    command: node --test tests/livefix05.test.mjs
+    result: 6 tests / 6 pass / 0 fail
+  - name: ui04c-targeted
+    command: node --test tests/ui04c.test.mjs
+    result: 18 tests / 18 pass / 0 fail
+
 gates:
-  exactProductionShapeAccepted: >-
-    The literal dispatch evidence is accepted for numeric -1, string "-1", and the message reported on
-    `message` rather than `errMsg`; surrounding whitespace is tolerated because the regex is applied to a
-    trimmed message.
-  livfix01ShapesUnchanged: >-
-    Every previously accepted shape still normalizes, including the short concrete _id
-    ("document.get failed because document with _id abc does not exist") that the new 32-hex rule would
-    have rejected had it been applied to that branch. This is asserted explicitly so LIVEFIX04 cannot
-    silently tighten LIVEFIX01.
-  nearMissMinusOneFatal: >-
-    19 fatal `-1` near-misses, plus six bad id shapes, plus a collection absence carrying `-1`. The
-    generic code is never sufficient on its own.
-  allFourReadKinds: >-
-    readRun outside a transaction and getRun / getIdempotency / getBootstrap / getTerminalTransition inside
-    one all answer `undefined` under the new shape, with `whereCalls === 0` and every collection addressed
-    by deterministic id.
-  emptyDatabaseFirstRun: >-
-    A completely empty four-collection database publishes a non-empty runId and pageState DESTINY_OFFER
-    under the new shape, writing exactly one run and one bootstrap mapping.
-  bootstrapExactlyOnce: >-
-    The same-bootstrap retry recovers the same run, a cold handler recovers it again with an identical
-    view, and a different OPENID yields a different player and a different run.
-  commandIdempotency: >-
-    Reusing the SAME envelope object returns the recorded result with no second receipt, no second
-    settlement and no state advance; a changed payload under the same commandId is still refused with
-    command.idempotency_conflict, so normalizing the missing receipt did not weaken idempotency.
-  bothShapesSameCodePath: >-
-    MISSING_DOCUMENT_SHAPES is iterated and each shape drives an identical first-run plus exactly-once
-    retry through the same store, service and host. An unrecognised shape throws.
-  deployableHost: >-
-    The committed `cloudfunctions/tianfu2` runtime returns a non-empty runId on the new shape. With an
-    unprovisioned collection it returns the bounded `{ok:false, error:{code:"INTERNAL"}}` envelope, writes
-    nothing, and leaks no collection detail to the client — proving fail-closed.
-  artifactCarriesTheFix: >-
-    A source-level assertion requires the committed runtime to contain the anchored matcher, so a stale
-    artifact cannot pass as a fix.
+  - name: wxss-integrity
+    command: node tools/wxss-integrity-audit.mjs
+    result: PASS (7 stylesheets structurally complete)
+  - name: miniprogram-package-closure
+    command: node tools/miniprogram-package-closure.mjs
+    result: PASS
+  - name: miniprogram-package-mirror
+    command: node tools/miniprogram-package-mirror.mjs
+    result: PASS (4 mirrored files fresh)
+  - name: route-guard
+    command: node tools/route-guard.mjs
+    result: PASS
+  - name: lint
+    command: node tools/check-import-boundaries.mjs
+    result: PASS
+  - name: secret-scan
+    command: node tools/scan-secrets.mjs
+    result: PASS
+
 scope:
   coreChanged: false
   contractsChanged: false
   directorChanged: false
   contentChanged: false
+  serverChanged: false
+  cloudfunctionChanged: false
+  databaseChanged: false
   gameplayChanged: false
-  clientChanged: false
-  uiChanged: false
-  databaseSchemaChanged: false
-  newRpc: false
-  defaultRouteChanged: false
-  tabBarChanged: false
-  forbiddenTreeDriftCheck: >-
-    `git diff --name-only ea0571c` over packages/core, packages/content, packages/wechat-shell,
-    packages/application-ui, packages/platform-contract, miniprogram and server/src/identity.ts returns 0
-    for every one. The only source change is the persistence boundary in server/src/cloudbase-store.ts.
-  disclosedScopeNotes: >-
-    The commit is one source file (the store boundary), one test harness option, the generated artifact it
-    implies, the new suite, package.json and this result file. No client or UI workaround was added, no
-    collection is auto-created, no schema field was added, and no new RPC was introduced. The store still
-    never calls createCollection and never issues a where() query, asserted at source level and against the
-    generated artifact.
-  untested: >-
-    The aggregate suite, typecheck, the 600-run simulation and the full UI04 regression were all skipped by
-    NEXT_TASK instruction. The deferred regression cost is real but is the controller's explicit trade.
+  generatedRuntimeChanged: false
+  routeOrTabBarChanged: false
+  uiRedesign: false
+  forbiddenTreesDrift: >-
+    git diff --name-only <base> over cloudfunctions/, server/, packages/core, packages/content,
+    packages/wechat-shell, packages/application-ui, packages/platform-contract,
+    miniprogram/pages/v2-live/v2-live.js, miniprogram/pages/v2-live/v2-live.wxss and
+    miniprogram/app.json returns 0 for every one.
+  localDirtyNotIncluded: >-
+    .gitignore, package.json, project.private.config.json, tools/deploy-tianfu2.sh and %SystemDrive%/
+    were already dirty in this worktree before this task and were explicitly dispositioned by the
+    Controller as keep / do not commit. They are NOT part of this delivery and are not staged here.
+    No new untracked workspace pollution was introduced.
+
 blockers: []
+
+disclosedScopeNotes:
+  - >-
+    Visual QA was NOT performed. No WXSS compiler exists in this repository, so the compile and the
+    on-device appearance of this change remain the human's DevTools pass. The suite proves the
+    conditional structure, not the rendering.
+  - >-
+    This task changed one WXML conditional only. It has not been redeployed to any environment and no
+    cloud function was touched; the already-passed v2-live cloud smoke was not rerun.
+  - >-
+    The dedicated script name was NOT added to package.json, because package.json is one of the
+    pre-existing dirty files the Controller ordered left uncommitted. tests/livefix05.test.mjs runs
+    directly via node --test. Controller may fold the script registration into that pending change.
+
 toolingObservations:
   - >-
-      A generic platform error code must never be a discriminator. `-1` is what the platform returns for
-      permission, network, transaction and malformed failures too, so any rule of the form "code === -1
-      means empty" would silently convert operational outages into data loss. Pair the code with a fully
-      anchored message that pins the operation, the subject, a well-formed id and the claim.
+    WXML chain semantics are the trap in this fix: an wx:else binds to the immediately preceding
+    wx:if/wx:elif SIBLING, so placing a fallback after an unrelated chain silently changes what it
+    matches. A regression test for this class must model the chain, not grep for wx:else.
   - >-
-      Anchor the whole message, not just the interesting substring. The new regex is anchored at both ends
-      so a truncated sentence, a trailing "(retrying)", a leading platform prefix or a wrong operation all
-      stay fatal. A substring match would have accepted every one of those.
+    When walking a WXML chain backwards to find its head, stop when the CURRENT element is an wx:if.
+    Testing the PREVIOUS element instead walks past the chain head into the preceding chain and
+    evaluates the wrong chain - it produced a wrong negative-control result here first.
   - >-
-      Requiring a well-formed id is a cheap, high-value discriminator. Because the store only ever addresses
-      `documentIdFor` output, a 32-hex id proves the failing read is one this store issued; the six bad-id
-      near-misses (31/33 chars, non-hex, ObjectId, uuid, empty) all stay fatal for free.
-  - >-
-      Keep the new branch AFTER the collection-absence guard and give it its own anchored match rather than
-      extending the shared SUBJECT/CLAIM regexes. Sharing them would have let `-1` reach the old uncoded
-      literal-message branch and widened what `-1` accepts; keeping it separate means the LIVEFIX01 branch
-      still accepts its short `_id abc` form, which the new 32-hex rule would otherwise have rejected.
-  - >-
-      A selectable error shape in a fake harness is how you prove one code path serves two real wire
-      shapes. `missingDocumentShape` drives the same store, service and host under both, and an
-      unrecognised value throws so a typo cannot silently fall back to the permissive default.
-  - >-
-      The committed cloud host does NOT throw on an operational error: `cloudfunctions/tianfu2/index.js`
-      logs and returns a bounded `{ok:false, error:{code:"INTERNAL", retryable:true}}` envelope. A test that
-      asserts "it must reject" against the host is asserting the wrong contract — assert the envelope, the
-      absence of a runId, that nothing was written, and that no server detail leaked. Probing the real
-      return value first is faster than reasoning about it.
-  - >-
-      Idempotency assertions must reuse the SAME envelope object. Rebuilding an "identical" command with a
-      fresh commandId (or a stale expectedStateVersion) yields STATE_CONFLICT, which looks like a
-      persistence bug and is not one. Two of this task's own failures were this mistake.
+    A vm fixture for a WXML conditional test must supply every field the condition dereferences. A
+    null terminal projection made all four terminal branches unreachable and the negative control
+    "leaked" on all eight states - a fixture artefact that looked like a product bug.
+
 resourceUsage:
   fullDedicatedSuiteRuns: 2
   typecheckRuns: 0
-  artifactRegenerationRounds: 1
+  artifactRegenerationRounds: 0
   pushAttempts: 0
+  cloudDeploys: 0
+  cloudInvocations: 0
   notes: >-
-    Two full dedicated-suite runs. The first surfaced three real defects, all in the new suite rather than
-    the fix: a read test that called store methods which do not exist (only readRun and transact are
-    public), an idempotency assertion that rebuilt the envelope instead of reusing it, and a host
-    assertion that expected a throw where the real host returns a bounded envelope. One cloud-runtime
-    regeneration round, after the source stabilised. No aggregate, no typecheck, no 600-run, no full UI04
-    regression, and no unbounded search or retry loop.
-nextManualDevToolsStep: >-
-  Redeploy ONLY the `tianfu2` cloud function (npm install inside `cloudfunctions/tianfu2` first, then
-  deploy that directory), then repeat the v2-live smoke. No MiniProgram change is required, so the DevTools
-  workspace does not need re-syncing or re-clearing for this fix. The first `createRunOffer` on an empty
-  database should now return a real runId instead of failing with `createRunOffer result.runId must be a
-  non-empty string`. Report the next real error verbatim; do not speculate past it.
-recommendedCommitMessage: |
-  LIVEFIX04: accept the exact CloudBase errCode=-1 missing-document shape without swallowing generic -1
+    Two full runs of tests/livefix05.test.mjs (the first green run, then the confirming run after
+    the fixture correction). tests/ui04c.test.mjs run once. No aggregate npm test, no typecheck, no
+    600-run simulation, no full UI04 regression, no cloud deploy, no cloud invocation.
+
+recommendedCommitMessage: >-
+  LIVEFIX05: replace the terminal chain's wx:else with an explicit fallback condition
+
+  The v2-live fallback block was an unconditional wx:else at the end of the TERMINAL condition
+  chain, so it inherited that chain's fall-through: every non-terminal state matched it. On a real
+  DESTINY_OFFER cloud session the page therefore rendered the offered candidates and, below them, an
+  unrelated "this page state comes from the server projection" note.
+
+  An wx:if opens its own chain, so making the condition explicit both fixes the leak and makes the
+  intent checkable. The fallback now requires !isOffer && !isHome && !isDecision && !isTerminal,
+  which no view-backed state can satisfy; only a genuinely unknown server projection still reaches
+  it, and that is the case the copy was written for.
+
+  tests/livefix05.test.mjs models real WXML chain semantics and asserts the fallback is absent for
+  all eight known page states, present for an unknown one, structurally a wx:if chain head, and that
+  the former terminal-chain wx:else leaks on exactly the four non-terminal views. Server-projected
+  option lists, onOption and the ending/life-book/rebirth advance CTAs plus the explicit next-life
+  CTA are all asserted preserved.
+
+  Gates: livefix05 6/6, ui04c 18/18, wxss-integrity, package-closure, package-mirror, route-guard,
+  lint, secret-scan all PASS. No visual QA, no redeploy, no cloud invocation. The pre-existing local
+  dirty files remain uncommitted per the Controller disposition.
