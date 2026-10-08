@@ -20,10 +20,10 @@
 - **LIVEFIX05 已被 Controller 接受并快进合并**：`wb-LIVEFIX05` 的实际提交 `3a6c6d70be6132147ccb09d9a718ccd5189109c7`，自原 dev HEAD `171a6c690499f66e7333b784a5c7557b61b5096f` 真实单提交后代快进。
 - 改动范围恰好三个文件：`miniprogram/pages/v2-live/v2-live.wxml`、`tests/livefix05.test.mjs`、`.codex/control/LAST_RESULT.yaml`。未改 server/cloudfunction/Core/Content/main，也没有云端部署。
 - Controller 已核验远端 WXML 的显式否定 `wx:if` 与原有选项/CTA 绑定；WorkBuddy `LAST_RESULT` 报告 `livefix05: 6/6`、`ui04c: 18/18`，以及限定范围的静态门禁全部 PASS。**本轮未重新执行测试，也没有新 CI 结果。**
-- **当前控制面：HOLD**；`.codex/control/NEXT_TASK.yaml` 明确 `workBuddyMayImplement: false`、`commitTaskResult: false`、`pushWorkBranch: false`、`startNextTask: false`。**没有 READY 新任务，也不得自动派工。**
-- **待人工验证**：在不覆盖本地脏文件的前提下，让微信开发者工具读取已接受的 dev 前端代码，打开 `pages/v2-live/v2-live`，确认择命选项正常且不再额外显示“当前页面状态由服务器投影给出”。这是 UI 视觉验收，不需要重新部署云函数或清理数据库。
+- **当前控制面：READY / LIVEFIX06（用户明确批准）**；只允许在 `wb-LIVEFIX06` 处理 Content01 中文文案覆盖问题，不允许自动启动后续任务或合并开发分支。
+- **LIVEFIX05 真实视觉验收已通过**：用户截图显示 `DESTINY_OFFER` 页面择命候选正常，旧版“服务器投影”多余提示消失；选择命格后成功进入 `RUN_HOME`。随后点击一次“游历”进入 `EVENT`，页面标注第 4 版，出现新的 LIVEFIX06 文案缺陷。
 - 真实云函数首次开局与数据库持久化验收已在 Issue #2 完成，**不能**把本次仅 UI 条件修复的通过解释成完整游戏正式上线。
-- 其他产品工作与新的代码任务，必须等待用户再次明确授权。
+- **LIVEFIX06 已获用户明确授权**：修复实机 EVENT 中 `content01.ordinary.night-rain.title/body/choice.*` 原始键名泄漏。源 `CONTENT01_ZH_CN` 已含真实中文，客户端 `CONTENT_COPY` 不完整。必须从源文案形成确定性客户端资源并加覆盖/新鲜度门禁；禁止改服务器、云函数、游戏机制或进行新功能开发。用户手动通知 WorkBuddy 领取；下一个任务仍需另行批准。
 
 ## 产品核心
 

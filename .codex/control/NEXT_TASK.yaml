@@ -1,11 +1,11 @@
 version: 1
-status: HOLD
+status: READY
 attempt: 1
-taskId: LIVEFIX05
-title: LIVEFIX05 — v2-live terminal-fallback WXML display leak
-taskDefinition: .codex/tasks/LIVEFIX05.yaml
+taskId: LIVEFIX06
+title: LIVEFIX06 — Content01 live-client Chinese copy completeness
+taskDefinition: .codex/tasks/LIVEFIX06.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-LIVEFIX05
+workBranch: wb-LIVEFIX06
 worktreeRequired: true
 allowSyntheticTreeBase: true
 basePolicy: remote-source-head-at-task-start
@@ -13,64 +13,39 @@ verificationProfile: fast-lane
 executionProfile: credit-efficient
 execution:
   readProtocolFirst: true
-  workBuddyMayImplement: false
-  commitTaskResult: false
-  pushWorkBranch: false
+  workBuddyMayImplement: true
+  commitTaskResult: true
+  pushWorkBranch: true
   updateSourceBranch: false
   startNextTask: false
   runAggregateNpmTest: false
   run600Simulation: false
   maxTypecheckRuns: 0
   maxFullDedicatedSuiteRuns: 2
-  maxArtifactRegenerationRounds: 0
+  maxArtifactRegenerationRounds: 1
   maxPushAttempts: 2
   prohibitUnboundedRetryLoops: true
 controllerReview:
-  previousTask: LIVEFIX04
-  previousStatus: ACCEPTED_AND_REAL_CLOUD_SMOKE_PASS
-  acceptedResultCommit: 2a10061b1b91db706ad6b64cf9ec4e94311e35ae
-realEnvironmentEvidence:
-  manualGate: REAL_CLOUD_REDEPLOY_V2_LIVE_SMOKE
-  manualGateStatus: PASS
-  evidenceIssue: https://github.com/214950981/tianfu-sim/issues/2
-  acceptedEvidenceComment: 6064240639
-  cloudEnvironment: cloud1-8glg1sird4d40bc0
-  observedStage: ready
-  observedPageState: DESTINY_OFFER
-  observedRunId: run-a454db4af12f3fbaedd6c473bd2c842e
-  observedStateVersion: 0
-  exactRunDocCount: 1
-  exactBootstrapDocCount: 1
-controllerDecision:
-  strategy: correct-one-wxml-conditional-fallback-only
-  rationale: first real cloud createRunOffer and persistence smoke passed; current DESTINY_OFFER screen shows an unrelated fallback because its wx:else is attached to a second terminal branch
-controllerIntent:
-  mode: FAST_LANE_UI_ONLY
-  goal: remove the misleading server-projection fallback on valid v2-live stages while preserving legitimate fallback and terminal CTA behavior
-  postTask: accepted and fast-forwarded; HOLD pending explicit user authorization before any further task
-controllerAcceptance:
-  taskId: LIVEFIX05
-  status: ACCEPTED_AND_FAST_FORWARDED
-  reviewedDate: "2026-10-09"
-  originalSourceHead: 171a6c690499f66e7333b784a5c7557b61b5096f
+  previousTask: LIVEFIX05
+  previousStatus: ACCEPTED_AND_VISUAL_PASS
   acceptedResultCommit: 3a6c6d70be6132147ccb09d9a718ccd5189109c7
-  workBranch: wb-LIVEFIX05
-  mergeMethod: fast-forward
-  ancestry: "ahead 1, behind 0, merge base 171a6c690499f66e7333b784a5c7557b61b5096f"
-  changedFiles:
-    - miniprogram/pages/v2-live/v2-live.wxml
-    - tests/livefix05.test.mjs
-    - .codex/control/LAST_RESULT.yaml
-  targetedTestsReported:
-    livefix05: "6 passed, 0 failed (WorkBuddy report)"
-    ui04c: "18 passed, 0 failed (WorkBuddy report)"
-  sourceReview: PASS
-  visualQa: PENDING_MANUAL_DEVTOOLS
-  cloudDeployment: NOT_PERFORMED
-  cloudSmoke: PREVIOUSLY_PASS_NOT_RERUN
-  nextAction: HOLD_UNTIL_EXPLICIT_USER_DECISION
-
+  originalDispatchBase: f68f1fb0dd3749cccafe6ff1a0babebd7aa48945
+realEnvironmentEvidence:
+  observedPageSequence: "DESTINY_OFFER -> RUN_HOME -> EVENT"
+  livefix05VisualQa: PASS
+  observedEvent: content01.ordinary.night-rain
+  observedStateVersion: 4
+  observedFailure: "raw content01.* title, body, and three choice keys are displayed"
+  cloudFunctionState: "working for createRunOffer and initial action; no cloud change authorized"
+controllerIntent:
+  mode: FAST_LANE_CLIENT_COPY_ONLY
+  goal: "Fix full Content01 runtime copy coverage in v2-live from existing source catalog"
+  postTask: "Controller must review exact work branch; no automatic merge or follow-on task"
 notes:
-  - LIVEFIX05 code acceptance completed; this HOLD is not authorization for WorkBuddy to resume.
-  - Keep main unchanged; no new implementation tasks, push, deployment, or aggregate regression are authorized.
-  - If the user chooses to verify the page visually, update the local DevTools workspace and inspect v2-live only.
+  - User explicitly approved dispatch of LIVEFIX06 after real DevTools evidence.
+  - Read .codex/control/PROTOCOL.md and run node .codex/context.mjs LIVEFIX06 once before implementation.
+  - Base is the actual remote source HEAD at task start, not necessarily originalDispatchBase.
+  - Keep all pre-existing local dirty files unchanged and uncommitted; do not create new dirty workspace pollution.
+  - Prefer GitHub API upload on git push network failure, with bounded attempts and no force. Verify remote SHA, tree, ancestry and changed files; disclose any API-recreated commit SHA.
+  - Do not run aggregate tests, typecheck, 600-run, cloud deployment or unrelated full regression.
+  - Implement exactly this one task and push wb-LIVEFIX06. Stop for Controller acceptance.

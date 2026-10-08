@@ -1,0 +1,106 @@
+id: LIVEFIX06
+title: LIVEFIX06 — Content01 live-client Chinese copy completeness
+phase: 2
+verificationProfile: fast-lane
+executionProfile: credit-efficient
+requiredContracts: [.codex/contracts/ui.ref, .codex/contracts/platform.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first:
+  - packages/content/src/content01-v1.ts
+  - miniprogram/pages/v2-live/v2-live.js
+  - miniprogram/pages/v2-live/v2-live.wxml
+  - tests/ui04c.test.mjs
+  - tests/ui02copy.test.mjs
+  - tools/ui04b-wechat-runtime-artifact.mjs
+evidence:
+  - "Real WeChat DevTools: DESTINY_OFFER and RUN_HOME display normally; one travel action reaches EVENT at stateVersion 4."
+  - "EVENT shows raw content01.ordinary.night-rain.title, .body and three .choice keys, while cards and choices render and risk labels are Chinese."
+  - "Source packages/content/src/content01-v1.ts already defines CONTENT01_ZH_CN. The night-rain event has a Chinese title 夜雨, a full Chinese body, and Chinese choice labels."
+  - "The v2-live.js local CONTENT_COPY is bounded to old preview keys; presentLabel returns the raw key for missing entries. This is a client localization catalog coverage defect, not evidence of failed CloudBase execution."
+goal: >-
+  On the real v2-live client, all public Content01 keys provided by the committed
+  content catalog must resolve to their canonical Chinese wording, without changing
+  server projections, business rules, gameplay semantics or CloudBase.
+allowedScope:
+  - >-
+    Make the existing CONTENT01_ZH_CN catalog the single source of truth for
+    player-facing Content01 strings. Use a small deterministic generation/inclusion
+    path to give the miniprogram a runtime-safe local catalog; do not manually duplicate
+    all strings, translate keys by guesswork, import TypeScript into WeChat runtime,
+    or enlarge cloud/server RPC payloads. Prefer existing repo tooling/dependencies
+    when possible.
+  - >-
+    Preserve the existing page-specific Chinese catalog entries (including dev keys)
+    and merge the generated Content01 catalog by exact key without changing option IDs,
+    riskPresentation, interaction structure, command envelopes, stateVersion,
+    submission locking or existing displayed text for non-Content01 keys.
+  - >-
+    Cover all Content01_ZH_CN keys, not merely night-rain: event headings and body,
+    choice labels, and the Content01 public copy appearing in destiny/history/causes
+    and other current v2-live presentation surfaces. Ensure existing localization
+    helpers use the complete catalog consistently.
+  - >-
+    Provide a deterministic generation command plus a read-only freshness check
+    (or equivalently verifiable artifact check). A missing/stale generated catalog
+    must fail a targeted gate, not silently become a partial hand-maintained map.
+    Keep the runtime package closed and do not ship TS-only/server-only dependencies.
+  - >-
+    Add tests/livefix06.test.mjs to verify full source-key coverage, positive Chinese
+    resolution of night-rain title/body/three options in the actual v2-live render
+    path, multiple other Content01 events, and the relevant historical/side-surface
+    keys. Test that adding a new source key without regenerating the client artifact
+    fails freshness/coverage. Keep a meaningful negative control.
+  - >-
+    Preserve explicit behavior for genuinely unknown/unmapped future keys as a
+    detectable failure, not misleading invented copy; ensure all known committed
+    Content01 keys are mapped. Preserve LIVEFIX05 wx:if fallback semantics.
+  - >-
+    Run dedicated livefix06 suite, the directly affected ui04c suite once when
+    feasible, and only necessary package closure / runtime artifact freshness /
+    lint / secret-scan gates. Update .codex/control/LAST_RESULT.yaml with actual
+    files and tests. Do not change package.json solely to register a script if
+    its pre-existing local changes make that unsafe.
+forbiddenScope:
+  - cloudfunction-change
+  - server-change
+  - core-change
+  - content01-text-or-event-semantics-change
+  - gameplay-or-rng-change
+  - database-change
+  - runtime-rpc-or-schema-change
+  - wechat-routes-or-tabbar-change
+  - ui-redesign
+  - unrelated-generated-runtime-regeneration
+  - cloud-deploy
+  - frontend-deploy
+  - clear-cache
+  - aggregate-npm-test
+  - full-UI04-regression
+  - typecheck
+  - 600-run
+  - unbounded-retry
+  - source-branch-push
+  - main-branch-change
+accept:
+  - >-
+    The original real EVENT, content01.ordinary.night-rain, resolves to 夜雨,
+    its canonical full Chinese body and each of its three canonical Chinese choices;
+    it does not display any content01.* raw keys.
+  - >-
+    Full current CONTENT01_ZH_CN source-key set is present in the client catalog;
+    its generated output is deterministic and freshness-gated.
+  - >-
+    Current EVENT, SPECIAL_NODE, history, causes and other supported v2-live
+    surfaces do not leak any known Content01 raw keys.
+  - >-
+    A negative control catches an intentionally deleted client translation key
+    or stale artifact, rather than only checking presence of a script.
+  - >-
+    Options, order, option IDs, RPC arguments, authority, risk, buttons and
+    terminal/next-life flows are unchanged; previous LIVEFIX05 conditional
+    remains intact.
+  - >-
+    Exactly the small allowed client copy/artifact, generator, targeted tests,
+    and LAST_RESULT files are delivered. No server/cloud/content rule changes.
+tests: [livefix06, ui04c-targeted, localization-freshness, package-closure, lint, secret-scan]
