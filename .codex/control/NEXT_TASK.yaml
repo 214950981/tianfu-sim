@@ -1,33 +1,55 @@
 version: 1
-status: HOLD
+status: READY
+attempt: 1
+taskId: LIVEFIX05
+title: LIVEFIX05 — v2-live terminal-fallback WXML display leak
+taskDefinition: .codex/tasks/LIVEFIX05.yaml
 sourceBranch: dev/tianfu-2.0
-reason: LIVEFIX04 accepted; waiting for tianfu2 redeploy and real v2-live empty-database smoke
+workBranch: wb-LIVEFIX05
+worktreeRequired: true
+allowSyntheticTreeBase: true
+basePolicy: remote-source-head-at-task-start
+verificationProfile: fast-lane
+executionProfile: credit-efficient
+execution:
+  readProtocolFirst: true
+  workBuddyMayImplement: true
+  commitTaskResult: true
+  pushWorkBranch: true
+  updateSourceBranch: false
+  startNextTask: false
+  runAggregateNpmTest: false
+  run600Simulation: false
+  maxTypecheckRuns: 0
+  maxFullDedicatedSuiteRuns: 2
+  maxArtifactRegenerationRounds: 0
+  maxPushAttempts: 2
+  prohibitUnboundedRetryLoops: true
 controllerReview:
   previousTask: LIVEFIX04
-  previousStatus: ACCEPTED
+  previousStatus: ACCEPTED_AND_REAL_CLOUD_SMOKE_PASS
   acceptedResultCommit: 2a10061b1b91db706ad6b64cf9ec4e94311e35ae
-manualGate:
-  mode: REAL_CLOUD_REDEPLOY_V2_LIVE_SMOKE
-  expensiveRegressionAllowed: false
-  requiredSteps:
-    - synchronize deployment workspace to current dev/tianfu-2.0
-    - redeploy only cloudfunctions/tianfu2 with cloud-side dependency installation
-    - do not redeploy MiniProgram code and do not clear MiniProgram caches for this server-only fix
-    - retry pages/v2-live/v2-live
-    - verify first empty-database createRunOffer returns a non-empty runId
-    - verify exactly one run document and one bootstrap mapping appear on first success
-    - return success screenshots or the first new real cloud error
-  forbiddenDuringSmoke:
-    - aggregate npm test
-    - typecheck
-    - 600-run simulation
-    - full UI04 regression
-    - speculative fixes before capturing the first real failure
-caveats:
-  - tests/livefix03.test.mjs and tests/livefix04.test.mjs are not yet part of aggregate npm test; defer this to the next final-audit/test-plan maintenance
-execution:
-  workBuddyMayImplement: false
-  startNextTask: false
+realEnvironmentEvidence:
+  manualGate: REAL_CLOUD_REDEPLOY_V2_LIVE_SMOKE
+  manualGateStatus: PASS
+  evidenceIssue: https://github.com/214950981/tianfu-sim/issues/2
+  acceptedEvidenceComment: 6064240639
+  cloudEnvironment: cloud1-8glg1sird4d40bc0
+  observedStage: ready
+  observedPageState: DESTINY_OFFER
+  observedRunId: run-a454db4af12f3fbaedd6c473bd2c842e
+  observedStateVersion: 0
+  exactRunDocCount: 1
+  exactBootstrapDocCount: 1
+controllerDecision:
+  strategy: correct-one-wxml-conditional-fallback-only
+  rationale: first real cloud createRunOffer and persistence smoke passed; current DESTINY_OFFER screen shows an unrelated fallback because its wx:else is attached to a second terminal branch
+controllerIntent:
+  mode: FAST_LANE_UI_ONLY
+  goal: remove the misleading server-projection fallback on valid v2-live stages while preserving legitimate fallback and terminal CTA behavior
+  postTask: controller reviews the exact work branch, merges only if the tiny WXML change and targeted test pass, then resumes product planning
 notes:
-  - Do not create a new coding branch for this smoke.
-  - If smoke fails, stop after the first real error and return to Controller.
+  - Read .codex/control/PROTOCOL.md and run node .codex/context.mjs LIVEFIX05 once.
+  - Do not touch the two existing dirty local worktrees, legacy main, cloud functions, server code or gameplay.
+  - Do not redeploy anything or rerun the already passed cloud smoke.
+  - Perform exactly this single READY task, push wb-LIVEFIX05, then stop.

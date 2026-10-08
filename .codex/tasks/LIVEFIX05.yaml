@@ -1,0 +1,25 @@
+id: LIVEFIX05
+title: LIVEFIX05 — v2-live terminal-fallback WXML display leak
+phase: 2
+verificationProfile: fast-lane
+executionProfile: credit-efficient
+requiredContracts: [.codex/contracts/ui.ref,.codex/contracts/platform.ref]
+optionalContracts: [.codex/contracts/qa.yaml]
+blockers: []
+inspect_first: [miniprogram/pages/v2-live/v2-live.wxml,miniprogram/pages/v2-live/v2-live.js,tests/ui04c.test.mjs,tests/ui04e.test.mjs]
+allowedScope:
+  - Fix only the WXML conditional fallback that incorrectly shows the server-projection note during DESTINY_OFFER and other known nonterminal stages.
+  - The bottom wx:else belongs to the independent terminal condition chain rather than the earlier destiny/home/decision chain. Replace that fallback with a precise condition so it appears only for unsupported page states and never for known views.
+  - Preserve existing server-projected options and current onOption and other handler bindings. Preserve every legitimate terminal and next-life CTA.
+  - Add one narrow WXML regression test in tests/livefix05.test.mjs that catches the original unconditional terminal-chain else and verifies the correct fallback contract for DESTINY_OFFER RUN_HOME EVENT SPECIAL_NODE ENDING LIFE_BOOK REBIRTH_RESULT NEXT_LIFE and a genuinely unknown state. Keep the negative control small.
+  - Optionally run the directly related tests/ui04c.test.mjs once if cheap. Do not run unrelated suites.
+  - Update .codex/control/LAST_RESULT.yaml with exact changed files and tests actually run. Deliver only the work branch and stop.
+forbiddenScope: [cloudfunction-change,server-change,Core-change,Content-change,gameplay-change,database-change,route-change,tabBar-change,UI-redesign,generated-runtime-change,cloud-deploy,frontend-deploy,clear-cache,aggregate-npm-test,typecheck,600-run,full-UI04-regression,unbounded-retry,source-branch-push,main-branch-change]
+accept:
+  - DESTINY_OFFER renders its offered candidates and selecting a destiny CTA with no extra server-projection fallback block.
+  - RUN_HOME EVENT and SPECIAL_NODE do not show the fallback.
+  - Valid terminal stages retain exactly their correct content and CTA with no fallback.
+  - Only an unknown unsupported nonterminal stage may show the informational fallback.
+  - No server cloud database gameplay or generated runtime code changes and no local untracked workspace pollution is included in delivery.
+  - A named targeted regression proves the former incorrect WXML condition fails and corrected condition passes.
+tests: [livefix05,ui04c-targeted]
