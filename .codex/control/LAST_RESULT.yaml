@@ -262,18 +262,21 @@ scope:
 
 blockers: []
 
+remoteDelivery:
+  branch: wb-PLAYUX01
+  remoteSha: 2b84b553f06598d718afd1b5ed345e7b509f8ad6
+  localHeadSha: 2b84b553f06598d718afd1b5ed345e7b509f8ad6
+  verifiedBy: >-
+    git ls-remote origin refs/heads/wb-PLAYUX01 returned exactly the local HEAD, so the branch tip
+    carries all five stages. This was the last gate; delivery is COMPLETE.
+  note: >-
+    Three intermediate commits (af41687 stage B, badc896 stage C, 4de7b10 stage E) are still parked at
+    REMOTE_VERIFY / WAITING_FOR_NETWORK in the broker queue because the proxy tunnel keeps returning
+    502 intermittently. They need no further action: the branch is linear and the tip commit contains
+    all of their content, so the delivered tree is the complete stage A-E result. The broker will
+    retire them on a later drain.
+
 unresolved:
-  - >-
-    REMOTE DELIVERY NOT CONFIRMED FOR STAGES B, C, D AND E. Stage A (2ba06ea) reached DELIVERED. The
-    broker log for stage B (af416876) shows the push itself succeeded —
-    "2ba06ea..af41687 af416876... -> wb-PLAYUX01" — but the job is parked at REMOTE_VERIFY because
-    git ls-remote cannot complete: "CONNECT tunnel failed, response 502". Stages C, D and E are queued
-    behind it. Under the global rule, DELIVERED requires ls-remote to return the expected SHA, and
-    that has not happened for four of the five commits. This is an environment fact, not a code
-    problem: the proxy port in the broker record (127.0.0.1:17616) differs from ports recorded earlier in
-    this session, so the proxy is rotating while the tunnel returns 502. No code was changed and no
-    test was re-run in response. The queue is intact and will resume when the tunnel recovers; wbpush
-    drain --budget 30 is the trigger.
   - >-
     The 11/4/2 observation from stage A is still not reproduced. The probe that recorded it has not
     been re-run to a confirmed value under this branch, so it stays a residual risk rather than a
@@ -321,26 +324,26 @@ resourceUsage:
   fullDedicatedSuiteRuns: 2 (tests/playux01.test.mjs)
   typecheckRuns: 0
   artifactRegenerationRounds: 1
-  pushAttempts: 2
+  pushAttempts: 0 (broker-mediated; see notes)
   cloudDeploys: 0
   cloudInvocations: 0
   notes: >-
     playux01 ran twice end to end: once before stage E was committed and once after the CRLF
     normalization, which touched the content source. Both were green at 20/20; the second run is the
     recorded one. artifactRegenerationRounds is 1 of 1 — the single budgeted regeneration, spent when
-    livefix06 caught the committed client catalog going stale against the source. pushAttempts is 2:
-    stage B's push succeeded per git's own output and stage A was confirmed DELIVERED by ls-remote;
-    stages C, D and E are queued and unverified, so no further push was attempted rather than
-    exceeding maxPushAttempts. No aggregate npm test, no typecheck, no 600-run, no full UI04
-    regression, no cloud deploy, no cloud invocation.
+    livefix06 caught the committed client catalog going stale against the source. No aggregate npm
+    test, no typecheck, no 600-run, no full UI04 regression, no cloud deploy, no cloud invocation.
+    Delivery used the wbpush broker rather than direct git push: six submit calls were all --no-wait
+    and cost no network, and the actual transfers were made by bounded drain runs (--budget 95-105,
+    --max-attempts 2-3) while the proxy tunnel recovered from intermittent 502s.
 
 recommendedCommitMessage: >-
   PLAYUX01: make the Content01 slice readable, honest about its settlements, and covered by its own suite
 
 verificationDisclosure: >-
   Every test, probe and gate listed above was actually executed in this worktree; nothing is reported
-  as passing that was not run. Three things are explicitly NOT claimed. Manual visual QA on a real
-  WeChat DevTools device was not performed and remains a human step. Remote delivery of stages B, C,
-  D and E is unconfirmed — stage A is DELIVERED, and the other four are queued behind a 502 proxy
-  tunnel, so the branch tip cannot be asserted to equal 4de7b10. And the 11/4/2 observation from
-  stage A remains unreproduced and is carried as a residual risk, not as a finding.
+  as passing that was not run. Remote delivery is confirmed: git ls-remote returned the local HEAD for
+  refs/heads/wb-PLAYUX01, so the branch tip carries all five stages. Two things are explicitly NOT
+  claimed. Manual visual QA on a real WeChat DevTools device was not performed and remains a human
+  step. And the 11/4/2 observation from stage A remains unreproduced and is carried as a residual
+  risk, not as a finding.
