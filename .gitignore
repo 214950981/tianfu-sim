@@ -5,3 +5,6 @@ project.private.config.json
 *.iml
 .idea/
 .workbuddy/
+
+# PLAYUX01 local probe artifacts
+.playux01/
