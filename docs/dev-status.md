@@ -27,6 +27,8 @@
 
 ## PLAYUX01 用户实机问题与新任务基线（2026-10-09）
 
+- **Controller 产品决策版规范已签发**：docs/PLAYUX01-PRODUCT-SPEC.md（四种行动的事件选择规则、四个具体范例、即时结果页、生平录与人生书的信息架构、历史键名/死亡原因处理、终局计数一致性、验收矩阵）。WorkBuddy 仅做技术映射和实现，若有规则冲突需 BLOCKED；不可自行重写产品方向。
+
 - 图1 `偏僻岔路`：场景为择路，但「依此磨炼/停步细看/见好便收」泛化选项与情境不通，行为结果也不明确。
 - 图2 `山色`：追索行为却遭遇泛化旅行风景事件，没有交代追索的线索或与当前行为的联系。
 - 图3 生平录：仍显示 `content01.build.fortune.fork.history`、`content01.ordinary.mountain-view.history` 及 `build.build.fortune.latent` 等内部键名；无法说明选择及后果。

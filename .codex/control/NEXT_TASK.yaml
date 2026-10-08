@@ -31,11 +31,13 @@ controllerReview:
   sourceReviewedCommit: 851e1e35b2e9a9d86afe3c2d09224bc6fffe0211
   userVisualFindings: "Chinese event text renders and gameplay reaches EVENT, archive, ENDING and LIFE_BOOK; serious meaning and consistency problems remain."
 controllerIntent:
+  productDesignSpec: docs/PLAYUX01-PRODUCT-SPEC.md
+  productDecisionsBy: Controller
   mode: INTEGRATED_PLAYER_EXPERIENCE_REWORK
   goal: "One linked action event choice consequences history ending life-book renovation without task splitting"
   postTask: "Controller reviews and determines acceptance; WorkBuddy must not merge or start next task"
 notes:
-  - User explicitly approved this product UX direction and questioned unnecessary separation. Treat it as a single integrated acceptance task with sequential internal phases and one final outcome.
+  - User approved the integrated task and explicitly requires Controller decisions rather than WorkBuddy inventing product design. Read docs/PLAYUX01-PRODUCT-SPEC.md in full; implement the fixed product specification.
   - Read .codex/control/PROTOCOL.md and the task definition. Run node .codex/context.mjs PLAYUX01 once if available; do not roam the whole repository.
   - No automated WorkBuddy invocation from GitHub writing alone. User manually sends the kickoff message.
   - Preserve main and all existing local dirty files. The actual WeChat DevTools project may be the WorkBuddy worktree documented in TOOLING_RUNBOOK; do not assume main clone.

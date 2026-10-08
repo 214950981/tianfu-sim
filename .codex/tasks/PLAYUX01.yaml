@@ -7,6 +7,7 @@ requiredContracts: [.codex/contracts/ui.ref, .codex/contracts/platform.ref]
 optionalContracts: [.codex/contracts/qa.yaml]
 blockers: []
 inspect_first:
+  - docs/PLAYUX01-PRODUCT-SPEC.md
   - .codex/control/PROTOCOL.md
   - .codex/control/NEXT_TASK.yaml
   - .codex/control/LAST_RESULT.yaml
@@ -19,7 +20,7 @@ inspect_first:
   - miniprogram/pages/v2-live/v2-live.js
   - miniprogram/pages/v2-live/v2-live.wxml
 allowedScope:
-  - One integrated work item with internal diagnosis design implementation and validation phases. Do not split into PLAYUX02 or ask for another microtask halfway through. Record a concise implementation design and before-after player examples in Git under docs or review before code edits. Proceed within scope without waiting for a second dispatch; stop BLOCKED only for a real conflict or unsafe invariant.
+  - Follow docs/PLAYUX01-PRODUCT-SPEC.md as the Controller-issued product design authority. WorkBuddy must implement the decided action behaviors player screens scenario cases effect semantics lifetime narrative and explicit acceptance matrix; do not independently redesign or weaken them. First record a concise technical mapping of this fixed design to existing source functions and public authoritative data. If a real invariant prevents it, report BLOCKED rather than silently changing direction.
   - Establish a reproducible baseline of four actions and the exact published public projection by inspecting real code and bounded tests. Distinguish gameplay-rule defects from presentation defects. Use the five real screenshots in the Controller handoff as evidence, not as permission to invent hidden game facts or change the original cloud database.
   - Make cultivate retreat, travel exploration, worldly social contact, and pursuit investigation legibly different for players. Inspect P2 P4 P5 P6 precedence, action-affinity weight, ordinary fallback and content tags before changes. Set meaningful action-context gating or selection while preserving legitimate multi-action events and Director priority continuity RNG determinism and reachable fallback. Provide at least one representative complete action-specific path for every action.
   - Replace generic event option wording and repeated boilerplate where it breaks scene logic. Event text must explain the concrete situation and each available choice must be a plausible action. Its actual server-authoritative outcome must match the displayed choice meaning. Preserve exact command ids risks outcomes and recurrence unless a narrowly justified rule correction is necessary and covered by focused tests. Do not pretend to rewrite every narrative asset; document remaining generic content if any.
@@ -49,6 +50,7 @@ forbiddenScope:
   - unbounded-retries
   - broad-local-clean-or-reset
 accept:
+  - All requirements and gates in docs/PLAYUX01-PRODUCT-SPEC.md are explicitly evaluated and reported with evidence; no WorkBuddy authored product redesign or unapproved shortcuts.
   - For each of cultivate travel worldly and pursuit a player can see why an event belongs to that action and why the options are relevant. An action-dependent scene must not be delivered by a mismatched generic P6 fallback without a justified multi-action context.
   - At least one fully finished representative scenario per action and meaningful coverage of current event families, with distinct scene-specific choices and canonical consequences. No repetitive template sentence is blindly appended to unrelated scenes.
   - A single choice visibly reports only real public outcome and change before returning to RUN_HOME. Repeat submission or refresh cannot settle rewards twice.
