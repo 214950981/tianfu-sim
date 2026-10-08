@@ -160,7 +160,27 @@ var PAGE_CONTENT_COPY = {
   "cause.rescued-stranger.title": "救助路人",
   "cause.rescued-stranger.summary": "你曾救下一名路人，因果自此相连。",
   "cause.hinted.summary": "似有一段因果尚未明朗。",
-  "special.attemptBreakthrough": "冲击境界"
+  "special.attemptBreakthrough": "冲击境界",
+  // PLAYUX01: build stage labels. The server projects `stage.labelKey` for every one of the four stages
+  // of all four tracks, and the client renders it through CONTENT_COPY at buildRow(). Every key here was
+  // previously absent, so the sheet showed a raw build.sword.latent key instead of a stage name.
+  // The wording names what that stage actually is on that track rather than restating the stage id.
+  "build.sword.latent": "剑意未明",
+  "build.sword.emerging": "剑意初成",
+  "build.sword.formed": "剑道已成",
+  "build.sword.refined": "剑道入微",
+  "build.body.latent": "筋骨未开",
+  "build.body.emerging": "筋骨渐强",
+  "build.body.formed": "体魄成形",
+  "build.body.refined": "体魄圆融",
+  "build.alchemy.latent": "丹火未稳",
+  "build.alchemy.emerging": "丹火初驯",
+  "build.alchemy.formed": "丹道有成",
+  "build.alchemy.refined": "丹道通明",
+  "build.fortune.latent": "机缘未动",
+  "build.fortune.emerging": "机缘初显",
+  "build.fortune.formed": "气运成形",
+  "build.fortune.refined": "气运在握"
 };
 
 /**

@@ -15,7 +15,7 @@
 module.exports = [
   [
     "content01.build.alchemy.failed-brew.body",
-    "药液颜色偏了一线，这炉已不能救人；承认失败，比把它勉强端出去更难。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "药液的颜色偏了一线，这炉已经不能救人了。承认失败比把它勉强端出去更难：锅里的东西还温着，端出去就会有人喝。你要决定的是倒掉，还是自己承担。"
   ],
   [
     "content01.build.alchemy.failed-brew.choice.consider",
@@ -35,7 +35,7 @@ module.exports = [
   ],
   [
     "content01.build.alchemy.fever.body",
-    "村中热症蔓延，没有珍稀灵药，只有有限草药与一夜不能出错的照看。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "村中热症蔓延，没有珍稀灵药，只有有限的草药和一夜不能出错的照看。药只能救一部分人，你要决定的是先顾哪一间，以及这一夜怎么轮班。"
   ],
   [
     "content01.build.alchemy.fever.choice.consider",
@@ -55,7 +55,7 @@ module.exports = [
   ],
   [
     "content01.build.alchemy.herb-sort.body",
-    "三种药草外形近似，药性却相反，耐心辨认比一炉昂贵丹火更要紧。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "三种药草外形近似，药性却相反，认错一味整炉报废。耐心辨认比一炉昂贵的丹火更要紧。三株并排摆着，你要一株一株地看过去，不能靠猜。"
   ],
   [
     "content01.build.alchemy.herb-sort.choice.consider",
@@ -75,7 +75,7 @@ module.exports = [
   ],
   [
     "content01.build.body.boulder.body",
-    "巨石堵住山道，术法并非唯一办法，筋骨与耐心也能一点点挪开困局。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "巨石堵住山道，术法并非唯一办法。筋骨与耐心也能一点点把困局挪开，只是要耗上好几日。你可以用更省力的法子绕过去，也可以咬着牙把石头一点点挪开。"
   ],
   [
     "content01.build.body.boulder.choice.consider",
@@ -95,7 +95,7 @@ module.exports = [
   ],
   [
     "content01.build.body.carry-wounded.body",
-    "伤者无法再走，山路仍长。背起一个人，意味着把自己的退路也交给脚下。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "伤者已经无法再走，山路却还有很长一段。背起一个人意味着把自己的退路也交给脚下：不背，他留在这里；背了，你走多慢都得背到底。"
   ],
   [
     "content01.build.body.carry-wounded.choice.consider",
@@ -115,7 +115,7 @@ module.exports = [
   ],
   [
     "content01.build.body.cold-water.body",
-    "寒潭入骨，继续停留能磨炼气血，也可能让旧伤在夜里更深一分。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "寒潭入骨。继续停留能磨炼气血，也可能让旧伤在夜里更深一分。水面安静得看不出深浅，你要在下水之前决定，是把这口气咬住，还是今天到此为止。"
   ],
   [
     "content01.build.body.cold-water.choice.consider",
@@ -135,7 +135,7 @@ module.exports = [
   ],
   [
     "content01.build.fortune.empty-hand.body",
-    "等待多日的机缘没有出现，真正留下的是你如何面对落空与下一次选择。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "等待多日的机缘没有出现。你按着旧记踏遍三处地方，回过神来时天已经黑了。真正留下的不是收获，而是你如何面对这次落空——以及还要不要再等一次。"
   ],
   [
     "content01.build.fortune.empty-hand.choice.consider",
@@ -155,19 +155,19 @@ module.exports = [
   ],
   [
     "content01.build.fortune.fork.body",
-    "熟路能按时抵达，偏路却留下新鲜蹄印；未知并不等同于好运，也不等同于坏事。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "你沿熟路赶往山外，岔路旁却留下新鲜蹄印。熟路有行人，能按时抵达；偏路通向林深，看不清尽头。这里真正要决定的是行程与未知机会，而不是抽象的磨炼。"
   ],
   [
-    "content01.build.fortune.fork.choice.consider",
-    "停步细看"
+    "content01.build.fortune.fork.choice.climb-and-watch",
+    "先登高看清偏路通向哪里"
   ],
   [
     "content01.build.fortune.fork.choice.engage",
-    "依此磨炼"
+    "循着那串蹄印走进偏路"
   ],
   [
-    "content01.build.fortune.fork.choice.leave",
-    "见好便收"
+    "content01.build.fortune.fork.choice.stay-known-road",
+    "放弃偏路，按熟路按时抵达"
   ],
   [
     "content01.build.fortune.fork.title",
@@ -175,7 +175,7 @@ module.exports = [
   ],
   [
     "content01.build.fortune.hidden-stream.body",
-    "你在无人在意的石缝听见水声，继续挖掘可能一无所获，也可能改写整段行程。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "你在无人在意的石缝里听见了水声。继续挖可能一无所获，也可能改写整段行程；石缝很深，出不来就得等到天黑。溪声一直在响，听不出深浅。"
   ],
   [
     "content01.build.fortune.hidden-stream.choice.consider",
@@ -195,7 +195,7 @@ module.exports = [
   ],
   [
     "content01.build.sword.guard-caravan.body",
-    "商队只求平安过岭，剑锋若太快，可能把原本能谈的局面推向死斗。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "商队只求平安过岭。剑锋若出得太快，原本能谈的局面会被推成死斗；慢一步，路上的风声却可能先到。你要决定的是先稳住人，还是先稳住剑。"
   ],
   [
     "content01.build.sword.guard-caravan.choice.consider",
@@ -215,7 +215,7 @@ module.exports = [
   ],
   [
     "content01.build.sword.no-draw.body",
-    "对方故意激你拔剑，真正难的并非出手，而是判断这一剑是否值得。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "对方故意激你拔剑，把话说得很难听。真正难的并非出手，而是判断这一剑值不值得——拔了可能中了圈套，不拔也可能错过唯一的机会。"
   ],
   [
     "content01.build.sword.no-draw.choice.consider",
@@ -235,7 +235,7 @@ module.exports = [
   ],
   [
     "content01.build.sword.river-cut.body",
-    "山涧暴涨，石上只容一步，你要用剑开的不是敌人，而是一线可过之路。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "山涧暴涨，石上只容下脚的地方。要用剑开的不是敌人，而是一线可过之路：剑锋偏了半尺就够不着落点，偏得太多又会把整块石头劈塌。你只有一次出手的余地。"
   ],
   [
     "content01.build.sword.river-cut.choice.consider",
@@ -255,7 +255,7 @@ module.exports = [
   ],
   [
     "content01.cen.shared-echo.body",
-    "旧伤在阴雨里同时发作，岑不归看见你按住肩头，便知道那一日没有被忘记。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "旧伤在阴雨里同时发作。岑不归看见你按住肩头，便知道那一天的代价没有被忘记，也没有被说出口。他难得开了口，说的却只是今日的天气。"
   ],
   [
     "content01.cen.shared-echo.choice.consider",
@@ -275,7 +275,7 @@ module.exports = [
   ],
   [
     "content01.cen.shield-stranger.body",
-    "乱石落下时，岑不归已经站到最窄的缺口。他看向你，等一个共同承担的决定。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "乱石落下时，岑不归已经站到最窄的缺口，抬头看了一眼落石的方向，随即回头等一个共同承担的决定。他没有说「你走吧」，也没有说「我挡着」。"
   ],
   [
     "content01.cen.shield-stranger.choice.read-signs",
@@ -295,7 +295,7 @@ module.exports = [
   ],
   [
     "content01.cen.shoulder-road.body",
-    "岑不归替你挡下一击，自己也伤得不轻。他不谈恩情，只问接下来的路怎样走。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "岑不归替你挡下一击，自己也伤得不轻。他不谈恩情，只问接下来的路怎样走：是一起按原路赶，还是先在这里处理伤势再动。他的肩还在往下滴血。"
   ],
   [
     "content01.cen.shoulder-road.choice.bind-1",
@@ -311,7 +311,7 @@ module.exports = [
   ],
   [
     "content01.cen.stone-steps.body",
-    "岑不归背石登阶，每一步都极慢。他不劝你跟上，只在山腰留了一瓢清水。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "岑不归背石登阶，每一步都极慢，呼吸比石头还重。他不劝你跟上，也不催你离开，只在山腰留了一瓢清水。台阶还有一半，水已经凉了。"
   ],
   [
     "content01.cen.stone-steps.choice.consider",
@@ -391,7 +391,7 @@ module.exports = [
   ],
   [
     "content01.jiang.bitter-decoction.body",
-    "一锅药汤气味辛烈，姜雪芜提醒其中一味药性相冲，省事与稳妥不能两全。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "一锅药汤气味辛烈。姜雪芜提醒其中一味药性相冲：省事与稳妥不能两全，快煎伤身，慢煎费时。她把两种代价都摆出来，剩下的由你决定要不要冒这个险。"
   ],
   [
     "content01.jiang.bitter-decoction.choice.read-signs",
@@ -411,7 +411,7 @@ module.exports = [
   ],
   [
     "content01.jiang.debt-echo.body",
-    "姜雪芜翻到旧账那一页，没有催促，只问你如今是否仍认得当年的代价。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "姜雪芜翻到旧账那一页，没有催促，指尖停在当年记下的数目上。她只问你如今是否仍认得当年的代价：认，这页就翻过去；不认，也请把话说清。"
   ],
   [
     "content01.jiang.debt-echo.choice.consider",
@@ -431,7 +431,7 @@ module.exports = [
   ],
   [
     "content01.jiang.herb-price.body",
-    "姜雪芜替人止住伤势，随后把耗去的药材与时间逐项说清，不多收，也不抹去。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "姜雪芜替人止住了伤势，随后把耗去的药材与时间逐项说清，不多收，也不抹去。账目摆在桌上，谁都可以核。你要决定的是：当场认下这份人情，还是先把每一项都问明白。"
   ],
   [
     "content01.jiang.herb-price.choice.bind-1",
@@ -447,7 +447,7 @@ module.exports = [
   ],
   [
     "content01.jiang.night-clinic.body",
-    "夜深后仍有人敲门，姜雪芜看过伤口，把最稳妥与最昂贵的办法都说在前面。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "夜深后仍有人敲门。姜雪芜看过伤口，把最稳妥与最昂贵的办法都说在前面，没有替你选，也没有把话说软。她只等着你说出一个能担得起的决定。"
   ],
   [
     "content01.jiang.night-clinic.choice.consider",
@@ -467,19 +467,19 @@ module.exports = [
   ],
   [
     "content01.onboarding.first-breath.body",
-    "晨雾尚未散尽，你第一次把纷乱心绪收进一呼一吸之间。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "晨雾尚未散尽。你盘坐下来，第一次试着把纷乱心绪收进一呼一吸之间。气息刚走过第三个周天，胸口的滞涩提醒你：这一步还太急。你可以按原路继续行功，也可以先松开半分，或者就到此收功。"
   ],
   [
-    "content01.onboarding.first-breath.choice.consider",
-    "停步细看"
+    "content01.onboarding.first-breath.choice.ease-off",
+    "松开半分，改用更缓的呼吸"
   ],
   [
-    "content01.onboarding.first-breath.choice.engage",
-    "顺势而行"
+    "content01.onboarding.first-breath.choice.keep-driving",
+    "照原路继续行功，把这口气推过去"
   ],
   [
-    "content01.onboarding.first-breath.choice.leave",
-    "见好便收"
+    "content01.onboarding.first-breath.choice.stop-here",
+    "就到这里收功，先记住这个节奏"
   ],
   [
     "content01.onboarding.first-breath.title",
@@ -487,19 +487,19 @@ module.exports = [
   ],
   [
     "content01.onboarding.forked-path.body",
-    "你追寻的线索在此分成两股，一股清楚，一股更像有意留下的诱饵。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "你追寻的线索在此分成两股。一股脚印清楚、方向明确；另一串痕迹像是特意留下的，过于整齐。你可以顺着清楚的那股走，也可以去试那串整齐的，或者暂时按兵不动。"
   ],
   [
-    "content01.onboarding.forked-path.choice.consider",
-    "停步细看"
+    "content01.onboarding.forked-path.choice.clear-trail",
+    "顺着清楚的那股脚印走"
   ],
   [
-    "content01.onboarding.forked-path.choice.engage",
-    "顺势而行"
+    "content01.onboarding.forked-path.choice.hold-position",
+    "暂不动作，先把两股都记下"
   ],
   [
-    "content01.onboarding.forked-path.choice.leave",
-    "见好便收"
+    "content01.onboarding.forked-path.choice.neat-trail",
+    "去试那串过于整齐的痕迹"
   ],
   [
     "content01.onboarding.forked-path.title",
@@ -507,19 +507,19 @@ module.exports = [
   ],
   [
     "content01.onboarding.market-choice.body",
-    "早市里灵石与人情一同流转，摊主的话半真半假，买卖之外还有眼色。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "早市刚开。摊主报出的价钱比市价低了两成，可他没有说为什么低。你可以照他说的数买下，也可以压回一个公道价，或者先问问这批货的来路。"
   ],
   [
-    "content01.onboarding.market-choice.choice.consider",
-    "停步细看"
+    "content01.onboarding.market-choice.choice.ask-source",
+    "先问清这批货的来路再决定"
   ],
   [
-    "content01.onboarding.market-choice.choice.engage",
-    "顺势而行"
+    "content01.onboarding.market-choice.choice.haggle-fair",
+    "压回一个公道价再成交"
   ],
   [
-    "content01.onboarding.market-choice.choice.leave",
-    "见好便收"
+    "content01.onboarding.market-choice.choice.take-deal",
+    "照他报的价买下，先把货拿到手"
   ],
   [
     "content01.onboarding.market-choice.title",
@@ -527,19 +527,19 @@ module.exports = [
   ],
   [
     "content01.onboarding.mountain-road.body",
-    "一条山路分向林深与村郭，两边都有人走过，却没有人为你担保。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "一条山路在前方分成两股：靠林的一侧树影深，脚下有旧车辙；绕村的一侧路平些，能听见炊烟，没有新鲜的脚印。没有人为你担保，也没有人为你指路。要紧的是你此刻要赶路，还是要看得清楚。"
   ],
   [
-    "content01.onboarding.mountain-road.choice.consider",
-    "停步细看"
+    "content01.onboarding.mountain-road.choice.go-village",
+    "绕去村里，按路平的那条走"
   ],
   [
-    "content01.onboarding.mountain-road.choice.engage",
-    "顺势而行"
+    "content01.onboarding.mountain-road.choice.scout-ridge",
+    "先爬上高处看清林里的情形"
   ],
   [
-    "content01.onboarding.mountain-road.choice.leave",
-    "见好便收"
+    "content01.onboarding.mountain-road.choice.take-ford",
+    "走林边有车辙的那条近路"
   ],
   [
     "content01.onboarding.mountain-road.title",
@@ -547,19 +547,19 @@ module.exports = [
   ],
   [
     "content01.onboarding.old-trace.body",
-    "石壁上一道旧痕延伸进荒草，来处模糊，去处也未必值得追。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "石壁上一道旧痕延伸进荒草。来处已经模糊了，断口却很新——留下它的人不久之前还在这里。你可以沿着断口追进荒草，也可以先记下位置，或者转去问附近的人。"
   ],
   [
-    "content01.onboarding.old-trace.choice.consider",
-    "停步细看"
+    "content01.onboarding.old-trace.choice.ask-locals",
+    "转去问附近的人有无异常"
   ],
   [
-    "content01.onboarding.old-trace.choice.engage",
-    "顺势而行"
+    "content01.onboarding.old-trace.choice.follow-fresh",
+    "顺着新断口追进荒草"
   ],
   [
-    "content01.onboarding.old-trace.choice.leave",
-    "见好便收"
+    "content01.onboarding.old-trace.choice.mark-spot",
+    "先记下位置，不急于这一步"
   ],
   [
     "content01.onboarding.old-trace.title",
@@ -567,19 +567,19 @@ module.exports = [
   ],
   [
     "content01.onboarding.quiet-retreat.body",
-    "静室里没有异象，只有一次次走神与重新坐定，修行显得朴素而漫长。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "静室里没有异象，只有一次次走神与重新坐定。你数到第几遍时开始怀疑自己走了岔路。你可以照原样再坐一段，也可以换个法子重起一轮，或者今日就此收束。"
   ],
   [
-    "content01.onboarding.quiet-retreat.choice.consider",
-    "停步细看"
+    "content01.onboarding.quiet-retreat.choice.change-method",
+    "换个法子重起一轮行功"
   ],
   [
-    "content01.onboarding.quiet-retreat.choice.engage",
-    "顺势而行"
+    "content01.onboarding.quiet-retreat.choice.close-day",
+    "今日就此收束，改日再来"
   ],
   [
-    "content01.onboarding.quiet-retreat.choice.leave",
-    "见好便收"
+    "content01.onboarding.quiet-retreat.choice.sit-again",
+    "照原样再坐一段，看能否坐稳"
   ],
   [
     "content01.onboarding.quiet-retreat.title",
@@ -587,7 +587,7 @@ module.exports = [
   ],
   [
     "content01.onboarding.rain-shelter.body",
-    "骤雨把几名陌生人困在同一檐下，沉默比寒意更先试探彼此。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "骤雨把几名陌生人困在同一檐下。雨声太大，说话要提高嗓门，反而没人先开口。沉默比寒意更先试探彼此：谁挪一挪，谁就先把话说出去了。"
   ],
   [
     "content01.onboarding.rain-shelter.choice.consider",
@@ -607,19 +607,19 @@ module.exports = [
   ],
   [
     "content01.onboarding.roadside-injury.body",
-    "路边有人捂着伤口，血已经止住，他仍警惕每一双靠近的手。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "路边有人坐着捂住伤口。血已经止住，他仍盯着每一双靠近的手。你可以上前替他处理，也可以先站远些问清发生了什么，或者只记住这个人。"
   ],
   [
-    "content01.onboarding.roadside-injury.choice.consider",
-    "停步细看"
+    "content01.onboarding.roadside-injury.choice.help-dress",
+    "上前替他处理伤口"
   ],
   [
-    "content01.onboarding.roadside-injury.choice.engage",
-    "顺势而行"
+    "content01.onboarding.roadside-injury.choice.just-notice",
+    "只记下这个人的样子，不去打扰"
   ],
   [
-    "content01.onboarding.roadside-injury.choice.leave",
-    "见好便收"
+    "content01.onboarding.roadside-injury.choice.keep-distance",
+    "先站远些问清他遇到了什么"
   ],
   [
     "content01.onboarding.roadside-injury.title",
@@ -627,19 +627,15 @@ module.exports = [
   ],
   [
     "content01.ordinary.broken-bridge.body",
-    "山洪冲断木桥，两岸的人隔水商量，谁也不愿先把绳索抛出去。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "山洪冲断了木桥，两岸的人隔水商量，谁也不愿先把绳索抛出去。你可以先帮对岸把绳索拉起来，也可以只问清对面有几个人、家在哪个方向，再决定要不要出力。"
   ],
   [
-    "content01.ordinary.broken-bridge.choice.consider",
-    "停步细看"
+    "content01.ordinary.broken-bridge.choice.ask-terms",
+    "只问清对面的人数与去向"
   ],
   [
-    "content01.ordinary.broken-bridge.choice.engage",
-    "顺势而行"
-  ],
-  [
-    "content01.ordinary.broken-bridge.choice.leave",
-    "见好便收"
+    "content01.ordinary.broken-bridge.choice.throw-rope",
+    "先把绳索抛过去，帮他们过河"
   ],
   [
     "content01.ordinary.broken-bridge.title",
@@ -647,19 +643,15 @@ module.exports = [
   ],
   [
     "content01.ordinary.empty-search.body",
-    "你按旧图找了一日，只见苔痕、碎石与几处被雨冲淡的脚印。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "你按旧图找了一日，只见苔痕、碎石与几处被雨冲淡的脚印。旧图上标的方位已经偏了。你可以照脚印的走向继续追，也可以承认今日无所得，回头重画。"
   ],
   [
-    "content01.ordinary.empty-search.choice.consider",
-    "停步细看"
+    "content01.ordinary.empty-search.choice.follow-footprints",
+    "照那几处脚印继续追下去"
   ],
   [
-    "content01.ordinary.empty-search.choice.engage",
-    "顺势而行"
-  ],
-  [
-    "content01.ordinary.empty-search.choice.leave",
-    "见好便收"
+    "content01.ordinary.empty-search.choice.redraw-map",
+    "承认今日无所得，回头重画"
   ],
   [
     "content01.ordinary.empty-search.title",
@@ -667,19 +659,15 @@ module.exports = [
   ],
   [
     "content01.ordinary.ferry-wait.body",
-    "河雾压住渡口，船家不肯冒险开船，所有人只得等水声慢下来。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "河雾压住渡口，船家不肯冒险开船。等的人越来越多，谁也不愿先开口。你可以留在雾里等一趟船，也可以沿河岸走到下一个渡口——那条路更远，但至少在走。"
   ],
   [
-    "content01.ordinary.ferry-wait.choice.consider",
-    "停步细看"
+    "content01.ordinary.ferry-wait.choice.wait-ferry",
+    "留在渡口等一趟船"
   ],
   [
-    "content01.ordinary.ferry-wait.choice.engage",
-    "顺势而行"
-  ],
-  [
-    "content01.ordinary.ferry-wait.choice.leave",
-    "见好便收"
+    "content01.ordinary.ferry-wait.choice.walk-upstream",
+    "沿河岸走到下一个渡口"
   ],
   [
     "content01.ordinary.ferry-wait.title",
@@ -687,19 +675,15 @@ module.exports = [
   ],
   [
     "content01.ordinary.harvest-help.body",
-    "村人赶在风雨前收谷，人手不足，修士的一日也能换来许多凡俗年月。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "村人赶在风雨前收谷，人手不足，只要你肯搭把手，一个时辰就能补上缺口。你可以下地收谷，也可以替他们看住堆在院里的谷堆，等他们回来再一起分。"
   ],
   [
-    "content01.ordinary.harvest-help.choice.consider",
-    "停步细看"
+    "content01.ordinary.harvest-help.choice.guard-store",
+    "替他们看住院里的谷堆"
   ],
   [
-    "content01.ordinary.harvest-help.choice.engage",
-    "顺势而行"
-  ],
-  [
-    "content01.ordinary.harvest-help.choice.leave",
-    "见好便收"
+    "content01.ordinary.harvest-help.choice.work-field",
+    "下地一起收谷"
   ],
   [
     "content01.ordinary.harvest-help.title",
@@ -707,19 +691,15 @@ module.exports = [
   ],
   [
     "content01.ordinary.market-bargain.body",
-    "行商修士摆出几味寻常药材，真正要交换的却是一条路况消息。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "行商修士摆出几味寻常药材，价钱报得干脆利落。可他真正想交换的，是一条路况消息：哪一段路近来不太平。你可以只谈药材付了灵石，也可以加进这条消息，用一个承诺换它。"
   ],
   [
-    "content01.ordinary.market-bargain.choice.consider",
-    "停步细看"
+    "content01.ordinary.market-bargain.choice.buy-herbs",
+    "只按他的价钱买下药材"
   ],
   [
-    "content01.ordinary.market-bargain.choice.engage",
-    "顺势而行"
-  ],
-  [
-    "content01.ordinary.market-bargain.choice.leave",
-    "见好便收"
+    "content01.ordinary.market-bargain.choice.trade-for-news",
+    "加进那条路况消息，用一个承诺换它"
   ],
   [
     "content01.ordinary.market-bargain.title",
@@ -727,19 +707,15 @@ module.exports = [
   ],
   [
     "content01.ordinary.missed-letter.body",
-    "一封辗转多地的旧信终于到了手中，纸角磨损，寄信人未留下回址。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "一封辗转多地的旧信终于到了手中，纸角磨损，寄信人没有留下回址。信里只提到一处地方，别的什么都没有。你可以照这处地名去找，也可以先弄清楚这封信为何迟到这么久。"
   ],
   [
-    "content01.ordinary.missed-letter.choice.consider",
-    "停步细看"
+    "content01.ordinary.missed-letter.choice.follow-place",
+    "照信里那处地名去找"
   ],
   [
-    "content01.ordinary.missed-letter.choice.engage",
-    "顺势而行"
-  ],
-  [
-    "content01.ordinary.missed-letter.choice.leave",
-    "见好便收"
+    "content01.ordinary.missed-letter.choice.trace-delay",
+    "先查这封信为何迟到这么久"
   ],
   [
     "content01.ordinary.missed-letter.title",
@@ -747,19 +723,15 @@ module.exports = [
   ],
   [
     "content01.ordinary.mountain-view.body",
-    "登高之后并无奇遇，只有群山在暮色里一层层远去，呼吸也随之平缓。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "登高之后并无奇遇。群山在暮色里一层层远去，呼吸也随之平缓。你可以就地调息，把这段山路换来的清醒收进气机；也可以辨清方位后继续上路。"
   ],
   [
-    "content01.ordinary.mountain-view.choice.consider",
-    "停步细看"
+    "content01.ordinary.mountain-view.choice.breathe-here",
+    "就地调息，把这段清醒收进气机"
   ],
   [
-    "content01.ordinary.mountain-view.choice.engage",
-    "顺势而行"
-  ],
-  [
-    "content01.ordinary.mountain-view.choice.leave",
-    "见好便收"
+    "content01.ordinary.mountain-view.choice.orient-and-go",
+    "辨清方位后继续上路"
   ],
   [
     "content01.ordinary.mountain-view.title",
@@ -767,19 +739,19 @@ module.exports = [
   ],
   [
     "content01.ordinary.night-rain.body",
-    "夜雨敲窗，你想起数年前一次仓促告别，那句话至今没有说完。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "夜雨敲窗。你想起数年前一次仓促告别，那句话至今没有说完。念头一起就压不住。你可以坐下来把这段心绪行功化开，也可以就着雨声把它放到明天。"
   ],
   [
     "content01.ordinary.night-rain.choice.consider",
-    "停步细看"
+    "不起身，先把这一夜雨听完"
   ],
   [
     "content01.ordinary.night-rain.choice.engage",
-    "顺势而行"
+    "就着雨声坐下来，把这段心绪行功化开"
   ],
   [
     "content01.ordinary.night-rain.choice.leave",
-    "见好便收"
+    "压下心绪，明日照常赶路"
   ],
   [
     "content01.ordinary.night-rain.title",
@@ -787,19 +759,15 @@ module.exports = [
   ],
   [
     "content01.ordinary.old-song.body",
-    "客栈角落有人弹起旧曲，旋律并不精妙，却让几位过客同时安静下来。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "客栈角落有人弹起旧曲。旋律并不精妙，几位过客却同时安静下来。你可以坐到曲终再起身，也可以直接起身去看弹琴的人是谁——后者也许更接近这段曲子的来处。"
   ],
   [
-    "content01.ordinary.old-song.choice.consider",
-    "停步细看"
+    "content01.ordinary.old-song.choice.meet-player",
+    "起身去看弹琴的人是谁"
   ],
   [
-    "content01.ordinary.old-song.choice.engage",
-    "顺势而行"
-  ],
-  [
-    "content01.ordinary.old-song.choice.leave",
-    "见好便收"
+    "content01.ordinary.old-song.choice.sit-through",
+    "坐到这一曲终了再起身"
   ],
   [
     "content01.ordinary.old-song.title",
@@ -807,19 +775,15 @@ module.exports = [
   ],
   [
     "content01.ordinary.roadside-debate.body",
-    "两名修士为一条旧规争得面红耳赤，围观者各有私心，却都说为了公道。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "两名修士为一条旧规争得面红耳赤，围观者各有私心，嘴上却都说为了公道。你可以当场评一句谁站得住，也可以只问清这条旧规究竟伤过谁，再决定要不要开口。"
   ],
   [
-    "content01.ordinary.roadside-debate.choice.consider",
-    "停步细看"
+    "content01.ordinary.roadside-debate.choice.ask-who-hurt",
+    "只问这条旧规究竟伤过谁"
   ],
   [
-    "content01.ordinary.roadside-debate.choice.engage",
-    "顺势而行"
-  ],
-  [
-    "content01.ordinary.roadside-debate.choice.leave",
-    "见好便收"
+    "content01.ordinary.roadside-debate.choice.pick-a-side",
+    "当场评一句谁站得住"
   ],
   [
     "content01.ordinary.roadside-debate.title",
@@ -827,19 +791,15 @@ module.exports = [
   ],
   [
     "content01.ordinary.shared-fire.body",
-    "荒野风紧，陌生旅人分出半边篝火，彼此都没有追问来历。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "荒野风紧，陌生旅人分出半边篝火，谁也没有追问来历。你可以守着火陪到天亮，也可以问问他接下来往哪条路走——问了他才记得你们照过面。"
   ],
   [
-    "content01.ordinary.shared-fire.choice.consider",
-    "停步细看"
+    "content01.ordinary.shared-fire.choice.ask-route",
+    "问他接下来往哪条路走"
   ],
   [
-    "content01.ordinary.shared-fire.choice.engage",
-    "顺势而行"
-  ],
-  [
-    "content01.ordinary.shared-fire.choice.leave",
-    "见好便收"
+    "content01.ordinary.shared-fire.choice.keep-watch",
+    "守着火陪到天亮"
   ],
   [
     "content01.ordinary.shared-fire.title",
@@ -847,19 +807,15 @@ module.exports = [
   ],
   [
     "content01.ordinary.tea-house.body",
-    "小镇茶棚只剩半壶温茶，邻桌的人谈论一场与你无关的远行。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "茶棚里只剩半壶温茶。邻桌三人谈起一场与你无关的远行，说得很热闹，没有人问你从哪里来。棚外的路还长，你要决定的只是这壶茶喝完就走，还是坐到它凉透。"
   ],
   [
-    "content01.ordinary.tea-house.choice.consider",
-    "停步细看"
+    "content01.ordinary.tea-house.choice.finish-cup",
+    "喝完这半盏茶便走"
   ],
   [
-    "content01.ordinary.tea-house.choice.engage",
-    "顺势而行"
-  ],
-  [
-    "content01.ordinary.tea-house.choice.leave",
-    "见好便收"
+    "content01.ordinary.tea-house.choice.stay-listen",
+    "坐到茶凉，听完这段远行"
   ],
   [
     "content01.ordinary.tea-house.title",
@@ -867,7 +823,7 @@ module.exports = [
   ],
   [
     "content01.pei.broken-blade.body",
-    "裴照川把断剑横在膝上，他谈的是同行，不是收徒，也没有先许下情分。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "裴照川把断剑横在膝上，剑格上还留着上一次交手的缺口。他谈的是同行，不是收徒，也没有先许下情分。你要决定的是：以剑相争分个明白，还是先问清他这趟要往哪里去。"
   ],
   [
     "content01.pei.broken-blade.choice.bind-1",
@@ -887,7 +843,7 @@ module.exports = [
   ],
   [
     "content01.pei.old-wound.body",
-    "裴照川行至半坡忽然停步，旧伤让他的右手微颤，他却不肯把决定交给旁人。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "裴照川行至半坡忽然停步，旧伤让他的右手微颤。他把剑换到左手，语气仍然平稳，却不肯把这个决定交给旁人照看。你要决定的是：替他分忧，还是等他把话说完。"
   ],
   [
     "content01.pei.old-wound.choice.read-signs",
@@ -907,7 +863,7 @@ module.exports = [
   ],
   [
     "content01.pei.promise-echo.body",
-    "多年后那柄断剑仍在，裴照川没有复述旧约，只把另一条路摆到你面前。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "多年后那柄断剑仍在，剑身上的缺口没有补。裴照川没有复述当年的旧约，只把另一条路摆到你面前，像在问：当年那件事，现在还算不算数。"
   ],
   [
     "content01.pei.promise-echo.choice.consider",
@@ -927,7 +883,7 @@ module.exports = [
   ],
   [
     "content01.pei.sparring-rain.body",
-    "雨线斜落，裴照川只问你是否还愿意拔剑，胜负之外还要看你如何收手。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "雨线斜落，裴照川只问你是否还愿意拔剑。他没有摆出架势，胜负之外还要看你如何收手：剑出到哪一步算完，收手时剑锋朝哪一边，都是他自己选的事。"
   ],
   [
     "content01.pei.sparring-rain.choice.consider",
@@ -947,7 +903,7 @@ module.exports = [
   ],
   [
     "content01.risk.beast-trail.body",
-    "新鲜兽迹绕过营地三次，猎物与猎手的位置，可能在下一步互换。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "新鲜兽迹绕过营地三次，每次都绕回同一处。猎物与猎手的位置，可能在下一步互换。你手里的东西还够一次驱赶，也可能只够一次引开。"
   ],
   [
     "content01.risk.beast-trail.choice.read-signs",
@@ -967,7 +923,7 @@ module.exports = [
   ],
   [
     "content01.risk.broken-seal.body",
-    "封印裂口只容一线气息外泄，那气息古老而清醒，像在等待回应。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "封印的裂口只容一线气息外泄。那气息古老而清醒，并不急着扑上来，只在等一个回应。你可以合上裂口转身，也可以听它把话说完。"
   ],
   [
     "content01.risk.broken-seal.choice.read-signs",
@@ -987,7 +943,7 @@ module.exports = [
   ],
   [
     "content01.risk.critical-crossing.body",
-    "伤势未稳，河水又在上涨；此刻强渡，危险来自水势，也来自身体本身。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "伤势未稳，河水又在上涨。此刻强渡，危险来自水势，也来自你自己的身体。两样都在往下压，而对岸已经能看见了。"
   ],
   [
     "content01.risk.critical-crossing.choice.read-signs",
@@ -1007,7 +963,7 @@ module.exports = [
   ],
   [
     "content01.risk.curse-stone.body",
-    "无字石碑在神识触及的一刻传来低语，像有人借你的记忆说话。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "无字石碑在神识触及的一刻传来低语，像有人借你的记忆说话。声音用的是你自己的嗓音，说的却是一句你从未听过的话。"
   ],
   [
     "content01.risk.curse-stone.choice.read-signs",
@@ -1027,7 +983,7 @@ module.exports = [
   ],
   [
     "content01.risk.falling-star.body",
-    "夜空裂开一道暗红弧光，落点近得能感到地面轻震，远处鸟群尽数惊起。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "夜空裂开一道暗红弧光，落点近得能感到地面轻震，远处鸟群尽数惊起。碎片还挂在天上，坠势未止——你只有站定或走开这两个选择。"
   ],
   [
     "content01.risk.falling-star.choice.read-signs",
@@ -1047,7 +1003,7 @@ module.exports = [
   ],
   [
     "content01.risk.flood-cave.body",
-    "洞中水位正在上升，深处微光尚未消失，留给你判断的时间不多。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "洞中水位正在上升，深处那点微光还没有消失。留给你的时间不多了：往回走要穿过刚涨起来的水，往前走要赌那条路够高。"
   ],
   [
     "content01.risk.flood-cave.choice.read-signs",
@@ -1067,7 +1023,7 @@ module.exports = [
   ],
   [
     "content01.risk.pine-ambush.body",
-    "松针忽然停止落下，前路有人藏住呼吸，退路也在一点点合拢。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "松针忽然停止落下。前路有人藏住呼吸，退路也在一点点合拢。声音是从两个方向传来的，你分不清哪一个更近，也不敢赌。"
   ],
   [
     "content01.risk.pine-ambush.choice.read-signs",
@@ -1087,7 +1043,7 @@ module.exports = [
   ],
   [
     "content01.risk.poison-mist.body",
-    "谷底升起淡青雾气，草叶边缘已经发黑，绕路要多耗数日。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "谷底升起淡青雾气，沾到雾的草叶边缘已经发黑。风把雾往这边吹，绕路要多耗数日，而你带的水只够两天。湿冷顺着衣袖往里渗。"
   ],
   [
     "content01.risk.poison-mist.choice.read-signs",
@@ -1107,7 +1063,7 @@ module.exports = [
   ],
   [
     "content01.risk.revenge-shadow.body",
-    "有人沿着旧日冲突留下的线索追来，来者不问解释，只确认你的名字。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "有人沿着旧日冲突留下的线索追来。来者不问解释，只确认你的名字——他已经确认过了。你想起那次争执里，自己确实说过一句过头的话。"
   ],
   [
     "content01.risk.revenge-shadow.choice.read-signs",
@@ -1127,7 +1083,7 @@ module.exports = [
   ],
   [
     "content01.risk.ruin-depth.body",
-    "石阶向下延伸，壁灯早已熄灭，回声却比你的脚步多出一次。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "石阶向下延伸，壁灯早已熄灭，你的脚步声在石壁之间回荡，却比回来时多了一次。回声不会说谎：前面还有别的东西在动。"
   ],
   [
     "content01.risk.ruin-depth.choice.read-signs",
@@ -1147,7 +1103,7 @@ module.exports = [
   ],
   [
     "content01.road.conflict-echo.body",
-    "同一条窄路上，你再次看见熟悉身影；当年的争执已经长出新的分量。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "同一条窄路，你再次看见那个熟悉的身影。当年的争执已经长出新的分量，谁都没有先提。他停下来，你也没有。"
   ],
   [
     "content01.road.conflict-echo.choice.consider",
@@ -1167,7 +1123,7 @@ module.exports = [
   ],
   [
     "content01.road.conflict.body",
-    "狭窄山道只容一人先过，对面的修士不肯退，你也看不出他是否另有所图。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "狭窄山道只容一人先过。对面的修士不肯退让，你也看不出他是否另有所图。他把脚跟抵在石缝上，像是已经打算在这里耗到底。"
   ],
   [
     "content01.road.conflict.choice.bind-1",
@@ -1183,7 +1139,7 @@ module.exports = [
   ],
   [
     "content01.road.help.body",
-    "同行的陌生修士在坡前力竭，他没有求救，只把行囊向身后挪了挪。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "同行的陌生修士在坡前力竭。他没有开口求救，只把行囊向身后挪了挪，腾出一点位置。他不看你，等的是你自己决定要不要停下。"
   ],
   [
     "content01.road.help.choice.bind-1",
@@ -1199,7 +1155,7 @@ module.exports = [
   ],
   [
     "content01.road.kindness-echo.body",
-    "多年后雨又落下，一把伞从身侧递来；那张脸比记忆成熟，旧日一程仍被记得。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "多年后雨又落下，一把伞从身侧递来。那张脸比记忆里成熟，旧日那一程仍然被记得——他先开口叫的，还是当年的称呼。"
   ],
   [
     "content01.road.kindness-echo.choice.consider",
@@ -1219,7 +1175,7 @@ module.exports = [
   ],
   [
     "content01.xie.cave-gamble.body",
-    "洞口吹出的风带着金石气，谢听潮判断里面有路，也坦言判断可能错。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "洞口吹出的风带着金石气。谢听潮判断里面有路，也坦言这个判断可能错——他把手按在石壁上等了一息，石头是凉的。他要你先说，进还是退。"
   ],
   [
     "content01.xie.cave-gamble.choice.read-signs",
@@ -1239,7 +1195,7 @@ module.exports = [
   ],
   [
     "content01.xie.divided-spoils.body",
-    "所得不如预想，谢听潮仍按旧话分成，只把最后一件用途不明的东西留在中央。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "所得不如预想，谢听潮仍按旧话分成，只把最后一件用途不明的东西留在中央，谁也没有先动。他问的不是分法，而是这件事还算不算当初约定的那个部分。"
   ],
   [
     "content01.xie.divided-spoils.choice.consider",
@@ -1259,7 +1215,7 @@ module.exports = [
   ],
   [
     "content01.xie.map-echo.body",
-    "秘图旧折痕与眼前山势重合，谢听潮没有催你，只把当初说过的话轻轻念了一遍。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "秘图的旧折痕与眼前山势完全重合。谢听潮没有催你，只把当初说过的话轻轻念了一遍，念到一半就停住——他也在等你想起来，那句话当年是怎么说的。"
   ],
   [
     "content01.xie.map-echo.choice.consider",
@@ -1279,7 +1235,7 @@ module.exports = [
   ],
   [
     "content01.xie.secret-map.body",
-    "谢听潮摊开半张秘图，另一半仍在袖中。他愿意分路，也要求先说清如何分利。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "谢听潮摊开半张秘图，另一半仍收在袖中。他愿意分路，也要求先说清如何分利：谁走前段，谁担风险，图上的记号算不算数。图边角已经磨得起毛。"
   ],
   [
     "content01.xie.secret-map.choice.bind-1",
@@ -1299,7 +1255,7 @@ module.exports = [
   ],
   [
     "content01.xu.empty-courtyard.body",
-    "院门仍旧，檐下却积了厚灰。邻人只说许长安早已离开，没有人知道他最后去了哪里。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "院门仍旧，檐下却积了厚灰。邻人只说许长安早已离开，具体去了哪里无人知道。院角那棵旧树还活着，落叶堆在墙根，没有被扫过。"
   ],
   [
     "content01.xu.empty-courtyard.choice.consider",
@@ -1319,7 +1275,7 @@ module.exports = [
   ],
   [
     "content01.xu.mortal-letter.body",
-    "许长安托人送来一封短笺，问的不是仙途，只是你是否还记得旧日门前那棵树。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "许长安托人送来一封短笺，问的不是仙途，只是你是否还记得旧日门前那棵树。送信人不肯多等，收了脚程钱就走了。信很短，短到只够问这一件事。"
   ],
   [
     "content01.xu.mortal-letter.choice.bind-1",
@@ -1335,7 +1291,7 @@ module.exports = [
   ],
   [
     "content01.xu.promise-echo.body",
-    "旧树又添一圈年轮，你终于站回门前；许长安是否还在，已不再是唯一的问题。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "旧树又添了一圈年轮，你终于站回门前。门里没有回应，院子空着。许长安是否还在，已经不再是唯一的问题——你要决定的是推门进去，还是先在这里站一会儿。"
   ],
   [
     "content01.xu.promise-echo.choice.consider",
@@ -1355,7 +1311,7 @@ module.exports = [
   ],
   [
     "content01.xu.ten-year-return.body",
-    "你眼中的数次闭关，已是许长安鬓边的一层霜。他仍认得你，也不假装岁月轻巧。你可以顺势而行，也可以停下来辨清代价；此刻的取舍不会喧哗，却会在往后的年月留下形状。"
+    "你眼中的数次闭关，在许长安鬓边已经积了一层霜。他仍认得你，也没有假装岁月轻巧。院门开着，门前那棵树比记忆里高了一些。"
   ],
   [
     "content01.xu.ten-year-return.choice.consider",

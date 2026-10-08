@@ -297,9 +297,12 @@ const NO_GAIN_OPS = new Set(["OUTCOME_TIME_DELTA"]);
   const state = active(registry(), { firstRun: false, seed: "conflict:choiceid" });
   const content = registry();
   const staged = enterEvent(state, content, "content01.ordinary.mountain-view", "conflict:choiceid");
+  // Resolve whatever the first authored option actually is: PLAYUX01 replaced the generic
+  // engage/consider/leave trio with scene-specific ids, so a hardcoded id would no longer exist.
+  const firstChoice = content.getEvent(state.contentVersion, "content01.ordinary.mountain-view").choices[0];
   const out = reduce({
     state: staged,
-    command: { type: "CHOOSE_EVENT_OPTION", eventId: "content01.ordinary.mountain-view", optionId: "engage" },
+    command: { type: "CHOOSE_EVENT_OPTION", eventId: "content01.ordinary.mountain-view", optionId: firstChoice.id },
     context: ctx(content, staged, "conflict:choiceid:resolve")
   });
   const entry = out.state.run.events.history.at(-1);
