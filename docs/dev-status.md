@@ -9,7 +9,7 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `3a6c6d70be6132147ccb09d9a718ccd5189109c7`
+- lastReviewedCommit: `31bbc5b4e79d5ca447e26062a8c8d00a3969c782`
 - reviewedDate: `2026-10-09`
 - ui04FinalWorkBranch: `wb-UI04FINAL`（Controller 已验收并 fast-forward 到 dev）
 
@@ -20,10 +20,10 @@
 - **LIVEFIX05 已被 Controller 接受并快进合并**：`wb-LIVEFIX05` 的实际提交 `3a6c6d70be6132147ccb09d9a718ccd5189109c7`，自原 dev HEAD `171a6c690499f66e7333b784a5c7557b61b5096f` 真实单提交后代快进。
 - 改动范围恰好三个文件：`miniprogram/pages/v2-live/v2-live.wxml`、`tests/livefix05.test.mjs`、`.codex/control/LAST_RESULT.yaml`。未改 server/cloudfunction/Core/Content/main，也没有云端部署。
 - Controller 已核验远端 WXML 的显式否定 `wx:if` 与原有选项/CTA 绑定；WorkBuddy `LAST_RESULT` 报告 `livefix05: 6/6`、`ui04c: 18/18`，以及限定范围的静态门禁全部 PASS。**本轮未重新执行测试，也没有新 CI 结果。**
-- **当前控制面：READY / LIVEFIX06（用户明确批准）**；只允许在 `wb-LIVEFIX06` 处理 Content01 中文文案覆盖问题，不允许自动启动后续任务或合并开发分支。
+- **当前控制面：HOLD / LIVEFIX06 已接受**；用户授权的单次任务已完成并快进合并，`NEXT_TASK` 禁止 WorkBuddy 自动执行/提交/推送，后续新任务必须重新获得用户授权。
 - **LIVEFIX05 真实视觉验收已通过**：用户截图显示 `DESTINY_OFFER` 页面择命候选正常，旧版“服务器投影”多余提示消失；选择命格后成功进入 `RUN_HOME`。随后点击一次“游历”进入 `EVENT`，页面标注第 4 版，出现新的 LIVEFIX06 文案缺陷。
 - 真实云函数首次开局与数据库持久化验收已在 Issue #2 完成，**不能**把本次仅 UI 条件修复的通过解释成完整游戏正式上线。
-- **LIVEFIX06 已获用户明确授权**：修复实机 EVENT 中 `content01.ordinary.night-rain.title/body/choice.*` 原始键名泄漏。源 `CONTENT01_ZH_CN` 已含真实中文，客户端 `CONTENT_COPY` 不完整。必须从源文案形成确定性客户端资源并加覆盖/新鲜度门禁；禁止改服务器、云函数、游戏机制或进行新功能开发。用户手动通知 WorkBuddy 领取；下一个任务仍需另行批准。
+- **LIVEFIX06 已合并（源码 PASS WITH CAVEATS）**：`wb-LIVEFIX06@31bbc5b4e79d5ca447e26062a8c8d00a3969c782` 从 `86707ac5f6ab3f775cd611017441022e59b4589c` 安全快进；新增 340 键中文生成资源及覆盖/负控测试，修复所有现有 Content01 原始键名显示缺陷。WorkBuddy 报告 LIVEFIX06 20/20、UI04C 18/18、UI02COPY 11/11 PASS，静态门禁 PASS；本次 Controller 未重新执行测试。已修复任务定义中的 `evidence`/`goal` 不支持字段及折叠列表写法；历史 UI02R1 两项基线失败待后续统一测试计划处理。**待在微信开发者工具实机编译并确认夜雨中文显示、选项交互正常；无需云函数部署。**
 
 ## 产品核心
 
@@ -87,6 +87,7 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - LIVEFIX03: PASS WITH CAVEATS（Controller 已验收；历史截断 game.wxss 以 RECONSTRUCTED 方式补全并加入 WXSS integrity gate。非历史恢复，真实 DevTools 已验证 start/game 可编译并正常显示）
 - LIVEFIX04: PASS（Controller 已验收；精确支持 CloudBase `errCode=-1` + `document.get:fail ... <32-hex> ... does not exist` 缺文档形状，generic `-1` 仍 fail-closed）
 - LIVEFIX05: PASS（Controller 于 2026-10-09 验收并 fast-forward；修复 v2-live 终局链 `wx:else` 在择命等正常状态下额外出现的服务器投影提示；真实 DevTools 视觉验收待用户完成）
+- LIVEFIX06: PASS WITH CAVEATS（Controller 于 2026-10-09 验收并 fast-forward；Content01 340 个键完整中文映射、自动生成与新鲜度门禁，实机视觉验收待完成；历史 UI02R1 基线失败单独记录）
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
 
