@@ -73,7 +73,10 @@ export interface RunState {
   risk?: { conditions: RiskConditionInstance[]; exposureCount: number };
   identity: { runName: string; destinyId?: string; innateProfile?: InnateProfile; rootTags: string[]; factionId?: string; titles: string[] };
   actions: { available: ActionType[]; pursuitCauseIds: string[]; recent: ActionType[] };
-  events: { current?: { eventId: string; kind: string; phase?: string; instanceId?: string; participantBindings?: Record<string, string>; triggeringCauseId?: string }; history: Array<{ eventId: string; nodeIndex: number; resultTier?: string }>; occurrences?: Record<string, EventOccurrenceState> };
+  // PLAYUX01: choiceId records which option the player actually took, so the result surface can say what
+  // they chose without re-deriving it. It is optional on purpose: a save written before this field existed
+  // still loads, and the result surface renders "此前的选择未记录" rather than inventing one.
+  events: { current?: { eventId: string; kind: string; phase?: string; instanceId?: string; participantBindings?: Record<string, string>; triggeringCauseId?: string }; history: Array<{ eventId: string; nodeIndex: number; resultTier?: string; choiceId?: string }>; occurrences?: Record<string, EventOccurrenceState> };
   causes: { byId: Record<string, CauseInstance> };
   npcs: { nextNpcSequence: number; byId: Record<string, NpcInstance>; roleIndex: Record<string, string[]> };
   build: { techniques: string[]; artifacts: string[]; consumables: string[]; tagScores: Record<string, number>; mainPath?: string; secondaryPath?: string; affinities?: Record<string, BuildAffinity>; dominantBuildId?: string; evidenceFacts?: BuildEvidenceFact[]; transitionFacts?: BuildTransitionFact[]; unlockedBuildIds?: string[] };
@@ -275,9 +278,11 @@ function validateRun(value: unknown, path: string, rulesVersion: string): assert
       }
     }
   }
+  // PLAYUX01: choiceId is optional, so an older save without it still validates. It is deliberately not
+  // added to the required set — a missing choice must degrade to "此前选择未记录", never fail the load.
   for (const [index, entry] of array(events.history, `${path}.events.history`).entries()) {
     const event = record(entry, `${path}.events.history[${index}]`);
-    stringValue(event.eventId, `${path}.events.history[${index}].eventId`); integer(event.nodeIndex, `${path}.events.history[${index}].nodeIndex`, 0); optionalString(event, "resultTier", `${path}.events.history[${index}]`);
+    stringValue(event.eventId, `${path}.events.history[${index}].eventId`); integer(event.nodeIndex, `${path}.events.history[${index}].nodeIndex`, 0); optionalString(event, "resultTier", `${path}.events.history[${index}]`); optionalString(event, "choiceId", `${path}.events.history[${index}]`);
   }
   if (events.occurrences !== undefined) for (const [eventId, raw] of Object.entries(record(events.occurrences, `${path}.events.occurrences`))) {
     if (eventId.length === 0) invalid(`${path}.events.occurrences`, "eventId keys must be non-empty");

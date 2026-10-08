@@ -395,7 +395,7 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
       status: applied.state.run.status === "ended" ? "ended" : timeAdvance.reachedMaxAge ? "dying" : applied.state.run.status,
       events: {
         ...eventsWithoutCurrent,
-        history: [...applied.state.run.events.history, { eventId: current.eventId, nodeIndex: state.run.nodeIndex, resultTier: requestedTier }]
+        history: [...applied.state.run.events.history, { eventId: current.eventId, nodeIndex: state.run.nodeIndex, resultTier: requestedTier, choiceId: choiceObject.id }]
       }
     }
   };

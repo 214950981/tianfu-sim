@@ -119,7 +119,7 @@ function buildPublicTerminal(state: GameState, content: ContentRegistry, termina
   const buildPack = locked.buildPackId === undefined ? undefined : content.getBuild(state.contentVersion); const npcPack = locked.npcPackId === undefined ? undefined : content.getNpc(state.contentVersion);
   const publicBuilds: PublicJson[] = buildPack === undefined ? [] : Object.values(state.run.build.affinities ?? {}).sort((left, right) => left.buildId.localeCompare(right.buildId)).map((affinity): PublicJson => { const definition = buildPack.definitions.find((candidate) => candidate.id === affinity.buildId); if (definition === undefined) return { buildId: affinity.buildId, stage: "latent", labelKey: "build.unknown" }; const bStage = buildStage(buildPack.rules, affinity.affinityBps); return { buildId: affinity.buildId, displayName: definition.displayName, stage: bStage, labelKey: definition.stages.find((candidate) => candidate.stage === bStage)?.labelKey ?? `build.${affinity.buildId}.${bStage}`, dominant: state.run.build.dominantBuildId === affinity.buildId }; });
   const publicPeople: PublicJson[] = npcPack === undefined ? [] : Object.values(state.run.npcs.byId).filter((npc) => npc.knowledge.met).sort((left, right) => left.npcId.localeCompare(right.npcId)).map((npc): PublicJson => ({ npcId: npc.npcId, displayName: npc.displayName, knownRoles: [...npc.roleTags], knownStatus: npc.knowledge.knownStatus ?? "unknown" }));
-  const publicEvents = state.run.events.history.map((entry, index) => ({ entryId: `event:${index}`, eventId: entry.eventId, nodeIndex: entry.nodeIndex, ...(entry.resultTier === undefined ? {} : { resultTier: entry.resultTier }) }));
+  const publicEvents = state.run.events.history.map((entry, index) => ({ entryId: `event:${index}`, eventId: entry.eventId, nodeIndex: entry.nodeIndex, ...(entry.resultTier === undefined ? {} : { resultTier: entry.resultTier }), ...(entry.choiceId === undefined ? {} : { choiceId: entry.choiceId }) }));
   const publicCauses = Object.values(state.run.causes.byId).filter((cause) => cause.visibility !== "hidden").sort((left, right) => left.causeId.localeCompare(right.causeId)).map((cause): PublicJson => ({ publicId: cause.causeId, level: cause.visibility === "journal" ? "explicit" : "hinted", ...(cause.visibility === "journal" ? { titleKey: `${cause.templateId}.title`, summaryKey: `${cause.templateId}.summary` } : { summaryKey: "cause.hinted.summary" }) }));
 
   const lifeBook: Record<string, PublicJson> = {
@@ -227,8 +227,13 @@ function eventInteraction(state: GameState, content: ContentRegistry, interactio
   };
 }
 
+// PLAYUX01: the summary key used to be `${eventId}.history`, but no content pack ever declared a
+// `.history` key, so every life-book row rendered the raw key. The body key is the pack's own
+// one-sentence account of what happened and is already translated, so it is what a history row should
+// carry. choiceId is projected when present so the result surface can name the taken option without
+// re-deriving it; an older save has none and the client says so rather than inventing a choice.
 function history(state: GameState): PublicHistory {
-  const events = state.run.events.history.map((entry, index) => ({ entryId: `event:${index}`, kind: "event", titleKey: `${entry.eventId}.title`, summaryKey: `${entry.eventId}.history`, data: { eventId: entry.eventId, nodeIndex: entry.nodeIndex, ...(entry.resultTier === undefined ? {} : { resultTier: entry.resultTier }) } }));
+  const events = state.run.events.history.map((entry, index) => ({ entryId: `event:${index}`, kind: "event", titleKey: `${entry.eventId}.title`, summaryKey: `${entry.eventId}.body`, data: { eventId: entry.eventId, nodeIndex: entry.nodeIndex, ...(entry.resultTier === undefined ? {} : { resultTier: entry.resultTier }), ...(entry.choiceId === undefined ? {} : { choiceId: entry.choiceId }) } }));
   const builds = (state.run.build.transitionFacts ?? []).map((fact) => ({ entryId: fact.id, kind: "build", titleKey: `build.fact.${fact.type}.title`, summaryKey: `build.fact.${fact.type}.summary`, data: { buildId: fact.buildId, age: fact.age, nodeIndex: fact.nodeIndex, reasonTag: fact.reasonTag, ...(fact.fromStage === undefined ? {} : { fromStage: fact.fromStage }), ...(fact.toStage === undefined ? {} : { toStage: fact.toStage }), ...(fact.fromBuildId === undefined ? {} : { fromBuildId: fact.fromBuildId }), ...(fact.toBuildId === undefined ? {} : { toBuildId: fact.toBuildId }) } }));
   return { entries: [...events, ...builds] };
 }

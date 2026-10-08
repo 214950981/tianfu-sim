@@ -180,7 +180,21 @@ var PAGE_CONTENT_COPY = {
   "build.fortune.latent": "机缘未动",
   "build.fortune.emerging": "机缘初显",
   "build.fortune.formed": "气运成形",
-  "build.fortune.refined": "气运在握"
+  "build.fortune.refined": "气运在握",
+  // PLAYUX01: the result surface reads these through CONTENT_COPY. They name a confirmed change, not a
+  // prediction: the server only emits the line it actually settled. result.no_gain is the honest wording
+  // for a choice that cost time and gained nothing measurable, which is a real settlement outcome.
+  "result.cultivation": "修为",
+  "result.resource": "灵石",
+  "result.build_evidence": "道途证据",
+  "result.time": "岁月",
+  "result.item": "随身之物",
+  "result.npc_noted": "与此人有些干系",
+  "result.cause_resolved": "这段因果已了结",
+  "result.cause_expired": "这段因果就此搁置",
+  "result.cause_planted": "一段因果自此结下",
+  "result.no_gain": "此行没有明显收获",
+  "result.heading": "本次结果"
 };
 
 /**
