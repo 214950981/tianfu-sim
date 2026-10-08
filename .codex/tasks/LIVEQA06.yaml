@@ -1,0 +1,46 @@
+id: LIVEQA06
+title: LIVEQA06 - Local DevTools synchronization and visual verification
+phase: 2
+verificationProfile: fast-lane
+executionProfile: credit-efficient
+requiredContracts: [.codex/contracts/ui.ref, .codex/contracts/platform.ref]
+optionalContracts: []
+blockers: []
+inspect_first:
+  - .codex/control/NEXT_TASK.yaml
+  - docs/dev-status.md
+  - miniprogram/pages/v2-live/v2-live.js
+  - miniprogram/pages/v2-live/content01-zh-cn.js
+allowedScope:
+  - Locate the user's existing WeChat DevTools project automatically from the current WorkBuddy workspace and project.config.json. Confirm the project folder DevTools actually opens. If several valid folders exist and none can be identified confidently, stop and ask one focused question.
+  - Inspect git status and existing local dirty files before touching anything. Preserve unrelated dirty files byte for byte. No hard reset, clean, checkout of full tree, broad pull or force operation.
+  - Sync only miniprogram/pages/v2-live/v2-live.js and miniprogram/pages/v2-live/content01-zh-cn.js from accepted dev/tianfu-2.0 code at or after 77ecfb93fb8c53872943c26e6e75265cee4bb161. Verify remote provenance and file content or blob checksums. Do not overwrite a dirty one of these two without preserving its bytes and reporting a conflict.
+  - Prefer a single bounded git fetch for both files. If git network transport fails, use GitHub API or raw authenticated GitHub file fetch to obtain exactly the two committed files with identity verification. Do not spin on network retries.
+  - Ensure the generated module exists inside the real miniprogramRoot and that v2-live.js requires it as a static local CommonJS module. Confirm the observed night-rain title resolves to 夜雨 and source contains the original Chinese body and three option labels.
+  - If WorkBuddy has access to the user's existing WeChat DevTools UI, compile once and inspect the current EVENT screen read-only. If it cannot control DevTools, stop after preparing files and give the user one simple compile-and-screenshot instruction. Do not claim a human visual pass without a screenshot or tool evidence.
+  - Record a concise completion report in the WorkBuddy chat only with located project path, changed paths, before and after file hashes, sync method, compile result if actually checked, visual result if actually checked and any remaining blocker. No repository commit or push for this local QA operation.
+forbiddenScope:
+  - modify-main-or-dev-source-branch
+  - new-coding-task
+  - modify-other-local-files
+  - overwrite-uncommitted-change
+  - git-reset-hard
+  - git-clean
+  - global-git-pull
+  - cloud-deploy
+  - database-reset
+  - automatic-gameplay-click-or-state-change
+  - full-regression
+  - aggregate-npm-test
+  - typecheck
+  - 600-run-simulation
+  - commit
+  - push
+  - launch-next-task
+accept:
+  - User does not need to locate any folder or run terminal commands.
+  - Only the two intended client files are synced if their local changes allow a safe update.
+  - Original dirty files stay unmodified.
+  - Read-only page verification is performed when DevTools access exists or is explicitly left for the user.
+  - WorkBuddy stops after a single completion or BLOCKED report.
+tests: [two-file-identity-check, client-module-static-dependency-check, optional-manual-devtools-compile]

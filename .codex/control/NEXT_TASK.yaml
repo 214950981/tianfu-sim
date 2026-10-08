@@ -1,19 +1,19 @@
 version: 1
-status: HOLD
+status: READY
 attempt: 1
-taskId: LIVEFIX06
-title: LIVEFIX06 — Content01 live-client Chinese copy completeness
-taskDefinition: .codex/tasks/LIVEFIX06.yaml
+taskId: LIVEQA06
+title: LIVEQA06 - Local DevTools synchronization and visual verification
+taskDefinition: .codex/tasks/LIVEQA06.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-LIVEFIX06
-worktreeRequired: true
-allowSyntheticTreeBase: true
+workBranch: wb-LIVEQA06
+worktreeRequired: false
+allowSyntheticTreeBase: false
 basePolicy: remote-source-head-at-task-start
 verificationProfile: fast-lane
 executionProfile: credit-efficient
 execution:
   readProtocolFirst: true
-  workBuddyMayImplement: false
+  workBuddyMayImplement: true
   commitTaskResult: false
   pushWorkBranch: false
   updateSourceBranch: false
@@ -21,55 +21,23 @@ execution:
   runAggregateNpmTest: false
   run600Simulation: false
   maxTypecheckRuns: 0
-  maxFullDedicatedSuiteRuns: 2
-  maxArtifactRegenerationRounds: 1
-  maxPushAttempts: 2
+  maxFullDedicatedSuiteRuns: 0
+  maxArtifactRegenerationRounds: 0
+  maxPushAttempts: 0
   prohibitUnboundedRetryLoops: true
 controllerReview:
-  previousTask: LIVEFIX05
-  previousStatus: ACCEPTED_AND_VISUAL_PASS
-  acceptedResultCommit: 3a6c6d70be6132147ccb09d9a718ccd5189109c7
-  originalDispatchBase: f68f1fb0dd3749cccafe6ff1a0babebd7aa48945
-realEnvironmentEvidence:
-  observedPageSequence: "DESTINY_OFFER -> RUN_HOME -> EVENT"
-  livefix05VisualQa: PASS
-  observedEvent: content01.ordinary.night-rain
-  observedStateVersion: 4
-  observedFailure: "raw content01.* title, body, and three choice keys are displayed"
-  cloudFunctionState: "working for createRunOffer and initial action; no cloud change authorized"
-controllerIntent:
-  mode: FAST_LANE_CLIENT_COPY_ONLY
-  goal: "Fix full Content01 runtime copy coverage in v2-live from existing source catalog"
-  postTask: "Accepted and fast-forwarded; HOLD pending explicit user authorization for any new task"
-controllerAcceptance:
-  taskId: LIVEFIX06
-  status: ACCEPTED_WITH_CAVEATS_AND_FAST_FORWARDED
-  reviewedDate: "2026-10-09"
-  sourceHeadAtReview: 86707ac5f6ab3f775cd611017441022e59b4589c
+  previousTask: LIVEFIX06
+  previousStatus: ACCEPTED_WITH_CAVEATS_AND_FAST_FORWARDED
   acceptedResultCommit: 31bbc5b4e79d5ca447e26062a8c8d00a3969c782
-  workBranch: wb-LIVEFIX06
-  mergeMethod: fast-forward
-  ancestry: "ahead 1, behind 0, merge base 86707ac5f6ab3f775cd611017441022e59b4589c"
-  changedFiles:
-    - miniprogram/pages/v2-live/content01-zh-cn.js
-    - miniprogram/pages/v2-live/v2-live.js
-    - tools/content01-zh-cn-module.mjs
-    - tests/livefix06.test.mjs
-    - .codex/control/LAST_RESULT.yaml
-  sourceReview: PASS
-  content01KeysVerified: 340
-  targetedTestsReported:
-    livefix06: "20 passed, 0 failed (WorkBuddy report)"
-    ui04c: "18 passed, 0 failed (WorkBuddy report)"
-    ui02copy: "11 passed, 0 failed (WorkBuddy report)"
-  visualQa: PENDING_MANUAL_DEVTOOLS
-  knownCaveats:
-    - "Controller repaired LIVEFIX06.yaml unsupported evidence/goal fields and folded list syntax without modifying accepted product code."
-    - "UI02R1 legacy baseline fixture has two historical failures (reported by WorkBuddy; no new test run)."
-    - "No independent CI check reported and no new full regression run."
-  nextAction: HOLD_UNTIL_EXPLICIT_USER_DECISION
+  acceptedControlHead: 77ecfb93fb8c53872943c26e6e75265cee4bb161
+controllerIntent:
+  mode: LOCAL_QA_ONLY_NO_GIT_DELIVERY
+  goal: Synchronize only two already accepted files into the actual local WeChat DevTools workspace and verify the Chinese event copy.
+  postTask: Stop after reporting to user; Controller must return to HOLD after review.
 notes:
-  - LIVEFIX06 source accepted. This HOLD denies further automatic execution, commit, or push.
-  - Main, cloud functions, gameplay, database and package.json were not changed during controller acceptance.
-  - Manual WeChat DevTools compile and live event copy inspection remain for the user; no cloud function redeploy needed.
-  - Do not dispatch LIVEFIX07 or any new implementation task without separate user authorization.
+  - User explicitly authorizes WorkBuddy to locate local project and do all possible local syncing and read-only QA rather than asking user for file operations.
+  - This is a one-time local environment operation, not a code implementation task. No Worktree, branch, commit, push or remote delivery should be created; these flags override implementation steps for this operational exception.
+  - Use node .codex/context.mjs LIVEQA06 once in the confirmed repository if available and safe. If the exact new task file has not been synced locally, read its committed remote content directly instead of modifying extra local files.
+  - Preserve all existing unrelated local dirty files and do not redeploy CloudBase. Do not interact with the live game choices automatically.
+  - At most one bounded git fetch. On failure use GitHub API for the two files; avoid retries.
+  - This READY authorizes exactly one local QA preparation, not any new product development.
