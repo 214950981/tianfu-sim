@@ -198,6 +198,32 @@ var PAGE_CONTENT_COPY = {
 };
 
 /**
+ * PLAYUX01 — how a run ended, in the player's language.
+ *
+ * The server publishes two different enums for the same moment: `endingId` ("lifespan", or
+ * "death:<deathCauseId>" per risk.ts:194) and the death record's `immediateSource`
+ * ("lifespan-hard-ceiling"). Both were rendered verbatim, so the life book's 死因 row read
+ * "lifespan-hard-ceiling". Every value the engine can currently emit is listed here, taken from
+ * reducer.ts:275-276 and risk-v1.ts:48-56 rather than guessed.
+ *
+ * An id absent from this table still falls through to the raw id on purpose: an untranslated enum is a
+ * missing catalog entry, and showing it makes that visible instead of silently rendering a blank.
+ */
+var TERMINAL_LABELS = {
+  "lifespan": "寿元已尽",
+  "lifespan-hard-ceiling": "寿元已尽",
+  "death.death.lifespan": "寿元已尽",
+  "death.death.combat": "殁于斗法",
+  "death.death.injury": "伤重不治",
+  "death.death.exploration": "殁于探索",
+  "death.death.poison": "中毒殒身",
+  "death.death.curse": "为诅咒所害",
+  "death.death.cause": "为往因所累",
+  "death.death.special": "死于非常",
+  "threat.critical-injury": "伤势过重"
+};
+
+/**
  * The generated Content01 catalog, as `[key, copy]` pairs.
  *
  * HARD CONSTRAINT — the argument below must be a plain string literal, never a variable. The WeChat
@@ -414,6 +440,12 @@ function buildTerminal(terminal, pageState) {
   var lifeBook = record(terminal.lifeBook);
   var rebirth = record(terminal.rebirthResult);
   var nextLife = record(terminal.nextLife);
+  // PLAYUX01: the terminal slice is staged. buildPublicTerminal() returns undefined until the sidecar
+  // exists, so an ENDING can legitimately carry no lifeBook at all. Reporting 0/0/0 in that case reads
+  // as "this life achieved nothing", which is a fabricated verdict about a run that simply has not been
+  // summarised yet. hasLifeBook is therefore false and the counts stay hidden rather than showing zeroes;
+  // the same guard covers the ending and death rows, whose raw keys would otherwise be printed verbatim.
+  var hasLifeBook = Object.keys(lifeBook).length > 0;
   return {
     stage: str(terminal.stage),
     version: num(terminal.version, 0),
@@ -422,6 +454,7 @@ function buildTerminal(terminal, pageState) {
     isRebirthResult: pageState === "REBIRTH_RESULT",
     isNextLife: pageState === "NEXT_LIFE",
     lifeBook: {
+      hasLifeBook: hasLifeBook,
       runName: str(lifeBook.runName),
       age: num(lifeBook.age, 0),
       maxAge: num(lifeBook.maxAge, 0),
@@ -432,16 +465,18 @@ function buildTerminal(terminal, pageState) {
       causesCount: Array.isArray(lifeBook.causes) ? lifeBook.causes.length : 0,
       hasEnding: typeof lifeBook.ending === "object" && lifeBook.ending !== null,
       hasDeath: typeof lifeBook.death === "object" && lifeBook.death !== null,
-      endingId: str(record(lifeBook.ending).endingId),
-      deathCause: str(record(lifeBook.death).directCause)
+      // PLAYUX01: both ids are server enums, so they are translated here. An unknown id still falls
+      // through to the raw id, which is the honest signal that the catalog is missing an entry.
+      endingId: presentLabel(TERMINAL_LABELS, str(record(lifeBook.ending).endingId)),
+      deathCause: presentLabel(TERMINAL_LABELS, str(record(lifeBook.death).directCause))
     },
     rebirth: {
       completedRunId: str(rebirth.completedRunId),
       runName: str(rebirth.runName),
       finalAge: num(rebirth.finalAge, 0),
       finalRealm: str(record(rebirth.finalRealm).id),
-      endingId: str(rebirth.endingId),
-      deathCause: str(rebirth.deathCause),
+      endingId: presentLabel(TERMINAL_LABELS, str(rebirth.endingId)),
+      deathCause: presentLabel(TERMINAL_LABELS, str(rebirth.deathCause)),
       peopleMet: num(rebirth.peopleMet, 0),
       buildsFormed: num(rebirth.buildsFormed, 0),
       eventsExperienced: num(rebirth.eventsExperienced, 0),

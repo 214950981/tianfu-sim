@@ -133,7 +133,10 @@
       <view wx:if="{{vm.isTerminal && vm.terminal && vm.terminal.isEnding}}" class="block">
         <view class="block-title">{{vm.pageStateLabel}}</view>
         <view wx:if="{{vm.terminal.lifeBook.runName}}" class="body-text">{{vm.terminal.lifeBook.runName}} · {{vm.terminal.lifeBook.age}} / {{vm.terminal.lifeBook.maxAge}} · {{vm.terminal.lifeBook.realm}}</view>
-        <view class="body-text">因果已成定局，{{vm.terminal.lifeBook.eventsCount}} 件往事、{{vm.terminal.lifeBook.peopleCount}} 位故人、{{vm.terminal.lifeBook.buildsCount}} 道道途。</view>
+        <!-- PLAYUX01: the counts only render once the sidecar actually carries a life book. Reporting
+             0 往事 / 0 故人 / 0 道途 before then reads as a verdict on a life that has not been summarised
+             yet, so the row stays hidden until there is something true to say. -->
+        <view wx:if="{{vm.terminal.lifeBook.hasLifeBook}}" class="body-text">因果已成定局，{{vm.terminal.lifeBook.eventsCount}} 件往事、{{vm.terminal.lifeBook.peopleCount}} 位故人、{{vm.terminal.lifeBook.buildsCount}} 道道途。</view>
         <view wx:if="{{vm.terminalCta}}" class="cta" data-action="{{vm.terminalCta.action}}" bindtap="onTerminalAdvance">{{vm.terminalCta.label}}</view>
       </view>
 
@@ -142,7 +145,7 @@
         <view class="block-title">{{vm.pageStateLabel}}</view>
         <view wx:if="{{vm.terminal.lifeBook.runName}}" class="body-text">{{vm.terminal.lifeBook.runName}} · {{vm.terminal.lifeBook.age}} / {{vm.terminal.lifeBook.maxAge}} · {{vm.terminal.lifeBook.realm}}</view>
         <scroll-view class="bounded" scroll-y="true">
-          <view class="card">
+          <view wx:if="{{vm.terminal.lifeBook.hasLifeBook}}" class="card">
             <view class="card-title">经历</view>
             <view class="card-row"><view class="card-key">事件</view><view class="card-value">{{vm.terminal.lifeBook.eventsCount}}</view></view>
             <view class="card-row"><view class="card-key">故人</view><view class="card-value">{{vm.terminal.lifeBook.peopleCount}}</view></view>
@@ -179,7 +182,7 @@
       <view wx:elif="{{vm.isTerminal && vm.terminal && vm.terminal.isNextLife}}" class="block">
         <view class="block-title">{{vm.pageStateLabel}}</view>
         <view wx:if="{{vm.terminal.nextLife.completedRunId}}" class="card-row"><view class="card-key">已结之世</view><view class="card-value">{{vm.terminal.nextLife.completedRunId}}</view></view>
-        <view class="body-text">此生已入卷宗。开启下一世将调用服务器开启新的一局（命，旧的（bootstrap 标识会保持不变直到开启成功。</view>
+        <view class="body-text">此生已入卷宗。开启下一世会请服务器另起一局新的人生；命格与命（bootstrap 标识）在开启成功之前保持不变。</view>
         <view class="cta" bindtap="onStartNextLife">开启下一世</view>
       </view>
 
