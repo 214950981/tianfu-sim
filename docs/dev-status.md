@@ -20,10 +20,17 @@
 - **LIVEFIX05 已被 Controller 接受并快进合并**：`wb-LIVEFIX05` 的实际提交 `3a6c6d70be6132147ccb09d9a718ccd5189109c7`，自原 dev HEAD `171a6c690499f66e7333b784a5c7557b61b5096f` 真实单提交后代快进。
 - 改动范围恰好三个文件：`miniprogram/pages/v2-live/v2-live.wxml`、`tests/livefix05.test.mjs`、`.codex/control/LAST_RESULT.yaml`。未改 server/cloudfunction/Core/Content/main，也没有云端部署。
 - Controller 已核验远端 WXML 的显式否定 `wx:if` 与原有选项/CTA 绑定；WorkBuddy `LAST_RESULT` 报告 `livefix05: 6/6`、`ui04c: 18/18`，以及限定范围的静态门禁全部 PASS。**本轮未重新执行测试，也没有新 CI 结果。**
-- **当前控制面：HOLD / ROLLPREP01 已完成但不具备部署批准条件**；WorkBuddy 报告五个前端文件已在实际 DevTools worktree 同步、云端部署包可恢复且仍为 PLAYUX01 之前版本、新旧状态结构四格离线检查通过。CloudBase 四个集合及权限元数据未能只读核实，客户端编译无最终判定。Controller 另从 GitHub 发现 contentVersion 未变而选项 ID/事件选择逻辑变化，旧未结算事件及历史 CommandLog 跨内容版本重放未获覆盖。详见 docs/ROLLPREP01-CONTROLLER-REVIEW.md。没有部署、改数据库、修改产品或派新任务。
+- **当前控制面：READY / ROLLPREP01-R1（单次只读补证）**；用户授权 WorkBuddy 仅补齐 CloudBase 四集合及权限元数据、旧待选事件/旧 optionId 和历史 command log 跨版本离线回放、已下载的旧云函数恢复候选与数据库备份条件、真实微信编译完成信号。操作规范 docs/ROLLPREP01-R1-EVIDENCE-PLAN.md，禁止部署/云 DB 写入及导出、修改游戏代码、Git 推送、全量回归与自动后续任务。ROLLPREP01 既有本地同步、38 个云包文件检查不再重复。完成后由 Controller 归位 HOLD。
 - **LIVEFIX05 真实视觉验收已通过**：用户截图显示 `DESTINY_OFFER` 页面择命候选正常，旧版“服务器投影”多余提示消失；选择命格后成功进入 `RUN_HOME`。随后点击一次“游历”进入 `EVENT`，页面标注第 4 版，出现新的 LIVEFIX06 文案缺陷。
 - 真实云函数首次开局与数据库持久化验收已在 Issue #2 完成，**不能**把本次仅 UI 条件修复的通过解释成完整游戏正式上线。
 - **LIVEFIX06 已合并（源码 PASS WITH CAVEATS）**：`wb-LIVEFIX06@31bbc5b4e79d5ca447e26062a8c8d00a3969c782` 从 `86707ac5f6ab3f775cd611017441022e59b4589c` 安全快进；新增 340 键中文生成资源及覆盖/负控测试，修复所有现有 Content01 原始键名显示缺陷。WorkBuddy 报告 LIVEFIX06 20/20、UI04C 18/18、UI02COPY 11/11 PASS，静态门禁 PASS；本次 Controller 未重新执行测试。已修复任务定义中的 `evidence`/`goal` 不支持字段及折叠列表写法；历史 UI02R1 两项基线失败待后续统一测试计划处理。**WorkBuddy 已报告真实 DevTools CLI 编译通过；尚未获得人工视觉截图与真实事件选项结算结果。无需云函数部署。**
+
+## ROLLPREP01-R1 补充核查派发（2026-10-09）
+
+- Controller 授权单次 **只读 G1–G5 证据补充**，明确没有授权部署：G1 四集合/权限元数据；G2 旧待选事件旧选项 ID 的新版本兼容及失败不污染状态；G3 旧真实 CommandLog/快照经旧/新内容包重放与状态 hash；G4 旧云函数快照可恢复来源、依赖包与 DB 回滚尚待证明；G5 正确 DevTools 项目真实编译完成记录。
+- 关键问题仍是旧新代码都声明 `content01.v1`，但部分事件选项 ID/Director 行为不同。必须区分“旧存档结构能够读取”与“旧命令能够在新规则下确定性重放”，不准只凭四格格式测试放行。
+- 任务 `.codex/tasks/ROLLPREP01_R1.yaml` 和 `docs/ROLLPREP01-R1-EVIDENCE-PLAN.md` 只允许本地临时 fixture 与只读平台元数据。不需要编码任务、Git 分支或提交，云函数/在线 DB/真实玩家命令均不能操作。
+- 真实云数据库查询玩家记录、导出备份、线上上传与部署均不属于本轮授权；任何未证实的门禁必须 BLOCKED/INCONCLUSIVE，WorkBuddy 停止后 Controller 验收并设置 HOLD。
 
 ## ROLLPREP01 部署前报告验收（2026-10-09）
 

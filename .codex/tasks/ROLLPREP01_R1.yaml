@@ -1,0 +1,51 @@
+id: ROLLPREP01_R1
+title: ROLLPREP01-R1 - Bounded evidence-only rollout safety gates
+phase: 2
+verificationProfile: fast-lane
+executionProfile: credit-efficient
+requiredContracts: []
+optionalContracts: []
+blockers: []
+inspect_first:
+  - .codex/control/PROTOCOL.md
+  - .codex/control/NEXT_TASK.yaml
+  - docs/ROLLPREP01-R1-EVIDENCE-PLAN.md
+  - docs/ROLLPREP01-CONTROLLER-REVIEW.md
+  - docs/ROLLPREP01-CHECKLIST.md
+  - .codex/control/TOOLING_RUNBOOK.md
+  - packages/core/src/persistence.ts
+  - packages/core/src/reducer.ts
+  - server/src/cloudbase-store.ts
+  - server/src/command-gateway.ts
+allowedScope:
+  - Execute exactly one Controller-authored operational follow-up and obey docs/ROLLPREP01-R1-EVIDENCE-PLAN.md; do not propose or implement changes to gameplay or remote systems.
+  - Verify four CloudBase collection names and permission rule metadata through safe platform read-only UI or allowed metadata methods without opening player documents.
+  - Run a deterministic offline legacy pending Event compatibility test across the old deployed pack and the accepted PLAYUX01 new pack including removed option ids, page refresh and idempotency semantics.
+  - Run an old source generated full command log and snapshot replay against both old and new rule/content packs; report exact failures and distinguish stored-run resume from replay.
+  - Read-only verify the previously downloaded deploy snapshot hash and staging dependency closure and document the separate code rollback and database recovery readiness.
+  - Obtain exactly one real DevTools compile completion signal from the actual synchronized project, or explicitly report NOT_CONFIRMED without repeated attempts.
+  - Report G1 to G5 evidence and a single honest deployment readiness result to user in WorkBuddy chat only; stop afterwards.
+forbiddenScope:
+  - new-product-features
+  - modification-of-Core-Content-Server-or-client
+  - repo-code-changes
+  - any-Git-commit-or-push
+  - cloud-function-upload-deploy-or-rollback
+  - cloud-environment-config-runtime-or-timeout-change
+  - cloud-database-query-returning-user-documents
+  - cloud-database-create-update-delete-export-or-backup
+  - production-game-RPC-and-state-mutation
+  - production-user-identity-or-secret-exposure
+  - game-client-publish-or-preview
+  - new-dev-task-dispatch
+  - full-repository-regression-or-600-run
+  - repeated-network-retries
+  - altering-existing-dirty-working-files
+accept:
+  - The CloudBase four collections and their security rule types are either independently evidenced or honestly individually marked NOT_VERIFIED.
+  - Pending legacy Event with removed option id is tested for real failure/refresh outcome and state unchanged when rejected, plus nonchanged option negative control and bounded idempotent command retry.
+  - At least one authentic old command log and snapshot crosses the old and new replay functions with exact hashes and failure categorization rather than merely validating state shape.
+  - Previous deployed package rollback source plus staging dependencies are evidenced and database backup permissions and restoration remain appropriately unclaimed.
+  - The correct miniprogram project has an actual compile completion signal or correctly reports NOT_CONFIRMED, without altering live app state.
+  - A single final result truthfully distinguishes READY from BLOCKED/INCONCLUSIVE and affirms absolutely no cloud/data/game/Git mutation.
+tests: [offline-pending-legacy-event, offline-old-log-replay, existing-package-read-only-hashes, single-real-devtools-compile]
