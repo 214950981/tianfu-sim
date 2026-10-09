@@ -351,10 +351,17 @@ blockers: []
 remoteDelivery:
   branch: wb-PLAYUX01
   expectedHead: 7a4ccf60199bad650cab07802090e0292e9ca7b1
+  remoteHead: 147d5bce189ec8337e593e9f05218e12ba82dfb8
+  localHead: 147d5bce189ec8337e593e9f05218e12ba82dfb8
   verifiedBy: >-
-    git ls-remote origin refs/heads/wb-PLAYUX01 must return the expected head. Filled in after the push
-    attempt; if the proxy tunnel is down the commit stays queued and this field says so rather than claiming
-    delivery.
+    git ls-remote origin refs/heads/wb-PLAYUX01 returned 147d5bce189ec8337e593e9f05218e12ba82dfb8, which is
+    exactly the local HEAD. Delivery is COMPLETE: the branch tip carries the whole second pass plus its
+    LAST_RESULT commit. The broker job reached CONNECTIVITY_CHECK and had already pushed; a direct
+    `git push <sha>:refs/heads/wb-PLAYUX01` confirmed "Everything up-to-date" against the same remote ref.
+  note: >-
+    Older broker jobs for intermediate commits (af41687, badc896, 4de7b10, 1952c42) are still parked at
+    REMOTE_VERIFY / WAITING_FOR_NETWORK. They need no action: the history is linear and every one of them is
+    an ancestor of the delivered head, so their content is already on the remote.
 
 residualRisks:
   - >-
