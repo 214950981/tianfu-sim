@@ -8,3 +8,6 @@ project.private.config.json
 
 # PLAYUX01 local probe artifacts
 .playux01/
+
+# PLAYFEEL01 scratch (autoplay artifacts; committed copies live in docs/)
+.playfeel01/

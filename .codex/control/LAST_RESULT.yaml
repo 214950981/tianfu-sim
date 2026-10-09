@@ -1,393 +1,97 @@
 version: 1
-taskId: PLAYUX01
-attempt: 3
-status: PASS
+taskId: PLAYFEEL01
+attempt: 1
+status: PARTIAL_STAGE_A_ONLY
+baseCommit: 93bfdc48eebd8b7f0774947df4c16b63f64f6de3
+workBranch: wb-PLAYFEEL01
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-PLAYUX01
-baseCommit: 1ed4bdc06803c73e09d89401e1f5161be08da077
-historyMode: real-ancestry
-sourceHeadVerifiedBy: git rev-parse HEAD~9 == 1ed4bdc (no synthetic merge, no rebase)
-
-commits:
-  - sha: 2ba06ea
-    stage: A
-    what: product-behaviour mapping table plus three read-only probes
-  - sha: af41687
-    stage: B
-    what: authored copy, action-semantic slots, build stage labels
-  - sha: badc896
-    stage: C
-    what: authoritative result receipt and readable history rows
-  - sha: 0fa8b46
-    stage: D
-    what: terminal screens stop printing raw ids and invented zeroes
-  - sha: 4de7b10
-    stage: E
-    what: authored Cause-echo resolutions and the task's own regression suite
-  - sha: 2b84b55
-    stage: report
-    what: first-pass LAST_RESULT
-  - sha: 1952c42
-    stage: report
-    what: first-pass delivery confirmation
-  - sha: 7a4ccf6
-    stage: B1-B5
-    what: >-
-      second pass answering the CHANGES_REQUESTED review: the settled result reaches the screen, the life
-      book becomes a retrospective, a lifespan death inside an Event is explainable, every option settles
-      what it says, unknown terminal enums degrade conservatively
-  - sha: 147d5bc
-    stage: report
-    what: second-pass LAST_RESULT (delivered)
-  - sha: 9fd52f2
-    stage: report
-    what: second-pass delivery-field edit (documentation only; the Controller confirmed it needs no retry)
-  - sha: 8a6d661
-    stage: F1-F4
-    what: >-
-      third pass answering the second review: the result panel names the Event and the chosen option, the
-      life book separates the chronological record from the public transitions, and every remaining template
-      option is reworded for its own scene
-headCommit: 8a6d661743256a6c0185e2e49a7579966bdc1834
+ancestry:
+  method: real
+  note: worktree 由 `git worktree add -b wb-PLAYFEEL01 <sha>` 建立，HEAD == 派发提交 93bfdc48；325c5556 已校验为其祖先。
+  synthetic: false
 
 summary: >-
-  The Controller's second review accepted the B1-B5 fixes and returned four product gates. F1 to F3 were one
-  complaint in three places: the game kept stating numbers and labels without saying what the player had
-  actually done. The result panel showed what moved but not what was chosen or which scene it was; the life
-  book called every recorded Event a 关键转折; and 35 Events still ran on generic buttons. All four are done,
-  and the test that proves F1 drives the real client stack rather than a hand-made receipt.
+  只完成阶段 A（基线）。执行合同要求的「先分析当前 66 个事件的实际结算与玩法问题，建立修改前基准」：
+  产出 66 场逐选项/逐结果层级的机械审计，并用真实引擎跑了 6 seed × 3 策略 = 18 局有界自动试玩作为 before。
+  阶段 B（实现）、C（对照）、D（验证）、E（完整报告）未开始，本提交不含任何玩法或客户端改动。
 
-f1ResultPanel:
-  problem: >-
-    buildResultReceipt rendered 修为 +N / 灵石 +N / 岁月 +N 年 and a generic heading. It never read
-    narrative.eventId or narrative.choiceId, both of which the confirmed receipt already carries, so a player
-    could still say "I chose something and a number changed, but what did I choose and what was it?".
-  fix: >-
-    The panel now names the settled Event and shows 你选择了：<label>, both resolved through the same
-    exact-key catalog every other surface reads. It is the same receipt and the same ids — nothing is
-    inferred and nothing new is projected.
-  fallbacks: >-
-    An Event or option the catalog cannot resolve reads 详情暂不可用, never an id (PLAYUX01B-017). A
-    settlement with no recorded choiceId shows no choice line at all rather than inventing one.
-  cta: >-
-    The dismissal control follows the authoritative page: 查看终局 when the page is ENDING, 返回在世
-    otherwise, so the button cannot promise a home screen that no longer exists. It still submits nothing.
-  resolutionNote: >-
-    A scene that settles only time records nothing the lines can name, so the scene now authors its own
-    answer under `${eventId}.resolution` and the panel renders it — but only when nothing was gained, so a
-    note can never sit beside a settled reward. This is what lets old-trace say 这一次追查还没有取得可以
-    确认的新线索 without the client knowing what kind of scene it is rendering.
+stageStatus:
+  A_baseline: DONE
+  B_implementation: NOT_STARTED
+  C_comparison: NOT_STARTED
+  D_verification: NOT_STARTED
+  E_report: PARTIAL_BEFORE_ONLY
 
-f2LifeBook:
-  problem: >-
-    buildTimeline copied every lifeBook.events entry and WXML labelled all of them 关键转折. That asserted a
-    significance ranking the data does not contain.
-  fix: >-
-    The chronological section is now called 此生经历 and is presented as what it is. The life's shape is
-    presented separately under 此生的变化, built only from the significance signals the projection actually
-    publishes: a track the server marked dominant, a cause that reached journal visibility, and the people
-    met. Each carries its own published level — 潜藏/萌芽/成形/圆熟 for a track, 明确/隐约 for a cause.
-  noRankingExists: >-
-    There is no per-Event significance signal to rank on. `lifeBook.events` carries only entryId, eventId,
-    nodeIndex, an optional resultTier and an optional choiceId, and public causes carry no origin node to
-    join on. F2 forbids inventing one and says to reuse only persisted, published facts, so the fallback F2
-    names is what was implemented: the record stays complete and chronological, and the transitions are the
-    public cause/build/person changes.
-  intro: >-
-    Added 此生如何走到终局 as a computed sentence over published facts only — ending age, final realm, the
-    shared counts and the known direct cause. It is empty when the sidecar is absent, so it cannot print a
-    sentence full of zeroes, and it names no achievement the run did not record.
-  sharedBasisKept: >-
-    ENDING, LIFE_BOOK and REBIRTH_RESULT still read the one `counts` object, with `paths` and `formed`
-    labelled separately.
+artifacts:
+  - tools/playfeel01-event-audit.mjs
+  - tools/playfeel01-autoplay.mjs
+  - docs/PLAYFEEL01-EVENT-AUDIT.md
+  - docs/PLAYFEEL01-BASELINE-BEFORE.json
+  - docs/PLAYFEEL01-AUTOPLAY-REPORT.md
 
-f3Content:
-  templateWording: >-
-    All 35 Events that still ran on 顺势而行 / 停步细看 / 见好便收 / 承担此险 / 先辨征兆 / 及时折返 are
-    reworded. Remaining generic options: 0.
-  mechanism: >-
-    `choiceSet` could not be used: on a risk Event the template is what attaches threatId, the tiered
-    outcomes and the cause closure, so replacing the choice list would change what a choice DOES in order
-    to fix what it SAYS. A `choiceLabels` map on the Spec rewords the template's own option ids instead, so
-    no id, effect, threat, cooldown or closure moves — which is what keeps this clear of the LOOPFIX02B2
-    closure contract and the RNG rules.
-  breakdown:
-    - group: Cause origins
-      count: 7
-      what: the shared 留一句话离开 decline is now scene-specific (只说一句改日再会，不问他的去处 / 退到路边，让他先过去)
-    - group: risk template (take-risk / read-signs / turn-away)
-      count: 14
-      what: each names the act the scene actually presents (抢在合拢之前冲出去 / 先分辨哪一边的声音更近 / 退出松林，绕开这一段)
-    - group: default trio (engage / consider / leave)
-      count: 14
-      what: each names the act and stays inside what the existing effect settles; no option promises a reward the settlement does not produce
-  labelsAuthored: 91
-  marketChoice: >-
-    The B3 pass fixed buy-and-receive-currency by making the player SELL "herbs gathered on the road", which
-    silently asserted a possession the run never records — nothing grants herbs at start. The scene is now
-    paid work that begins and ends in front of the player: the vendor has a basket of mixed herbs he cannot
-    sort and pays a stated fee for having it sorted. Same money-vs-time trade-off, same ids, no prior
-    inventory claimed or consumed, and still no purchase (REMOVE_RESOURCE errors as INVALID_OPTION at zero,
-    so a buy option would be a choice that fails for a starting player).
-  oldTrace: >-
-    Its three options settle time and record nothing, which is honest but left the player unable to tell
-    whether an investigation had found anything. The recorded choice is now named in the result panel and
-    the live archive, and the scene states 尚未取得可以确认的新线索 where none was settled. It promises no
-    later payoff and plants no Cause — an actor-free Cause template does not exist, so a pursuit Event with
-    no participant genuinely cannot record a lead.
+baselineFindings:
+  auditTotals:
+    events: 66
+    eventsWithAuthoredResolutionText: 2
+    eventsGrantingCultivation: 60
+    eventsGrantingSpiritStone: 13
+    eventsWithTimeOnlyOptions: 12
+    eventsWhereAllOptionsAreTimeOnly: 3
+    riskEvents: 14
+  runs:
+    total: 18
+    mortalAtOrOver50: 8
+    neverReachedFullCultivation: 11
+    deathSamplesInWindow: 0
+    runsProducingCause: 15
+    breakthroughAttemptsTotal: 28
+    breakthroughSuccessesTotal: 12
+    breakthroughAttemptMedianAction: 5
+  headlineDefects:
+    - >-
+      social-causality 6/6 局在 45-51 岁时修为仅 1470-2080/10000：只做入世与追索的玩家会耗掉三十多年
+      而几乎不知道自己在修炼上毫无进展（产品合同 §2 已预判，本轮首次量化）。
+    - >-
+      66 场只有 2 场存在授权结算文案键；其余 64 场结果页只能显示数值，是「结果只有数字」的量化证据。
+    - >-
+      60/66 场含修为收益选项，其中大量出现在人间生活场景，缺少修行来源解释。
+    - >-
+      18 局 × 24 次核心行动内没有任何死亡，因此「寿尽 vs 提前死亡」的类别与来源本轮无法验证，
+      标 NOT_MEASURABLE，不记 PASS。
 
-changes:
-  - file: packages/content/src/content01-v1.ts
-    what: >-
-      F3. Adds a `choiceLabels` map to the Spec (rewords the template's own option ids without touching any
-      id, effect, threat, cooldown or closure), an `outcomeNote` field published under `${id}.resolution`,
-      and authors 91 labels across the 35 Events that still used shared wording. market-choice becomes paid
-      work inside its own scene, and old-trace/forked-path author their resolution note. The content checksum
-      is unchanged because nothing structural moved.
-  - file: miniprogram/pages/v2-live/v2-live.js
-    what: >-
-      F1 and F2. buildResultReceipt now resolves the settled Event title and the chosen option label from the
-      receipt's own eventId/choiceId and states a scene-authored resolution note when nothing was gained.
-      buildRenderModel sets the CTA from the authoritative page state. buildTerminal computes the
-      此生如何走到终局 introduction and a hasTransitions flag from published facts, and buildTimeline's
-      contract is documented as a record rather than a ranking.
-  - file: miniprogram/pages/v2-live/v2-live.wxml
-    what: >-
-      F1 and F2. The result overlay gains the Event title, the 你选择了 row and a CTA whose text comes from
-      the model. The life book's mislabelled 关键转折 section becomes 此生经历, gains the introduction, and
-      groups the public transitions under 此生的变化.
-  - file: miniprogram/pages/v2-live/v2-live.wxss
-    what: F1. Two classes for the new result rows; both declare their own box-sizing.
-  - file: miniprogram/pages/v2-live/content01-zh-cn.js
-    what: Regenerated from the source catalog (331 keys, including the two new resolution notes).
-  - file: cloudfunctions/tianfu2/runtime/content-content01-v1.js
-    what: >-
-      Regenerated, because the derived cloud runtime carries the content module and that module changed. Not a
-      deployment.
-  - file: tests/playux01b.test.mjs
-    what: >-
-      Eight new tests (14 -> 22) covering F1's shell-to-page flow, the death-at-choice CTA, the conservative
-      unknown-key fallback, the F2 life-book split and introduction, and the F3 wording, provenance and
-      pursuit-honesty audits.
+harnessCorrections:
+  - >-
+    第一版装置未走「选择灵根」开局（START_RUN 缺 selectionId），导致 innateProfile 为 undefined，
+    applyRetreatProgression 直接返回、闭关收益恒为 0，得到「18/18 从未达到 10000 修为」的假结论。
+    改用生产路径 generateServerDestinyOffer + selectionId 后结论完全改变。这是我的方法错误，已更正并记录。
+  - >-
+    第一版突破策略为「失败立刻再试」。由于失败同时扣修为与根基（progression.ts:82-85），
+    构成死亡螺旋，得到「60 次尝试 0 成功」的假象。改为合同要求的「失败先补闭关重建根基」后，
+    突破可以成功（28 次尝试 12 次成功）。同样是我的方法错误，未记入游戏缺陷。
 
 tests:
-  - name: playux01b-dedicated
-    command: node --test tests/playux01b.test.mjs
-    result: 22 tests / 22 pass / 0 fail
-    note: >-
-      PLAYUX01B-015 drives the REAL client stack — cloud stub -> CommandGateway ->
-      createWeChatCloudTransport -> WeChatRunController — reaches a decision, settles an option and renders
-      the receipt that came back through the shell boundary. That boundary is exactly where the first pass
-      lost the receipt, so a hand-made receipt could not prove this. PLAYUX01B-016 settles a choice that
-      ends the run and asserts the authoritative page is ENDING before checking the CTA. PLAYUX01B-017
-      covers the unknown and the choice-less cases. PLAYUX01B-018/019 pin the life book split and the intro.
-      PLAYUX01B-020/021/022 audit the wording pass, the scene-internal market transaction and the pursuit
-      note.
-  - name: playux01-dedicated
-    command: node --test tests/playux01.test.mjs
-    result: 20 tests / 20 pass / 0 fail
-  - name: content-choice-effects-regression
-    command: node --test tests/content01.test.mjs
-    result: 32 tests / 32 pass / 0 fail
-  - name: content-registry
-    command: node --test tests/content-registry.test.mjs
-    result: 7 tests / 7 pass / 0 fail
-  - name: director-action-candidate-regression
-    command: node --test tests/director.test.mjs
-    result: 47 tests / 47 pass / 0 fail
-  - name: build
-    command: node --test tests/build.test.mjs
-    result: 24 tests / 24 pass / 0 fail
-  - name: livefix06
-    command: node --test tests/livefix06.test.mjs
-    result: 20 tests / 20 pass / 0 fail
-  - name: loopfix02b1 / b2 / c
-    command: node --test tests/loopfix02b1.test.mjs (and b2, c)
-    result: 13 / 13 / 15 pass, 0 fail
-  - name: ui04c-targeted
-    command: node --test tests/ui04c.test.mjs
-    result: >-
-      18 tests / 18 pass / 0 fail. It caught one thing in this pass: a receipt key I had called `.outcome`
-      tripped its crude "no Date.now() over a gameplay value" guard, which fires whenever the page mentions
-      `outcome` at all. The key was renamed to `.resolution` rather than weakening that guard.
-  - name: ui04d-cloud-runtime
-    command: node --test tests/ui04d.test.mjs
-    result: 20 tests / 20 pass / 0 fail
-  - name: total
-    result: 264 passed / 0 failed across the 12 suites run
+  ran: none
+  note: >-
+    A 阶段未运行任何既有测试套件。合同要求 D 阶段才做定向 suite/typecheck/freshness，
+    且不得跑 aggregate npm test 或 600 局。
 
 gates:
-  - name: lint-boundary
-    command: node tools/check-import-boundaries.mjs
-    result: PASS (Core import boundary)
-  - name: secret-scan
-    command: node tools/scan-secrets.mjs
-    result: PASS (no hardcoded credentials)
-  - name: content-audit
-    command: node tools/content01-lint.mjs
-    result: >-
-      PASS. content01.v1, checksum 0a6f02c527af6ba136c384591f9afbc85eadb46746fcb05eb61c943013f6187b,
-      66 events, 10 causeTemplates, 5 npcDefinitions, 8 npcArchetypes. The checksum is unchanged by this pass
-      and that is correct, not a miss: it is computed over the pack structure, and this pass changed only
-      copy — labelKey and bodyKey are derived from the Event and option ids, which did not move. The new
-      `${id}.resolution` keys live in the translation map, not in the pack.
-  - name: content-playability-audit
-    command: node tools/content-playability-audit.mjs
-    result: PASS. invalidTextLengths 0, riskViolations 0, knowledgeLeakViolations 0
-  - name: localization-freshness
-    command: node tools/content01-zh-cn-module.mjs
-    result: PASS (331 keys, all non-empty Chinese, committed module matches the source catalog)
-  - name: runtime-package-closure
-    command: node tools/miniprogram-package-closure.mjs
-    result: PASS (closed relative-require graph; 5 templates have no dangling include)
-  - name: wxss-integrity
-    command: node tools/wxss-integrity-audit.mjs
-    result: PASS (7 stylesheets structurally complete; every statically referenced class on v2-live is defined)
-  - name: wechat-runtime-artifact
-    command: node tools/ui04b-wechat-runtime-artifact.mjs
-    result: PASS (deterministic regeneration matches the committed bytes; the page and shell did not change)
-  - name: cloud-runtime-artifact
-    command: node tools/ui04d-cloud-runtime-artifact.mjs
-    result: >-
-      PASS after regeneration. It was stale because content01-v1.ts changed and the derived cloud runtime
-      carries it. Regeneration is not deployment: no cloud function was deployed, invoked or configured.
-  - name: aggregate-npm-test
-    result: NOT RUN — forbidden by NEXT_TASK
-  - name: typecheck
-    result: NOT RUN — maxTypecheckRuns is 1 and the budget was not spent
-  - name: 600-run
-    result: NOT RUN — forbidden by NEXT_TASK
-  - name: full-UI04-regression
-    result: NOT RUN — forbidden by NEXT_TASK
-  - name: ui04b-scope-pins
-    result: >-
-      NOT RE-RUN and NOT RE-PINNED, per F4. Disclosed below with measured values.
-  - name: cloud-deploy
-    result: NOT RUN — forbidden. No cloud function was deployed, invoked or configured.
+  noCloudDeploy: true
+  noCloudDatabaseMutation: true
+  noGameplayCodeChange: true
+  noClientCodeChange: true
+  noMainOrDevMutation: true
+  noAggregateTest: true
+  no600Run: true
 
-scope:
-  coreChanged: false
-  contractsChanged: false
-  directorChanged: false
-  contentChanged: true
-  contentSemanticsChanged: true
-  serverChanged: false
-  cloudfunctionChanged: false
-  databaseChanged: false
-  gameplayChanged: false
-  rngChanged: false
-  runtimeRpcOrSchemaChanged: false
-  generatedRuntimeChanged: true
-  routeOrTabBarChanged: false
-  uiRedesign: false
-  scopeNotes: >-
-    This pass changed copy, two client render functions and one client component each of the result panel
-    and the life book. No rule number, no RNG draw, no Director decision, no state schema, no server code and
-    no EffectSpec moved — the effects during F3 were deliberately left alone and only their wording changed,
-    which is why the content checksum is identical. gameplayChanged is false for the same reason: the 91
-    labels describe the acts whose outcomes were already registered.
-  forbiddenTreesDrift: >-
-    git diff --name-only 1ed4bdc..HEAD is the 22 files listed in changedFiles across ten commits.
-    miniprogram/app.json, miniprogram/pages/game/, miniprogram/pages/start/,
-    miniprogram/pages/v2-preview/, tools/deploy-tianfu2.sh and the 1.0 pages are each 0 changes.
-  localDirtyNotIncluded: >-
-    No pre-existing dirty file was staged. project.private.config.json and tools/deploy-tianfu2.sh remain
-    dirty exactly as they were. .playux01/ is ignored and untracked.
-
-blockers: []
-
-productConflicts:
-  - what: >-
-      F2 asks for a 关键转折 section selected "only using non-hidden public significance signals", and also
-      says to reuse only persisted, published facts. Those two cannot both be satisfied for per-Event
-      ranking, because the LIFE_BOOK projection publishes no per-Event significance at all.
-    measured: >-
-      viewmodel.ts buildPublicTerminal projects publicEvents as { entryId, eventId, nodeIndex, resultTier?,
-      choiceId? } and publicCauses as { publicId, level, titleKey?, summaryKey? } — a cause carries no origin
-      node, so there is nothing to join an Event to a cause on.
-    resolution: >-
-      Implemented the fallback F2 itself names: the chronological section is 此生经历, and the public
-      cause/build/person changes are presented separately as the life's shape. Adding an origin node or a
-      per-Event salience to the public projection would close the gap, but F2 says to reuse what is
-      published, so it was not done without authorisation.
-  - what: >-
-      The ui04b scope pins for `cloudfunctions` and `server/src` remain stale, and F4 forbids re-pinning them.
-    measured: >-
-      pins b9e1e056 (cloudfunctions) and 39f0ec63 (server/src); task base 2b84b553 measured c3bc1592 and
-      9d9ccc95 over a `git archive` extraction, so the suite was already failing before this task began.
-      Current values: cloudfunctions f595e4a4 (moved this pass because the content source changed and the
-      derived cloud runtime carries it), server/src 09a17ce7 (unchanged this pass).
-    resolution: >-
-      Left alone and disclosed. Regenerating the derived cloud runtime is required for tests/ui04d.test.mjs
-      to hold, and that suite's own freshness assertion is not compatible with freezing these bytes; the two
-      pins and the freshness gate cannot both be satisfied once a source changes. Recorded rather than
-      resolved, because the guard belongs to another task.
-
-residualRisks:
+blockers:
   - >-
-    Manual visual QA was NOT performed. Everything above is proven against the real engine, the real
-    transport and the page's real render model. The concrete smoke steps: open v2-live, choose a destiny,
-    take a core action, resolve the opening Event and confirm the panel names the Event and prints
-    你选择了：<the option label> above the effect lines; let a choice end the run and confirm the button
-    reads 查看终局; open 生平录 and confirm the chosen option is named; and at ENDING confirm the life book
-    shows 此生经历, the 此生如何走到终局 introduction and the separate 此生的变化 section.
-  - >-
-    The 11/4/2 live observation from stage A is still not reproduced from a real run. What was reproduced
-    and fixed is the mechanism that allowed such a mismatch: two different count definitions reaching three
-    screens. A derived fixture proves the screens now agree; the original live run is not available.
-  - >-
-    Two of my own new tests failed on real defects rather than on the fixture, which is worth naming. The
-    page referenced UNKNOWN_LABEL, a constant the earlier B4 pass had already renamed away — a
-    ReferenceError that only a test executing that path would find. And the receipt key `.outcome` tripped
-    ui04c's crude substring guard. Both were fixed in the product or in my own naming, not by weakening a
-    guard.
-  - >-
-    `resolutionNote` is rendered only when nothing beyond time was gained, and no current reachable scene
-    both authors a note and settles a gain, so that guard is a safety net rather than an exercised path.
+    本任务体量远超单次会话：（a）20 场 × 每个合法选项 × 每个结果层级的 40-120 汉字授权结算文案
+    （约 100 段以上，且每段必须有机械效果支撑）；（b）结果页与人生书的客户端改造；（c）首页成长目标与
+    合法突破入口；（d）死因类别与来源；（e）同 18 局 after 对照；（f）定向测试与报告。
+    已完成 (A)，其余尚未开始。未以任何形式伪造完成度。
 
-toolingObservations:
-  - >-
-    A content-only change legitimately leaves the pack checksum identical, because the checksum covers pack
-    structure and labelKey/bodyKey are derived from ids. A freshness gate must therefore compare the
-    translation artifact separately, which tools/content01-zh-cn-module.mjs already does.
-  - >-
-    Changing a source tree requires regenerating its derived runtimes in the same commit. The cloud runtime
-    carries the content translation map too, so a pure copy pass can still make it stale.
-  - >-
-    `wbpush drain` spends its budget across worktrees and can starve the task at hand when older jobs in
-    other worktrees keep retrying; `wbpush resume <id>` targets one job.
-
-resourceUsage:
-  fullDedicatedSuiteRuns: 2 (tests/playux01b.test.mjs — once after the F1/F2/F3 implementation and once after the two defects its first run exposed)
-  typecheckRuns: 0
-  artifactRegenerationRounds: 2 (client catalog twice for the wording and the key rename, cloud runtime twice for the same reasons)
-  pushAttempts: 1 direct bounded push, which met the 502 tunnel; the commit stays queued
-  cloudDeploys: 0
-  cloudInvocations: 0
-  notes: >-
-    No aggregate npm test, no typecheck, no 600-run, no full UI04 regression, no ui04b scope re-run, no pin
-    re-pin, no cloud deploy and no cloud invocation.
-
-recommendedCommitMessage: >-
-  PLAYUX01: name the choice, separate the record from the transitions, and reword every template option
-
-verificationDisclosure: >-
-  Every test, probe and gate listed above was actually executed in this worktree; nothing is reported as
-  passing that was not run. Three things are explicitly NOT claimed. Manual visual QA on a real device was
-  not performed, and the smoke steps above are written for whoever can do it. Remote delivery is not yet
-  confirmed for the F1-F4 commit: the push met a 502 proxy tunnel and the commit stays in the broker queue,
-  so the remote head in remoteDelivery is what was last verified, not what this pass produced. And the F2
-  per-Event turning-point ranking the review asks for cannot be built from what the projection publishes;
-  the fallback the review names was implemented instead and the reason is recorded under productConflicts.
-
-remoteDelivery:
-  branch: wb-PLAYUX01
-  lastVerifiedRemoteHead: 147d5bce189ec8337e593e9f05218e12ba82dfb8
-  pendingLocalHead: 8a6d661743256a6c0185e2e49a7579966bdc1834
-  verifiedBy: >-
-    Earlier in this session `git ls-remote origin refs/heads/wb-PLAYUX01` returned
-    147d5bce189ec8337e593e9f05218e12ba82dfb8, which matched the local HEAD at that time, so the second pass
-    is delivered. The F1-F4 commit is NOT confirmed: both a bounded direct push and the broker drain met
-    `CONNECT tunnel failed, response 502`, while `ls-remote` succeeded against the same remote, so the tunnel
-    is intermittent rather than the remote being gone. The commit is queued and needs no re-work; retry with
-    `wbpush resume playux01-wb-PLAYUX01-8a6d6617`.
+nextStepsForController:
+  - 若接受 A 阶段，建议下一轮只授 B3（20 场内容层施工），它是 G2/G4 的共同前提。
+  - 若希望两段并行，请明确 B1/B4（首页成长目标、死因与标签清理）为独立可交付切片。
+  - C 阶段须先修两处度量：时间差判定改为按实际效果集合；寿命/风险参数须能产出寿尽与风险致死样本。
