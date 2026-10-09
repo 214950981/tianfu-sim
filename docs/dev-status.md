@@ -20,10 +20,16 @@
 - **LIVEFIX05 已被 Controller 接受并快进合并**：`wb-LIVEFIX05` 的实际提交 `3a6c6d70be6132147ccb09d9a718ccd5189109c7`，自原 dev HEAD `171a6c690499f66e7333b784a5c7557b61b5096f` 真实单提交后代快进。
 - 改动范围恰好三个文件：`miniprogram/pages/v2-live/v2-live.wxml`、`tests/livefix05.test.mjs`、`.codex/control/LAST_RESULT.yaml`。未改 server/cloudfunction/Core/Content/main，也没有云端部署。
 - Controller 已核验远端 WXML 的显式否定 `wx:if` 与原有选项/CTA 绑定；WorkBuddy `LAST_RESULT` 报告 `livefix05: 6/6`、`ui04c: 18/18`，以及限定范围的静态门禁全部 PASS。**本轮未重新执行测试，也没有新 CI 结果。**
-- **当前控制面：READY / LIVEDEPLOY01，用户明确授权先备份再直接覆盖现有 tianfu2 云函数**。用户否决新建环境和第二套系统，已知同名不同 Content、旧 EVENT 选项和历史回放风险仍在。新增单次部署任务要求：先备份当前云函数和已有四集合并核验可恢复性，无法完成备份就 BLOCKED_BACKUP 且不得上传；成功后仅部署已验收 PLAYUX01 云函数并核对实际版本，必要时仅回滚原函数代码。严禁 DB 恢复、迁移、改权限、产品代码修改、付费新服务及新建环境。详见 docs/LIVEDEPLOY01-BACKUP-DEPLOY-RUNBOOK.md，WorkBuddy 报告后 Controller 设 HOLD。
+- **当前控制面：READY / LIVEDEPLOY01 attempt 2，先用官方控制台完成 B2 备份再沿用原部署**。首轮 WorkBuddy 正确报告 BLOCKED_BACKUP：B1 旧云函数 38/38 完整；DevTools CLI 没有数据库导出入口，本机没有云 API 凭据，四集合未备份，故云函数仍旧版。Controller 已查腾讯云官方文档，控制台的集合管理支持 JSON 全字段导出；不再研究 CLI/要 SecretKey。WorkBuddy 优先在已登录官方控制台逐集合备份，若确需扫码/手动操作请用户一次性协助；成功并核验恢复条件后沿用原 LIVEDEPLOY01 C–E，否则停止，严禁无备份覆盖。
 - **LIVEFIX05 真实视觉验收已通过**：用户截图显示 `DESTINY_OFFER` 页面择命候选正常，旧版“服务器投影”多余提示消失；选择命格后成功进入 `RUN_HOME`。随后点击一次“游历”进入 `EVENT`，页面标注第 4 版，出现新的 LIVEFIX06 文案缺陷。
 - 真实云函数首次开局与数据库持久化验收已在 Issue #2 完成，**不能**把本次仅 UI 条件修复的通过解释成完整游戏正式上线。
 - **LIVEFIX06 已合并（源码 PASS WITH CAVEATS）**：`wb-LIVEFIX06@31bbc5b4e79d5ca447e26062a8c8d00a3969c782` 从 `86707ac5f6ab3f775cd611017441022e59b4589c` 安全快进；新增 340 键中文生成资源及覆盖/负控测试，修复所有现有 Content01 原始键名显示缺陷。WorkBuddy 报告 LIVEFIX06 20/20、UI04C 18/18、UI02COPY 11/11 PASS，静态门禁 PASS；本次 Controller 未重新执行测试。已修复任务定义中的 `evidence`/`goal` 不支持字段及折叠列表写法；历史 UI02R1 两项基线失败待后续统一测试计划处理。**WorkBuddy 已报告真实 DevTools CLI 编译通过；尚未获得人工视觉截图与真实事件选项结算结果。无需云函数部署。**
+
+## LIVEDEPLOY01 首轮阻塞与同任务续办（2026-10-09）
+
+- 第一次：BLOCKED_BACKUP，旧函数 38/38 恢复包已由 WorkBuddy 复验，但四集合未备份，云函数未部署。当前 CLI 缺 database 命令不是官方控制台不支持导出的证据。
+- Controller 已确认官方集合管理支持逐集合全字段 JSON 导出，给同一个 LIVEDEPLOY01 加入 GUI 导出路径并将 attempt 设置为 2。必须先完整备份并确认可用、环境一致，才能继续原部署；若 GUI 能力受限仅请用户完成一次必要扫码/导出，不要求提供密钥。
+- 所有已知 old/new Content 兼容风险仍存在，不修改游戏代码，不新建新环境，也不豁免四集合备份。
 
 ## LIVEDEPLOY01 备份后原环境部署授权（2026-10-09）
 

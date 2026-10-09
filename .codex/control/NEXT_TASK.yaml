@@ -1,6 +1,6 @@
 version: 1
 status: READY
-attempt: 1
+attempt: 2
 taskId: LIVEDEPLOY01
 title: LIVEDEPLOY01 - Backup current CloudBase then replace tianfu2 once
 taskDefinition: .codex/tasks/LIVEDEPLOY01.yaml
@@ -40,8 +40,11 @@ controllerIntent:
   cloudDatabaseRestoreApproved: false
   separateTestingEnvironmentApproved: false
   billableServicePurchaseApproved: false
-  nextAction: "WorkBuddy reports actual backup and deploy result; Controller independently reviews and returns control to HOLD"
+  nextAction: "Attempt 2: official CloudBase console JSON full-field exports of four collections; if validated, continue prior deploy; if GUI login or capability blocked, request minimal user interaction and stop"
 notes:
+  - Attempt 1 returned BLOCKED_BACKUP: old deployed function recoverable 38/38; no collection data exported because DevTools CLI has no database feature and no local CloudBase credentials. Do not repeat previous CLI or credential search.
+  - Official CloudBase console supports per-collection JSON all-field export. Prefer authenticated existing GUI, not a new CLI or secret key. https://docs.cloudbase.net/database/manage
+  - A QR login or manual authorization is a user-only step. Do not ask for tokens, database documents or SecretKey in chat. If GUI is inaccessible ask for this minimal step once, then stop without deployment.
   - User explicitly selected direct coverage of existing tianfu2 with backup instead of a second system, after being told about old-save compatibility risk.
   - This authorization is conditional: if all existing required CloudBase collection backups and exact current function restore source cannot be verified, do NOT deploy. No unbacked overwrite.
   - The previous ROLLPREP01-R1 evidence remains valid as a technical caveat; user knowingly chooses direct overwrite. Avoid rebuilding a versioning system or repeating lengthy testing.
