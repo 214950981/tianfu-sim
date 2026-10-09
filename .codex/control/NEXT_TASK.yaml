@@ -1,64 +1,45 @@
 version: 1
-status: HOLD
+status: READY
 attempt: 1
-taskId: PLAYUX01
-title: PLAYUX01 - Integrated action event consequence and lifetime UX
-taskDefinition: .codex/tasks/PLAYUX01.yaml
+taskId: ROLLPREP01
+title: ROLLPREP01 - Local sync and CloudBase pre-deploy safety assessment
+taskDefinition: .codex/tasks/ROLLPREP01.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-PLAYUX01
-worktreeRequired: true
-allowSyntheticTreeBase: true
+workBranch: wb-ROLLPREP01
+worktreeRequired: false
+allowSyntheticTreeBase: false
 basePolicy: remote-source-head-at-task-start
-verificationProfile: standard
+verificationProfile: fast-lane
 executionProfile: credit-efficient
 execution:
   readProtocolFirst: true
-  workBuddyMayImplement: false
+  workBuddyMayImplement: true
   commitTaskResult: false
   pushWorkBranch: false
   updateSourceBranch: false
   startNextTask: false
   runAggregateNpmTest: false
   run600Simulation: false
-  maxTypecheckRuns: 1
-  maxFullDedicatedSuiteRuns: 2
-  maxArtifactRegenerationRounds: 1
-  maxPushAttempts: 2
+  maxTypecheckRuns: 0
+  maxFullDedicatedSuiteRuns: 1
+  maxArtifactRegenerationRounds: 0
+  maxPushAttempts: 0
   prohibitUnboundedRetryLoops: true
 controllerReview:
-  previousTask: LIVEQA06
-  previousStatus: LOCAL_PREPARATION_REPORTED_PASS_VISUAL_PENDING
-  sourceReviewedCommit: 851e1e35b2e9a9d86afe3c2d09224bc6fffe0211
-  userVisualFindings: "Chinese event text renders and gameplay reaches EVENT, archive, ENDING and LIFE_BOOK; serious meaning and consistency problems remain."
+  previousTask: PLAYUX01
+  previousStatus: ACCEPTED_WITH_CAVEATS_FAST_FORWARDED
+  acceptedCodeHead: 325c55563bf3fd812a8659aa1bc9d56cd6b42eaa
+  controlHeadBeforeDispatch: 87d257c35ae89cf6c9ef89d0ac124837cb8b3c42
 controllerIntent:
-  productDesignSpec: docs/PLAYUX01-PRODUCT-SPEC.md
-  productDecisionsBy: Controller
-  mode: INTEGRATED_PLAYER_EXPERIENCE_REWORK
-  goal: "One linked action event choice consequences history ending life-book renovation without task splitting"
-  postTask: "Accepted and fast-forward merged; HOLD until explicit user instruction for separate sync/deploy QA"
-controllerAcceptance:
-  taskId: PLAYUX01
-  result: ACCEPTED_WITH_CAVEATS_FAST_FORWARDED
-  reviewedDate: "2026-10-09"
-  originalSourceHead: 1ed4bdc06803c73e09d89401e1f5161be08da077
-  workBranch: wb-PLAYUX01
-  acceptedRemoteHead: 325c55563bf3fd812a8659aa1bc9d56cd6b42eaa
-  mergedMethod: NON_FORCE_FAST_FORWARD_WITH_EXPECTED_SHA
-  ancestry: "ahead 12, behind 0 at final check"
-  reviewDocument: docs/PLAYUX01-CONTROLLER-ACCEPTANCE.md
-  sourceReview: PASS_WITH_CAVEATS
-  testsReported: "264 pass / 0 fail across 12 bounded suites; not rerun by Controller"
-  legacyUi04bScope: "Known prior stale pins, not included among the 12 passing suites"
-  visualQa: PENDING_WECHAT_DEVTOOLS
-  cloudDeployment: NOT_PERFORMED
-  nextAction: HOLD_UNTIL_EXPLICIT_USER_DECISION
-
+  mode: LOCAL_SYNC_AND_READ_ONLY_DEPLOYMENT_PREFLIGHT
+  authoritativeChecklist: docs/ROLLPREP01-CHECKLIST.md
+  cloudDeploymentApproved: false
+  cloudDataMutationApproved: false
+  nextAction: "Controller reviews preflight report and separately asks user approval before any deployment"
 notes:
-  - User approved the integrated task and explicitly requires Controller decisions rather than WorkBuddy inventing product design. Read docs/PLAYUX01-PRODUCT-SPEC.md in full; implement the fixed product specification.
-  - Read .codex/control/PROTOCOL.md and the task definition. Run node .codex/context.mjs PLAYUX01 once if available; do not roam the whole repository.
-  - PLAYUX01 has been accepted and merged; HOLD denies further WorkBuddy task starts. User must explicitly authorize any new local QA or cloud deployment task.
-  - Preserve main and all existing local dirty files. The actual WeChat DevTools project may be the WorkBuddy worktree documented in TOOLING_RUNBOOK; do not assume main clone.
-  - GitHub API push fallback on transport failure with bounded attempts and remote SHA ancestry verification. Do not modify dev/tianfu-2.0 directly.
-  - The accepted branch contains updated Core/Content/server and generated cloud runtime but deployed CloudBase is not updated by Git. No live-environment behavior may be claimed until authorized sync/deployment and WeChat verification.
-  - Do not run aggregate npm test or 600-run. Apply bounded touched-boundary rule tests if Core or server code changes.
-  - No automatic follow-up tasks. Controller will review the result before merging or authorizing real deployment.
+  - User explicitly approved a one-time WorkBuddy local sync, environment inspection, save compatibility and rollback-readiness check. User has not authorized CloudBase deployment or modification of live saves.
+  - Operational exception to implementation-task protocol: do not create a new worktree or wb branch, Git commit, Git push or LAST_RESULT. Report local operational findings in the WorkBuddy chat, then stop. Controller will record verified results in Git after user shares the report.
+  - Read .codex/control/PROTOCOL.md and docs/ROLLPREP01-CHECKLIST.md before work. Source of truth is the remote dev HEAD at task start, not older WorkBuddy workspace HEAD.
+  - Do not assume the active DevTools folder is the main clone. Actual history and CLI location are in TOOLING_RUNBOOK; discover current project and IDE port rather than reusing historical values.
+  - Preserve unrelated dirty files and no cloud deployment, cloud database writes, game actions, package publication, aggregate regression or 600-run. Stop if rollback source or compatibility cannot be verified.
+  - Once complete, do not auto-dispatch or retry any old queued wbpush job. The user will forward this single report to Controller, who returns NEXT_TASK to HOLD after review.

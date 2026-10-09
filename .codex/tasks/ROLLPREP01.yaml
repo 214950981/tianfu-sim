@@ -1,0 +1,58 @@
+id: ROLLPREP01
+title: ROLLPREP01 - Local sync and CloudBase pre-deploy safety assessment
+phase: 2
+verificationProfile: fast-lane
+executionProfile: credit-efficient
+requiredContracts: []
+optionalContracts: []
+blockers: []
+inspect_first:
+  - .codex/control/PROTOCOL.md
+  - .codex/control/NEXT_TASK.yaml
+  - .codex/control/TOOLING_RUNBOOK.md
+  - docs/ROLLPREP01-CHECKLIST.md
+  - docs/UI04D_CLOUD_BACKEND.md
+  - docs/PLAYUX01-CONTROLLER-ACCEPTANCE.md
+  - project.config.json
+  - cloudfunctions/tianfu2/index.js
+  - cloudfunctions/tianfu2/package.json
+  - server/src/gateway-store.ts
+  - server/src/cloudbase-store.ts
+  - tools/ui04d-cloud-runtime-artifact.mjs
+allowedScope:
+  - Follow docs/ROLLPREP01-CHECKLIST.md in full as a mandatory Controller-owned operational contract, not as an invitation to implement new product features.
+  - Auto-detect the actual WeChat DevTools project path and safely synchronize narrowly the already-merged accepted client assets from the newest approved dev HEAD, including their required static runtime dependency closure.
+  - Preserve every existing local dirty or private file and avoid all bulk repository operations. Use a single bounded git fetch, then authenticated GitHub API with exact hash verification if transport fails.
+  - Stage or hash-verify the entire preexisting cloudfunctions/tianfu2 deployable package locally from the accepted Git tree without deploying anything. Check generated runtime freshness and Node SDK dependencies read only.
+  - Read-only inspect currently selected CloudBase environment matching DevTools, function runtime metadata and the four required collection metadata/statuses only where current user tools permit. No Cloud RPC gameplay calls or creation of resources.
+  - Review old saved run compatibility in a bounded offline dry-run or source-and-fixture evidence, producing the required four-way new/old data and code compatibility matrix without modifying stored runs.
+  - Establish a real rollback strategy backed by verifiable previous deployed version or restorable package, plus a future database backup and migration safety plan. If not verifiable, return a named BLOCKED status without guessing.
+  - Compile the actual DevTools client once if existing CLI access permits, but do not interact with gameplay or claim real visual PASS.
+  - Report hashes facts blockers exact required next approval and leave everything in one clearly stated pre-deployment status. This local operational check requires no Git branch commit or push.
+forbiddenScope:
+  - cloud-function-upload
+  - cloud-function-deploy
+  - cloud-env-mutation
+  - database-write-create-delete-or-export
+  - user-save-data-dump
+  - changing-cloudbase-permissions
+  - live-game-command-or-automatic-playthrough
+  - changing-node-cloud-runtime-setting
+  - miniprogram-upload-or-publish
+  - new-product-development
+  - source-code-or-contract-changes
+  - main-or-dev-branch-code-push
+  - checkout-or-reset-over-dirty-files
+  - unbounded-network-retries
+  - aggregate-npm-test
+  - 600-run-simulation
+  - commit-or-push
+  - automatically-start-next-task
+accept:
+  - The actual DevTools project has the needed accepted 2.0 client files and generated runtime verified by byte hashes, with no loss of local edits.
+  - The local cloud package is a verifiable complete source-and-generated artifact at the same accepted source baseline.
+  - CloudBase environment, runtime and collection metadata are confirmed read only or individually labeled unknown; no hidden assumptions.
+  - Old/new code-data compatibility and rollback readiness are reasoned with specific evidence and unmet preconditions.
+  - Report states one truthful deployment readiness category and accurately discloses any inaccessible cloud metadata.
+  - No mutation of cloud code data config secrets permissions or existing player state, and no game-code edits or new task.
+tests: [read-only-source-hash-and-closure, optional-single-devtools-compile, optional-offline-legacy-save-compatibility]

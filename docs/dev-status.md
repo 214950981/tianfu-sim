@@ -20,10 +20,17 @@
 - **LIVEFIX05 已被 Controller 接受并快进合并**：`wb-LIVEFIX05` 的实际提交 `3a6c6d70be6132147ccb09d9a718ccd5189109c7`，自原 dev HEAD `171a6c690499f66e7333b784a5c7557b61b5096f` 真实单提交后代快进。
 - 改动范围恰好三个文件：`miniprogram/pages/v2-live/v2-live.wxml`、`tests/livefix05.test.mjs`、`.codex/control/LAST_RESULT.yaml`。未改 server/cloudfunction/Core/Content/main，也没有云端部署。
 - Controller 已核验远端 WXML 的显式否定 `wx:if` 与原有选项/CTA 绑定；WorkBuddy `LAST_RESULT` 报告 `livefix05: 6/6`、`ui04c: 18/18`，以及限定范围的静态门禁全部 PASS。**本轮未重新执行测试，也没有新 CI 结果。**
-- **当前控制面：HOLD / PLAYUX01 已验收合并**；Controller 审核工作分支 wb-PLAYUX01 的 F1–F4 并于 2026-10-09 将真实线性后代 325c55563bf3fd812a8659aa1bc9d56cd6b42eaa 从 1ed4bdc06803c73e09d89401e1f5161be08da077 非强制快进到 dev（ahead 12, behind 0）；WorkBuddy 报告 264 项定向测试通过 / 0 项失败，不代表整仓库全绿或实际 DevTools PASS。详细验收：docs/PLAYUX01-CONTROLLER-ACCEPTANCE.md。云函数仍未部署；需用户明确授权 WorkBuddy 做本地项目更新和有界云端部署，再做微信开发者工具实际体验验收。没有派发下一任务。
+- **当前控制面：READY / ROLLPREP01（一次性部署前检查）**；用户仅授权 WorkBuddy 自动完成实际 DevTools 项目的本地同步、云环境/云函数部署版本只读核对、旧存档兼容矩阵和可恢复旧版本的回滚方案核查。**明确未授权云函数部署、上传、改集合/数据、操作玩家命令或新的产品功能**。本任务无工作分支提交/推送，执行完后向 Controller 汇报并恢复 HOLD。验收规范：docs/ROLLPREP01-CHECKLIST.md。
 - **LIVEFIX05 真实视觉验收已通过**：用户截图显示 `DESTINY_OFFER` 页面择命候选正常，旧版“服务器投影”多余提示消失；选择命格后成功进入 `RUN_HOME`。随后点击一次“游历”进入 `EVENT`，页面标注第 4 版，出现新的 LIVEFIX06 文案缺陷。
 - 真实云函数首次开局与数据库持久化验收已在 Issue #2 完成，**不能**把本次仅 UI 条件修复的通过解释成完整游戏正式上线。
 - **LIVEFIX06 已合并（源码 PASS WITH CAVEATS）**：`wb-LIVEFIX06@31bbc5b4e79d5ca447e26062a8c8d00a3969c782` 从 `86707ac5f6ab3f775cd611017441022e59b4589c` 安全快进；新增 340 键中文生成资源及覆盖/负控测试，修复所有现有 Content01 原始键名显示缺陷。WorkBuddy 报告 LIVEFIX06 20/20、UI04C 18/18、UI02COPY 11/11 PASS，静态门禁 PASS；本次 Controller 未重新执行测试。已修复任务定义中的 `evidence`/`goal` 不支持字段及折叠列表写法；历史 UI02R1 两项基线失败待后续统一测试计划处理。**WorkBuddy 已报告真实 DevTools CLI 编译通过；尚未获得人工视觉截图与真实事件选项结算结果。无需云函数部署。**
+
+## ROLLPREP01 派发记录（2026-10-09）
+
+- 前置事实：PLAYUX01 源码已合并至 `325c555`，Controller 控制 HEAD 为 `87d257c`，云端尚未实际部署；工作树文件可能与云端/DevTools 当前项目不一致。
+- 用户批准的**唯一工作**：定位真实 DevTools 项目并同步客户端窄范围受控文件；只读核对 CloudBase 环境、Node、四个集合、旧存档兼容性和旧版云函数恢复/数据库备份条件。不得修改数据库、云函数、云端配置、main、产品代码；禁止实际部署。
+- 独立任务控制：`.codex/control/NEXT_TASK.yaml` 的 ROLLPREP01 READY 只许可一次本地操作，`commitTaskResult=false`、`pushWorkBranch=false`、`startNextTask=false`。若云端已部署包或数据库元信息无法安全读取，必须 INCONCLUSIVE/BLOCKED，不得臆测发布安全。
+- WorkBuddy 只需回报可核对证据与部署准备结果；Controller 先验收，再另行请用户授权部署。
 
 ## PLAYUX01 代码验收与部署边界（2026-10-09）
 
