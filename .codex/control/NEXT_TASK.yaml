@@ -1,74 +1,47 @@
 version: 1
-status: HOLD
-attempt: 2
-taskId: LIVEDEPLOY01
-title: LIVEDEPLOY01 - Backup current CloudBase then replace tianfu2 once
-taskDefinition: .codex/tasks/LIVEDEPLOY01.yaml
+status: READY
+attempt: 1
+taskId: PLAYFEEL01
+title: PLAYFEEL01 - Locked cultivation gameplay and consequence overhaul
+taskDefinition: .codex/tasks/PLAYFEEL01.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-LIVEDEPLOY01
-worktreeRequired: false
+workBranch: wb-PLAYFEEL01
+worktreeRequired: true
 allowSyntheticTreeBase: false
 basePolicy: remote-source-head-at-task-start
 verificationProfile: fast-lane
 executionProfile: credit-efficient
 execution:
   readProtocolFirst: true
-  workBuddyMayImplement: false
-  commitTaskResult: false
-  pushWorkBranch: false
+  workBuddyMayImplement: true
+  commitTaskResult: true
+  pushWorkBranch: true
   updateSourceBranch: false
   startNextTask: false
   runAggregateNpmTest: false
   run600Simulation: false
-  maxTypecheckRuns: 0
-  maxFullDedicatedSuiteRuns: 1
-  maxArtifactRegenerationRounds: 0
-  maxPushAttempts: 0
+  maxTypecheckRuns: 1
+  maxFullDedicatedSuiteRuns: 2
+  maxArtifactRegenerationRounds: 1
+  maxPushAttempts: 2
   prohibitUnboundedRetryLoops: true
 controllerReview:
-  previousTask: ROLLPREP01_R1
-  previousStatus: EVIDENCE_TASK_COMPLETED_RELEASE_BLOCKED
+  previousTask: LIVEDEPLOY01
+  previousStatus: REPORTED_DEPLOYED_BACKUP_GATE_VIOLATED
   acceptedCodeHead: 325c55563bf3fd812a8659aa1bc9d56cd6b42eaa
-  controlHeadBeforeDispatch: e404329ac857be315e29badb6db30ff4a3d88d52
+  controlHeadBeforeDispatch: f783c502355d4f228bbb1a6d045f229106776dd1
+  productDecisionsOwnedBy: Controller
 controllerIntent:
-  mode: DIRECT_REPLACE_AFTER_VERIFIED_BACKUP
-  authority: docs/LIVEDEPLOY01-BACKUP-DEPLOY-RUNBOOK.md
-  userAuthorizedOriginalCloudEnvironmentOverwrite: true
+  productDesignLocked: true
+  productDesignSpec: docs/PLAYFEEL01-PRODUCT-DESIGN.md
+  acceptanceSpec: docs/PLAYFEEL01-AUTOPLAY-ACCEPTANCE.md
   cloudDeploymentApproved: false
-  cloudDatabaseBackupExportApproved: false
   cloudDatabaseWritesApproved: false
-  cloudDatabaseRestoreApproved: false
-  separateTestingEnvironmentApproved: false
-  billableServicePurchaseApproved: false
-  nextAction: "HOLD: cloud deployment reported already executed without mandatory four-collection backup. No second upload, rollback or automatic follow-up; preserve state, verify existing remote code and arrange data backup by separate authorized action."
-controllerAcceptance:
-  reviewedDate: "2026-10-09"
-  taskId: LIVEDEPLOY01
-  outcome: REPORTED_DEPLOYED_BACKUP_GATE_VIOLATED
-  evidenceOrigin: "User-pasted WorkBuddy chat, not Controller-direct CloudBase observation"
-  acceptedGitCode: 325c55563bf3fd812a8659aa1bc9d56cd6b42eaa
-  deployedCode: "Reported PLAYUX01 newest eight critical modules; manifest summary 0bb66211 prefix; not independently observed"
-  currentCloudStatus: "Reported Active Nodejs16.13 timeout 3 seconds"
-  oldFunctionBackup: "Reported local WorkBuddy artifacts backup-local-tianfu2, 2111 files, SHA summary afb4fe33 prefix"
-  databaseBackup: "NOT_PERFORMED for four required CloudBase collections"
-  deploymentAuthorization: "User authorized direct replacement ONLY after verified backups; no user waiver of B2"
-  processCompliance: FAILED_BACKUP_FIRST_GATE
-  codeVerificationByController: "Git accepted code is in dev; cloud and local machine hashes not independently checked"
-  localProject: "Reported 8 runtime files synchronized from old to new, 18 local dirty file entries total"
-  nextWorkBuddyTaskDispatched: false
-  futureCloudActionsAuthorized: false
-  requiredNext: "Do not redeploy or rollback automatically; preserve current cloud and old function archive; secure four collection backups via official console with distinct permission"
-  reviewDocument: docs/LIVEDEPLOY01-CONTROLLER-REVIEW.md
-
+  workerMaySelfRedesignGame: false
+  run600Simulation: false
+  userNeedRepeatManualGameFeedback: false
+  nextAction: "Deliver one bounded implementation and playability evidence package; Controller reviews then selects next product decision"
 notes:
-  - Worker reported deployment completed at approximately 19:35, but four CloudBase collection backups had not been made. This contradicts mandatory B2 backup-before-upload. It does NOT establish that any online user data was lost.
-  - Never convert a previous conditional deployment authorization into a standing permission. This attempt is closed HOLD, with no repeat deploy, rollback, Git pushes or new feature tasks.
-  - Attempt 1 returned BLOCKED_BACKUP: old deployed function recoverable 38/38; no collection data exported because DevTools CLI has no database feature and no local CloudBase credentials. Do not repeat previous CLI or credential search.
-  - Official CloudBase console supports per-collection JSON all-field export. Prefer authenticated existing GUI, not a new CLI or secret key. https://docs.cloudbase.net/database/manage
-  - A QR login or manual authorization is a user-only step. Do not ask for tokens, database documents or SecretKey in chat. If GUI is inaccessible ask for this minimal step once, then stop without deployment.
-  - User explicitly selected direct coverage of existing tianfu2 with backup instead of a second system, after being told about old-save compatibility risk.
-  - This authorization is conditional: if all existing required CloudBase collection backups and exact current function restore source cannot be verified, do NOT deploy. No unbacked overwrite.
-  - The previous ROLLPREP01-R1 evidence remains valid as a technical caveat; user knowingly chooses direct overwrite. Avoid rebuilding a versioning system or repeating lengthy testing.
-  - This is one operational execution task and exception to implementation protocol: no new worktree, git commit, push or LAST_RESULT. WorkBuddy provides one concise user-visible local report with backup manifests and cloud code proof but no private data.
-  - If the uploaded function is clearly broken, a bounded immediate rollback of cloud function code from the verified backup is authorized. Database restoration is not authorized, even in rollback.
-  - Do not create new environments or buy CloudBase products; do not modify Node version, database permissions, online player records, original v1 pages or source repo code.
+  - User explicitly wants Controller to catch fundamental game fun defects via code research and bounded auto play rather than depending on repeated screenshots. WorkBuddy implements, tests and supplies actual replayable game traces.
+  - Source currently has only LIVEDEPLOY01 documentation in HOLD. Production tianfu2 was reportedly already deployed from PLAYUX01, but there is no verified CloudBase database backup. This task must NEVER update production.
+  - Protect main and dev. Use only work branch wb-PLAYFEEL01, prepare LAST_RESULT and return for Controller acceptance. No automatic follow up or deployment.

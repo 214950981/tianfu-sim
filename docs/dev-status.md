@@ -20,10 +20,16 @@
 - **LIVEFIX05 已被 Controller 接受并快进合并**：`wb-LIVEFIX05` 的实际提交 `3a6c6d70be6132147ccb09d9a718ccd5189109c7`，自原 dev HEAD `171a6c690499f66e7333b784a5c7557b61b5096f` 真实单提交后代快进。
 - 改动范围恰好三个文件：`miniprogram/pages/v2-live/v2-live.wxml`、`tests/livefix05.test.mjs`、`.codex/control/LAST_RESULT.yaml`。未改 server/cloudfunction/Core/Content/main，也没有云端部署。
 - Controller 已核验远端 WXML 的显式否定 `wx:if` 与原有选项/CTA 绑定；WorkBuddy `LAST_RESULT` 报告 `livefix05: 6/6`、`ui04c: 18/18`，以及限定范围的静态门禁全部 PASS。**本轮未重新执行测试，也没有新 CI 结果。**
-- **当前控制面：HOLD / LIVEDEPLOY01 已报告部署新版，但违反备份先决条件**。用户转交 WorkBuddy 报告：生产云函数 tianfu2 已覆盖为 PLAYUX01 新版，下载回读 8/8 关键模块，Active / Nodejs16.13 / timeout3；本地旧云函数目录 8 个 runtime 文件亦被同步到新版，旧函数包本地有备份。**四个 CloudBase 数据库集合仍然没有备份**；这与用户“做好备份再部署”授权及 Controller 的 B2 绝对门禁冲突，用户从未书面豁免。Controller 无 CloudBase 直接访问，本次只记录 Worker 报告而非独立认证线上状态。不授权再部署/回滚/改数据库或自动新任务，优先保护当前状态并安排备份证据。详见 docs/LIVEDEPLOY01-CONTROLLER-REVIEW.md。
+- **当前控制面：READY / PLAYFEEL01**，用户明确要求Controller从源码和真实游玩体验出发主导修仙游戏设计，不再反复要求用户亲自验证基本可玩性。Controller 锁定全66事件审计、20场全部选项结算叙事、明确修仙目标与突破引导、真实NPC/Cause/Build因果、死亡和人生书解释、18局有界自动试玩及 before/after；WorkBuddy仅在 wb-PLAYFEEL01 实现，不可自行改设计/部署。见 docs/PLAYFEEL01-PRODUCT-DESIGN.md 与 docs/PLAYFEEL01-AUTOPLAY-ACCEPTANCE.md。原线上 tianfu2 保持PLAYUX01已报告版本，数据库未备份仍是将来部署前的独立门禁。
 - **LIVEFIX05 真实视觉验收已通过**：用户截图显示 `DESTINY_OFFER` 页面择命候选正常，旧版“服务器投影”多余提示消失；选择命格后成功进入 `RUN_HOME`。随后点击一次“游历”进入 `EVENT`，页面标注第 4 版，出现新的 LIVEFIX06 文案缺陷。
 - 真实云函数首次开局与数据库持久化验收已在 Issue #2 完成，**不能**把本次仅 UI 条件修复的通过解释成完整游戏正式上线。
 - **LIVEFIX06 已合并（源码 PASS WITH CAVEATS）**：`wb-LIVEFIX06@31bbc5b4e79d5ca447e26062a8c8d00a3969c782` 从 `86707ac5f6ab3f775cd611017441022e59b4589c` 安全快进；新增 340 键中文生成资源及覆盖/负控测试，修复所有现有 Content01 原始键名显示缺陷。WorkBuddy 报告 LIVEFIX06 20/20、UI04C 18/18、UI02COPY 11/11 PASS，静态门禁 PASS；本次 Controller 未重新执行测试。已修复任务定义中的 `evidence`/`goal` 不支持字段及折叠列表写法；历史 UI02R1 两项基线失败待后续统一测试计划处理。**WorkBuddy 已报告真实 DevTools CLI 编译通过；尚未获得人工视觉截图与真实事件选项结算结果。无需云函数部署。**
+
+## PLAYFEEL01 修仙可玩性专项（2026-10-09）
+
+- 用户截图：旧曲寻人却仅修为+140/岁月+1；背人下山/半张秘图每项重复黑色就此抉择；62岁凡人终局，死亡原因尚未明确，人生书依旧是开场与数字。Controller 源码核对后认定核心问题是缺修仙目标、结算过程、行为因果和可信终局，并非另起游戏架构。
+- 参照鬼谷八荒、了不起的修仙模拟器、密教模拟器和GDC meaningful choice/setback。Controller冻结实际游戏循环、精确20个首批事件、全部66事件审计与18局自动试玩验收，代码阶段须主动发现玩家反馈而不是再请求用户多轮体验。
+- WorkBuddy唯一实现任务 .codex/tasks/PLAYFEEL01.yaml，须先取基线再实施与回放，最终仅推 wb-PLAYFEEL01 报告。产品源码不改dev/main，云函数不部署，数据库不修改/导出。所有新Content变化的旧存档兼容需后续独立授权。
 
 ## LIVEDEPLOY01 新版云函数已报告部署，数据库备份门禁未满足（2026-10-09）
 

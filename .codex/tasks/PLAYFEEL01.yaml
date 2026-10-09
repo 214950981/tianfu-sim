@@ -1,0 +1,54 @@
+id: PLAYFEEL01
+title: PLAYFEEL01 - Locked cultivation gameplay and consequence overhaul
+phase: 2
+verificationProfile: fast-lane
+executionProfile: credit-efficient
+requiredContracts: []
+optionalContracts: []
+blockers: []
+inspect_first:
+  - .codex/control/PROTOCOL.md
+  - .codex/control/NEXT_TASK.yaml
+  - docs/PLAYFEEL01-PRODUCT-DESIGN.md
+  - docs/PLAYFEEL01-AUTOPLAY-ACCEPTANCE.md
+  - docs/PLAYUX01-PRODUCT-SPEC.md
+  - packages/content/src/content01-v1.ts
+  - packages/content/src/content-sim.ts
+  - packages/core/src/reducer.ts
+  - packages/core/src/progression.ts
+  - packages/core/src/director.ts
+  - server/src/viewmodel.ts
+  - miniprogram/pages/v2-live/v2-live.js
+allowedScope:
+  - Product design is frozen by Controller in docs/PLAYFEEL01-PRODUCT-DESIGN.md; WorkBuddy implements the exact design without self-defining what counts as fun.
+  - A Baseline first; audit all 66 Content01 events and record exact choice effect gaps in docs/PLAYFEEL01-EVENT-AUDIT.md, run 18 bounded authoritative playthrough seeds at most 24 core actions each.
+  - B Implement on-screen cultivation goal and breakthrough progress with real server eligibility and negative failure path; do not auto-level or expose hidden RNG.
+  - B Add eventId choiceId applied tier keyed truthful after-selection prose and visible actual effect/aftermath in receipt and life book; no fabricated NPC or clue facts.
+  - B Update all options and outcomes for precisely the 20 named high-priority events including real differential risks NPC Cause and Build state effects using registered operations only.
+  - B Fix player-facing duplicate option CTAs and technical version/node labels, plus known death category and source with safe fallback.
+  - C Replay same bounded seeds to catch boring loops unearned gains long mortal lives unexplained deaths and noncausal NPC traces; fix in-scope contract failures.
+  - D Run deduplicated targeted affected suites and one freshness audit; preserve deterministic RNG and idempotency, never run aggregate full test or 600 simulation.
+  - E Report before after and three player-journey transcripts plus old content version risk; update LAST_RESULT and push only wb-PLAYFEEL01 for Controller audit.
+forbiddenScope:
+  - redesigning-product-by-workbuddy
+  - modifying-main-or-dev-game-code
+  - production-cloudfunction-deploy-or-upload
+  - CloudBase-database-write-delete-export-restore
+  - adding-new-sect-combat-equipment-or-game-engine
+  - fake-unknown-reward-npc-cause-or-hidden-risk
+  - automatically-guaranteed-breakthrough
+  - arbitrary-content-version-upgrade-without-compatibility-notes
+  - rewriting-all-sixty-six-events
+  - breaking-deterministic-replay-or-idempotency
+  - running-aggregate-npm-test-or-600-run
+  - unbounded-retest-or-push-retry
+  - auto-start-next-task
+accept:
+  - All 66 current events have detailed effect and gameplay audit and the exact 20 prioritized events have post-settlement narration for each legal option and tier with at most four time-only indistinguishable scenes.
+  - New player can see an honest cultivation goal progress time cost and breakthrough action without cheating or auto-advancement.
+  - Event receipt now describes what factually occurred and what changed; no duplicate decision buttons or raw node/version labels.
+  - At least two deterministic real NPC Cause or Build consequence pathways change later public story or power and appear in player journey evidence.
+  - Early death and natural lifespan endings show actual category and recorded source; life book reads settled choices instead of reciting opening text.
+  - Before after 18-run bounded simulation and targeted affected tests demonstrate improvement while preserving replay command invariants.
+  - Work branch code report and LAST_RESULT are pushed and show no cloud data deployment or main/source mutation.
+tests: [bounded-gameplay-playthrough, result-narrative-contract, progression-first-breakthrough, deterministic-cause-build, terminal-death-and-life-book, targeted-suite-freshness]
