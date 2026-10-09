@@ -68,14 +68,24 @@
       <view wx:if="{{vm.hasResult}}" class="result-overlay">
         <view class="result-head">
           <view class="result-title">{{vm.result.heading}}</view>
+          <!-- PLAYUX01 (F1): what happened, named. The Event title comes from the receipt's own eventId and
+               the option from its choiceId, both resolved through the same exact-key catalog as every other
+               surface; a missing entry reads as 详情暂不可用, never as an internal code. -->
+          <view wx:if="{{vm.result.eventTitle}}" class="result-event">{{vm.result.eventTitle}}</view>
         </view>
         <scroll-view class="overlay-body" scroll-y="true">
+          <view wx:if="{{vm.result.hasChoice}}" class="result-choice">{{vm.result.youChosePrefix}}{{vm.result.choiceLabel}}</view>
           <view wx:if="{{vm.result.lines.length > 0}}">
             <view wx:for="{{vm.result.lines}}" wx:key="key" class="result-line">{{item.text}}</view>
           </view>
-          <view wx:else class="body-text">{{vm.result.noGainText}}</view>
+          <!-- A settlement that produced nothing beyond time says so. When the scene authored its own
+               resolution note that is used instead, because it can be specific ("尚未取得可以确认的新线索")
+               where the client cannot; the note is only reachable when nothing was gained, so it can never
+               contradict the lines above. -->
+          <view wx:if="{{vm.result.resolutionNote}}" class="body-text">{{vm.result.resolutionNote}}</view>
+          <view wx:elif="{{vm.result.noGainText}}" class="body-text">{{vm.result.noGainText}}</view>
         </scroll-view>
-        <view class="cta" bindtap="onDismissResult">返回在世</view>
+        <view class="cta" bindtap="onDismissResult">{{vm.result.ctaLabel}}</view>
       </view>
 
       <!-- ------------------------------------------------ 择命 DESTINY_OFFER -->
@@ -164,16 +174,19 @@
       </view>
 
       <!-- ------------------------------------------------ 人生书 LIFE_BOOK -->
-      <!-- PLAYUX01 (B2): a retrospective, not a counter page. The turning points are the real recorded
-           Events in order, each naming what happened and — when the save recorded one — which option was
-           taken. An older save says the choice was not recorded rather than reconstructing it. -->
+      <!-- PLAYUX01 (F2): a retrospective, and the sections say what they actually are. The chronological list
+           is 此生经历 — a record, not a ranking: the public projection carries no per-Event significance, so
+           calling each row a turning point would assert a judgement the data does not contain. The life's
+           actual shape is presented separately, from the only significance signals that ARE published: a
+           track the server marked dominant, a cause that reached journal visibility, and the people met. -->
       <view wx:elif="{{vm.isTerminal && vm.terminal && vm.terminal.isLifeBook}}" class="block">
         <view class="block-title">人生书</view>
         <view wx:if="{{vm.terminal.lifeBook.runName}}" class="body-text">{{vm.terminal.lifeBook.runName}} · {{vm.terminal.lifeBook.age}} / {{vm.terminal.lifeBook.maxAge}} · {{vm.terminal.lifeBook.realm}}</view>
         <view wx:if="{{!vm.terminal.lifeBook.hasLifeBook}}" class="body-text">此生记录整理中，卷宗尚未生成。</view>
+        <view wx:if="{{vm.terminal.lifeBook.intro}}" class="body-text">{{vm.terminal.lifeBook.intro}}</view>
         <scroll-view wx:if="{{vm.terminal.lifeBook.hasLifeBook}}" class="bounded" scroll-y="true">
           <view wx:if="{{vm.terminal.lifeBook.timeline.length > 0}}" class="archive-section">
-            <view class="archive-section-title">关键转折</view>
+            <view class="archive-section-title">此生经历</view>
             <view wx:for="{{vm.terminal.lifeBook.timeline}}" wx:key="key" class="archive-row">
               <view class="archive-kind">第 {{item.order}} 节点</view>
               <view class="archive-main">
@@ -185,27 +198,19 @@
             </view>
           </view>
 
-          <view wx:if="{{vm.terminal.lifeBook.peopleRows.length > 0}}" class="archive-section">
-            <view class="archive-section-title">结识的人</view>
-            <view wx:for="{{vm.terminal.lifeBook.peopleRows}}" wx:key="npcId" class="card-row">
-              <view class="card-key">{{item.displayName}}</view>
-              <view class="card-value">{{item.statusLabel}}</view>
-            </view>
-          </view>
-
-          <view wx:if="{{vm.terminal.lifeBook.trackRows.length > 0}}" class="archive-section">
-            <view class="archive-section-title">道途</view>
+          <view wx:if="{{vm.terminal.lifeBook.hasTransitions}}" class="archive-section">
+            <view class="archive-section-title">此生的变化</view>
             <view wx:for="{{vm.terminal.lifeBook.trackRows}}" wx:key="buildId" class="card-row">
-              <view class="card-key">{{item.name}}</view>
+              <view class="card-key">道途 · {{item.name}}</view>
               <view class="card-value">{{item.stageLabel}}{{item.dominant ? ' · 主修' : ''}}</view>
             </view>
-          </view>
-
-          <view wx:if="{{vm.terminal.lifeBook.causeRows.length > 0}}" class="archive-section">
-            <view class="archive-section-title">公开因果</view>
-            <view wx:for="{{vm.terminal.lifeBook.causeRows}}" wx:key="key" class="archive-row">
-              <view class="archive-kind">{{item.levelLabel}}</view>
-              <view class="archive-main"><view class="archive-summary">{{item.text}}</view></view>
+            <view wx:for="{{vm.terminal.lifeBook.causeRows}}" wx:key="key" class="card-row">
+              <view class="card-key">因果 · {{item.levelLabel}}</view>
+              <view class="card-value">{{item.text}}</view>
+            </view>
+            <view wx:for="{{vm.terminal.lifeBook.peopleRows}}" wx:key="npcId" class="card-row">
+              <view class="card-key">故人 · {{item.displayName}}</view>
+              <view class="card-value">{{item.statusLabel}}</view>
             </view>
           </view>
 

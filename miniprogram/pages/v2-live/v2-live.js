@@ -202,6 +202,13 @@ var PAGE_CONTENT_COPY = {
   "result.cause_expired": "这段因果就此搁置",
   "result.cause_planted": "一段因果自此结下",
   "result.no_gain": "此行没有明显收获",
+  // PLAYUX01 (F1): the result surface names the Event and the option that was taken, and says plainly when
+  // a settlement produced nothing beyond time. result.view_ending is the CTA shown when the settled choice
+  // ended the run, so the button does not promise a return to 在世 that is not going to happen.
+  "result.you_chose": "你选择了：",
+  "result.no_extra_gain": "未获得可确认的额外收获",
+  "result.view_ending": "查看终局",
+  "result.back_home": "返回在世",
   "result.heading": "本次结果"
 };
 
@@ -468,10 +475,39 @@ function buildResultReceipt(receipt) {
   // `changed` is the server's own verdict, but a line the client could render is also proof something
   // moved. Either is enough; claiming no gain while holding a rendered line would contradict itself.
   var changed = narrative.changed === true || lines.length > 0;
+
+  // PLAYUX01 (F1) — NAME WHAT HAPPENED, NOT JUST HOW MUCH MOVED.
+  //
+  // The panel used to show only 修为 +N / 灵石 +N / 岁月 +N 年, which left the player able to say "a number
+  // changed but I cannot tell what I chose or what scene it was". Both facts were already in the
+  // confirmed receipt and were simply never rendered: `narrative.eventId` is the Event that settled, and
+  // `narrative.choiceId` is the option that was taken. Both are resolved through the same exact-key
+  // catalog every other surface uses — the client guesses nothing about hidden outcomes, and an option
+  // whose copy is missing reads as 详情暂不可用 rather than as an internal code.
+  var eventId = str(narrative.eventId);
+  var choiceId = str(narrative.choiceId);
+  var eventTitle = eventId.length > 0 ? resolveCopy(eventId + ".title") : "";
+  var choiceLabel = eventId.length > 0 && choiceId.length > 0 ? resolveCopy(eventId + ".choice." + choiceId) : "";
+  var noteText = eventId.length > 0 ? resolveCopy(eventId + ".resolution") : "";
+
+  // A gain the player can point at is anything except time passing. Time alone is a real settlement but it
+  // is not a gain, and saying so is the honest thing — it is exactly what the spec asks for when a choice
+  // changes nothing measurable.
+  var hasGain = false;
+  for (index = 0; index < lines.length; index += 1) if (lines[index].key.indexOf("time:") !== 0) hasGain = true;
+
+  // A scene-authored note is the most specific thing available, but it may only appear when it cannot
+  // contradict the receipt: a note that says nothing was found must never sit beside a settled gain.
+  var resolutionNote = !hasGain && noteText.length > 0 ? noteText : (!hasGain && lines.length > 0 ? presentLabel(CONTENT_COPY, "result.no_extra_gain") : "");
+
   return {
     heading: presentLabel(CONTENT_COPY, "result.heading"),
     changed: changed,
+    eventTitle: eventTitle.length > 0 ? eventTitle : (eventId.length > 0 ? TERMINAL_UNKNOWN_DETAIL : ""),
+    hasChoice: choiceId.length > 0,
+    choiceLabel: choiceLabel.length > 0 ? choiceLabel : (choiceId.length > 0 ? TERMINAL_UNKNOWN_DETAIL : ""),
     lines: lines,
+    resolutionNote: resolutionNote,
     noGainText: changed ? "" : presentLabel(CONTENT_COPY, "result.no_gain")
   };
 }
@@ -507,6 +543,13 @@ function buildRenderModel(controller, notice, receipt) {
   // a confirmed settlement. A refused, conflicted or retried submission leaves it null and the panel
   // does not render, so there is no path by which a second, invented receipt can appear.
   var result = buildResultReceipt(receipt);
+  if (result !== null) {
+    // PLAYUX01 (F1): the dismissal CTA must describe where the player actually is. If the settled choice
+    // ended the run the authoritative page is ENDING, and offering 返回在世 would send them to a false
+    // promise of a home screen that no longer exists.
+    result.youChosePrefix = presentLabel(CONTENT_COPY, "result.you_chose");
+    result.ctaLabel = presentLabel(CONTENT_COPY, pageState === "ENDING" ? "result.view_ending" : "result.back_home");
+  }
 
   return {
     pageState: pageState,
@@ -576,18 +619,24 @@ var BUILD_STAGE_LABELS = { "latent": "潜藏", "emerging": "萌芽", "formed": "
 var NPC_STATUS_LABELS = { "unknown": "尚未详知", "alive": "在世", "departed": "已离去", "missing": "下落不明", "dead": "已故" };
 
 /**
- * PLAYUX01 (B2) — builds the ordered, evidence-grounded turning-point list.
+ * PLAYUX01 (B2, revised by F2) — builds the chronological record of what actually happened.
  *
- * Every row comes from `lifeBook.events`, which the server projects straight off `run.events.history`
- * (`viewmodel.ts` buildPublicTerminal). Each history entry carries `eventId`, `nodeIndex` and — only
- * since PLAYUX01 stage C — an optional `choiceId`. So this function can do exactly two things and no
- * more: name the Event from the real pack, and state which option was taken **when the save recorded
- * one**. An older save has no `choiceId`, and the row then says the choice was not recorded rather than
- * reconstructing it. That distinction is the whole point of the spec's "旧档若无选择字段，显示'此前选择
- * 未记录'，不可倒推".
+ * WHAT THIS IS, AND WHAT IT IS NOT
+ * The first pass called this list 关键转折 and the Controller rejected the label, correctly: every recorded
+ * Event was in it, so calling each one a turning point asserted a judgement the data does not contain. It is
+ * a factual record, and the section now says so.
  *
- * A row also carries the Event's own body as the "what happened" line. It is the pack's published
- * one-sentence account, not a client narration: the page never writes prose about a run.
+ * WHY THERE IS NO per-Event "turning point" RANKING
+ * `lifeBook.events` carries exactly `entryId`, `eventId`, `nodeIndex`, an optional `resultTier` and an
+ * optional `choiceId` (viewmodel.ts buildPublicTerminal), and the public causes carry no origin node to join
+ * on. There is therefore no published significance signal per Event, and F2 forbids inventing one — "reuse
+ * only persisted, published facts". So this list stays chronological and complete, and the life book
+ * presents the public causes, tracks and people as the transitions instead, which is the fallback F2 names.
+ *
+ * Every row comes from `lifeBook.events`. It can do exactly two things and no more: name the Event from the
+ * real pack, and state which option was taken **when the save recorded one**. An older save has no
+ * `choiceId`, and the row says the choice was not recorded rather than reconstructing it — the spec's
+ * "旧档若无选择字段，显示'此前选择未记录'，不可倒推".
  */
 function buildTimeline(lifeBook) {
   var events = arr(lifeBook.events);
@@ -691,6 +740,22 @@ function buildTerminal(terminal, pageState) {
     formed: lifeBuilds.filter(function (build) { return record(build).dominant === true; }).length,
     causes: lifeCauses.length
   };
+  var hasEnding = typeof lifeBook.ending === "object" && lifeBook.ending !== null;
+  var hasDeath = typeof lifeBook.death === "object" && lifeBook.death !== null;
+  var realmLabel = presentLabel(REALM_LABELS, str(record(lifeBook.realm).id));
+  var deathCause = presentTerminalLabel(TERMINAL_LABELS, str(record(lifeBook.death).directCause), TERMINAL_UNKNOWN_DEATH);
+  var trackRows = buildTrackRows(lifeBook);
+  var causeRows = buildCauseRows(lifeBook);
+  // PLAYUX01 (F2) — the compact introduction the Controller asked for: HOW this life reached its end.
+  //
+  // Every clause is a published fact — the ending age, the realm the run finished in, the shared counts and
+  // the known direct cause. There is no achievement the run did not record and no retrospective emotion:
+  // the sentence is a reading of the life book's own fields, nothing more. The death clause is dropped when
+  // the sidecar holds no death record, so the sentence never asserts a cause it does not have.
+  var intro = "";
+  if (hasLifeBook) {
+    intro = "此生行至 " + num(lifeBook.age, 0) + " 岁，止于" + realmLabel + "；历 " + counts.experiences + " 事，识 " + counts.people + " 人，行走 " + counts.paths + " 条道途（成形 " + counts.formed + " 条），公开因果 " + counts.causes + " 段" + (hasDeath ? "，终因" + deathCause : "") + "。";
+  }
   return {
     stage: str(terminal.stage),
     version: num(terminal.version, 0),
@@ -703,16 +768,22 @@ function buildTerminal(terminal, pageState) {
       runName: str(lifeBook.runName),
       age: num(lifeBook.age, 0),
       maxAge: num(lifeBook.maxAge, 0),
-      realm: presentLabel(REALM_LABELS, str(record(lifeBook.realm).id)),
+      realm: realmLabel,
       counts: counts,
+      intro: intro,
       timeline: buildTimeline(lifeBook),
       peopleRows: buildPeopleRows(lifeBook),
-      trackRows: buildTrackRows(lifeBook),
-      causeRows: buildCauseRows(lifeBook),
-      hasEnding: typeof lifeBook.ending === "object" && lifeBook.ending !== null,
-      hasDeath: typeof lifeBook.death === "object" && lifeBook.death !== null,
+      trackRows: trackRows,
+      causeRows: causeRows,
+      // The public transitions, as distinct from the chronological log: a track the server marked dominant
+      // is a real progression change, and a cause that reached journal visibility is a real public event.
+      // These are the only significance signals the projection publishes, so they are what the life book
+      // presents as the life's shape — never a guess about which Event mattered most.
+      hasTransitions: trackRows.length > 0 || causeRows.length > 0 || arr(lifeBook.people).length > 0,
+      hasEnding: hasEnding,
+      hasDeath: hasDeath,
       endingId: presentTerminalLabel(TERMINAL_LABELS, str(record(lifeBook.ending).endingId), TERMINAL_UNKNOWN_DETAIL),
-      deathCause: presentTerminalLabel(TERMINAL_LABELS, str(record(lifeBook.death).directCause), TERMINAL_UNKNOWN_DEATH)
+      deathCause: deathCause
     },
     rebirth: {
       completedRunId: str(rebirth.completedRunId),

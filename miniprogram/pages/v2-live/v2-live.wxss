@@ -487,3 +487,21 @@ page {
   color: var(--ink);
   box-sizing: border-box;
 }
+
+/* PLAYUX01 (F1): the result panel now names the Event and the chosen option, so both get a row. The Event
+   title is subordinate to the heading and sits inside the head rule; the choice is emphasised because it
+   is the answer to "what did I just do". Both declare their own box-sizing where they carry padding. */
+.result-event {
+  padding-top: var(--space-1);
+  font-size: 26rpx;
+  color: var(--ink-muted);
+  box-sizing: border-box;
+}
+
+.result-choice {
+  padding: var(--space-2) 0;
+  border-bottom: var(--hairline) solid var(--rule-strong);
+  font-size: 28rpx;
+  color: var(--cinnabar);
+  box-sizing: border-box;
+}

@@ -19,15 +19,15 @@ module.exports = [
   ],
   [
     "content01.build.alchemy.failed-brew.choice.consider",
-    "停步细看"
+    "先尝一口，弄清偏在哪一味"
   ],
   [
     "content01.build.alchemy.failed-brew.choice.engage",
-    "依此磨炼"
+    "亲手把这炉倒掉，认下这一次失败"
   ],
   [
     "content01.build.alchemy.failed-brew.choice.leave",
-    "见好便收"
+    "把炉封了，不去碰它"
   ],
   [
     "content01.build.alchemy.failed-brew.title",
@@ -39,15 +39,15 @@ module.exports = [
   ],
   [
     "content01.build.alchemy.fever.choice.consider",
-    "停步细看"
+    "先算清药与人的数目"
   ],
   [
     "content01.build.alchemy.fever.choice.engage",
-    "依此磨炼"
+    "先顾最重的那一间，把药分下去"
   ],
   [
     "content01.build.alchemy.fever.choice.leave",
-    "见好便收"
+    "不接手这一夜，交给村里的人"
   ],
   [
     "content01.build.alchemy.fever.title",
@@ -59,15 +59,15 @@ module.exports = [
   ],
   [
     "content01.build.alchemy.herb-sort.choice.consider",
-    "停步细看"
+    "先把已认出的两味记牢"
   ],
   [
     "content01.build.alchemy.herb-sort.choice.engage",
-    "依此磨炼"
+    "一株一株看过去，把三味分清"
   ],
   [
     "content01.build.alchemy.herb-sort.choice.leave",
-    "见好便收"
+    "不再细辨，只取认得出的那一株"
   ],
   [
     "content01.build.alchemy.herb-sort.title",
@@ -79,15 +79,15 @@ module.exports = [
   ],
   [
     "content01.build.body.boulder.choice.consider",
-    "停步细看"
+    "先估一估石头的重心在哪"
   ],
   [
     "content01.build.body.boulder.choice.engage",
-    "依此磨炼"
+    "咬着牙把这块石头挪开"
   ],
   [
     "content01.build.body.boulder.choice.leave",
-    "见好便收"
+    "绕过去，把力气留到后面"
   ],
   [
     "content01.build.body.boulder.title",
@@ -99,15 +99,15 @@ module.exports = [
   ],
   [
     "content01.build.body.carry-wounded.choice.consider",
-    "停步细看"
+    "先看清前段山路能不能过人"
   ],
   [
     "content01.build.body.carry-wounded.choice.engage",
-    "依此磨炼"
+    "背起他，走多慢都背到底"
   ],
   [
     "content01.build.body.carry-wounded.choice.leave",
-    "见好便收"
+    "留下他，自己先赶路"
   ],
   [
     "content01.build.body.carry-wounded.title",
@@ -119,15 +119,15 @@ module.exports = [
   ],
   [
     "content01.build.body.cold-water.choice.consider",
-    "停步细看"
+    "先看清潭底深浅再下水"
   ],
   [
     "content01.build.body.cold-water.choice.engage",
-    "依此磨炼"
+    "把气咬住，下潭走一遍"
   ],
   [
     "content01.build.body.cold-water.choice.leave",
-    "见好便收"
+    "今日到此为止，收身出水"
   ],
   [
     "content01.build.body.cold-water.title",
@@ -139,15 +139,15 @@ module.exports = [
   ],
   [
     "content01.build.fortune.empty-hand.choice.consider",
-    "停步细看"
+    "先记下这三处，弄清错在哪一步"
   ],
   [
     "content01.build.fortune.empty-hand.choice.engage",
-    "依此磨炼"
+    "再按旧记走一处，把这一趟走完"
   ],
   [
     "content01.build.fortune.empty-hand.choice.leave",
-    "见好便收"
+    "收记回身，这一次就到这里"
   ],
   [
     "content01.build.fortune.empty-hand.title",
@@ -179,15 +179,15 @@ module.exports = [
   ],
   [
     "content01.build.fortune.hidden-stream.choice.consider",
-    "停步细看"
+    "先听清这声音是从多深来的"
   ],
   [
     "content01.build.fortune.hidden-stream.choice.engage",
-    "依此磨炼"
+    "顺着水声把石缝挖开"
   ],
   [
     "content01.build.fortune.hidden-stream.choice.leave",
-    "见好便收"
+    "不挖了，把石缝照原样盖回"
   ],
   [
     "content01.build.fortune.hidden-stream.title",
@@ -199,15 +199,15 @@ module.exports = [
   ],
   [
     "content01.build.sword.guard-caravan.choice.consider",
-    "停步细看"
+    "先听清路上风声从哪来"
   ],
   [
     "content01.build.sword.guard-caravan.choice.engage",
-    "依此磨炼"
+    "握剑走在外侧，先稳住剑"
   ],
   [
     "content01.build.sword.guard-caravan.choice.leave",
-    "见好便收"
+    "不接这一趟，让商队自行过岭"
   ],
   [
     "content01.build.sword.guard-caravan.title",
@@ -219,15 +219,15 @@ module.exports = [
   ],
   [
     "content01.build.sword.no-draw.choice.consider",
-    "停步细看"
+    "先看清这是不是圈套"
   ],
   [
     "content01.build.sword.no-draw.choice.engage",
-    "依此磨炼"
+    "按本心拔剑，接下这一场"
   ],
   [
     "content01.build.sword.no-draw.choice.leave",
-    "见好便收"
+    "任他骂下去，把剑按回鞘里"
   ],
   [
     "content01.build.sword.no-draw.title",
@@ -239,15 +239,15 @@ module.exports = [
   ],
   [
     "content01.build.sword.river-cut.choice.consider",
-    "停步细看"
+    "先把落点看准再动剑"
   ],
   [
     "content01.build.sword.river-cut.choice.engage",
-    "依此磨炼"
+    "出这一剑，只取那一线落点"
   ],
   [
     "content01.build.sword.river-cut.choice.leave",
-    "见好便收"
+    "收剑退开，涉水过涧"
   ],
   [
     "content01.build.sword.river-cut.title",
@@ -279,15 +279,15 @@ module.exports = [
   ],
   [
     "content01.cen.shield-stranger.choice.read-signs",
-    "先辨征兆"
+    "先看清落石是从哪一侧来"
   ],
   [
     "content01.cen.shield-stranger.choice.take-risk",
-    "承担此险"
+    "站到缺口另一侧，与他一起挡"
   ],
   [
     "content01.cen.shield-stranger.choice.turn-away",
-    "及时折返"
+    "退到岩壁后，不接这一场"
   ],
   [
     "content01.cen.shield-stranger.title",
@@ -303,7 +303,7 @@ module.exports = [
   ],
   [
     "content01.cen.shoulder-road.choice.decline",
-    "留一句话离开"
+    "各自按各自的路走，不再同行"
   ],
   [
     "content01.cen.shoulder-road.title",
@@ -315,15 +315,15 @@ module.exports = [
   ],
   [
     "content01.cen.stone-steps.choice.consider",
-    "停步细看"
+    "先看清他走的是哪一条石阶"
   ],
   [
     "content01.cen.stone-steps.choice.engage",
-    "依此磨炼"
+    "跟上他的步子，把剩下的台阶走完"
   ],
   [
     "content01.cen.stone-steps.choice.leave",
-    "见好便收"
+    "喝下那瓢水，不再往上"
   ],
   [
     "content01.cen.stone-steps.title",
@@ -395,15 +395,15 @@ module.exports = [
   ],
   [
     "content01.jiang.bitter-decoction.choice.read-signs",
-    "先辨征兆"
+    "先分清是哪一味在相冲"
   ],
   [
     "content01.jiang.bitter-decoction.choice.take-risk",
-    "承担此险"
+    "按快煎的法子把这锅药端下去"
   ],
   [
     "content01.jiang.bitter-decoction.choice.turn-away",
-    "及时折返"
+    "不冒这一炉，把火撤了"
   ],
   [
     "content01.jiang.bitter-decoction.title",
@@ -439,7 +439,7 @@ module.exports = [
   ],
   [
     "content01.jiang.herb-price.choice.decline",
-    "留一句话离开"
+    "不认这份人情，只把账目看清"
   ],
   [
     "content01.jiang.herb-price.title",
@@ -451,15 +451,15 @@ module.exports = [
   ],
   [
     "content01.jiang.night-clinic.choice.consider",
-    "停步细看"
+    "先把最昂贵的那一种问到底"
   ],
   [
     "content01.jiang.night-clinic.choice.engage",
-    "依此磨炼"
+    "选最稳妥的那一种，当场把话说定"
   ],
   [
     "content01.jiang.night-clinic.choice.leave",
-    "见好便收"
+    "今夜先不开口，退出去"
   ],
   [
     "content01.jiang.night-clinic.title",
@@ -502,24 +502,28 @@ module.exports = [
     "去试那串过于整齐的痕迹"
   ],
   [
+    "content01.onboarding.forked-path.resolution",
+    "这一次追查还没有取得可以确认的新线索。"
+  ],
+  [
     "content01.onboarding.forked-path.title",
     "岔路"
   ],
   [
     "content01.onboarding.market-choice.body",
-    "早市刚开。你把路上采得的一把草药摊在摊边，摊主报出的价钱比市价低了两成，可他没有说为什么低。你可以照他报的价卖给他，也可以压回一个公道价，或者先问清他收这批药做什么。"
+    "早市刚开。摊主收了一筐杂药，其中几味他分不清，报给外行一个偏低的数，也没有说为什么低。你可以按他给的数替他把这一筐分好，也可以先把该值多少讲清楚再动手，或者先问清他打算把这一筐卖给谁。"
   ],
   [
     "content01.onboarding.market-choice.choice.ask-source",
-    "先问清他收这批药做什么再决定"
+    "先问清他打算把这一筐卖给谁"
   ],
   [
     "content01.onboarding.market-choice.choice.haggle-fair",
-    "压回一个公道价再成交"
+    "先把这一筐该值多少讲清楚再动手"
   ],
   [
     "content01.onboarding.market-choice.choice.take-deal",
-    "照他报的价卖给他，先把这事了结"
+    "按他给的数替他把这一筐分好"
   ],
   [
     "content01.onboarding.market-choice.title",
@@ -560,6 +564,10 @@ module.exports = [
   [
     "content01.onboarding.old-trace.choice.mark-spot",
     "先记下位置，不急于这一步"
+  ],
+  [
+    "content01.onboarding.old-trace.resolution",
+    "这一次追查还没有取得可以确认的新线索。"
   ],
   [
     "content01.onboarding.old-trace.title",
@@ -835,7 +843,7 @@ module.exports = [
   ],
   [
     "content01.pei.broken-blade.choice.decline",
-    "留一句话离开"
+    "只说一句改日再会，不问他的去处"
   ],
   [
     "content01.pei.broken-blade.title",
@@ -847,15 +855,15 @@ module.exports = [
   ],
   [
     "content01.pei.old-wound.choice.read-signs",
-    "先辨征兆"
+    "先看清他伤的到底是哪一处"
   ],
   [
     "content01.pei.old-wound.choice.take-risk",
-    "承担此险"
+    "接手扶住他发抖的那只手，把这一程走完"
   ],
   [
     "content01.pei.old-wound.choice.turn-away",
-    "及时折返"
+    "不强接，退回半步等他开口"
   ],
   [
     "content01.pei.old-wound.title",
@@ -907,15 +915,15 @@ module.exports = [
   ],
   [
     "content01.risk.beast-trail.choice.read-signs",
-    "先辨征兆"
+    "先看清它绕的是哪一圈"
   ],
   [
     "content01.risk.beast-trail.choice.take-risk",
-    "承担此险"
+    "循着兽迹迎过去"
   ],
   [
     "content01.risk.beast-trail.choice.turn-away",
-    "及时折返"
+    "收起营地，趁夜换一处"
   ],
   [
     "content01.risk.beast-trail.title",
@@ -927,15 +935,15 @@ module.exports = [
   ],
   [
     "content01.risk.broken-seal.choice.read-signs",
-    "先辨征兆"
+    "先辨清这气息出自哪一类封"
   ],
   [
     "content01.risk.broken-seal.choice.take-risk",
-    "承担此险"
+    "听它把话说完"
   ],
   [
     "content01.risk.broken-seal.choice.turn-away",
-    "及时折返"
+    "合上裂口，转身离开"
   ],
   [
     "content01.risk.broken-seal.title",
@@ -947,15 +955,15 @@ module.exports = [
   ],
   [
     "content01.risk.critical-crossing.choice.read-signs",
-    "先辨征兆"
+    "先探清水势最缓的一处"
   ],
   [
     "content01.risk.critical-crossing.choice.take-risk",
-    "承担此险"
+    "趁还有力气强渡过去"
   ],
   [
     "content01.risk.critical-crossing.choice.turn-away",
-    "及时折返"
+    "退回岸上，等水落下去"
   ],
   [
     "content01.risk.critical-crossing.title",
@@ -967,15 +975,15 @@ module.exports = [
   ],
   [
     "content01.risk.curse-stone.choice.read-signs",
-    "先辨征兆"
+    "先分辨这话是谁在借声"
   ],
   [
     "content01.risk.curse-stone.choice.take-risk",
-    "承担此险"
+    "再把神识探进去，听它说完"
   ],
   [
     "content01.risk.curse-stone.choice.turn-away",
-    "及时折返"
+    "收回神识，不去应这一声"
   ],
   [
     "content01.risk.curse-stone.title",
@@ -987,15 +995,15 @@ module.exports = [
   ],
   [
     "content01.risk.falling-star.choice.read-signs",
-    "先辨征兆"
+    "先看清落点离你还有多远"
   ],
   [
     "content01.risk.falling-star.choice.take-risk",
-    "承担此险"
+    "朝落点走过去，看那是什么"
   ],
   [
     "content01.risk.falling-star.choice.turn-away",
-    "及时折返"
+    "背向落点，先离远些"
   ],
   [
     "content01.risk.falling-star.title",
@@ -1007,15 +1015,15 @@ module.exports = [
   ],
   [
     "content01.risk.flood-cave.choice.read-signs",
-    "先辨征兆"
+    "先看清光亮离水面多高"
   ],
   [
     "content01.risk.flood-cave.choice.take-risk",
-    "承担此险"
+    "往深处走，赌那条路够高"
   ],
   [
     "content01.risk.flood-cave.choice.turn-away",
-    "及时折返"
+    "顺原路退回洞口"
   ],
   [
     "content01.risk.flood-cave.title",
@@ -1027,15 +1035,15 @@ module.exports = [
   ],
   [
     "content01.risk.pine-ambush.choice.read-signs",
-    "先辨征兆"
+    "先分辨哪一边的声音更近"
   ],
   [
     "content01.risk.pine-ambush.choice.take-risk",
-    "承担此险"
+    "抢在合拢之前冲出去"
   ],
   [
     "content01.risk.pine-ambush.choice.turn-away",
-    "及时折返"
+    "退出松林，绕开这一段"
   ],
   [
     "content01.risk.pine-ambush.title",
@@ -1047,15 +1055,15 @@ module.exports = [
   ],
   [
     "content01.risk.poison-mist.choice.read-signs",
-    "先辨征兆"
+    "先辨出雾最薄的那一段"
   ],
   [
     "content01.risk.poison-mist.choice.take-risk",
-    "承担此险"
+    "屏住呼吸穿过这片青雾"
   ],
   [
     "content01.risk.poison-mist.choice.turn-away",
-    "及时折返"
+    "退回谷口，另找一条路"
   ],
   [
     "content01.risk.poison-mist.title",
@@ -1067,15 +1075,15 @@ module.exports = [
   ],
   [
     "content01.risk.revenge-shadow.choice.read-signs",
-    "先辨征兆"
+    "先认出他是当年哪一个"
   ],
   [
     "content01.risk.revenge-shadow.choice.take-risk",
-    "承担此险"
+    "迎上去，把当年那句话说完"
   ],
   [
     "content01.risk.revenge-shadow.choice.turn-away",
-    "及时折返"
+    "不进他的问话，先走开"
   ],
   [
     "content01.risk.revenge-shadow.title",
@@ -1087,15 +1095,15 @@ module.exports = [
   ],
   [
     "content01.risk.ruin-depth.choice.read-signs",
-    "先辨征兆"
+    "先数清回声是从几处来的"
   ],
   [
     "content01.risk.ruin-depth.choice.take-risk",
-    "承担此险"
+    "继续往下，看清那是什么"
   ],
   [
     "content01.risk.ruin-depth.choice.turn-away",
-    "及时折返"
+    "就此上行，不再往下探"
   ],
   [
     "content01.risk.ruin-depth.title",
@@ -1131,7 +1139,7 @@ module.exports = [
   ],
   [
     "content01.road.conflict.choice.decline",
-    "留一句话离开"
+    "退到路边，让他先过去"
   ],
   [
     "content01.road.conflict.title",
@@ -1147,7 +1155,7 @@ module.exports = [
   ],
   [
     "content01.road.help.choice.decline",
-    "留一句话离开"
+    "不停脚，越过他继续赶路"
   ],
   [
     "content01.road.help.title",
@@ -1179,15 +1187,15 @@ module.exports = [
   ],
   [
     "content01.xie.cave-gamble.choice.read-signs",
-    "先辨征兆"
+    "先在洞口听清风声的来路"
   ],
   [
     "content01.xie.cave-gamble.choice.take-risk",
-    "承担此险"
+    "先进洞，把石壁一路摸到底"
   ],
   [
     "content01.xie.cave-gamble.choice.turn-away",
-    "及时折返"
+    "记住这个洞口，原路退回"
   ],
   [
     "content01.xie.cave-gamble.title",
@@ -1247,7 +1255,7 @@ module.exports = [
   ],
   [
     "content01.xie.secret-map.choice.decline",
-    "留一句话离开"
+    "不谈分利，把图原样还给他"
   ],
   [
     "content01.xie.secret-map.title",
@@ -1283,7 +1291,7 @@ module.exports = [
   ],
   [
     "content01.xu.mortal-letter.choice.decline",
-    "留一句话离开"
+    "不回这封信，把短笺收进包里"
   ],
   [
     "content01.xu.mortal-letter.title",
@@ -1315,15 +1323,15 @@ module.exports = [
   ],
   [
     "content01.xu.ten-year-return.choice.consider",
-    "停步细看"
+    "先在门外看清院里的变化"
   ],
   [
     "content01.xu.ten-year-return.choice.engage",
-    "顺势而行"
+    "走进院子，把这十年当面说给他听"
   ],
   [
     "content01.xu.ten-year-return.choice.leave",
-    "见好便收"
+    "不进门，改日再来"
   ],
   [
     "content01.xu.ten-year-return.title",

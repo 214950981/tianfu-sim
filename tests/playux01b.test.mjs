@@ -41,6 +41,12 @@ import {
 } from "../packages/content/src/index.ts";
 import { createOfferedRun, reduce } from "../packages/core/src/index.ts";
 import { CommandGateway, InMemoryGatewayStore, ServerViewModelBuilder } from "../server/src/index.ts";
+import {
+  bootstrapWeChatRun,
+  createWeChatCloudTransport,
+  createWeChatPlatformStorage,
+  WeChatRunController
+} from "../packages/wechat-shell/src/index.ts";
 
 const ROOT = process.cwd();
 const read = (relative) => fs.readFileSync(path.join(ROOT, relative), "utf8");
@@ -564,4 +570,229 @@ test("PLAYUX01B-013: every death enum the engine can emit is translated, so the 
     assert.equal(typeof label === "string" && label.length > 0, true, `${id} must have copy`);
     assert.equal(label.includes("."), false, `${id} must not be rendered as an id`);
   }
+});
+
+// ================================================================= F1: the panel names what happened
+
+const CLOUD_FUNCTION = "tianfu2";
+// Must match the playerId `started()` seeds: the gateway rejects an envelope whose playerId disagrees with
+// the run's owner, so the stub cloud, the session and the fixture have to name the same player.
+const PLAYER_ID = "player:playux01b";
+
+/** A minimal storage seam; the controller only needs get/set of the pending-command key. */
+function rawStorage() {
+  const map = new Map();
+  return { getStorageSync: (key) => (map.has(key) ? map.get(key) : ""), setStorageSync: (key, value) => { map.set(key, value); } };
+}
+
+/**
+ * Builds the REAL client stack over a stubbed cloud seam — the same chain `tests/ui04c.test.mjs` uses:
+ * cloud stub -> CommandGateway -> createWeChatCloudTransport (which validates and parses the response)
+ * -> WeChatRunController. Nothing here is a hand-made receipt: the object the page renders has been through
+ * the shell boundary that used to discard it, which is the only way to prove B1 cannot regress.
+ */
+async function liveClient(seedRunId) {
+  const builder = new ServerViewModelBuilder(content);
+  const store = new InMemoryGatewayStore();
+  const gateway = new CommandGateway({ store, content, projectView: (state) => builder.build(state) });
+  const auth = { playerId: PLAYER_ID };
+  const sent = [];
+
+  const api = {
+    async callFunction({ name, data }) {
+      if (name !== CLOUD_FUNCTION) return { errMsg: "cloud.callFunction:fail", result: {} };
+      if (data.operation === "createRunOffer") {
+        const state = started(seedRunId);
+        store.seedRun(state);
+        return { errMsg: "cloud.callFunction:ok", result: { runId: state.run.runId, playerId: PLAYER_ID, rulesVersion: state.rulesVersion, contentVersion: state.contentVersion, view: builder.build(state) } };
+      }
+      if (data.operation === "fetchView") return { errMsg: "cloud.callFunction:ok", result: { view: await gateway.fetchView(auth, String(data.runId)) } };
+      if (data.operation === "sendCommand") { sent.push(structuredClone(data.command)); return { errMsg: "cloud.callFunction:ok", result: await gateway.sendCommand(auth, structuredClone(data.command)) }; }
+      throw new Error("the stub cloud knows no operation " + String(data.operation));
+    }
+  };
+
+  const transport = createWeChatCloudTransport({ api, cloudFunctionName: CLOUD_FUNCTION });
+  const storage = createWeChatPlatformStorage(rawStorage());
+  const boot = await bootstrapWeChatRun({ transport, bootstrapId: "boot:playux01b", clientBuild: "playux01b" });
+  let sequence = 0;
+  const controller = new WeChatRunController({
+    transport, storage, session: boot.session,
+    commandIdFactory: () => `cmd:playux01b:${(sequence += 1)}`,
+    initialView: boot.view
+  });
+  await controller.restore();
+  return { controller, store, sent, runIdOf: () => boot.session.runId };
+}
+
+test("PLAYUX01B-015: the settled receipt survives the shell boundary and the panel names the Event and the option", async () => {
+  // Reach a real decision through the real controller, then resolve it and render what comes back.
+  const live = await liveClient("b1-shell-name");
+  let model = live.controller.pageModel();
+  for (let step = 0; step < 40 && model.pageState !== "EVENT" && model.pageState !== "SPECIAL_NODE"; step += 1) {
+    // The intent id is the one the server projects (`core.<action>`), which is exactly what the page's
+    // `onCoreAction` forwards from `dataset.intentId`; the controller resolves it against the ViewModel.
+    await live.controller.submit({ kind: "coreAction", intentId: "core.cultivate" });
+    model = live.controller.pageModel();
+  }
+  assert.equal(model.pageState, "EVENT", "the Director must be able to draw an opening");
+
+  const eventId = model.interaction.eventId;
+  const optionId = model.interaction.options[0].optionId;
+  const choiceLabel = CONTENT01_ZH_CN[`${eventId}.choice.${optionId}`];
+  const eventTitle = CONTENT01_ZH_CN[`${eventId}.title`];
+  assert.equal(typeof eventTitle, "string", "the fixture Event must have an authored title");
+
+  const result = await live.controller.submit({ kind: "interactionOption", optionId });
+  assert.equal(result.ok, true, "the option must settle");
+  // The receipt the page will render came back THROUGH parseCommandResult, so its presence here is the
+  // proof that the shell no longer throws the settlement away.
+  assert.notEqual(result.narrative, undefined, "the receipt must survive the shell boundary");
+  assert.equal(result.narrative.eventId, eventId, "the receipt must name the Event that settled");
+  assert.equal(result.narrative.choiceId, optionId, "the receipt must name the option that was taken");
+
+  const vm = page.probe.buildRenderModel(stubController(), "", result);
+  assert.equal(vm.hasResult, true);
+  assert.equal(vm.result.eventTitle, eventTitle, "the panel must name the Event in the player's language");
+  assert.equal(vm.result.hasChoice, true);
+  assert.equal(vm.result.choiceLabel, choiceLabel, "the panel must show the option label, not an id");
+  assert.equal(vm.result.choiceLabel.includes(".choice."), false, "an option label must never be a raw key");
+  assert.equal(vm.result.youChosePrefix.length > 0, true, "the panel must prefix the choice with readable copy");
+  assert.equal(vm.result.ctaLabel, "返回在世", "a non-fatal settlement returns the player to 在世");
+});
+
+test("PLAYUX01B-016: a settlement that ends the run offers 查看终局, not a return to 在世", async () => {
+  // Death-at-choice: a run one year from its ceiling, resolving an Event whose option costs a year.
+  const base = started("f1-death-at-choice");
+  const eventId = "content01.ordinary.mountain-view";
+  const staged = { ...base, run: { ...base.run, maxAge: base.run.age + 1, events: { ...base.run.events, history: [], current: { eventId, kind: "choice" } } } };
+  const output = reduce({
+    state: staged,
+    command: { type: "CHOOSE_EVENT_OPTION", eventId, optionId: "orient-and-go" },
+    context: { rulesVersion: staged.rulesVersion, contentVersion: staged.contentVersion, content, commandId: "cmd:f1:death" }
+  });
+  assert.equal(output.state.run.status, "dying", "the fixture must end the run at the choice");
+  const view = new ServerViewModelBuilder(content).build(output.state);
+  assert.equal(view.state.pageState, "ENDING", "the authoritative page after that settlement is ENDING");
+
+  const vm = page.probe.buildRenderModel(stubController({ model: { pageState: "ENDING" }, view }), "", {
+    ok: true, commandId: "cmd:f1:death", stateVersion: output.state.stateVersion,
+    domainEffects: [{ kind: "time", labelKey: "result.time", years: 1 }],
+    narrative: { eventId, choiceId: "orient-and-go", changed: true, lines: [] }
+  });
+  assert.equal(vm.result.ctaLabel, "查看终局", "the CTA must describe where the player actually is");
+  assert.equal(vm.result.eventTitle, CONTENT01_ZH_CN[`${eventId}.title`]);
+});
+
+test("PLAYUX01B-017: an unresolvable option label degrades conservatively instead of showing a code", () => {
+  const probe = page.probe;
+  // An old save or a newer pack can name an Event or option this catalog predates. Neither may print an id.
+  const unknownEvent = probe.buildResultReceipt({ domainEffects: [], narrative: { eventId: "content01.future.v9", choiceId: "x", changed: true, lines: [] } });
+  assert.equal(unknownEvent.eventTitle, "详情暂不可用", "an unknown Event title must degrade conservatively");
+  assert.equal(unknownEvent.choiceLabel, "详情暂不可用", "an unknown option label must degrade conservatively");
+  assert.equal(unknownEvent.eventTitle.includes("."), false, "no id may reach the player");
+  // A settlement with no recorded choice still names the Event and claims nothing about a choice.
+  const noChoice = probe.buildResultReceipt({ domainEffects: [], narrative: { eventId: "content01.onboarding.first-breath", changed: true, lines: [] } });
+  assert.equal(noChoice.hasChoice, false, "an unrecorded choice must not be invented");
+  assert.equal(noChoice.choiceLabel, "");
+  assert.equal(noChoice.eventTitle, CONTENT01_ZH_CN["content01.onboarding.first-breath.title"]);
+});
+
+// ================================================================= F2: the life book is a retrospective
+
+test("PLAYUX01B-018: the life book separates the chronological record from the public transitions", () => {
+  const terminal = page.probe.buildTerminal({ stage: "LIFE_BOOK", version: 1, ...lifeBookFixture() }, "LIFE_BOOK");
+  const book = terminal.lifeBook;
+  // The chronological record is what it says it is: every recorded Event, in order.
+  assert.equal(book.timeline.length, 3);
+  // The transitions come only from published significance — a dominant track, a public cause, a met person.
+  assert.equal(book.hasTransitions, true, "the fixture publishes a track, a cause and a person");
+  assert.equal(book.trackRows.length, 2);
+  assert.equal(book.causeRows.length, 1);
+  assert.equal(book.peopleRows.length, 1);
+  // The intro is a reading of published facts and nothing else.
+  assert.equal(book.intro.includes("63"), true, "the intro must state the ending age");
+  assert.equal(book.intro.includes("11") || book.intro.includes("3"), true, "the intro must state the recorded event count");
+  assert.equal(book.intro.includes(book.deathCause), true, "the intro must name the known cause when there is one");
+  const wxml = read(WXML_PATH);
+  assert.match(wxml, /此生经历/, "the chronological section must be named for what it is");
+  assert.equal(wxml.includes("关键转折"), false, "no section may be labelled a turning point without a ranking to justify it");
+});
+
+test("PLAYUX01B-019: a life with no sidecar states no facts, and the log and the book differ in purpose", () => {
+  const absent = page.probe.buildTerminal({ stage: "ENDING", version: 0 }, "ENDING");
+  assert.equal(absent.lifeBook.hasLifeBook, false);
+  assert.equal(absent.lifeBook.intro, "", "an absent sidecar must not produce an introduction full of zeroes");
+  assert.equal(absent.lifeBook.hasTransitions, false);
+
+  // The live archive is the running log: it keeps each scene's own account of itself. The life book is the
+  // retrospective: it adds the framing sentence and the transitions. They share a history, not a rendering.
+  const archive = page.probe.buildArchive({
+    runName: "复查",
+    history: [{ entryId: "event:0", kind: "event", titleKey: "content01.onboarding.first-breath.title", summaryKey: "content01.onboarding.first-breath.body", data: { eventId: "content01.onboarding.first-breath", nodeIndex: 0, choiceId: "keep-driving" } }],
+    causes: [], builds: [], people: []
+  });
+  assert.equal(archive.history[0].summary.length > 0, true, "the archive must keep the scene account");
+  const book = page.probe.buildTerminal({ stage: "LIFE_BOOK", version: 1, ...lifeBookFixture() }, "LIFE_BOOK");
+  assert.equal(book.lifeBook.intro.length > 0, true, "the life book must carry framing the archive does not");
+  assert.equal(Object.prototype.hasOwnProperty.call(archive, "intro"), false, "the archive must not grow the book's framing");
+});
+
+// ================================================================= F3: wording, provenance and honesty
+
+const TEMPLATE_LABELS = new Set(["顺势而行", "依此磨炼", "停步细看", "见好便收", "承担此险", "先辨征兆", "及时折返", "留一句话离开"]);
+
+test("PLAYUX01B-020: every reachable option carries scene-specific wording", () => {
+  const offenders = [];
+  for (const event of CONTENT01_PACK.events) {
+    for (const choice of event.choices ?? []) {
+      const label = CONTENT01_ZH_CN[choice.labelKey];
+      if (label === undefined || TEMPLATE_LABELS.has(label)) offenders.push(`${event.id}/${choice.id} => ${label}`);
+    }
+  }
+  assert.deepEqual(offenders, [], "no reachable option may use the shared template wording");
+});
+
+test("PLAYUX01B-021: the market transaction begins inside its own scene and matches the money it settles", () => {
+  const event = CONTENT01_PACK.events.find((entry) => entry.id === "content01.onboarding.market-choice");
+  const body = CONTENT01_ZH_CN[event.fallback.bodyKey];
+  // The B3 pass had the player sell "herbs gathered on the road", which asserted a possession the run never
+  // records. Nothing in this scene may claim a prior inventory; the work must start and end here.
+  for (const forbidden of ["路上采得", "随身", "你带着", "你的草药"]) {
+    assert.equal(body.includes(forbidden), false, `the scene must not assume a prior possession: ${forbidden}`);
+  }
+  assert.equal(body.includes("灵石") === false || body.length > 0, true);
+  const money = (id) => (event.choices.find((choice) => choice.id === id).outcomes.success.effects).filter((effect) => effect.op === "ADD_RESOURCE");
+  // Every option that pays must say what it was paid FOR, and the two paying options must differ.
+  assert.equal(money("take-deal").length, 1, "take-deal is a stated fee");
+  assert.equal(money("haggle-fair").length, 1, "haggle-fair is a larger stated fee");
+  assert.equal(money("take-deal")[0].amount < money("haggle-fair")[0].amount, true, "arguing the price must be worth more than accepting his number");
+  assert.equal(money("ask-source").length, 0, "declining to work must not pay");
+  for (const choice of event.choices) {
+    const label = CONTENT01_ZH_CN[choice.labelKey];
+    assert.equal(label.includes("买"), false, `no option may read as a purchase, which the engine cannot charge for: ${label}`);
+  }
+});
+
+test("PLAYUX01B-022: a pursuit that records no clue says exactly that, and promises nothing further", () => {
+  for (const eventId of ["content01.onboarding.old-trace", "content01.onboarding.forked-path"]) {
+    const event = CONTENT01_PACK.events.find((entry) => entry.id === eventId);
+    // Every option settles time and nothing else: no clue, no cause, no item.
+    for (const choice of event.choices) {
+      const ops = choice.outcomes.success.effects.map((effect) => effect.op);
+      assert.deepEqual(ops, ["OUTCOME_TIME_DELTA"], `${eventId}/${choice.id} must settle time only`);
+    }
+    const note = CONTENT01_ZH_CN[`${eventId}.resolution`];
+    assert.equal(typeof note, "string", `${eventId} must author the resolution note`);
+    assert.equal(note.includes("新线索"), true, `${eventId} must state plainly that no lead was obtained`);
+    // The note may not promise a later payoff or invent a cause.
+    for (const forbidden of ["下次", "日后", "将有", "线索已", "因果"]) {
+      assert.equal(note.includes(forbidden), false, `${eventId}'s note must not promise or invent: ${forbidden}`);
+    }
+  }
+  // And the panel renders it only where it cannot contradict the receipt.
+  const note = page.probe.buildResultReceipt({ domainEffects: [{ kind: "time", labelKey: "result.time", years: 2 }], narrative: { eventId: "content01.onboarding.old-trace", choiceId: "follow-fresh", changed: true, lines: [] } });
+  assert.equal(note.resolutionNote, CONTENT01_ZH_CN["content01.onboarding.old-trace.resolution"], "a time-only pursuit must carry the scene's own honest note");
+  const gained = page.probe.buildResultReceipt({ domainEffects: [{ kind: "cultivation", labelKey: "result.cultivation", delta: 150 }], narrative: { eventId: "content01.onboarding.old-trace", choiceId: "follow-fresh", changed: true, lines: [] } });
+  assert.equal(gained.resolutionNote, "", "the note must not appear beside a settled gain");
 });
