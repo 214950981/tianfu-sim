@@ -20,10 +20,16 @@
 - **LIVEFIX05 已被 Controller 接受并快进合并**：`wb-LIVEFIX05` 的实际提交 `3a6c6d70be6132147ccb09d9a718ccd5189109c7`，自原 dev HEAD `171a6c690499f66e7333b784a5c7557b61b5096f` 真实单提交后代快进。
 - 改动范围恰好三个文件：`miniprogram/pages/v2-live/v2-live.wxml`、`tests/livefix05.test.mjs`、`.codex/control/LAST_RESULT.yaml`。未改 server/cloudfunction/Core/Content/main，也没有云端部署。
 - Controller 已核验远端 WXML 的显式否定 `wx:if` 与原有选项/CTA 绑定；WorkBuddy `LAST_RESULT` 报告 `livefix05: 6/6`、`ui04c: 18/18`，以及限定范围的静态门禁全部 PASS。**本轮未重新执行测试，也没有新 CI 结果。**
-- **当前控制面：READY / ROLLPREP01-R1（单次只读补证）**；用户授权 WorkBuddy 仅补齐 CloudBase 四集合及权限元数据、旧待选事件/旧 optionId 和历史 command log 跨版本离线回放、已下载的旧云函数恢复候选与数据库备份条件、真实微信编译完成信号。操作规范 docs/ROLLPREP01-R1-EVIDENCE-PLAN.md，禁止部署/云 DB 写入及导出、修改游戏代码、Git 推送、全量回归与自动后续任务。ROLLPREP01 既有本地同步、38 个云包文件检查不再重复。完成后由 Controller 归位 HOLD。
+- **当前控制面：HOLD / ROLLPREP01-R1 已验收结案，正式环境部署仍阻塞**。WorkBuddy 报告 G2 旧 EVENT 旧 optionId 的无污染拒绝/刷新成功、G3 旧日志 old→new 完整重放失败、同 ID 选项效果静默变化；G1 四集合/权限不可只读核实、G5 微信编译未确认、G4 只具备代码回滚候选而未做 DB 备份。Controller 已从 GitHub 核对运行时在线 readRun + executeLoggedCommand，不会误称“线上立即坏档”。见 docs/ROLLPREP01-R1-CONTROLLER-REVIEW.md。**不得直接覆盖云函数**；优先考虑另外授权的隔离测试环境验证真实新玩法，再独立决策版本固定/旧档保护。不部署、不改产品、不派新任务。
 - **LIVEFIX05 真实视觉验收已通过**：用户截图显示 `DESTINY_OFFER` 页面择命候选正常，旧版“服务器投影”多余提示消失；选择命格后成功进入 `RUN_HOME`。随后点击一次“游历”进入 `EVENT`，页面标注第 4 版，出现新的 LIVEFIX06 文案缺陷。
 - 真实云函数首次开局与数据库持久化验收已在 Issue #2 完成，**不能**把本次仅 UI 条件修复的通过解释成完整游戏正式上线。
 - **LIVEFIX06 已合并（源码 PASS WITH CAVEATS）**：`wb-LIVEFIX06@31bbc5b4e79d5ca447e26062a8c8d00a3969c782` 从 `86707ac5f6ab3f775cd611017441022e59b4589c` 安全快进；新增 340 键中文生成资源及覆盖/负控测试，修复所有现有 Content01 原始键名显示缺陷。WorkBuddy 报告 LIVEFIX06 20/20、UI04C 18/18、UI02COPY 11/11 PASS，静态门禁 PASS；本次 Controller 未重新执行测试。已修复任务定义中的 `evidence`/`goal` 不支持字段及折叠列表写法；历史 UI02R1 两项基线失败待后续统一测试计划处理。**WorkBuddy 已报告真实 DevTools CLI 编译通过；尚未获得人工视觉截图与真实事件选项结算结果。无需云函数部署。**
+
+## ROLLPREP01-R1 补证验收结果与发布门禁（2026-10-09）
+
+- **结果：EVIDENCE COMPLETE / RELEASE BLOCKED**。R1 要求 0 Git 提交是合同设计，所以 WorkBuddy 只通过本地日志回报 G1–G5 是正确的交付方式；本次 Controller 才把报告结论提交 GitHub。
+- G1 云库四集合及权限均未验证；G2 旧选项失效后可刷新但部分 **同 optionId 不同效果** 会静默改变收益；G3 老命令日志 old→old PASS / old→new 完整及快照后 replay FAIL（不等于当前在线 `readRun` 路径失败）；G4 旧包+依赖完整但真正 DB 回滚未验证；G5 编译结论缺失。
+- 控制建议：现有 `tianfu2` 保持原样；经用户后续明确许可可先调查 **独立隔离的新 CloudBase 测试环境及成本**，另行部署新版本试玩，绝不能以此放行旧库生产迁移。完整决策见 docs/ROLLPREP01-R1-CONTROLLER-REVIEW.md。
 
 ## ROLLPREP01-R1 补充核查派发（2026-10-09）
 

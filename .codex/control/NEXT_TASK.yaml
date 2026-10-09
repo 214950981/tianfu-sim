@@ -1,5 +1,5 @@
 version: 1
-status: READY
+status: HOLD
 attempt: 1
 taskId: ROLLPREP01_R1
 title: ROLLPREP01-R1 - Bounded evidence-only rollout safety gates
@@ -13,7 +13,7 @@ verificationProfile: fast-lane
 executionProfile: credit-efficient
 execution:
   readProtocolFirst: true
-  workBuddyMayImplement: true
+  workBuddyMayImplement: false
   commitTaskResult: false
   pushWorkBranch: false
   updateSourceBranch: false
@@ -37,7 +37,28 @@ controllerIntent:
   cloudDatabaseWritesApproved: false
   productCodeEditsApproved: false
   releaseDecisionReservedFor: Controller
-  nextAction: "After WorkBuddy single report, Controller returns HOLD and makes separate rollout recommendation"
+  nextAction: "HOLD. User must separately approve any version-isolated test environment or compatibility infrastructure code task. Existing CloudBase function must not be overwritten."
+controllerAcceptance:
+  taskId: ROLLPREP01_R1
+  reviewedDate: "2026-10-09"
+  result: EVIDENCE_TASK_COMPLETED_RELEASE_BLOCKED
+  workerResult: BLOCKED_COMPATIBILITY
+  controllerResult: BLOCKED_COMPATIBILITY_AND_UNVERIFIED_ENVIRONMENT
+  evidenceSource: "User-pasted WorkBuddy G1-G5 local report; not Git-hosted Worker file"
+  gitVerifiedCodeHead: 325c55563bf3fd812a8659aa1bc9d56cd6b42eaa
+  dispatchSourceHead: 23583a00926819154d5d07e6f98e31d350622e3a
+  report: docs/ROLLPREP01-R1-CONTROLLER-REVIEW.md
+  G1: NOT_VERIFIED_FOUR_COLLECTIONS_AND_RULES
+  G2: "Offline reported: rejected old removed optionId without mutation; refreshed options settle; same optionId may now settle different effect"
+  G3: "Offline reported old->old pass, old->new full and mid-snapshot replay fail; current live server directly reads StoredRun and does not invoke replayCommandLog"
+  G4: "Old cloud deployment snapshot reported intact; local Node16 staging closure pass; no actual rollback or database backup/restore"
+  G5: NOT_CONFIRMED_REAL_DEVTOOLS_COMPILE
+  currentContentVersionRisk: "Old and new both content01.v1 despite changed choice ids and effects; content pack checksum differs"
+  rolloutApproval: false
+  currentCloudFunctionDeploy: NOT_AUTHORIZED
+  nextWorkBuddyTaskDispatched: false
+  nextDecision: "Preserve old environment. Ask user separately before isolated preview environment or compatibility protection implementation"
+
 notes:
   - User explicitly approved one bounded read-only follow-up for four collection metadata, legacy Event and CommandLog replay compatibility, rollback and actual WeChat compile.
   - This is a deliberate operational exception to implementation protocol. No work branch creation, Git commit, Git push, LAST_RESULT or source code editing. Evidence report is in WorkBuddy chat; Controller later records outcome in Git.
@@ -45,4 +66,4 @@ notes:
   - Offline fixed-seed synthetic fixtures and local temporary test harnesses are allowed in a separate scratch directory; never inspect player records or send client production commands.
   - CloudBase permissions are not established by a successful earlier gameplay session. An inaccessible read-only rule remains NOT_VERIFIED; never seek write permission as workaround.
   - Same content01.v1 with removed option ids needs explicit in-flight and replay testing before ANY deployment approval. Report compatibility failures even if four-way state validator passes.
-  - No new gameplay work, 600-run simulation, aggregate test, remote deploy, database backup/export/mutation or automatic follow-up.
+  - ROLLPREP01-R1 evidence task is complete and in HOLD. No more G1-G5 reruns by default, no automatic follow-up. Existing live CloudBase function stays unchanged until user explicitly approves a safe route.
