@@ -20,10 +20,18 @@
 - **LIVEFIX05 已被 Controller 接受并快进合并**：`wb-LIVEFIX05` 的实际提交 `3a6c6d70be6132147ccb09d9a718ccd5189109c7`，自原 dev HEAD `171a6c690499f66e7333b784a5c7557b61b5096f` 真实单提交后代快进。
 - 改动范围恰好三个文件：`miniprogram/pages/v2-live/v2-live.wxml`、`tests/livefix05.test.mjs`、`.codex/control/LAST_RESULT.yaml`。未改 server/cloudfunction/Core/Content/main，也没有云端部署。
 - Controller 已核验远端 WXML 的显式否定 `wx:if` 与原有选项/CTA 绑定；WorkBuddy `LAST_RESULT` 报告 `livefix05: 6/6`、`ui04c: 18/18`，以及限定范围的静态门禁全部 PASS。**本轮未重新执行测试，也没有新 CI 结果。**
-- **当前控制面：READY / ROLLPREP01（一次性部署前检查）**；用户仅授权 WorkBuddy 自动完成实际 DevTools 项目的本地同步、云环境/云函数部署版本只读核对、旧存档兼容矩阵和可恢复旧版本的回滚方案核查。**明确未授权云函数部署、上传、改集合/数据、操作玩家命令或新的产品功能**。本任务无工作分支提交/推送，执行完后向 Controller 汇报并恢复 HOLD。验收规范：docs/ROLLPREP01-CHECKLIST.md。
+- **当前控制面：HOLD / ROLLPREP01 已完成但不具备部署批准条件**；WorkBuddy 报告五个前端文件已在实际 DevTools worktree 同步、云端部署包可恢复且仍为 PLAYUX01 之前版本、新旧状态结构四格离线检查通过。CloudBase 四个集合及权限元数据未能只读核实，客户端编译无最终判定。Controller 另从 GitHub 发现 contentVersion 未变而选项 ID/事件选择逻辑变化，旧未结算事件及历史 CommandLog 跨内容版本重放未获覆盖。详见 docs/ROLLPREP01-CONTROLLER-REVIEW.md。没有部署、改数据库、修改产品或派新任务。
 - **LIVEFIX05 真实视觉验收已通过**：用户截图显示 `DESTINY_OFFER` 页面择命候选正常，旧版“服务器投影”多余提示消失；选择命格后成功进入 `RUN_HOME`。随后点击一次“游历”进入 `EVENT`，页面标注第 4 版，出现新的 LIVEFIX06 文案缺陷。
 - 真实云函数首次开局与数据库持久化验收已在 Issue #2 完成，**不能**把本次仅 UI 条件修复的通过解释成完整游戏正式上线。
 - **LIVEFIX06 已合并（源码 PASS WITH CAVEATS）**：`wb-LIVEFIX06@31bbc5b4e79d5ca447e26062a8c8d00a3969c782` 从 `86707ac5f6ab3f775cd611017441022e59b4589c` 安全快进；新增 340 键中文生成资源及覆盖/负控测试，修复所有现有 Content01 原始键名显示缺陷。WorkBuddy 报告 LIVEFIX06 20/20、UI04C 18/18、UI02COPY 11/11 PASS，静态门禁 PASS；本次 Controller 未重新执行测试。已修复任务定义中的 `evidence`/`goal` 不支持字段及折叠列表写法；历史 UI02R1 两项基线失败待后续统一测试计划处理。**WorkBuddy 已报告真实 DevTools CLI 编译通过；尚未获得人工视觉截图与真实事件选项结算结果。无需云函数部署。**
+
+## ROLLPREP01 部署前报告验收（2026-10-09）
+
+- **结论：PREFLIGHT_COMPLETED / NOT_READY**。本地客户端同步 5 文件、客户端闭包 9/9 与新云部署候选包 38/38 一致，以及云函数 Node16.13、3秒超时、已部署包等于 1ed4bdc 等均来自 WorkBuddy 报告，Controller 未直接读取 Windows 本地日志或云控制台。
+- 原版云函数已由 WorkBuddy 只读下载保存，报告为完整的 38 文件代码和依赖；这属于代码回滚候选，不能替代对在线数据库的快照和回放保障。四个集合及其权限未证实，IDE 编译成功也未证实。
+- Git 源码验证的额外门禁：同为 `content01.v1` 的旧新包有不兼容的部分选项 ID 和 Director/结算语义；`chooseEventOption` 以新包 choices 按 ID 验证，`replayCommandLog` 会重新执行旧命令与对照状态哈希。四格结构夹具 PASS 不覆盖升级前未完成事件、未提交/重试命令或旧命令日志整段重放。请不要把“存档可读取”写成“升级和回滚全安全”。
+- 后续只读证据缺口为：四集合存在/规则，旧未结算事件的正确恢复策略，旧真实规则下历史命令在新 runtime 的定向重放风险；另须确认旧包确实可完整恢复、依赖安装路径及现有 3s timeout 冷启动风险。
+- 禁止以临时清数据库、断开存档或直接部署掩盖缺口。由用户另行批准窄范围核查或发布，当前 HOLD。
 
 ## ROLLPREP01 派发记录（2026-10-09）
 

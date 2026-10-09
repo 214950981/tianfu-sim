@@ -1,5 +1,5 @@
 version: 1
-status: READY
+status: HOLD
 attempt: 1
 taskId: ROLLPREP01
 title: ROLLPREP01 - Local sync and CloudBase pre-deploy safety assessment
@@ -13,7 +13,7 @@ verificationProfile: fast-lane
 executionProfile: credit-efficient
 execution:
   readProtocolFirst: true
-  workBuddyMayImplement: true
+  workBuddyMayImplement: false
   commitTaskResult: false
   pushWorkBranch: false
   updateSourceBranch: false
@@ -35,11 +35,36 @@ controllerIntent:
   authoritativeChecklist: docs/ROLLPREP01-CHECKLIST.md
   cloudDeploymentApproved: false
   cloudDataMutationApproved: false
-  nextAction: "Controller reviews preflight report and separately asks user approval before any deployment"
+  nextAction: "HOLD pending verified collection metadata and in-flight/replay compatibility evidence; user must explicitly authorize deployment separately"
+controllerAcceptance:
+  taskId: ROLLPREP01
+  reviewedDate: "2026-10-09"
+  result: PREFLIGHT_COMPLETED_NOT_READY
+  workerConclusion: BLOCKED_ENVIRONMENT
+  controllerConclusion: BLOCKED_ENVIRONMENT_WITH_ADDITIONAL_COMPATIBILITY_GATES
+  verifiedSourceHead: 2e613b59bd8478ffae9d5d405766d2d51c0a5fa4
+  evidenceOrigin: WorkBuddy user-pasted local and read-only cloud report
+  independentlyVerified: "GitHub HEAD and compatibility-sensitive source code; not local DevTools logs or CloudBase metadata"
+  localSync: "Reported 5 controlled files synced and 9 of 9 relevant client artifacts matched source"
+  cloudPackage: "Reported 38 of 38 deployable source files matched source and 8 modules differed from old cloud"
+  currentCloudVersion: "Reported deployed snapshot equals pre-PLAYUX01 Git commit 1ed4bdc; not independently queried by Controller"
+  cloudRuntime: "Reported Nodejs16.13, function Active, timeout 3 seconds"
+  fourCollectionsMetadata: NOT_VERIFIED
+  archiveCompatibility: "Reported four synthetic state-format matrix cells pass; does not establish old command-log replay with new Content pack"
+  contentVersionRisk: "Same content01.v1 version for old and changed pack; choice ids changed"
+  oldPendingChoiceRisk: "Old client optionId can be invalid against new event choice set; safe reload/retry not proven"
+  deterministicReplayRisk: "Old command log replay against modified director and content is not proven; old version must remain accessible until resolved"
+  rollbackCode: "Reported locally exported previous deployed function package; not verified reproducible restoration in current environment"
+  rollbackDatabase: "Backup and restore preconditions documented; neither backup nor restoration was performed"
+  devtoolsCompile: NOT_CONFIRMED
+  deploymentApproval: false
+  nextTaskDispatched: false
+  nextAction: "HOLD until user-authorized narrow evidence-only follow-up; never auto deploy"
+
 notes:
   - User explicitly approved a one-time WorkBuddy local sync, environment inspection, save compatibility and rollback-readiness check. User has not authorized CloudBase deployment or modification of live saves.
   - Operational exception to implementation-task protocol: do not create a new worktree or wb branch, Git commit, Git push or LAST_RESULT. Report local operational findings in the WorkBuddy chat, then stop. Controller will record verified results in Git after user shares the report.
   - Read .codex/control/PROTOCOL.md and docs/ROLLPREP01-CHECKLIST.md before work. Source of truth is the remote dev HEAD at task start, not older WorkBuddy workspace HEAD.
   - Do not assume the active DevTools folder is the main clone. Actual history and CLI location are in TOOLING_RUNBOOK; discover current project and IDE port rather than reusing historical values.
   - Preserve unrelated dirty files and no cloud deployment, cloud database writes, game actions, package publication, aggregate regression or 600-run. Stop if rollback source or compatibility cannot be verified.
-  - Once complete, do not auto-dispatch or retry any old queued wbpush job. The user will forward this single report to Controller, who returns NEXT_TASK to HOLD after review.
+  - ROLLPREP01 local preflight reported complete. Controller returned control to HOLD; no further WorkBuddy execution or deployment authorized by this task.
