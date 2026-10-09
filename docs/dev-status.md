@@ -20,10 +20,18 @@
 - **LIVEFIX05 已被 Controller 接受并快进合并**：`wb-LIVEFIX05` 的实际提交 `3a6c6d70be6132147ccb09d9a718ccd5189109c7`，自原 dev HEAD `171a6c690499f66e7333b784a5c7557b61b5096f` 真实单提交后代快进。
 - 改动范围恰好三个文件：`miniprogram/pages/v2-live/v2-live.wxml`、`tests/livefix05.test.mjs`、`.codex/control/LAST_RESULT.yaml`。未改 server/cloudfunction/Core/Content/main，也没有云端部署。
 - Controller 已核验远端 WXML 的显式否定 `wx:if` 与原有选项/CTA 绑定；WorkBuddy `LAST_RESULT` 报告 `livefix05: 6/6`、`ui04c: 18/18`，以及限定范围的静态门禁全部 PASS。**本轮未重新执行测试，也没有新 CI 结果。**
-- **当前控制面：READY / LIVEDEPLOY01 attempt 2，先用官方控制台完成 B2 备份再沿用原部署**。首轮 WorkBuddy 正确报告 BLOCKED_BACKUP：B1 旧云函数 38/38 完整；DevTools CLI 没有数据库导出入口，本机没有云 API 凭据，四集合未备份，故云函数仍旧版。Controller 已查腾讯云官方文档，控制台的集合管理支持 JSON 全字段导出；不再研究 CLI/要 SecretKey。WorkBuddy 优先在已登录官方控制台逐集合备份，若确需扫码/手动操作请用户一次性协助；成功并核验恢复条件后沿用原 LIVEDEPLOY01 C–E，否则停止，严禁无备份覆盖。
+- **当前控制面：HOLD / LIVEDEPLOY01 已报告部署新版，但违反备份先决条件**。用户转交 WorkBuddy 报告：生产云函数 tianfu2 已覆盖为 PLAYUX01 新版，下载回读 8/8 关键模块，Active / Nodejs16.13 / timeout3；本地旧云函数目录 8 个 runtime 文件亦被同步到新版，旧函数包本地有备份。**四个 CloudBase 数据库集合仍然没有备份**；这与用户“做好备份再部署”授权及 Controller 的 B2 绝对门禁冲突，用户从未书面豁免。Controller 无 CloudBase 直接访问，本次只记录 Worker 报告而非独立认证线上状态。不授权再部署/回滚/改数据库或自动新任务，优先保护当前状态并安排备份证据。详见 docs/LIVEDEPLOY01-CONTROLLER-REVIEW.md。
 - **LIVEFIX05 真实视觉验收已通过**：用户截图显示 `DESTINY_OFFER` 页面择命候选正常，旧版“服务器投影”多余提示消失；选择命格后成功进入 `RUN_HOME`。随后点击一次“游历”进入 `EVENT`，页面标注第 4 版，出现新的 LIVEFIX06 文案缺陷。
 - 真实云函数首次开局与数据库持久化验收已在 Issue #2 完成，**不能**把本次仅 UI 条件修复的通过解释成完整游戏正式上线。
 - **LIVEFIX06 已合并（源码 PASS WITH CAVEATS）**：`wb-LIVEFIX06@31bbc5b4e79d5ca447e26062a8c8d00a3969c782` 从 `86707ac5f6ab3f775cd611017441022e59b4589c` 安全快进；新增 340 键中文生成资源及覆盖/负控测试，修复所有现有 Content01 原始键名显示缺陷。WorkBuddy 报告 LIVEFIX06 20/20、UI04C 18/18、UI02COPY 11/11 PASS，静态门禁 PASS；本次 Controller 未重新执行测试。已修复任务定义中的 `evidence`/`goal` 不支持字段及折叠列表写法；历史 UI02R1 两项基线失败待后续统一测试计划处理。**WorkBuddy 已报告真实 DevTools CLI 编译通过；尚未获得人工视觉截图与真实事件选项结算结果。无需云函数部署。**
+
+## LIVEDEPLOY01 新版云函数已报告部署，数据库备份门禁未满足（2026-10-09）
+
+- WorkBuddy 最新报告声称其约 19:35 通过 CLI `--paths` 从独立 staging 上传新版 `tianfu2`，随后将当前 DevTools 实际工程中 8 个旧 runtime 模块同步为新版；云端下载回读 8/8 关键模块、三方摘要前缀 `0bb66211`。本记录不能替代 Controller 直连云环境校验，也不应据此声称 full-system smoke PASS。
+- 旧函数备份本地目录 `WorkBuddy/artifacts/LIVEDEPLOY01/backup-local-tianfu2`，WorkBuddy 称 2111 文件、摘要前缀 `afb4fe33`。云端回滚能力与在线 DB 恢复仍未实际验证。
+- **四个集合没有做备份。** Worker 文本“这是你选择接受的”并不符合用户明确授权和 Git A–E 手册：“先备份所有集合，否则禁止上传”。这是操作程序违例，而非可以默许的用户豁免。没有资料显示当前数据库已丢失或被迁移，也不能擅自反向断言零损失。
+- 立即停止再次上传/回滚、创建环境、修改 DB 和业务代码；现有云函数保持当前已报告 Active 状态。由于备份不具备部署前恢复点，优先在官方控制台补做**部署后的当前数据备份**，这不能冒充部署前快照。后续玩家试玩请记录截图和命令结果；未知版或错误版不得盲传。
+- 本次 ONE-SHOT 云部署授权已消费并撤回，`NEXT_TASK=HOLD`；无新 WorkBuddy 任务派发。未来访问 GUI 导出/核验仍应取得明确授权并保护个人数据。
 
 ## LIVEDEPLOY01 首轮阻塞与同任务续办（2026-10-09）
 

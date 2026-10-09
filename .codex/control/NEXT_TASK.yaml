@@ -1,5 +1,5 @@
 version: 1
-status: READY
+status: HOLD
 attempt: 2
 taskId: LIVEDEPLOY01
 title: LIVEDEPLOY01 - Backup current CloudBase then replace tianfu2 once
@@ -13,7 +13,7 @@ verificationProfile: fast-lane
 executionProfile: credit-efficient
 execution:
   readProtocolFirst: true
-  workBuddyMayImplement: true
+  workBuddyMayImplement: false
   commitTaskResult: false
   pushWorkBranch: false
   updateSourceBranch: false
@@ -34,14 +34,35 @@ controllerIntent:
   mode: DIRECT_REPLACE_AFTER_VERIFIED_BACKUP
   authority: docs/LIVEDEPLOY01-BACKUP-DEPLOY-RUNBOOK.md
   userAuthorizedOriginalCloudEnvironmentOverwrite: true
-  cloudDeploymentApproved: true
-  cloudDatabaseBackupExportApproved: true
+  cloudDeploymentApproved: false
+  cloudDatabaseBackupExportApproved: false
   cloudDatabaseWritesApproved: false
   cloudDatabaseRestoreApproved: false
   separateTestingEnvironmentApproved: false
   billableServicePurchaseApproved: false
-  nextAction: "Attempt 2: official CloudBase console JSON full-field exports of four collections; if validated, continue prior deploy; if GUI login or capability blocked, request minimal user interaction and stop"
+  nextAction: "HOLD: cloud deployment reported already executed without mandatory four-collection backup. No second upload, rollback or automatic follow-up; preserve state, verify existing remote code and arrange data backup by separate authorized action."
+controllerAcceptance:
+  reviewedDate: "2026-10-09"
+  taskId: LIVEDEPLOY01
+  outcome: REPORTED_DEPLOYED_BACKUP_GATE_VIOLATED
+  evidenceOrigin: "User-pasted WorkBuddy chat, not Controller-direct CloudBase observation"
+  acceptedGitCode: 325c55563bf3fd812a8659aa1bc9d56cd6b42eaa
+  deployedCode: "Reported PLAYUX01 newest eight critical modules; manifest summary 0bb66211 prefix; not independently observed"
+  currentCloudStatus: "Reported Active Nodejs16.13 timeout 3 seconds"
+  oldFunctionBackup: "Reported local WorkBuddy artifacts backup-local-tianfu2, 2111 files, SHA summary afb4fe33 prefix"
+  databaseBackup: "NOT_PERFORMED for four required CloudBase collections"
+  deploymentAuthorization: "User authorized direct replacement ONLY after verified backups; no user waiver of B2"
+  processCompliance: FAILED_BACKUP_FIRST_GATE
+  codeVerificationByController: "Git accepted code is in dev; cloud and local machine hashes not independently checked"
+  localProject: "Reported 8 runtime files synchronized from old to new, 18 local dirty file entries total"
+  nextWorkBuddyTaskDispatched: false
+  futureCloudActionsAuthorized: false
+  requiredNext: "Do not redeploy or rollback automatically; preserve current cloud and old function archive; secure four collection backups via official console with distinct permission"
+  reviewDocument: docs/LIVEDEPLOY01-CONTROLLER-REVIEW.md
+
 notes:
+  - Worker reported deployment completed at approximately 19:35, but four CloudBase collection backups had not been made. This contradicts mandatory B2 backup-before-upload. It does NOT establish that any online user data was lost.
+  - Never convert a previous conditional deployment authorization into a standing permission. This attempt is closed HOLD, with no repeat deploy, rollback, Git pushes or new feature tasks.
   - Attempt 1 returned BLOCKED_BACKUP: old deployed function recoverable 38/38; no collection data exported because DevTools CLI has no database feature and no local CloudBase credentials. Do not repeat previous CLI or credential search.
   - Official CloudBase console supports per-collection JSON all-field export. Prefer authenticated existing GUI, not a new CLI or secret key. https://docs.cloudbase.net/database/manage
   - A QR login or manual authorization is a user-only step. Do not ask for tokens, database documents or SecretKey in chat. If GUI is inaccessible ask for this minimal step once, then stop without deployment.
