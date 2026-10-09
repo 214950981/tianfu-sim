@@ -125,6 +125,45 @@ var RISK_TIER_CLASS = { "low": "risk-low", "caution": "risk-caution", "dangerous
  */
 var RESOURCE_LABELS = { "spiritStone": "灵石" };
 var DESTINY_PROFILE_LABELS = { "stable": "稳", "high-variance": "变", "story-hook": "缘" };
+/**
+ * PLAYFEEL01 (B1) — the cultivation threshold the Progression pack defines (progression-v1.ts: realm
+ * `cultivationBps` is capped at 10_000 and a breakthrough is only legal at exactly 10_000). The client
+ * mirrors the constant to phrase "how much is left"; it does not decide anything with it — the server's
+ * own `specialActions[].available` is what enables the button.
+ */
+var CULTIVATION_FULL_BPS = 10000;
+/**
+ * PLAYFEEL01 (B1) — the blocked reasons the server publishes on the breakthrough special action
+ * (viewmodel.ts `specialActions`). A value absent from this table reads as the neutral "暂不可行" rather
+ * than as a raw enum key, and — importantly — nothing here states or implies a success chance.
+ */
+var BREAKTHROUGH_REASON_LABELS = {
+  "breakthrough.cultivation_incomplete": "修为未满，尚不足以冲击",
+  "breakthrough.interaction_pending": "眼前之事未了，无从静心冲关",
+  "breakthrough.unavailable": "此境已无可进",
+  "run.not_active": "此身已终"
+};
+/**
+ * PLAYFEEL01 (B1) — the "what am I working toward" sentence. It is built from server values only; the
+ * placeholders are filled from the authoritative projection. `ready` deliberately promises nothing about
+ * the outcome: an attempt is legal, and the Risk/Progression contracts decide what happens.
+ */
+var GOAL_COPY = {
+  ready: "修为已满，可尝试冲击{realm}",
+  needCultivation: "距圆满尚差 {n} 修为",
+  blocked: "修为已满，但眼下不宜冲关",
+  noPath: "此境已无常规前路"
+};
+/**
+ * PLAYFEEL01 (B1) — what a blocked breakthrough says when the server published a reason the client does not
+ * know. A raw enum key on a button the player is meant to press is worse than silence, so an unmapped key
+ * degrades to this neutral sentence and an absent key means there is nothing to explain at all.
+ */
+var BREAKTHROUGH_UNKNOWN_REASON = "暂不可行";
+/** Shown when the server published no root name (an older save or a pack the client predates). Never the id. */
+var ROOT_UNKNOWN = "灵根未详";
+/** The recorded injury stacks, named. The count is a real engine field (`conditions[].stacks`), not a guess. */
+var INJURY_COPY = "身负伤势 {n} 层";
 var ENTRY_KIND_LABELS = { "event": "事件", "build": "道途" };
 var PAGE_STATE_LABELS = {
   START: "起始",
@@ -490,6 +529,25 @@ function buildResultReceipt(receipt) {
   var choiceLabel = eventId.length > 0 && choiceId.length > 0 ? resolveCopy(eventId + ".choice." + choiceId) : "";
   var noteText = eventId.length > 0 ? resolveCopy(eventId + ".resolution") : "";
 
+  // PLAYFEEL01 (B2) — THE PROCESS, NOT ONLY THE LEDGER.
+  //
+  // PLAYUX01 made the panel able to say which Event settled and which option was taken. That still left the
+  // player reading 修为 +140 and being told nothing about what actually happened — the exact complaint in
+  // the locked brief ("到62岁仍凡人 / 选择找弹琴的人却只给修为+140"). The Content pack now authors one
+  // sentence per option under `${eventId}.settle.${choiceId}`, and one per outcome tier under
+  // `${eventId}.settle.${choiceId}.${tier}` where the tiers genuinely settle differently.
+  //
+  // The tier is read from the receipt's own `narrative.appliedTier`, which the reducer publishes from
+  // `resolveOutcome` — the client never guesses which tier ran. A missing tier-specific sentence falls
+  // back to the option-level one, and a scene with no authored settlement simply shows no narration rather
+  // than a generic line that would be equally true of every scene.
+  var appliedTier = str(narrative.appliedTier);
+  var narration = "";
+  if (eventId.length > 0 && choiceId.length > 0) {
+    narration = appliedTier.length > 0 ? resolveCopy(eventId + ".settle." + choiceId + "." + appliedTier) : "";
+    if (narration.length === 0) narration = resolveCopy(eventId + ".settle." + choiceId);
+  }
+
   // A gain the player can point at is anything except time passing. Time alone is a real settlement but it
   // is not a gain, and saying so is the honest thing — it is exactly what the spec asks for when a choice
   // changes nothing measurable.
@@ -506,6 +564,8 @@ function buildResultReceipt(receipt) {
     eventTitle: eventTitle.length > 0 ? eventTitle : (eventId.length > 0 ? TERMINAL_UNKNOWN_DETAIL : ""),
     hasChoice: choiceId.length > 0,
     choiceLabel: choiceLabel.length > 0 ? choiceLabel : (choiceId.length > 0 ? TERMINAL_UNKNOWN_DETAIL : ""),
+    narration: narration,
+    hasNarration: narration.length > 0,
     lines: lines,
     resolutionNote: resolutionNote,
     noGainText: changed ? "" : presentLabel(CONTENT_COPY, "result.no_gain")
@@ -551,6 +611,41 @@ function buildRenderModel(controller, notice, receipt) {
     result.ctaLabel = presentLabel(CONTENT_COPY, pageState === "ENDING" ? "result.view_ending" : "result.back_home");
   }
 
+  // PLAYFEEL01 (B1): the home screen has to say what the player is working toward. Every value below is
+  // read from the authoritative projection — the run's own root name, the cultivation progress toward the
+  // pack's 10000 threshold, the remaining years, the recorded injuries, and the server's own breakthrough
+  // availability plus its published blocked reason. Nothing here computes a score, an odds figure or a
+  // target: `specialActions[0].targetRealm.displayName` is the server's own naming of the next realm, and
+  // the client only repeats it.
+  var cultivationNow = num(realm.cultivationBps, num(realm.cultivation, 0));
+  var cultivationGap = Math.max(0, CULTIVATION_FULL_BPS - cultivationNow);
+  var remainingLifespan = Math.max(0, num(run.maxAge, 0) - num(run.age, 0));
+  var injuryLevel = 0;
+  var conditions = arr(run.conditions);
+  for (var conditionIndex = 0; conditionIndex < conditions.length; conditionIndex += 1) {
+    var condition = record(conditions[conditionIndex]);
+    if (str(condition.kind) === "injury") injuryLevel += num(condition.stacks, 0);
+  }
+  var specialActionsRaw = arr(record(run).specialActions);
+  var breakthroughEntry = null;
+  for (var specialIndex = 0; specialIndex < specialActionsRaw.length; specialIndex += 1) {
+    if (str(record(specialActionsRaw[specialIndex]).actionId) === "attemptBreakthrough") breakthroughEntry = record(specialActionsRaw[specialIndex]);
+  }
+  var breakthroughAvailable = breakthroughEntry !== null && breakthroughEntry.available === true;
+  // The blocked reason is an enum the server publishes; unknown values fall back to a neutral sentence
+  // rather than printing the key, and a missing entry simply means this run has no ordinary next realm.
+  var blockedReasonKey = breakthroughEntry === null ? "" : str(breakthroughEntry.blockedReasonKey);
+  var breakthroughReason = blockedReasonKey.length === 0 ? "" : (BREAKTHROUGH_REASON_LABELS[blockedReasonKey] || BREAKTHROUGH_UNKNOWN_REASON);
+  var breakthroughTarget = breakthroughEntry === null ? "" : str(record(breakthroughEntry.targetRealm).displayName);
+  var goalLine = "";
+  var goalTone = "steady";
+  if (pageState === "RUN_HOME") {
+    if (breakthroughEntry === null) { goalLine = GOAL_COPY.noPath; goalTone = "steady"; }
+    else if (breakthroughAvailable) { goalLine = GOAL_COPY.ready.replace("{realm}", breakthroughTarget); goalTone = "ready"; }
+    else if (cultivationGap > 0) { goalLine = GOAL_COPY.needCultivation.replace("{n}", String(cultivationGap)); goalTone = "progress"; }
+    else { goalLine = GOAL_COPY.blocked; goalTone = "steady"; }
+  }
+
   return {
     pageState: pageState,
     pageStateLabel: presentLabel(PAGE_STATE_LABELS, pageState),
@@ -567,8 +662,23 @@ function buildRenderModel(controller, notice, receipt) {
     maxAge: num(run.maxAge, 0),
     realmLabel: presentLabel(REALM_LABELS, str(realm.id)),
     realmOrder: realmOrderLabel(num(realm.order, 0)),
-    cultivation: num(realm.cultivationBps, num(realm.cultivation, 0)),
+    cultivation: cultivationNow,
     spiritStone: num(record(run.resources).spiritStone, 0),
+    // PLAYFEEL01 (B1): the run's own identity and progress, named for the player.
+    rootName: str(record(record(run.identity).innateProfile).spiritualRootName).length > 0
+      ? str(record(record(run.identity).innateProfile).spiritualRootName)
+      : ROOT_UNKNOWN,
+    destinyName: str(record(record(run.identity).innateProfile).majorDestinyName),
+    cultivationGap: cultivationGap,
+    cultivationFull: cultivationGap === 0,
+    remainingLifespan: remainingLifespan,
+    injuryLevel: injuryLevel,
+    injuryText: injuryLevel > 0 ? INJURY_COPY.replace("{n}", String(injuryLevel)) : "",
+    goalLine: goalLine,
+    goalTone: goalTone,
+    breakthroughAvailable: breakthroughAvailable,
+    breakthroughReason: breakthroughReason,
+    breakthroughTarget: breakthroughTarget,
     isOffer: pageState === "DESTINY_OFFER",
     offerTitle: interaction === null ? "" : presentLabel(CONTENT_COPY, interaction.titleKey),
     offerCandidates: buildOfferCandidates(interaction),
@@ -576,8 +686,16 @@ function buildRenderModel(controller, notice, receipt) {
     coreActions: model.coreIntents.map(function (intent) {
       return { intentId: intent.intentId, label: presentLabel(ACTION_LABELS, intent.intentId.indexOf("core.") === 0 ? intent.intentId.slice(5) : "") , enabled: intent.enabled === true };
     }),
+    // PLAYFEEL01 (B1): the breakthrough button now carries the server's own blocked reason, so a disabled
+    // button explains itself instead of sitting there inert.
     specialActions: model.specialIntents.map(function (intent) {
-      return { intentId: intent.intentId, label: presentLabel(CONTENT_COPY, intent.labelKey), enabled: intent.enabled === true };
+      var isBreakthrough = intent.intentId === "special.attemptBreakthrough";
+      return {
+        intentId: intent.intentId,
+        label: presentLabel(CONTENT_COPY, intent.labelKey),
+        enabled: intent.enabled === true,
+        reason: isBreakthrough && intent.enabled !== true ? breakthroughReason : ""
+      };
     }),
     isDecision: pageState === "EVENT" || pageState === "SPECIAL_NODE",
     decisionTitle: interaction === null ? "" : presentLabel(CONTENT_COPY, interaction.titleKey),
@@ -648,6 +766,18 @@ function buildTimeline(lifeBook) {
     var choiceId = str(entry.choiceId);
     var title = resolveCopy(eventId + ".title");
     var body = resolveCopy(eventId + ".body");
+    // PLAYFEEL01 (B2) — the life book used to recite the scene's OPENING body as if it were the outcome,
+    // which is the briefing's "把开场body当作已结算结局". The row now also carries what was actually
+    // settled for the option this save records, resolved from the same per-option settlement catalog the
+    // result panel uses, with the tier the save recorded (`resultTier`) preferred when authored. A row
+    // with no recorded choice, or a scene with no authored settlement, shows nothing rather than
+    // repeating the opening text as a conclusion.
+    var resultTier = str(entry.resultTier);
+    var settledText = "";
+    if (choiceId.length > 0) {
+      settledText = resultTier.length > 0 ? resolveCopy(eventId + ".settle." + choiceId + "." + resultTier) : "";
+      if (settledText.length === 0) settledText = resolveCopy(eventId + ".settle." + choiceId);
+    }
     timeline.push({
       key: str(entry.entryId).length > 0 ? str(entry.entryId) : "timeline:" + index,
       order: num(entry.nodeIndex, index),
@@ -656,7 +786,9 @@ function buildTimeline(lifeBook) {
       // `hasChoice` is about the *save*, `choiceLabel` is about the *catalog*. They are reported apart
       // so a merely untranslated option reads as unavailable rather than as a choice never made.
       hasChoice: choiceId.length > 0,
-      choiceLabel: choiceId.length > 0 ? (resolveCopy(eventId + ".choice." + choiceId) || TERMINAL_UNKNOWN_DETAIL) : ""
+      choiceLabel: choiceId.length > 0 ? (resolveCopy(eventId + ".choice." + choiceId) || TERMINAL_UNKNOWN_DETAIL) : "",
+      hasSettled: settledText.length > 0,
+      settledText: settledText
     });
   }
   return timeline;
@@ -744,6 +876,22 @@ function buildTerminal(terminal, pageState) {
   var hasDeath = typeof lifeBook.death === "object" && lifeBook.death !== null;
   var realmLabel = presentLabel(REALM_LABELS, str(record(lifeBook.realm).id));
   var deathCause = presentTerminalLabel(TERMINAL_LABELS, str(record(lifeBook.death).directCause), TERMINAL_UNKNOWN_DEATH);
+  // PLAYFEEL01 (B4) — the death line has to distinguish running out of life from being cut short.
+  //
+  // The brief: "62/100提前死亡时解释还有多少寿元，但因已记录的某风险提前结束；寿尽才说寿元尽". Both facts are
+  // already published — `death.category` separates 寿尽 from every other kind, and the life book carries
+  // the death age beside the run's `maxAge` — so the sentence is a subtraction over server fields, not a
+  // judgement. When the direct cause has no catalog entry the sentence still says the years honestly and
+  // attributes the end to 已记录的风险 rather than printing an enum key or the old blanket 原因尚未明确.
+  var deathCategory = str(record(lifeBook.death).category);
+  var deathAge = num(record(lifeBook.death).age, num(lifeBook.age, 0));
+  var yearsUnspent = Math.max(0, num(lifeBook.maxAge, 0) - deathAge);
+  var deathDetail = "";
+  if (hasDeath) {
+    if (deathCategory === "lifespan") deathDetail = "寿元已尽，终于 " + deathAge + " 岁。";
+    else if (yearsUnspent > 0) deathDetail = "尚余 " + yearsUnspent + " 年寿元，因" + (deathCause === TERMINAL_UNKNOWN_DEATH ? "已记录的风险" : deathCause) + "提前终结。";
+    else deathDetail = deathCause;
+  }
   var trackRows = buildTrackRows(lifeBook);
   var causeRows = buildCauseRows(lifeBook);
   // PLAYUX01 (F2) — the compact introduction the Controller asked for: HOW this life reached its end.
@@ -783,7 +931,8 @@ function buildTerminal(terminal, pageState) {
       hasEnding: hasEnding,
       hasDeath: hasDeath,
       endingId: presentTerminalLabel(TERMINAL_LABELS, str(record(lifeBook.ending).endingId), TERMINAL_UNKNOWN_DETAIL),
-      deathCause: deathCause
+      deathCause: deathCause,
+      deathDetail: deathDetail
     },
     rebirth: {
       completedRunId: str(rebirth.completedRunId),

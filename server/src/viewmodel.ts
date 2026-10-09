@@ -161,6 +161,36 @@ function buildPublicTerminal(state: GameState, content: ContentRegistry, termina
   return undefined;
 }
 
+/**
+ * PLAYFEEL01 (B1) — resolves a progression definition id to its `displayName` for presentation.
+ *
+ * The run's chosen spiritual root, talents and major destiny are stored as ids; the Destiny Offer screen
+ * already resolves the *same* ids to names because it needs to describe the choice. Once the run is active
+ * the offer is gone, so without this lookup the only way to name the player's own root would be a
+ * hand-maintained client map — exactly the duplication that went stale in LIVEFIX06. This is a read-only
+ * presentation lookup: it reads the frozen progression pack and returns a string, and it never invents a
+ * value. A miss returns undefined so the caller can omit the field rather than print a raw id as if it were
+ * a name.
+ */
+function progressionName(state: GameState, content: ContentRegistry, group: "spiritualRoots" | "talents" | "majorDestinies", id: string): string | undefined {
+  try {
+    const pack = content.getProgression(state.contentVersion);
+    return pack[group].find((definition) => definition.id === id)?.displayName;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The three names the run's innate profile needs, resolved together so a missing pack degrades as a unit. */
+function innateNames(state: GameState, content: ContentRegistry): { root?: string; talents: string[]; destiny?: string } {
+  const profile = state.run.identity.innateProfile;
+  if (profile === undefined) return { talents: [] };
+  const root = progressionName(state, content, "spiritualRoots", profile.spiritualRoot);
+  const destiny = progressionName(state, content, "majorDestinies", profile.majorDestinyId);
+  const talents = profile.talentIds.map((id) => progressionName(state, content, "talents", id)).filter((name): name is string => name !== undefined);
+  return { ...(root === undefined ? {} : { root }), talents, ...(destiny === undefined ? {} : { destiny }) };
+}
+
 function publicCauses(state: GameState): PublicCause[] {
   return Object.values(state.run.causes.byId).filter((cause) => cause.visibility !== "hidden").sort((left, right) => left.causeId.localeCompare(right.causeId)).map((cause) =>
     cause.visibility === "journal"
@@ -170,6 +200,9 @@ function publicCauses(state: GameState): PublicCause[] {
 
 function publicRun(state: GameState, content: ContentRegistry): Record<string, PublicJson> {
   const death = state.run.deathRecord; const knownCause = death?.sourceCauseId === undefined ? undefined : state.run.causes.byId[death.sourceCauseId]; const causeRelatedDeath = knownCause !== undefined && knownCause.visibility !== "hidden";
+  // PLAYFEEL01 (B1): resolved once per projection; the run's own root/talent/destiny are named so the home
+  // screen can show 灵根 without a second, drift-prone client catalog.
+  const names = innateNames(state, content);
   const locked = content.get(state.contentVersion); const buildPack = locked.buildPackId === undefined ? undefined : content.getBuild(state.contentVersion); const publicBuilds: PublicJson[] = buildPack === undefined ? [] : Object.values(state.run.build.affinities ?? {}).sort((left, right) => left.buildId.localeCompare(right.buildId)).map((affinity): PublicJson => { const definition = buildPack.definitions.find((candidate) => candidate.id === affinity.buildId); if (definition === undefined) return { buildId: affinity.buildId, stage: "latent", labelKey: "build.unknown" }; const stage = buildStage(buildPack.rules, affinity.affinityBps); return { buildId: affinity.buildId, displayName: definition.displayName, stage, labelKey: definition.stages.find((candidate) => candidate.stage === stage)?.labelKey ?? `build.${affinity.buildId}.${stage}`, dominant: state.run.build.dominantBuildId === affinity.buildId }; });
   const npcPack = locked.npcPackId === undefined ? undefined : content.getNpc(state.contentVersion); const publicMilestones = new Set(["firstEncounter", "majorRelationChange", "debtCreated", "debtResolved", "promotedToA", "statusRevealed", "causeLinked", "importantPromise", "majorConflict", "majorAid"]); const people: PublicJson[] = npcPack === undefined ? [] : Object.values(state.run.npcs.byId).filter((npc) => npc.knowledge.met).sort((left, right) => left.npcId.localeCompare(right.npcId)).map((npc): PublicJson => ({ npcId: npc.npcId, publicRef: npc.npcId, displayName: npc.displayName, knownRoles: [...npc.roleTags], knownFactIds: [...npc.knowledge.knownFactIds], knownTraitTags: [...npc.knowledge.knownTraitTags], affinity: affinitySemantic(npc.relation.affinity, npcPack.rules), trust: trustSemantic(npc.relation.trust, npcPack.rules), debt: debtSemantic(npc.relation.debt), knownStatus: npc.knowledge.knownStatus ?? "unknown", ...(npc.knowledge.lastKnownAge === undefined ? {} : { lastKnownAge: npc.knowledge.lastKnownAge, lastKnownNodeIndex: npc.knowledge.lastKnownNodeIndex ?? 0 }), milestones: npc.milestoneFacts.filter((fact) => publicMilestones.has(fact.type)).map((fact): PublicJson => ({ type: fact.type === "promotedToA" ? "becameImportant" : fact.type, age: fact.age, nodeIndex: fact.nodeIndex, reasonTag: fact.reasonTag })) }));
   return {
@@ -182,7 +215,7 @@ function publicRun(state: GameState, content: ContentRegistry): Record<string, P
     conditions: state.run.conditions.map((condition) => ({ id: condition.id, kind: condition.kind, stacks: condition.stacks, ...(condition.remainingNodes === undefined ? {} : { remainingNodes: condition.remainingNodes }) })),
     riskConditions: (state.run.risk?.conditions ?? []).filter((condition) => condition.visibility !== "hidden").map((condition): PublicJson => condition.visibility === "explicit" ? { id: condition.id, definitionId: condition.definitionId, severity: condition.severity, visibility: condition.visibility, tags: [...condition.tags] } : { id: condition.id, severity: condition.severity, visibility: condition.visibility }),
     riskExposure: state.run.risk?.exposureCount ?? 0,
-    identity: { rootTags: [...state.run.identity.rootTags], titles: [...state.run.identity.titles], ...(state.run.identity.destinyId === undefined ? {} : { destinyId: state.run.identity.destinyId }), ...(state.run.identity.innateProfile === undefined ? {} : { innateProfile: { spiritualRoot: state.run.identity.innateProfile.spiritualRoot, talentIds: [...state.run.identity.innateProfile.talentIds], majorDestinyId: state.run.identity.innateProfile.majorDestinyId } }), ...(state.run.identity.factionId === undefined ? {} : { factionId: state.run.identity.factionId }) },
+    identity: { rootTags: [...state.run.identity.rootTags], titles: [...state.run.identity.titles], ...(state.run.identity.destinyId === undefined ? {} : { destinyId: state.run.identity.destinyId }), ...(state.run.identity.innateProfile === undefined ? {} : { innateProfile: { spiritualRoot: state.run.identity.innateProfile.spiritualRoot, ...(names.root === undefined ? {} : { spiritualRootName: names.root }), talentIds: [...state.run.identity.innateProfile.talentIds], ...(names.talents.length === 0 ? {} : { talentNames: [...names.talents] }), majorDestinyId: state.run.identity.innateProfile.majorDestinyId, ...(names.destiny === undefined ? {} : { majorDestinyName: names.destiny }) } }), ...(state.run.identity.factionId === undefined ? {} : { factionId: state.run.identity.factionId }) },
     builds: publicBuilds,
     people,
     ...(state.run.build.dominantBuildId === undefined ? {} : { dominantBuildId: state.run.build.dominantBuildId }),

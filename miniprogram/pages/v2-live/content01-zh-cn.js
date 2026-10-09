@@ -70,6 +70,18 @@ module.exports = [
     "不再细辨，只取认得出的那一株"
   ],
   [
+    "content01.build.alchemy.herb-sort.settle.consider",
+    "你没有贪多，先把已认出的两味记牢，反复嗅过才放回去。第三株你没有碰。记得不深，却不会再认错。"
+  ],
+  [
+    "content01.build.alchemy.herb-sort.settle.engage",
+    "你一株一株看过去，把三味分清。叶片相似，气味却各走一边，认到最后手心全是汗。这一炉能不能成还难说，但你的眼力长了一分。"
+  ],
+  [
+    "content01.build.alchemy.herb-sort.settle.leave",
+    "你不再细辨，只取了认得出的那一株便走。剩下两株留在原地晾着，你也没弄清它们相不相冲。晒药的人来收摊时，天已擦黑。"
+  ],
+  [
     "content01.build.alchemy.herb-sort.title",
     "辨草"
   ],
@@ -248,6 +260,18 @@ module.exports = [
   [
     "content01.build.sword.river-cut.choice.leave",
     "收剑退开，涉水过涧"
+  ],
+  [
+    "content01.build.sword.river-cut.settle.consider",
+    "你没有立刻动剑，先把落点看准，又试了两遍腕上的力道，才正式出剑。一剑收势比预想中稳，这一路剑数你记住了七分。"
+  ],
+  [
+    "content01.build.sword.river-cut.settle.engage",
+    "你出剑，只取那一线落点。剑锋偏了半分，削下石棱一角，路恰好让开。手臂震得发麻，剑意反倒比先前清楚了一层。"
+  ],
+  [
+    "content01.build.sword.river-cut.settle.leave",
+    "你收剑退开，涉水过涧。水冷路远，走得比预想中慢，到对岸已经近黄昏。剑始终没有出鞘，你也没从这一趟里得到什么。"
   ],
   [
     "content01.build.sword.river-cut.title",
@@ -442,6 +466,14 @@ module.exports = [
     "不认这份人情，只把账目看清"
   ],
   [
+    "content01.jiang.herb-price.settle.bind-1",
+    "你认下这份药债。姜雪芜把账目合上，说既认了便不必再算。你欠下的不只是那几味药材，还有她替人止伤耗去的半日。"
+  ],
+  [
+    "content01.jiang.herb-price.settle.decline",
+    "你把账目逐项看清，却没有认下这份人情。姜雪芜没有为难你，只把纸收了。此后她若再见你，这一笔仍是两清。"
+  ],
+  [
     "content01.jiang.herb-price.title",
     "药有其价"
   ],
@@ -482,6 +514,18 @@ module.exports = [
     "就到这里收功，先记住这个节奏"
   ],
   [
+    "content01.onboarding.first-breath.settle.ease-off",
+    "你松开半分，把急吸换成缓呼。气不再冲撞胸口，散得也慢，一圈走完比方才多花了小半日。你没有强求那一口气，只把新的节奏记了下来。"
+  ],
+  [
+    "content01.onboarding.first-breath.settle.keep-driving",
+    "你按原路把这一口气推过第三个周天。胸口先是一紧，那一处滞涩随后松开半分，气息终于连成完整的一圈。收功时掌心微热，这一坐才算真正入了门。"
+  ],
+  [
+    "content01.onboarding.first-breath.settle.stop-here",
+    "你在滞涩处停了手，没有硬推过去。这一坐所得不多，只是记住了呼吸的次序：先缓后深，急处不动。起身时晨雾刚散，日头才露。"
+  ],
+  [
     "content01.onboarding.first-breath.title",
     "初息"
   ],
@@ -506,6 +550,18 @@ module.exports = [
     "这一次追查还没有取得可以确认的新线索。"
   ],
   [
+    "content01.onboarding.forked-path.settle.clear-trail",
+    "你顺着清楚的那股脚印走下去。走了许久，脚印忽然混进一片乱石，再找不着了。追索眼下没有明确对象，不如先四处游历，寻到机缘再回来。"
+  ],
+  [
+    "content01.onboarding.forked-path.settle.hold-position",
+    "你哪里也没去，只把两股痕迹的位置都记下来。风把草吹得乱晃，站得越久越分不清哪一股才是新的。这一趟没有确认任何东西。"
+  ],
+  [
+    "content01.onboarding.forked-path.settle.neat-trail",
+    "你去试了那串过于整齐的痕迹。走了半日，脚印在一处断崖前停住，底下是空的。留下它的人，像是特意把你引到这里。"
+  ],
+  [
     "content01.onboarding.forked-path.title",
     "岔路"
   ],
@@ -526,6 +582,18 @@ module.exports = [
     "按他给的数替他把这一筐分好"
   ],
   [
+    "content01.onboarding.market-choice.settle.ask-source",
+    "你问他这一筐要卖给谁。他答得含糊，只说往北边去。你没有再问，那一筐药也始终没有分完。你多留了一个心眼，也多花去一日。"
+  ],
+  [
+    "content01.onboarding.market-choice.settle.haggle-fair",
+    "你先替他分清三味药，再把这一筐该值多少讲给他听。摊主愣了一会重新报价，多给了你一些。讲价耗去小半日，但账是当面算清的。"
+  ],
+  [
+    "content01.onboarding.market-choice.settle.take-deal",
+    "你按摊主给的数，把这一筐杂药一味一味分好。他数出几个灵石放在你手心，没有多话，也没有少给。这笔钱是从他手里出来的，你收得踏实。"
+  ],
+  [
     "content01.onboarding.market-choice.title",
     "早市"
   ],
@@ -544,6 +612,18 @@ module.exports = [
   [
     "content01.onboarding.mountain-road.choice.take-ford",
     "走林边有车辙的那条近路"
+  ],
+  [
+    "content01.onboarding.mountain-road.settle.go-village",
+    "你绕去村里，走那条路平的道。炊烟、犬吠、晒谷的场院都从身边过去，没有人拦你，也没有人和你搭话。多走的这一程，只是多走的。"
+  ],
+  [
+    "content01.onboarding.mountain-road.settle.scout-ridge",
+    "你先爬上高处。林里的情形看清了：没有埋伏，也不见人烟。你在石头上坐了一阵，借着山风把气息理匀，再下岭时天已近晚。"
+  ],
+  [
+    "content01.onboarding.mountain-road.settle.take-ford",
+    "你走了林边那条有车辙的近路。树影压下来，脚下深浅不一，走得急，方向却越走越含糊。好在路是短的，一日就过去了。"
   ],
   [
     "content01.onboarding.mountain-road.title",
@@ -570,6 +650,18 @@ module.exports = [
     "这一次追查还没有取得可以确认的新线索。"
   ],
   [
+    "content01.onboarding.old-trace.settle.ask-locals",
+    "你转去问附近的人。有人说前些日子见过一个背竹篓的过客，也有人说那痕是野物蹭的。两句话彼此对不上，你没能问出个准信。"
+  ],
+  [
+    "content01.onboarding.old-trace.settle.follow-fresh",
+    "你顺着新断口追进荒草。断痕一路新鲜，走出二里却忽然断了，草叶倒伏的方向与来路对不上。你在原地转了两圈，没有找到第二处痕迹。"
+  ],
+  [
+    "content01.onboarding.old-trace.settle.mark-spot",
+    "你没有急着追，只在石壁前把断口的形状看熟，又记下方位。回头看那一眼，仍然看不出这道痕是谁留下的。"
+  ],
+  [
     "content01.onboarding.old-trace.title",
     "旧痕"
   ],
@@ -588,6 +680,18 @@ module.exports = [
   [
     "content01.onboarding.quiet-retreat.choice.sit-again",
     "照原样再坐一段，看能否坐稳"
+  ],
+  [
+    "content01.onboarding.quiet-retreat.settle.change-method",
+    "你换了法子重起一轮：不再数息，只守着丹田那一点。前半日比原样更不顺，直到午后才接上，气机反倒比先前匀了几分。"
+  ],
+  [
+    "content01.onboarding.quiet-retreat.settle.close-day",
+    "你把这一日收束了，没有硬撑下去。蒲团归位，静室扫净。所得不多，但也没有把走神坐成习惯，明日再来时还接得上。"
+  ],
+  [
+    "content01.onboarding.quiet-retreat.settle.sit-again",
+    "你照原样再坐一段。走神还是有的，只是每回心神散出去再收回来，都比上一回快些。半日过去，心绪沉了下去，气机也跟着稳了。"
   ],
   [
     "content01.onboarding.quiet-retreat.title",
@@ -630,6 +734,18 @@ module.exports = [
     "先站远些问清他遇到了什么"
   ],
   [
+    "content01.onboarding.roadside-injury.settle.help-dress",
+    "你蹲下来替他理伤，先封住出血的那一处，再把错开的骨节顺回去。他盯着你的手，直到疼劲过去才松了肩膀，把你的名字问了一遍。"
+  ],
+  [
+    "content01.onboarding.roadside-injury.settle.just-notice",
+    "你只记下这个人的样子：左眉一道旧疤，衣角是青灰的。你没有上前，也没有问话。走过去之后，他还在原地坐了一阵。"
+  ],
+  [
+    "content01.onboarding.roadside-injury.settle.keep-distance",
+    "你站远了些，问他是怎么伤的。他说是昨夜在岔口遇上了人，其余的说不清楚。你没有靠前，也没有替他处理那道伤口。"
+  ],
+  [
     "content01.onboarding.roadside-injury.title",
     "路边伤者"
   ],
@@ -660,6 +776,14 @@ module.exports = [
   [
     "content01.ordinary.empty-search.choice.redraw-map",
     "承认今日无所得，回头重画"
+  ],
+  [
+    "content01.ordinary.empty-search.settle.follow-footprints",
+    "你照那几处脚印继续追下去。脚印被雨冲淡，走一段断一段，追到坡下才发现方向反了。一日就这么过去，你什么也没有找到。"
+  ],
+  [
+    "content01.ordinary.empty-search.settle.redraw-map",
+    "你承认今日无所得，坐下把旧图重画。照着记忆改了几处方位，画完自己也清楚未必准确。日头偏西，你收了纸笔。"
   ],
   [
     "content01.ordinary.empty-search.title",
@@ -703,11 +827,19 @@ module.exports = [
   ],
   [
     "content01.ordinary.market-bargain.choice.sell-herbs",
-    "只把随身草药作价给他"
+    "替他把混在一起的药材分开"
   ],
   [
     "content01.ordinary.market-bargain.choice.trade-for-news",
     "加进那条路况消息，用一个承诺换它"
+  ],
+  [
+    "content01.ordinary.market-bargain.settle.sell-herbs",
+    "你把行商那包混在一起的药材逐一分拣，理顺了品相。他看过一遍，挑出两味放错的收好，付了你工钱。这笔灵石是你动手挣来的。"
+  ],
+  [
+    "content01.ordinary.market-bargain.settle.trade-for-news",
+    "你把那条路况说给他听，请他替你捎一句话。他听完点头，说这消息值这个价。两人没有过手灵石，只有一句口头约定留在中间。"
   ],
   [
     "content01.ordinary.market-bargain.title",
@@ -740,6 +872,14 @@ module.exports = [
   [
     "content01.ordinary.mountain-view.choice.orient-and-go",
     "辨清方位后继续上路"
+  ],
+  [
+    "content01.ordinary.mountain-view.settle.breathe-here",
+    "你在岩石上坐下调息。山风一层层过去，呼吸也跟着平缓。这一坐没有异象，只把登山的疲累换了回来，气机顺了不少。"
+  ],
+  [
+    "content01.ordinary.mountain-view.settle.orient-and-go",
+    "你辨清方位，记下远近几座山头的形貌，随后下岭。路上没有遇到人，也没有遇到别的东西。天暗下来时，你已经在另一条道上。"
   ],
   [
     "content01.ordinary.mountain-view.title",
@@ -776,6 +916,14 @@ module.exports = [
   [
     "content01.ordinary.old-song.choice.sit-through",
     "坐到这一曲终了再起身"
+  ],
+  [
+    "content01.ordinary.old-song.settle.meet-player",
+    "你起身走到角落。弹琴的是个过路老者，见你过来只把手从弦上挪开，问你要听哪一首。你们说了几句曲子的事，他把琴收进布囊就走了。"
+  ],
+  [
+    "content01.ordinary.old-song.settle.sit-through",
+    "你坐到这一曲终了。旋律并不精妙，可琴音一起一落，正好把你散乱的气息带匀。起身时心里静了下来，如同又坐了一小会儿。"
   ],
   [
     "content01.ordinary.old-song.title",
@@ -826,6 +974,14 @@ module.exports = [
     "坐到茶凉，听完这段远行"
   ],
   [
+    "content01.ordinary.tea-house.settle.finish-cup",
+    "你把这半盏茶喝完，起身出门。茶还温着，歇脚也够。棚外的路还长，你把包袱系紧，重新上了道。"
+  ],
+  [
+    "content01.ordinary.tea-house.settle.stay-listen",
+    "你坐回原处，听邻桌三人把这趟远行说完。他们谈得热闹，没有人问你从哪里来。听着听着，你反倒静了下来，就着这几盏茶入了定。"
+  ],
+  [
     "content01.ordinary.tea-house.title",
     "半盏茶"
   ],
@@ -844,6 +1000,18 @@ module.exports = [
   [
     "content01.pei.broken-blade.choice.decline",
     "只说一句改日再会，不问他的去处"
+  ],
+  [
+    "content01.pei.broken-blade.settle.bind-1",
+    "你与裴照川把话说定：这一路同行，遇事先通气。他把断剑往膝上按了按，算是应了。此后你若再见他，这一句话都还在。"
+  ],
+  [
+    "content01.pei.broken-blade.settle.bind-2",
+    "你与他以剑相争。断剑碰在一处，过了十几个回合才各自收手。谁也没有伤着谁，只是都记住了对方的剑路。"
+  ],
+  [
+    "content01.pei.broken-blade.settle.decline",
+    "你只说一句改日再会，没有问他的去处。裴照川把断剑收回鞘里，点了点头。你们此后再无干系，也未通音信。"
   ],
   [
     "content01.pei.broken-blade.title",
@@ -1046,6 +1214,26 @@ module.exports = [
     "退出松林，绕开这一段"
   ],
   [
+    "content01.risk.pine-ambush.settle.read-signs.success",
+    "你先分辨声音的远近。左边那处一直在原地，右边那处在缓慢挪动。你看清了该往哪边走，趁那个空当退了出去。"
+  ],
+  [
+    "content01.risk.pine-ambush.settle.take-risk.costlySuccess",
+    "你硬冲出去，肩上挨了一下。走出松林时血已经浸透衣领，好在人还在，怀里也攥着从对方身上扯下的东西。"
+  ],
+  [
+    "content01.risk.pine-ambush.settle.take-risk.failure",
+    "你冲出几步就被截住。松针簌簌落了一地，你被按在树干上，等松开时，身边只剩下自己。"
+  ],
+  [
+    "content01.risk.pine-ambush.settle.take-risk.success",
+    "你抢在枝叶合拢之前冲了过去。身后一合落了空，你一路跑出松林才停下。衣衫被划破了几处，人还完整。"
+  ],
+  [
+    "content01.risk.pine-ambush.settle.turn-away.success",
+    "你退出松林，松针这才落下来，落在空地上。你退得干脆，绕了一段远路，天黑了也没走出那片坡。"
+  ],
+  [
     "content01.risk.pine-ambush.title",
     "松林伏影"
   ],
@@ -1104,6 +1292,26 @@ module.exports = [
   [
     "content01.risk.ruin-depth.choice.turn-away",
     "就此上行，不再往下探"
+  ],
+  [
+    "content01.risk.ruin-depth.settle.read-signs.success",
+    "你在阶口站了很久，把回声一处一处数清。数到第四处，你听出那只是水滴，真正在动的只有两处。你没有下去，退回洞口时已过了小半日。"
+  ],
+  [
+    "content01.risk.ruin-depth.settle.take-risk.costlySuccess",
+    "你往下走了两级，正撞上在动的那个东西。缠斗中你带伤退出，只抢回一件旧器，血一路滴在石阶上。得手了，代价却在自己身上。"
+  ],
+  [
+    "content01.risk.ruin-depth.settle.take-risk.failure",
+    "你循声往下追，脚下的声音不对，退已经来不及。你被撞在石壁上滑了下去，等缓过神，手里什么也没有。"
+  ],
+  [
+    "content01.risk.ruin-depth.settle.take-risk.success",
+    "你循着回声一路下到底。石室尽头堆着几件旧器，落尘很厚，却还完整。你挑了两件揣进怀里，旁的没有动，回头在镇上换成了灵石。"
+  ],
+  [
+    "content01.risk.ruin-depth.settle.turn-away.success",
+    "你转身往上走。石阶很长，出来时天已经暗了。你没有再弄明白下面是什么，也没有把自己搭进去。"
   ],
   [
     "content01.risk.ruin-depth.title",
@@ -1258,6 +1466,18 @@ module.exports = [
     "不谈分利，把图原样还给他"
   ],
   [
+    "content01.xie.secret-map.settle.bind-1",
+    "你与谢听潮立约同行：他走前段，你担后半的风险，记号两人都认。他把半张图推过来，另一半仍收在袖里。这笔约定算是落定了。"
+  ],
+  [
+    "content01.xie.secret-map.settle.bind-2",
+    "你答应同行，心里却留了后手——图上的记号另抄了一份。谢听潮没有察觉。这份心思将来若有回响，也是当年自己埋下的。"
+  ],
+  [
+    "content01.xie.secret-map.settle.decline",
+    "你不谈分利，把那半张图原样还给他。谢听潮收好图，没有再劝。此后各走各路，图上那些记号都与你无关。"
+  ],
+  [
     "content01.xie.secret-map.title",
     "半张秘图"
   ],
@@ -1292,6 +1512,14 @@ module.exports = [
   [
     "content01.xu.mortal-letter.choice.decline",
     "不回这封信，把短笺收进包里"
+  ],
+  [
+    "content01.xu.mortal-letter.settle.bind-1",
+    "你回了信，答应归去。短笺上只写三个字，写起来却比画符还慢。信由送信人带走，树下那件事你答应了下来。"
+  ],
+  [
+    "content01.xu.mortal-letter.settle.decline",
+    "你把短笺收进包里，没有回信。许长安托来的人等不到答复，自己走了。这封信你留着，却未必还等得到下一封。"
   ],
   [
     "content01.xu.mortal-letter.title",

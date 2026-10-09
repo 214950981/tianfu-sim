@@ -75,6 +75,13 @@
         </view>
         <scroll-view class="overlay-body" scroll-y="true">
           <view wx:if="{{vm.result.hasChoice}}" class="result-choice">{{vm.result.youChosePrefix}}{{vm.result.choiceLabel}}</view>
+          <!-- PLAYFEEL01 (B2): the locked order is 事件 -> 你选择了什么 -> 事情怎样发生 -> 真实变化与代价 ->
+               后续影响/建议 -> 继续. The narration is the scene's own authored account of the option that
+               settled, read by exact key from the settled receipt's eventId, choiceId and applied tier. It
+               sits above the numbers on purpose: 修为 +140 with no account of what happened is exactly the
+               complaint the brief records. When a scene has no authored settlement nothing is printed here
+               rather than a sentence that would fit any scene. -->
+          <view wx:if="{{vm.result.hasNarration}}" class="result-narration">{{vm.result.narration}}</view>
           <view wx:if="{{vm.result.lines.length > 0}}">
             <view wx:for="{{vm.result.lines}}" wx:key="key" class="result-line">{{item.text}}</view>
           </view>
@@ -104,11 +111,16 @@
       </view>
 
       <!-- ------------------------------------------------ 在世 RUN_HOME -->
+      <!-- PLAYFEEL01 (B1): the home screen is where "I am a cultivator working toward something" has to be
+           legible. It shows the run's own 灵根, the realm, the progress toward the pack's 10000 threshold,
+           the years left and the recorded injuries, then a single 近期目标 sentence and the server's own
+           breakthrough availability with its published blocked reason. Every value is server-projected; the
+           page computes no score and promises no odds. -->
       <view wx:elif="{{vm.isHome}}" class="block">
         <view class="vitals">
           <view class="vital">
-            <view class="vital-key">寿元</view>
-            <view class="vital-value">{{vm.age}} / {{vm.maxAge}}</view>
+            <view class="vital-key">灵根</view>
+            <view class="vital-value">{{vm.rootName}}</view>
           </view>
           <view class="vital">
             <view class="vital-key">境界</view>
@@ -119,10 +131,17 @@
             <view class="vital-value">{{vm.cultivation}} / 10000</view>
           </view>
           <view class="vital">
+            <view class="vital-key">寿元</view>
+            <view class="vital-value">{{vm.age}} / {{vm.maxAge}}</view>
+          </view>
+          <view class="vital">
             <view class="vital-key">灵石</view>
             <view class="vital-value">{{vm.spiritStone}}</view>
           </view>
         </view>
+
+        <view class="goal goal-{{vm.goalTone}}">{{vm.goalLine}}</view>
+        <view wx:if="{{vm.injuryText}}" class="goal-note">{{vm.injuryText}}</view>
 
         <view class="actions">
           <view wx:for="{{vm.coreActions}}" wx:key="intentId" class="action {{item.enabled ? 'is-on' : 'is-off'}}" data-intent-id="{{item.intentId}}" bindtap="onCoreAction">
@@ -135,6 +154,7 @@
           <view wx:for="{{vm.specialActions}}" wx:key="intentId" class="cta {{item.enabled ? '' : 'is-off'}}" data-intent-id="{{item.intentId}}" bindtap="onSpecialAction">
             {{item.label}}
           </view>
+          <view wx:if="{{vm.specialActions[0].reason}}" class="actions-note">{{vm.specialActions[0].reason}}</view>
         </view>
 
         <view class="cta ghost" bindtap="onOpenArchive">打开生平录</view>
@@ -145,7 +165,11 @@
         <view class="block-title">{{vm.decisionTitle}}</view>
         <view wx:if="{{vm.decisionBody}}" class="body-text">{{vm.decisionBody}}</view>
         <scroll-view class="bounded" scroll-y="true">
-          <view wx:for="{{vm.options}}" wx:key="optionId" class="card">
+          <!-- PLAYFEEL01 (B4): the brief bans three identical black decision buttons and asks for the option
+               itself to be tappable. The card is now the hit target; `onOption` reads optionId off
+               currentTarget, so the behaviour is unchanged. Each option already carries its own verb,
+               risk line and known cost, so there is nothing for a shared button to say. -->
+          <view wx:for="{{vm.options}}" wx:key="optionId" class="card option-card" data-option-id="{{item.optionId}}" bindtap="onOption">
             <view class="card-main">
               <view class="card-title">{{item.label}}</view>
               <view wx:if="{{item.riskLabel}}" class="risk {{item.riskClass}}">
@@ -153,7 +177,6 @@
                 <text wx:if="{{item.fatal}}" class="risk-fatal">可致死</text>
               </view>
             </view>
-            <view class="cta" data-option-id="{{item.optionId}}" bindtap="onOption">就此抉择</view>
           </view>
         </scroll-view>
       </view>
@@ -168,7 +191,7 @@
         <view class="block-title">此生已终</view>
         <view wx:if="{{vm.terminal.lifeBook.runName}}" class="body-text">{{vm.terminal.lifeBook.runName}} · {{vm.terminal.lifeBook.age}} / {{vm.terminal.lifeBook.maxAge}} · {{vm.terminal.lifeBook.realm}}</view>
         <view wx:if="{{!vm.terminal.lifeBook.hasLifeBook}}" class="body-text">此生记录整理中，卷宗尚未生成。</view>
-        <view wx:if="{{vm.terminal.lifeBook.hasLifeBook && vm.terminal.lifeBook.hasDeath}}" class="body-text">终因：{{vm.terminal.lifeBook.deathCause}}</view>
+        <view wx:if="{{vm.terminal.lifeBook.hasLifeBook && vm.terminal.lifeBook.hasDeath}}" class="body-text">{{vm.terminal.lifeBook.deathDetail}}</view>
         <view wx:if="{{vm.terminal.lifeBook.hasLifeBook}}" class="body-text">此生留下 {{vm.terminal.lifeBook.counts.experiences}} 件往事、{{vm.terminal.lifeBook.counts.people}} 位故人、{{vm.terminal.lifeBook.counts.paths}} 条道途、{{vm.terminal.lifeBook.counts.causes}} 段公开因果。</view>
         <view wx:if="{{vm.terminalCta}}" class="cta" data-action="{{vm.terminalCta.action}}" bindtap="onTerminalAdvance">{{vm.terminalCta.label}}</view>
       </view>
@@ -188,12 +211,20 @@
           <view wx:if="{{vm.terminal.lifeBook.timeline.length > 0}}" class="archive-section">
             <view class="archive-section-title">此生经历</view>
             <view wx:for="{{vm.terminal.lifeBook.timeline}}" wx:key="key" class="archive-row">
-              <view class="archive-kind">第 {{item.order}} 节点</view>
+              <!-- PLAYFEEL01 (B4): "第 N 节点" is a development field, not a player-facing one, and the brief
+                   bans it outright. The row keeps its chronological position but names it as an entry in the
+                   record. -->
+              <view class="archive-kind">第 {{item.order}} 事</view>
               <view class="archive-main">
                 <view class="archive-title">{{item.title}}</view>
                 <view wx:if="{{item.body}}" class="archive-summary">{{item.body}}</view>
                 <view wx:if="{{item.hasChoice}}" class="archive-summary">当时选择：{{item.choiceLabel}}</view>
                 <view wx:else class="archive-summary">此前选择未记录</view>
+                <!-- PLAYFEEL01 (B2): what that choice actually settled. The opening body above is what the
+                     scene was; this is what came of it, from the same per-option settlement catalog the
+                     result panel reads. A row with no authored settlement shows nothing here, so the life
+                     book can never pass the opening text off as an outcome. -->
+                <view wx:if="{{item.hasSettled}}" class="archive-settled">{{item.settledText}}</view>
               </view>
             </view>
           </view>
@@ -217,7 +248,7 @@
           <view wx:if="{{vm.terminal.lifeBook.hasEnding}}" class="card">
             <view class="card-title">终局</view>
             <view class="card-row"><view class="card-key">结局</view><view class="card-value">{{vm.terminal.lifeBook.endingId}}</view></view>
-            <view wx:if="{{vm.terminal.lifeBook.hasDeath}}" class="card-row"><view class="card-key">死因</view><view class="card-value">{{vm.terminal.lifeBook.deathCause}}</view></view>
+            <view wx:if="{{vm.terminal.lifeBook.hasDeath}}" class="card-row"><view class="card-key">死因</view><view class="card-value">{{vm.terminal.lifeBook.deathDetail}}</view></view>
           </view>
         </scroll-view>
         <view wx:if="{{vm.terminalCta}}" class="cta" data-action="{{vm.terminalCta.action}}" bindtap="onTerminalAdvance">{{vm.terminalCta.label}}</view>

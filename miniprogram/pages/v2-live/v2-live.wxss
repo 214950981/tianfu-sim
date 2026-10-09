@@ -505,3 +505,68 @@ page {
   color: var(--cinnabar);
   box-sizing: border-box;
 }
+
+/* ---------------------------------------------------------------- home goal (PLAYFEEL01 B1) */
+
+/* The 近期目标 sentence is the answer to "what am I working toward", so it is the one loud element on an
+   otherwise quiet sheet: a full-width ruled strip whose left border carries the tone. `ready` is the
+   cinnabar accent because that is the moment the player has been building to; `progress` and `steady` stay
+   in ink so the accent keeps meaning "something you can do now". Each box declares its own box-sizing. */
+.goal {
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-left: 6rpx solid var(--rule-strong);
+  background-color: var(--paper-sunk);
+  font-size: 28rpx;
+  color: var(--ink);
+  box-sizing: border-box;
+}
+
+.goal-ready {
+  border-left-color: var(--cinnabar);
+  color: var(--cinnabar);
+}
+
+.goal-progress {
+  border-left-color: var(--ink-soft);
+}
+
+.goal-steady {
+  border-left-color: var(--rule-strong);
+  color: var(--ink-muted);
+}
+
+.goal-note {
+  padding-top: var(--space-1);
+  font-size: 22rpx;
+  color: var(--ink-muted);
+}
+
+/* ---------------------------------------- result narration and life-book settlement (PLAYFEEL01 B2) */
+
+/* The narration is the longest prose on the result sheet and the only part that says what happened, so it
+   is set as body copy in full ink with generous leading, between the cinnabar "you chose" line and the
+   ledger of numbers. It is deliberately not a headline: the numbers below remain the authoritative account
+   of what actually changed. */
+.result-narration {
+  padding: var(--space-3) 0;
+  font-size: 28rpx;
+  line-height: 1.7;
+  color: var(--ink);
+  box-sizing: border-box;
+}
+
+/* The life book's settled line answers "what came of it", so it is set apart from the scene's opening body
+   above it — the two are different things and must not read as one paragraph, which is exactly the failure
+   the brief calls out. */
+.archive-settled {
+  padding-top: var(--space-1);
+  font-size: 24rpx;
+  color: var(--ink-soft);
+}
+
+/* The option card is the tap target now that the shared 就此抉择 button is gone, so it needs the pressed
+   state a button would have carried. */
+.option-card:active {
+  background-color: var(--paper-sunk);
+}
