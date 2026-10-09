@@ -11,6 +11,7 @@ inspect_first:
   - .codex/control/NEXT_TASK.yaml
   - docs/PLAYFEEL01-PRODUCT-DESIGN.md
   - docs/PLAYFEEL01-AUTOPLAY-ACCEPTANCE.md
+  - docs/PLAYFEEL01-EVENT-BRIEFS.md
   - docs/PLAYUX01-PRODUCT-SPEC.md
   - packages/content/src/content01-v1.ts
   - packages/content/src/content-sim.ts
@@ -24,7 +25,7 @@ allowedScope:
   - A Baseline first; audit all 66 Content01 events and record exact choice effect gaps in docs/PLAYFEEL01-EVENT-AUDIT.md, run 18 bounded authoritative playthrough seeds at most 24 core actions each.
   - B Implement on-screen cultivation goal and breakthrough progress with real server eligibility and negative failure path; do not auto-level or expose hidden RNG.
   - B Add eventId choiceId applied tier keyed truthful after-selection prose and visible actual effect/aftermath in receipt and life book; no fabricated NPC or clue facts.
-  - B Update all options and outcomes for precisely the 20 named high-priority events including real differential risks NPC Cause and Build state effects using registered operations only.
+  - B Update all options and outcomes for precisely the 20 named high-priority events in docs/PLAYFEEL01-EVENT-BRIEFS.md with true mechanically supported outcome process. No undocumented product design improvisation.
   - B Fix player-facing duplicate option CTAs and technical version/node labels, plus known death category and source with safe fallback.
   - C Replay same bounded seeds to catch boring loops unearned gains long mortal lives unexplained deaths and noncausal NPC traces; fix in-scope contract failures.
   - D Run deduplicated targeted affected suites and one freshness audit; preserve deterministic RNG and idempotency, never run aggregate full test or 600 simulation.

@@ -35,6 +35,7 @@ controllerIntent:
   productDesignLocked: true
   productDesignSpec: docs/PLAYFEEL01-PRODUCT-DESIGN.md
   acceptanceSpec: docs/PLAYFEEL01-AUTOPLAY-ACCEPTANCE.md
+  detailedEventBrief: docs/PLAYFEEL01-EVENT-BRIEFS.md
   cloudDeploymentApproved: false
   cloudDatabaseWritesApproved: false
   workerMaySelfRedesignGame: false
@@ -42,6 +43,7 @@ controllerIntent:
   userNeedRepeatManualGameFeedback: false
   nextAction: "Deliver one bounded implementation and playability evidence package; Controller reviews then selects next product decision"
 notes:
+  - Event-by-event script and outcome constraints for all 20 target events are LOCKED in docs/PLAYFEEL01-EVENT-BRIEFS.md. Worker must not invent persistent rewards or fake NPC clues.
   - User explicitly wants Controller to catch fundamental game fun defects via code research and bounded auto play rather than depending on repeated screenshots. WorkBuddy implements, tests and supplies actual replayable game traces.
   - Source currently has only LIVEDEPLOY01 documentation in HOLD. Production tianfu2 was reportedly already deployed from PLAYUX01, but there is no verified CloudBase database backup. This task must NEVER update production.
   - Protect main and dev. Use only work branch wb-PLAYFEEL01, prepare LAST_RESULT and return for Controller acceptance. No automatic follow up or deployment.
