@@ -1,0 +1,49 @@
+id: LIVEDEPLOY01
+title: LIVEDEPLOY01 - Backup current CloudBase then replace tianfu2 once
+phase: 2
+verificationProfile: fast-lane
+executionProfile: credit-efficient
+requiredContracts: []
+optionalContracts: []
+blockers: []
+inspect_first:
+  - .codex/control/PROTOCOL.md
+  - .codex/control/NEXT_TASK.yaml
+  - docs/LIVEDEPLOY01-BACKUP-DEPLOY-RUNBOOK.md
+  - docs/ROLLPREP01-R1-CONTROLLER-REVIEW.md
+  - .codex/control/TOOLING_RUNBOOK.md
+  - cloudfunctions/tianfu2/index.js
+  - cloudfunctions/tianfu2/package.json
+  - server/src/cloudbase-store.ts
+allowedScope:
+  - Follow the Controller-authored docs/LIVEDEPLOY01-BACKUP-DEPLOY-RUNBOOK.md as the sole operational design and user authorization. User explicitly chose direct overwrite of existing tianfu2 instead of separate testing environment.
+  - Confirm existing environment identity and current function version and stop if target is ambiguous.
+  - Securely produce and verify recoverable existing Cloud Function package backup and consistent as-supported exports or snapshots of all existing four CloudBase collections before uploading new code. If backup cannot be verified stop BLOCKED_BACKUP.
+  - Safely stage the exactly approved git tianfu2 function/runtime with the already verified Node16 SDK dependencies without changing tracked sources.
+  - Upload and deploy the single existing tianfu2 cloud function only after successful backup and exact identity gates. Bound upload attempts and confirm remote runtime source by readback when available.
+  - If fatal failure occurs and the original function backup is valid perform bounded code-only rollback of tianfu2 and verify. Never restore or modify database content.
+  - Report actual backup manifests, cloud function version/proof, compiler outcome, risks, and an accurate final deploy/blocked status in WorkBuddy chat, then stop.
+forbiddenScope:
+  - deploying-without-complete-verified-backups
+  - new-cloud-environment-or-new-cloud-function
+  - unapproved-paid-resources
+  - live-database-write-delete-migration-or-restore
+  - changing-cloud-database-security-rules
+  - reading-player-records-into-chat-or-git
+  - reproducing-or-sharing-private-player-data
+  - changing-product-code-or-gameplay-versions
+  - changing-cloud-node-runtime-or-timeout
+  - modifying-main-or-dev-branch
+  - any-git-commit-or-push
+  - deploying-original-v1-pages
+  - production-gameplay-RPC-or-active-user-action
+  - 600-run-simulation-or-aggregate-test
+  - repeated-unbounded-network-retries
+  - automatic-follow-up-task
+accept:
+  - Backup-first gate has actual independently verifiable local backup artifacts for the original function and all existing four collections with secure paths, timestamps, manifest hashes and a restore route. Otherwise no cloud deploy takes place.
+  - Deployment changes only tianfu2 to accepted PLAYUX01 version in the original verified environment; all other cloud functions and data remain unchanged by WorkBuddy.
+  - Cloud reported function version and source-identity proof distinguish successful deploy from inconclusive status. Appropriate code rollback happens only on verified fatal fault.
+  - Only a bounded local DevTools compile and metadata/read-only smoke are attempted and the results are reported honestly, with old-save semantics and replay limitations retained.
+  - No new product system, no feature code, no database migration/restore, no Git commits, no billable environment or purchase.
+tests: [backup-integrity, old-function-restorable, staged-runtime-node16-closure, remote-function-identity, optional-single-devtools-compile]

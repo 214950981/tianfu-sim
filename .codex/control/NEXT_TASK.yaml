@@ -1,11 +1,11 @@
 version: 1
-status: HOLD
+status: READY
 attempt: 1
-taskId: ROLLPREP01_R1
-title: ROLLPREP01-R1 - Bounded evidence-only rollout safety gates
-taskDefinition: .codex/tasks/ROLLPREP01_R1.yaml
+taskId: LIVEDEPLOY01
+title: LIVEDEPLOY01 - Backup current CloudBase then replace tianfu2 once
+taskDefinition: .codex/tasks/LIVEDEPLOY01.yaml
 sourceBranch: dev/tianfu-2.0
-workBranch: wb-ROLLPREP01-R1
+workBranch: wb-LIVEDEPLOY01
 worktreeRequired: false
 allowSyntheticTreeBase: false
 basePolicy: remote-source-head-at-task-start
@@ -13,7 +13,7 @@ verificationProfile: fast-lane
 executionProfile: credit-efficient
 execution:
   readProtocolFirst: true
-  workBuddyMayImplement: false
+  workBuddyMayImplement: true
   commitTaskResult: false
   pushWorkBranch: false
   updateSourceBranch: false
@@ -26,44 +26,25 @@ execution:
   maxPushAttempts: 0
   prohibitUnboundedRetryLoops: true
 controllerReview:
-  previousTask: ROLLPREP01
-  previousStatus: PREFLIGHT_COMPLETED_NOT_READY
-  controlHeadBeforeDispatch: aebd3b6375338ab6f8334a106f876300debdb23b
-  priorEvidenceDocument: docs/ROLLPREP01-CONTROLLER-REVIEW.md
+  previousTask: ROLLPREP01_R1
+  previousStatus: EVIDENCE_TASK_COMPLETED_RELEASE_BLOCKED
+  acceptedCodeHead: 325c55563bf3fd812a8659aa1bc9d56cd6b42eaa
+  controlHeadBeforeDispatch: e404329ac857be315e29badb6db30ff4a3d88d52
 controllerIntent:
-  mode: EVIDENCE_ONLY_READ_ONLY_PREFLIGHT_SUPPLEMENT
-  authority: docs/ROLLPREP01-R1-EVIDENCE-PLAN.md
-  cloudDeploymentApproved: false
+  mode: DIRECT_REPLACE_AFTER_VERIFIED_BACKUP
+  authority: docs/LIVEDEPLOY01-BACKUP-DEPLOY-RUNBOOK.md
+  userAuthorizedOriginalCloudEnvironmentOverwrite: true
+  cloudDeploymentApproved: true
+  cloudDatabaseBackupExportApproved: true
   cloudDatabaseWritesApproved: false
-  productCodeEditsApproved: false
-  releaseDecisionReservedFor: Controller
-  nextAction: "HOLD. User must separately approve any version-isolated test environment or compatibility infrastructure code task. Existing CloudBase function must not be overwritten."
-controllerAcceptance:
-  taskId: ROLLPREP01_R1
-  reviewedDate: "2026-10-09"
-  result: EVIDENCE_TASK_COMPLETED_RELEASE_BLOCKED
-  workerResult: BLOCKED_COMPATIBILITY
-  controllerResult: BLOCKED_COMPATIBILITY_AND_UNVERIFIED_ENVIRONMENT
-  evidenceSource: "User-pasted WorkBuddy G1-G5 local report; not Git-hosted Worker file"
-  gitVerifiedCodeHead: 325c55563bf3fd812a8659aa1bc9d56cd6b42eaa
-  dispatchSourceHead: 23583a00926819154d5d07e6f98e31d350622e3a
-  report: docs/ROLLPREP01-R1-CONTROLLER-REVIEW.md
-  G1: NOT_VERIFIED_FOUR_COLLECTIONS_AND_RULES
-  G2: "Offline reported: rejected old removed optionId without mutation; refreshed options settle; same optionId may now settle different effect"
-  G3: "Offline reported old->old pass, old->new full and mid-snapshot replay fail; current live server directly reads StoredRun and does not invoke replayCommandLog"
-  G4: "Old cloud deployment snapshot reported intact; local Node16 staging closure pass; no actual rollback or database backup/restore"
-  G5: NOT_CONFIRMED_REAL_DEVTOOLS_COMPILE
-  currentContentVersionRisk: "Old and new both content01.v1 despite changed choice ids and effects; content pack checksum differs"
-  rolloutApproval: false
-  currentCloudFunctionDeploy: NOT_AUTHORIZED
-  nextWorkBuddyTaskDispatched: false
-  nextDecision: "Preserve old environment. Ask user separately before isolated preview environment or compatibility protection implementation"
-
+  cloudDatabaseRestoreApproved: false
+  separateTestingEnvironmentApproved: false
+  billableServicePurchaseApproved: false
+  nextAction: "WorkBuddy reports actual backup and deploy result; Controller independently reviews and returns control to HOLD"
 notes:
-  - User explicitly approved one bounded read-only follow-up for four collection metadata, legacy Event and CommandLog replay compatibility, rollback and actual WeChat compile.
-  - This is a deliberate operational exception to implementation protocol. No work branch creation, Git commit, Git push, LAST_RESULT or source code editing. Evidence report is in WorkBuddy chat; Controller later records outcome in Git.
-  - The report from original ROLLPREP01 already established narrow client sync and local cloud package integrity. Do not rerun or rewrite these working artifacts.
-  - Offline fixed-seed synthetic fixtures and local temporary test harnesses are allowed in a separate scratch directory; never inspect player records or send client production commands.
-  - CloudBase permissions are not established by a successful earlier gameplay session. An inaccessible read-only rule remains NOT_VERIFIED; never seek write permission as workaround.
-  - Same content01.v1 with removed option ids needs explicit in-flight and replay testing before ANY deployment approval. Report compatibility failures even if four-way state validator passes.
-  - ROLLPREP01-R1 evidence task is complete and in HOLD. No more G1-G5 reruns by default, no automatic follow-up. Existing live CloudBase function stays unchanged until user explicitly approves a safe route.
+  - User explicitly selected direct coverage of existing tianfu2 with backup instead of a second system, after being told about old-save compatibility risk.
+  - This authorization is conditional: if all existing required CloudBase collection backups and exact current function restore source cannot be verified, do NOT deploy. No unbacked overwrite.
+  - The previous ROLLPREP01-R1 evidence remains valid as a technical caveat; user knowingly chooses direct overwrite. Avoid rebuilding a versioning system or repeating lengthy testing.
+  - This is one operational execution task and exception to implementation protocol: no new worktree, git commit, push or LAST_RESULT. WorkBuddy provides one concise user-visible local report with backup manifests and cloud code proof but no private data.
+  - If the uploaded function is clearly broken, a bounded immediate rollback of cloud function code from the verified backup is authorized. Database restoration is not authorized, even in rollback.
+  - Do not create new environments or buy CloudBase products; do not modify Node version, database permissions, online player records, original v1 pages or source repo code.
