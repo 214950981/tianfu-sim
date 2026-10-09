@@ -171,6 +171,32 @@ export function resolveTimeAdvance(age: number, maxAge: number, delta: number): 
   };
 }
 
+/**
+ * PLAYUX01 (B2) — the one lifespan-ceiling ending, shared by both paths that can cross maxAge.
+ *
+ * WHAT WAS WRONG
+ * Two different code paths can spend a run's last year. Resolving an Event applies its
+ * `OUTCOME_TIME_DELTA`, and a core action applies the action's own time cost. Only the action path
+ * recorded what happened: the Event path set `status: "dying"` and nothing else, so a run that reached
+ * maxAge inside an Event entered ENDING with no `ending` and no `deathRecord` at all. The terminal
+ * sidecar is built from those fields, so the screen could not name the cause — and never would, because
+ * nothing revisits the run afterwards. That is exactly what the product spec forbids of ENDING: it must
+ * answer "when did this life end and what known direct cause ended it".
+ *
+ * WHY A SHARED HELPER RATHER THAN A SECOND LITERAL
+ * The two paths must produce the identical record, or the terminal would describe the same death two
+ * ways depending on whether the player happened to be in an Event when the year ran out. The actionId
+ * is carried only when the caller has one, which keeps the action path's record byte-identical to what
+ * it produced before this change.
+ */
+function lifespanEnding(state: GameState, commandId: string, timeAdvance: TimeAdvance, actionId: string | undefined) {
+  return {
+    status: "dying" as const,
+    ending: { endingId: "lifespan", deathCause: "lifespan" as const, sourceRef: commandId, age: timeAdvance.nextAge, factIds: [] },
+    deathRecord: { deathCauseId: "death.lifespan", category: "lifespan", age: timeAdvance.nextAge, realmId: state.run.realm.id, immediateSource: "lifespan-hard-ceiling", contributingSourceRefs: [], warningFacts: ["risk.warning.lifespan-ceiling"], sourceCommandId: commandId, trace: { resolver: "lifespan-hard-ceiling", ...(actionId === undefined ? {} : { actionId }), previousAge: timeAdvance.previousAge, actionTimeCost: timeAdvance.delta, maxAge: state.run.maxAge } }
+  };
+}
+
 function validateContext(state: GameState, context: RuleContext): void {
   if (typeof context !== "object" || context === null || typeof context.content !== "object" || context.content === null) {
     throw new ReducerError("INVALID_COMMAND", "context.invalid");
@@ -270,11 +296,7 @@ function chooseAction(state: GameState, command: Extract<GameCommand, { type: "C
       ...state.run,
       age: timeAdvance.nextAge,
       nodeIndex: safeAdd(state.run.nodeIndex, 1),
-      ...(timeAdvance.reachedMaxAge ? {
-        status: "dying" as const,
-        ending: { endingId: "lifespan", deathCause: "lifespan" as const, sourceRef: context.commandId, age: timeAdvance.nextAge, factIds: [] },
-        deathRecord: { deathCauseId: "death.lifespan", category: "lifespan", age: timeAdvance.nextAge, realmId: state.run.realm.id, immediateSource: "lifespan-hard-ceiling", contributingSourceRefs: [], warningFacts: ["risk.warning.lifespan-ceiling"], sourceCommandId: context.commandId, trace: { resolver: "lifespan-hard-ceiling", actionId: command.actionId, previousAge: timeAdvance.previousAge, actionTimeCost: timeAdvance.delta, maxAge: state.run.maxAge } }
-      } : {})
+      ...(timeAdvance.reachedMaxAge ? lifespanEnding(state, context.commandId, timeAdvance, command.actionId) : {})
     }
   };
   if (provisional.run.status === "active" && command.actionId === "cultivate" && provisional.run.identity.innateProfile !== undefined) {
@@ -392,7 +414,14 @@ function chooseEventOption(state: GameState, command: Extract<GameCommand, { typ
       ...applied.state.run,
       nodeIndex: nextNodeIndex,
       age: timeAdvance.nextAge,
-      status: applied.state.run.status === "ended" ? "ended" : timeAdvance.reachedMaxAge ? "dying" : applied.state.run.status,
+      // PLAYUX01 (B2): reaching maxAge inside an Event now records the same lifespan ending and death
+      // reason the action path does. It previously only flipped the status, leaving ENDING unable to say
+      // why the life ended — see lifespanEnding().
+      ...(applied.state.run.status === "ended"
+        ? { status: "ended" as const }
+        : timeAdvance.reachedMaxAge
+          ? lifespanEnding(applied.state, context.commandId, timeAdvance, undefined)
+          : { status: applied.state.run.status }),
       events: {
         ...eventsWithoutCurrent,
         history: [...applied.state.run.events.history, { eventId: current.eventId, nodeIndex: state.run.nodeIndex, resultTier: requestedTier, choiceId: choiceObject.id }]

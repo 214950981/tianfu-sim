@@ -449,3 +449,41 @@ page {
   font-size: 22rpx;
   color: var(--ink-muted);
 }
+
+/* ---------------------------------------------------------------- result receipt (PLAYUX01 B1) */
+
+/* The settled-result panel. A full-screen surface like the archive overlay, so a result the player has
+   not acknowledged cannot be tapped past: the only control on it is the dismissal, and the page refuses
+   a new command while it is open. It declares its own box-sizing because it has a definite size plus
+   padding, and it does not rely on the global reset for that arithmetic. */
+.result-overlay {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  flex-direction: column;
+  padding: var(--space-4);
+  background-color: var(--paper);
+  box-sizing: border-box;
+}
+
+.result-head {
+  padding-bottom: var(--space-2);
+  border-bottom: var(--hairline) solid var(--rule-strong);
+  box-sizing: border-box;
+}
+
+.result-title {
+  font-size: 32rpx;
+  color: var(--cinnabar);
+}
+
+.result-line {
+  padding: var(--space-2) 0;
+  border-bottom: var(--hairline) solid var(--rule);
+  font-size: 28rpx;
+  color: var(--ink);
+  box-sizing: border-box;
+}

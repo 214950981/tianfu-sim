@@ -236,27 +236,21 @@ test("PLAYUX01-007: authored options are worded for their scene, not by a shared
   assert.deepEqual(offenders, [], "an authored option still uses the generic wording");
 });
 
-test("PLAYUX01-008: an option's wording and the effects it settles are written together", () => {
-  // A choice that grants nothing observable would make the result surface say 此行没有明显收获 for every
-  // pick, which is exactly the flatness this task set out to remove. A real time cost counts: the spec
-  // asks for an honest no-gain, not for every option to be loud.
-  const flat = [];
-  for (const event of CONTENT01_EVENTS) {
-    if (event.choices.some((choice) => choice.id.startsWith("bind-"))) continue; // Cause origins settle a Cause
-    if (event.choices.some((choice) => choice.threatId !== undefined)) continue; // risk Events have their own tiers
+test("PLAYUX01-008: every authored option settles something observable", () => {
+  // A choice that settles literally nothing would make the result surface say 此行没有明显收获 for every
+  // pick, which is exactly the flatness this task set out to remove. A real time cost COUNTS as
+  // observable — and this file previously said so in this very comment while asserting the opposite,
+  // which is why 追索 Events that legitimately settle time and nothing else failed here. The Controller's
+  // second review made that explicit (issue #3, B3): when no clue can be recorded, an honest time-only
+  // settlement is required, so the contract is "every option settles something", not "every option is loud".
+  const authored = CONTENT01_EVENTS.filter((event) => event.tags.includes("onboarding") || event.tags.includes("ordinary"));
+  const silent = [];
+  for (const event of authored) {
     for (const choice of event.choices) {
-      const effects = choice.outcomes.success.effects;
-      const observable = effects.some((effect) => effect.op !== "OUTCOME_TIME_DELTA");
-      if (!observable) flat.push(`${event.id}/${choice.id}`);
+      if (choice.outcomes.success.effects.length === 0) silent.push(`${event.id}/${choice.id}`);
     }
   }
-  // The authored onboarding and ordinary sets must always have at least one option that changes something.
-  const authored = CONTENT01_EVENTS.filter((event) => event.tags.includes("onboarding") || event.tags.includes("ordinary"));
-  for (const event of authored) {
-    const anyObservable = event.choices.some((choice) => choice.outcomes.success.effects.some((effect) => effect.op !== "OUTCOME_TIME_DELTA"));
-    assert.ok(anyObservable, `${event.id} offers no option with an observable effect`);
-  }
-  assert.ok(Array.isArray(flat), "the flat list must be computable");
+  assert.deepEqual(silent, [], "no authored option may settle nothing at all");
 });
 
 // ================================================================ C. the receipt is the truth
@@ -381,10 +375,18 @@ test("PLAYUX01-015: every death cause the engine can emit has Chinese copy", () 
 test("PLAYUX01-016: the ending screen does not report zeroes for a run with no sidecar yet", () => {
   // buildPublicTerminal() returns undefined until the sidecar exists, so an ENDING can carry no lifeBook.
   // Reporting 0 往事 / 0 故人 would be a verdict the server never returned, which the spec forbids.
+  //
+  // PLAYUX01 second pass (B2): the ending no longer merely hides the row — it explains itself, and the
+  // counts it shows when the sidecar does exist come from the shared basis the life book and the rebirth
+  // card also read, so one run cannot report different numbers on different screens.
   const page = read("miniprogram/pages/v2-live/v2-live.wxml");
-  const endingRow = '因果已成定局，{{vm.terminal.lifeBook.eventsCount}} 件往事';
-  assert.ok(page.includes(`wx:if="{{vm.terminal.lifeBook.hasLifeBook}}" class="body-text">${endingRow}`), "the ENDING count row must be guarded by hasLifeBook");
-  assert.ok(page.includes('wx:if="{{vm.terminal.lifeBook.hasLifeBook}}" class="card">'), "the LIFE_BOOK counts card must be guarded too");
+  assert.ok(
+    page.includes('wx:if="{{!vm.terminal.lifeBook.hasLifeBook}}" class="body-text">此生记录整理中'),
+    "the ENDING must explain an absent record rather than counting zeroes"
+  );
+  const countRow = '此生留下 {{vm.terminal.lifeBook.counts.experiences}} 件往事';
+  assert.ok(page.includes(`wx:if="{{vm.terminal.lifeBook.hasLifeBook}}" class="body-text">${countRow}`), "the ENDING count row must be guarded by hasLifeBook");
+  assert.ok(page.includes('wx:if="{{vm.terminal.lifeBook.hasLifeBook}}" class="bounded"'), "the LIFE_BOOK timeline must be guarded too");
 });
 
 test("PLAYUX01-017: the terminal render model distinguishes no-sidecar from an empty life", () => {
@@ -399,9 +401,11 @@ test("PLAYUX01-017: the terminal render model distinguishes no-sidecar from an e
   assert.equal(empty.lifeBook.hasLifeBook, false, "an empty lifeBook must not read as a populated one");
   const populated = sandbox.buildTerminal({ stage: "LIFE_BOOK", version: 1, lifeBook: { events: [{}, {}], people: [{}], builds: [] } }, "LIFE_BOOK");
   assert.equal(populated.lifeBook.hasLifeBook, true);
-  assert.equal(populated.lifeBook.eventsCount, 2);
-  assert.equal(populated.lifeBook.peopleCount, 1);
-  assert.equal(populated.lifeBook.buildsCount, 0, "a real zero is still reported once the sidecar exists");
+  // PLAYUX01 second pass (B2): the counts moved onto one shared object, so ENDING, LIFE_BOOK and
+  // REBIRTH_RESULT read the same numbers instead of three separately-computed ones.
+  assert.equal(populated.lifeBook.counts.experiences, 2);
+  assert.equal(populated.lifeBook.counts.people, 1);
+  assert.equal(populated.lifeBook.counts.paths, 0, "a real zero is still reported once the sidecar exists");
 });
 
 // ================================================================ E. the accepted tests this constrains

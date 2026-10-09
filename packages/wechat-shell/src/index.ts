@@ -716,13 +716,54 @@ export function parsePublicViewModel(value: unknown, path = "PublicViewModel"): 
   return value as PublicViewModel;
 }
 
+/**
+ * PLAYUX01 (B1) — reads the authoritative receipt's `domainEffects` / `narrative` off a confirmed
+ * `sendCommand` result.
+ *
+ * WHY THIS WAS MISSING
+ * The server has carried a real receipt since PLAYUX01 stage C: `command-gateway.ts` attaches
+ * `domainEffects` (one line per effect the reducer actually applied) and `narrative` (the settled
+ * eventId, the taken choiceId, the applied tier, and whether anything measurable changed). The client
+ * threw all of it away here and returned only `{ok, commandId, stateVersion}`, so `runIntent()` had
+ * nothing to project and the player never saw what their choice did. The result surface was therefore
+ * impossible to build upstream of this function, no matter what the page rendered.
+ *
+ * WHY IT IS NOT A WHOLESALE PASS-THROUGH
+ * The point of the boundary is that a client reads published facts, not server internals. Everything
+ * returned here is still scanned by `assertNoServerSecrets`, the same guard `parseRunOfferResult` uses,
+ * so a leaked rootSeed or a hidden Cause fails the whole response rather than riding along inside an
+ * otherwise-innocent receipt. The receipt is also *not* trusted to describe a change the published view
+ * contradicts: it is the settled state's own account, and the caller compares the two.
+ *
+ * WHY AN ABSENT RECEIPT IS NORMAL, NOT AN ERROR
+ * The field is optional in `CommandResult` and older server deployments do not send it. Returning
+ * `undefined` lets the page say "本次选择已完成" instead of inventing a result, which is the same
+ * conservative fallback the spec asks for when the receipt is unavailable.
+ */
+function parseReceipt(result: Record<string, unknown>): { domainEffects?: unknown[]; narrative?: Record<string, unknown> } {
+  const receipt: { domainEffects?: unknown[]; narrative?: Record<string, unknown> } = {};
+  if (result.domainEffects !== undefined) {
+    const effects = rpcArray(result.domainEffects, "sendCommand result.domainEffects");
+    // Scanned, not merely type-checked: a receipt is server output, but "the server would never send a
+    // secret" is exactly the assumption this boundary exists to stop depending on.
+    assertNoServerSecrets(effects, "sendCommand result.domainEffects");
+    receipt.domainEffects = effects;
+  }
+  if (result.narrative !== undefined) {
+    const narrative = rpcRecord(result.narrative, "sendCommand result.narrative");
+    assertNoServerSecrets(narrative, "sendCommand result.narrative");
+    receipt.narrative = narrative;
+  }
+  return receipt;
+}
+
 /** Validates a `CommandResult`. The controller never sees an unvalidated settlement wrapper. */
 function parseCommandResult(value: unknown): CommandResult {
   const result = rpcRecord(value, "sendCommand result");
   if (typeof result.ok !== "boolean") throw new TransportProtocolError("sendCommand result.ok must be a boolean");
   const commandId = rpcString(result.commandId, "sendCommand result.commandId");
   const stateVersion = rpcInteger(result.stateVersion, "sendCommand result.stateVersion");
-  if (result.ok === true) return { ok: true, commandId, stateVersion };
+  if (result.ok === true) return { ok: true, commandId, stateVersion, ...parseReceipt(result) };
   const error = rpcRecord(result.error, "sendCommand result.error");
   const code = rpcString(error.code, "sendCommand result.error.code");
   if (!applicationErrorCodes.includes(code)) throw new TransportProtocolError("sendCommand result.error.code is not an application error code");

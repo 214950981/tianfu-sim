@@ -1,7 +1,7 @@
 // GENERATED FILE — DO NOT HAND-EDIT.
 //
 // Source of truth: packages/core/src/state.ts
-// Source sha256:   6f8de988732d02014afa9c6906a6082cfb5a5d8300cca0d57e872f94c33bebc7
+// Source sha256:   b35376ca612b8eb08d29cc07e79f46993545d095af1caf792dbfd9a899e20ee6
 // Generator:       tools/ui04d-cloud-runtime-artifact.mjs
 // Regenerate:      node tools/ui04d-cloud-runtime-artifact.mjs --write
 //
@@ -88,7 +88,10 @@ const DEATH_CAUSES = ["lifespan", "combat", "ambush", "exploration", "poison", "
                                                                         
                                                                                                                                              
                                                                                         
-                                                                                                                                                                                                                                                                                                          
+                                                                                                         
+                                                                                                           
+                                                                                      
+                                                                                                                                                                                                                                                                                                                             
                                                   
                                                                                                             
                                                                                                                                                                                                                                                                                                                                              
@@ -290,9 +293,11 @@ function validateRun(value         , path        , rulesVersion        )        
       }
     }
   }
+  // PLAYUX01: choiceId is optional, so an older save without it still validates. It is deliberately not
+  // added to the required set — a missing choice must degrade to "此前选择未记录", never fail the load.
   for (const [index, entry] of array(events.history, `${path}.events.history`).entries()) {
     const event = record(entry, `${path}.events.history[${index}]`);
-    stringValue(event.eventId, `${path}.events.history[${index}].eventId`); integer(event.nodeIndex, `${path}.events.history[${index}].nodeIndex`, 0); optionalString(event, "resultTier", `${path}.events.history[${index}]`);
+    stringValue(event.eventId, `${path}.events.history[${index}].eventId`); integer(event.nodeIndex, `${path}.events.history[${index}].nodeIndex`, 0); optionalString(event, "resultTier", `${path}.events.history[${index}]`); optionalString(event, "choiceId", `${path}.events.history[${index}]`);
   }
   if (events.occurrences !== undefined) for (const [eventId, raw] of Object.entries(record(events.occurrences, `${path}.events.occurrences`))) {
     if (eventId.length === 0) invalid(`${path}.events.occurrences`, "eventId keys must be non-empty");

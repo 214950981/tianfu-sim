@@ -116,6 +116,14 @@ var REALM_LABELS = {
 };
 var RISK_TIER_LABELS = { "low": "低险", "caution": "宜慎", "dangerous": "危险", "lethal": "凶险" };
 var RISK_TIER_CLASS = { "low": "risk-low", "caution": "risk-caution", "dangerous": "risk-dangerous", "lethal": "risk-lethal" };
+/**
+ * PLAYUX01 (B1) — the resource keys the receipt can name. The server sends the raw resource key
+ * (`spiritStone`) beside a generic `result.resource` label, because one label cannot name which pool
+ * moved. This table is the missing half, and it is deliberately small: it lists only pools the
+ * engine's registered effects can actually change, so a new pool surfaces as its key rather than as a
+ * plausible wrong name.
+ */
+var RESOURCE_LABELS = { "spiritStone": "灵石" };
 var DESTINY_PROFILE_LABELS = { "stable": "稳", "high-variance": "变", "story-hook": "缘" };
 var ENTRY_KIND_LABELS = { "event": "事件", "build": "道途" };
 var PAGE_STATE_LABELS = {
@@ -206,8 +214,11 @@ var PAGE_CONTENT_COPY = {
  * "lifespan-hard-ceiling". Every value the engine can currently emit is listed here, taken from
  * reducer.ts:275-276 and risk-v1.ts:48-56 rather than guessed.
  *
- * An id absent from this table still falls through to the raw id on purpose: an untranslated enum is a
- * missing catalog entry, and showing it makes that visible instead of silently rendering a blank.
+ * PLAYUX01 (B4): a value absent from this table is no longer printed verbatim. `presentTerminalLabel`
+ * substitutes the conservative 「原因尚未明确」 for a death cause and 「详情暂不可用」 for any other
+ * terminal row, which is what the locked spec requires of a player-facing surface. The table itself is
+ * still the completeness record, so a new engine enum is a missing entry that a test catches rather
+ * than a raw id that a player reads.
  */
 var TERMINAL_LABELS = {
   "lifespan": "寿元已尽",
@@ -268,6 +279,36 @@ function presentLabel(table, value) {
   var label = table[value];
   return typeof label === "string" && label.length > 0 ? label : value;
 }
+
+/**
+ * PLAYUX01 (B4) — resolves a *terminal* enum to a player-facing string, with a conservative fallback.
+ *
+ * WHY THIS IS A SECOND FUNCTION AND NOT A CHANGE TO `presentLabel`
+ * `presentLabel` deliberately falls through to the raw key, and `LIVEFIX06_surfaces` pins that: an
+ * unknown key must stay visible so a missing catalog entry is catchable in development rather than
+ * silently swallowed. That is correct for content copy and it stays exactly as it was.
+ *
+ * The terminal surface is different, and the locked spec says so explicitly (§7): an unknown key is
+ * caught in tests and logs, and *presented to the player* conservatively instead of as internal
+ * encoding. The screenshots behind this task are a player reading `lifespan-hard-ceiling`. So the
+ * conservative behaviour is scoped to the one surface the spec names, and development keeps its signal
+ * because the underlying table is still miss-detectable — `tests/playux01.test.mjs` asserts every
+ * reachable engine enum resolves, so a new enum fails a test rather than reaching a screen.
+ *
+ * The fallback is a neutral phrase, never a known cause: mapping an unrecognised id onto
+ * 「寿元已尽」 would state a death reason the engine did not publish, which is worse than admitting
+ * the reason is unclear.
+ */
+function presentTerminalLabel(table, value, missLabel) {
+  if (typeof value !== "string" || value.length === 0) return "";
+  var label = table[value];
+  if (typeof label === "string" && label.length > 0) return label;
+  return typeof missLabel === "string" && missLabel.length > 0 ? missLabel : "详情暂不可用";
+}
+
+/** The conservative wording for a terminal row whose server enum has no entry in `TERMINAL_LABELS`. */
+var TERMINAL_UNKNOWN_DEATH = "原因尚未明确";
+var TERMINAL_UNKNOWN_DETAIL = "详情暂不可用";
 
 // ---------------------------------------------------------------- read guards
 
@@ -349,11 +390,20 @@ function buildArchive(archive) {
   return {
     runName: str(archive.runName),
     history: arr(archive.history).map(function (entry) {
+      var data = record(entry.data);
+      var eventId = str(data.eventId);
+      var choiceId = str(data.choiceId);
+      // PLAYUX01 (B2): the live archive used to show only a title and a summary, so a player reading
+      // their own journal could not see what they had chosen. `history.data.choiceId` has been projected
+      // since stage C, so the taken option is named when the save recorded one. An older save has no
+      // choiceId and the row says the choice was not recorded instead of inventing one.
       return {
         entryId: str(entry.entryId),
         kindLabel: presentLabel(ENTRY_KIND_LABELS, str(entry.kind)),
         title: presentLabel(CONTENT_COPY, str(entry.titleKey)),
-        summary: presentLabel(CONTENT_COPY, str(entry.summaryKey))
+        summary: presentLabel(CONTENT_COPY, str(entry.summaryKey)),
+        hasChoice: choiceId.length > 0,
+        choiceLabel: choiceId.length > 0 && eventId.length > 0 ? (resolveCopy(eventId + ".choice." + choiceId) || TERMINAL_UNKNOWN_DETAIL) : ""
       };
     }),
     causes: arr(archive.causes).map(function (cause) {
@@ -374,13 +424,70 @@ function buildArchive(archive) {
 }
 
 /**
+ * PLAYUX01 (B1) — projects the authoritative settled receipt into the "本次结果" panel.
+ *
+ * WHERE THE DATA COMES FROM, AND WHY NOTHING ELSE WILL DO
+ * The spec ranks the sources: the settled receipt first, then a diff of the public view across the
+ * submission, then a minimal additive projection. This function only implements the first rank, and it
+ * is enough: `server/src/command-gateway.ts` builds `domainEffects` out of `output.effects`, which is
+ * exactly the list `applyEventEffects` pushed into `publicEffects` while settling. So every number here
+ * is the settlement's own account of itself, not a client guess about what an option ought to give.
+ *
+ * WHAT A ZERO-LINE RECEIPT MEANS
+ * It is a true statement, not a missing one. An option can cost real time and gain nothing measurable —
+ * `OUTCOME_TIME_DELTA` is a registered op, so the line list is legitimately empty and `changed` is
+ * false. The panel then says 「此行没有明显收获」 rather than inventing a reward. That is the same
+ * honesty the spec requires when nothing moved.
+ *
+ * WHAT IS DELIBERATELY NOT SHOWN
+ * No roll, no tier odds, no hidden cause id, no NPC affinity number. `narrative.appliedTier` is carried
+ * only so a caller could compare runs; it is not rendered. The receipt cannot leak what the server did
+ * not put in it, and the transport boundary refuses a response that does.
+ */
+function buildResultReceipt(receipt) {
+  if (receipt === null || receipt === undefined) return null;
+  var effects = arr(receipt.domainEffects);
+  var narrative = record(receipt.narrative);
+  var lines = [];
+  var index;
+  for (index = 0; index < effects.length; index += 1) {
+    var effect = record(effects[index]);
+    var kind = str(effect.kind);
+    var label = str(effect.labelKey).length > 0 ? presentLabel(CONTENT_COPY, str(effect.labelKey)) : "";
+    var text = "";
+    if (kind === "cultivation" && typeof effect.delta === "number") text = label + " +" + effect.delta;
+    else if (kind === "resource" && typeof effect.delta === "number") {
+      var pool = RESOURCE_LABELS[str(effect.resource)];
+      text = (typeof pool === "string" && pool.length > 0 ? pool : label) + " +" + effect.delta;
+    } else if (kind === "build" && typeof effect.delta === "number") text = label + " +" + effect.delta;
+    else if (kind === "time" && typeof effect.years === "number") text = label + " +" + effect.years + " 年";
+    else text = label;
+    if (text.length === 0) continue;
+    lines.push({ key: kind + ":" + index, text: text });
+  }
+  // `changed` is the server's own verdict, but a line the client could render is also proof something
+  // moved. Either is enough; claiming no gain while holding a rendered line would contradict itself.
+  var changed = narrative.changed === true || lines.length > 0;
+  return {
+    heading: presentLabel(CONTENT_COPY, "result.heading"),
+    changed: changed,
+    lines: lines,
+    noGainText: changed ? "" : presentLabel(CONTENT_COPY, "result.no_gain")
+  };
+}
+
+/**
  * Projects the controller's page model + authoritative view into what the page renders.
  *
  * Pure presentation: every field is either a server-projected value or a label for one. The banner is
  * the client's *own* transport state (submitting / retryable / fatal / conflict), which the page is
  * allowed to report, and which is read from `controller.submission()` rather than invented.
+ *
+ * PLAYUX01 (B1): `receipt` is the settled CommandResult of the most recent confirmed submission, or
+ * null. It is threaded in rather than stored in a module global so the render model stays a pure
+ * function of its inputs and a test can drive it without a page instance.
  */
-function buildRenderModel(controller, notice) {
+function buildRenderModel(controller, notice, receipt) {
   var model = controller.pageModel();
   var view = controller.view();
   var run = record(view === undefined ? null : view.state.publicRun);
@@ -396,12 +503,19 @@ function buildRenderModel(controller, notice) {
   else if (submission.interactionState === "fatalError") banner = { kind: "fatal", text: "服务器拒绝了这条命令，本地不会自行修正规则状态。" };
   else if (typeof notice === "string" && notice.length > 0) banner = { kind: "notice", text: notice };
 
+  // PLAYUX01 (B1): the result panel is only ever built from a receipt this page actually received from
+  // a confirmed settlement. A refused, conflicted or retried submission leaves it null and the panel
+  // does not render, so there is no path by which a second, invented receipt can appear.
+  var result = buildResultReceipt(receipt);
+
   return {
     pageState: pageState,
     pageStateLabel: presentLabel(PAGE_STATE_LABELS, pageState),
     runStatus: model.runStatus,
     stateVersion: model.stateVersion,
     locked: model.shell.interactionLocked === true,
+    hasResult: result !== null,
+    result: result,
     archiveOpen: model.archiveOpen === true,
     archive: model.archiveOpen === true ? buildArchive(model.archive) : null,
     banner: banner,
@@ -433,8 +547,125 @@ function buildRenderModel(controller, notice) {
   };
 }
 
+/**
+ * PLAYUX01 (B2) — resolves a Content01 copy key, returning "" on a miss.
+ *
+ * `presentLabel` deliberately returns the key when it misses, which is the right signal for a
+ * diagnostic surface but not for a player-facing retrospective: a life-book row must not read
+ * `content01.ordinary.mountain-view.body`. Here a miss is an absence, and the caller decides whether an
+ * absence means "omit this row" or "say it is unavailable".
+ */
+function resolveCopy(key) {
+  if (typeof key !== "string" || key.length === 0) return "";
+  var label = CONTENT_COPY[key];
+  return typeof label === "string" && label.length > 0 ? label : "";
+}
+
+/**
+ * PLAYUX01 (B2) — the four Build stages in the player's language.
+ *
+ * The stage comes from the authoritative Build pack (`build-v1.ts` thresholds: latent 0–1999,
+ * emerging 2000–4499, formed 4500–7499, refined 7500–10000) and is already resolved server-side onto
+ * `lifeBook.builds[].stage`. The client only names it. This is deliberately separate from the per-track
+ * `labelKey` wording ("剑意未明" etc.): that phrase is the track's flavour, whereas this is the
+ * cross-track progress word the spec asks for, so 潜藏 can never be read as 已成形.
+ */
+var BUILD_STAGE_LABELS = { "latent": "潜藏", "emerging": "萌芽", "formed": "成形", "refined": "圆熟" };
+
+/** A person's public acquaintance state, in Chinese. Unknown values are named, not printed raw. */
+var NPC_STATUS_LABELS = { "unknown": "尚未详知", "alive": "在世", "departed": "已离去", "missing": "下落不明", "dead": "已故" };
+
+/**
+ * PLAYUX01 (B2) — builds the ordered, evidence-grounded turning-point list.
+ *
+ * Every row comes from `lifeBook.events`, which the server projects straight off `run.events.history`
+ * (`viewmodel.ts` buildPublicTerminal). Each history entry carries `eventId`, `nodeIndex` and — only
+ * since PLAYUX01 stage C — an optional `choiceId`. So this function can do exactly two things and no
+ * more: name the Event from the real pack, and state which option was taken **when the save recorded
+ * one**. An older save has no `choiceId`, and the row then says the choice was not recorded rather than
+ * reconstructing it. That distinction is the whole point of the spec's "旧档若无选择字段，显示'此前选择
+ * 未记录'，不可倒推".
+ *
+ * A row also carries the Event's own body as the "what happened" line. It is the pack's published
+ * one-sentence account, not a client narration: the page never writes prose about a run.
+ */
+function buildTimeline(lifeBook) {
+  var events = arr(lifeBook.events);
+  var timeline = [];
+  for (var index = 0; index < events.length; index += 1) {
+    var entry = record(events[index]);
+    var eventId = str(entry.eventId);
+    if (eventId.length === 0) continue;
+    var choiceId = str(entry.choiceId);
+    var title = resolveCopy(eventId + ".title");
+    var body = resolveCopy(eventId + ".body");
+    timeline.push({
+      key: str(entry.entryId).length > 0 ? str(entry.entryId) : "timeline:" + index,
+      order: num(entry.nodeIndex, index),
+      title: title.length > 0 ? title : TERMINAL_UNKNOWN_DETAIL,
+      body: body,
+      // `hasChoice` is about the *save*, `choiceLabel` is about the *catalog*. They are reported apart
+      // so a merely untranslated option reads as unavailable rather than as a choice never made.
+      hasChoice: choiceId.length > 0,
+      choiceLabel: choiceId.length > 0 ? (resolveCopy(eventId + ".choice." + choiceId) || TERMINAL_UNKNOWN_DETAIL) : ""
+    });
+  }
+  return timeline;
+}
+
+/** PLAYUX01 (B2) — public people, with a named status and no invented acquaintanceship. */
+function buildPeopleRows(lifeBook) {
+  return arr(lifeBook.people).map(function (person) {
+    var entry = record(person);
+    return {
+      npcId: str(entry.npcId),
+      displayName: str(entry.displayName),
+      statusLabel: presentTerminalLabel(NPC_STATUS_LABELS, str(entry.knownStatus), TERMINAL_UNKNOWN_DETAIL)
+    };
+  });
+}
+
+/** PLAYUX01 (B2) — public tracks with their true stage. Uses the server's own `displayName` for the
+ *  track name rather than deriving Chinese from the internal id, which the spec forbids. */
+function buildTrackRows(lifeBook) {
+  return arr(lifeBook.builds).map(function (build) {
+    var entry = record(build);
+    var displayName = str(entry.displayName);
+    return {
+      buildId: str(entry.buildId),
+      name: displayName.length > 0 ? displayName : TERMINAL_UNKNOWN_DETAIL,
+      stageLabel: presentTerminalLabel(BUILD_STAGE_LABELS, str(entry.stage), TERMINAL_UNKNOWN_DETAIL),
+      dominant: entry.dominant === true
+    };
+  });
+}
+
+/** PLAYUX01 (B2) — public causes. `level` distinguishes a named cause from a hinted one, which is what
+ *  keeps a hinted cause from reading as a settled fact. */
+function buildCauseRows(lifeBook) {
+  var causes = arr(lifeBook.causes);
+  var rows = [];
+  for (var index = 0; index < causes.length; index += 1) {
+    var entry = record(causes[index]);
+    var level = str(entry.level);
+    var summary = resolveCopy(str(entry.summaryKey));
+    rows.push({
+      key: str(entry.publicId).length > 0 ? str(entry.publicId) : "cause:" + index,
+      levelLabel: level === "explicit" ? "明确" : "隐约",
+      text: summary.length > 0 ? summary : TERMINAL_UNKNOWN_DETAIL
+    });
+  }
+  return rows;
+}
+
 /** UI04E — projects the server-published terminal slice to a render model. Never invents a field:
- *  a value the server did not publish is omitted, so a missing sidecar renders as an empty block. */
+ *  a value the server did not publish is omitted, so a missing sidecar renders as an empty block.
+ *
+ *  PLAYUX01 (B2): ENDING, LIFE_BOOK and REBIRTH_RESULT now read one `counts` object computed from the
+ *  same `lifeBook` arrays, so the same run cannot report 11 experiences on one screen and 0 on another.
+ *  The 11/4/2-vs-0/0/0 screenshots were exactly that: ENDING rendered nothing at all before the sidecar
+ *  existed, while LIFE_BOOK rendered real numbers, and nothing said which was true.
+ */
 function buildTerminal(terminal, pageState) {
   if (terminal === null) return null;
   var lifeBook = record(terminal.lifeBook);
@@ -446,6 +677,20 @@ function buildTerminal(terminal, pageState) {
   // summarised yet. hasLifeBook is therefore false and the counts stay hidden rather than showing zeroes;
   // the same guard covers the ending and death rows, whose raw keys would otherwise be printed verbatim.
   var hasLifeBook = Object.keys(lifeBook).length > 0;
+  var lifeEvents = arr(lifeBook.events);
+  var lifePeople = arr(lifeBook.people);
+  var lifeBuilds = arr(lifeBook.builds);
+  var lifeCauses = arr(lifeBook.causes);
+  // ONE counting basis, three screens. `paths` counts every track the run touched (including 潜藏);
+  // `formed` counts only tracks the server marked dominant. The two are different numbers and are
+  // labelled differently on screen, which is what the spec requires instead of silently reusing a word.
+  var counts = {
+    experiences: lifeEvents.length,
+    people: lifePeople.length,
+    paths: lifeBuilds.length,
+    formed: lifeBuilds.filter(function (build) { return record(build).dominant === true; }).length,
+    causes: lifeCauses.length
+  };
   return {
     stage: str(terminal.stage),
     version: num(terminal.version, 0),
@@ -458,28 +703,29 @@ function buildTerminal(terminal, pageState) {
       runName: str(lifeBook.runName),
       age: num(lifeBook.age, 0),
       maxAge: num(lifeBook.maxAge, 0),
-      realm: str(record(lifeBook.realm).id),
-      buildsCount: Array.isArray(lifeBook.builds) ? lifeBook.builds.length : 0,
-      peopleCount: Array.isArray(lifeBook.people) ? lifeBook.people.length : 0,
-      eventsCount: Array.isArray(lifeBook.events) ? lifeBook.events.length : 0,
-      causesCount: Array.isArray(lifeBook.causes) ? lifeBook.causes.length : 0,
+      realm: presentLabel(REALM_LABELS, str(record(lifeBook.realm).id)),
+      counts: counts,
+      timeline: buildTimeline(lifeBook),
+      peopleRows: buildPeopleRows(lifeBook),
+      trackRows: buildTrackRows(lifeBook),
+      causeRows: buildCauseRows(lifeBook),
       hasEnding: typeof lifeBook.ending === "object" && lifeBook.ending !== null,
       hasDeath: typeof lifeBook.death === "object" && lifeBook.death !== null,
-      // PLAYUX01: both ids are server enums, so they are translated here. An unknown id still falls
-      // through to the raw id, which is the honest signal that the catalog is missing an entry.
-      endingId: presentLabel(TERMINAL_LABELS, str(record(lifeBook.ending).endingId)),
-      deathCause: presentLabel(TERMINAL_LABELS, str(record(lifeBook.death).directCause))
+      endingId: presentTerminalLabel(TERMINAL_LABELS, str(record(lifeBook.ending).endingId), TERMINAL_UNKNOWN_DETAIL),
+      deathCause: presentTerminalLabel(TERMINAL_LABELS, str(record(lifeBook.death).directCause), TERMINAL_UNKNOWN_DEATH)
     },
     rebirth: {
       completedRunId: str(rebirth.completedRunId),
       runName: str(rebirth.runName),
       finalAge: num(rebirth.finalAge, 0),
-      finalRealm: str(record(rebirth.finalRealm).id),
-      endingId: presentLabel(TERMINAL_LABELS, str(rebirth.endingId)),
-      deathCause: presentLabel(TERMINAL_LABELS, str(rebirth.deathCause)),
-      peopleMet: num(rebirth.peopleMet, 0),
-      buildsFormed: num(rebirth.buildsFormed, 0),
-      eventsExperienced: num(rebirth.eventsExperienced, 0),
+      finalRealm: presentLabel(REALM_LABELS, str(record(rebirth.finalRealm).id)),
+      endingId: presentTerminalLabel(TERMINAL_LABELS, str(rebirth.endingId), TERMINAL_UNKNOWN_DETAIL),
+      deathCause: presentTerminalLabel(TERMINAL_LABELS, str(rebirth.deathCause), TERMINAL_UNKNOWN_DEATH),
+      // Read from the shared basis, not from the server's own counters, so REBIRTH_RESULT cannot drift
+      // from LIFE_BOOK even if the two server projections were to diverge.
+      peopleMet: counts.people,
+      buildsFormed: counts.formed,
+      eventsExperienced: counts.experiences,
       nextLifeAffordance: rebirth.nextLifeAffordance === true
     },
     nextLife: {
@@ -497,6 +743,26 @@ function buildTerminalCta(terminal, pageState) {
   if (pageState === "LIFE_BOOK") return { label: "转生结果", action: "advance-to-rebirth-result" };
   if (pageState === "REBIRTH_RESULT") return { label: "迎来世", action: "advance-to-next-life" };
   return null;
+}
+
+/** PLAYUX01 (B1) — true only when the settled command resolved an Event option.
+ *
+ * WHY NOT "EVERY SUCCESSFUL COMMAND"
+ * The server attaches a receipt to every successful command, including START_RUN and CHOOSE_ACTION. The
+ * spec asks for the result panel on an *option settlement* — "EVENT 的选项一经服务器确认成功" — so showing
+ * it for a destiny selection or a core action would put a result screen in front of the player for
+ * something that is not a result. Worse, the panel blocks further input, so a panel after START_RUN made
+ * the very next core action unreachable; `tests/ui04c.test.mjs` caught exactly that.
+ *
+ * WHY THE RECEIPT DECIDES RATHER THAN THE PAGE
+ * `narrative.eventId` is copied from the command envelope, and only `CHOOSE_EVENT_OPTION` carries an
+ * `eventId` — `START_RUN` carries `offerId` and `CHOOSE_ACTION` carries `actionId`. So the field is a
+ * property of what actually settled rather than of what the page guessed it was doing, which also makes
+ * it correct for a retry, where the page no longer knows which intent is in flight. */
+function resolvedAnEventOption(result) {
+  if (result === null || result === undefined || result.ok !== true) return false;
+  var narrative = record(result.narrative);
+  return typeof narrative.eventId === "string" && narrative.eventId.length > 0;
 }
 
 // ---------------------------------------------------------------- page
@@ -611,19 +877,27 @@ Page({
 
   refresh: function () {
     if (this.controller === null || this.controller === undefined) return;
-    this.setData({ stage: "ready", vm: buildRenderModel(this.controller, this.notice || "") });
+    this.setData({ stage: "ready", vm: buildRenderModel(this.controller, this.notice || "", this.resultReceipt || null) });
   },
 
-  /**
-   * Runs one intent. `reconfirm` re-submits the remembered intent after a STATE_CONFLICT refresh; the
-   * submission controller mints a fresh commandId against the *latest* stateVersion, which is exactly
-   * what an explicit player reconfirmation must do. A rejected promise is not swallowed: the
-   * controller has already classified it, and `refresh()` renders that classification.
-   */
+/**
+ * Runs one intent. `reconfirm` re-submits the remembered intent after a STATE_CONFLICT refresh; the
+ * submission controller mints a fresh commandId against the *latest* stateVersion, which is exactly
+ * what an explicit player reconfirmation must do. A rejected promise is not swallowed: the
+ * controller has already classified it, and `refresh()` renders that classification.
+ *
+ * PLAYUX01 (B1): this is also where the authoritative receipt is captured, and the only place it is.
+ * The controller's `submit` already returns the full CommandResult — including the receipt the server
+ * wrote inside the settling transaction — so the page needs no second source and makes no inference.
+ */
   runIntent: function (intent, reconfirm) {
     var self = this;
     if (this.controller === null || this.controller === undefined) return;
     if (this.data.vm !== null && this.data.vm !== undefined && this.data.vm.locked === true) return;
+    // PLAYUX01 (B1): while a result panel is open the page accepts no new command. The panel describes
+    // a choice the player has not acknowledged yet; submitting here would stack a second receipt over
+    // an unread one. Dismissing is the only way forward, and dismissing submits nothing.
+    if (this.resultReceipt !== null && this.resultReceipt !== undefined) return;
     this.notice = "";
     this.setData({ "vm.locked": true });
     Promise.resolve()
@@ -631,6 +905,11 @@ Page({
       .then(function (result) {
         if (result !== undefined && result.error !== undefined && result.error.code === "STATE_CONFLICT") self.pendingIntent = intent;
         else self.pendingIntent = null;
+        // PLAYUX01 (B1): only a confirmed *option* settlement carries a receipt worth showing. A conflict,
+        // a refusal or a transport failure leaves resultReceipt null, so no panel can describe a result
+        // that did not happen; and a confirmed command that resolved no Event (a destiny selection, a core
+        // action) raises no panel either, because that is not the moment the spec asks the player to read.
+        if (resolvedAnEventOption(result)) self.resultReceipt = result;
         self.refresh();
       })
       .catch(function (error) {
@@ -639,6 +918,17 @@ Page({
         if (error !== undefined && error !== null && error.name === "IntentUnavailableError") self.notice = "该操作当前不可用：服务器未提供这一选项。";
         self.refresh();
       });
+  },
+
+  /**
+   * PLAYUX01 (B1) — closes the result panel.
+   *
+   * It submits no command on purpose: the settlement it describes is already committed, and the spec
+   * forbids re-issuing the choice on the way back to RUN_HOME. This is a pure UI dismissal.
+   */
+  onDismissResult: function () {
+    this.resultReceipt = null;
+    this.refresh();
   },
 
   onCoreAction: function (event) {
@@ -659,7 +949,16 @@ Page({
     if (this.controller === null || this.controller === undefined) return;
     Promise.resolve()
       .then(function () { return self.controller.retry(); })
-      .then(function () { self.refresh(); })
+      .then(function (result) {
+        // PLAYUX01 (B1): a retry that finally settles is a confirmed settlement, so its receipt is the
+        // one to show. The retry re-sends the *same* pending commandId, so this is the earlier choice
+        // arriving late rather than a second choice — showing it once is exactly right, and the server's
+        // idempotency record guarantees the receipt is identical to the one a first attempt would have
+        // produced. The same Event-option rule applies, read off the receipt rather than off page state,
+        // because on a retry the page no longer knows which intent is in flight.
+        if (resolvedAnEventOption(result)) self.resultReceipt = result;
+        self.refresh();
+      })
       .catch(function () { self.refresh(); });
   },
 

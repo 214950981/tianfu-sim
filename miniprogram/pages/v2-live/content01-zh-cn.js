@@ -507,11 +507,11 @@ module.exports = [
   ],
   [
     "content01.onboarding.market-choice.body",
-    "早市刚开。摊主报出的价钱比市价低了两成，可他没有说为什么低。你可以照他说的数买下，也可以压回一个公道价，或者先问问这批货的来路。"
+    "早市刚开。你把路上采得的一把草药摊在摊边，摊主报出的价钱比市价低了两成，可他没有说为什么低。你可以照他报的价卖给他，也可以压回一个公道价，或者先问清他收这批药做什么。"
   ],
   [
     "content01.onboarding.market-choice.choice.ask-source",
-    "先问清这批货的来路再决定"
+    "先问清他收这批药做什么再决定"
   ],
   [
     "content01.onboarding.market-choice.choice.haggle-fair",
@@ -519,7 +519,7 @@ module.exports = [
   ],
   [
     "content01.onboarding.market-choice.choice.take-deal",
-    "照他报的价买下，先把货拿到手"
+    "照他报的价卖给他，先把这事了结"
   ],
   [
     "content01.onboarding.market-choice.title",
@@ -691,11 +691,11 @@ module.exports = [
   ],
   [
     "content01.ordinary.market-bargain.body",
-    "行商修士摆出几味寻常药材，价钱报得干脆利落。可他真正想交换的，是一条路况消息：哪一段路近来不太平。你可以只谈药材付了灵石，也可以加进这条消息，用一个承诺换它。"
+    "行商修士摆出几味寻常药材，也收草药。价钱报得干脆利落，可他真正想交换的，是一条路况消息：哪一段路近来不太平。你可以只把随身草药作价给他，也可以加进那条消息，用一个承诺换它。"
   ],
   [
-    "content01.ordinary.market-bargain.choice.buy-herbs",
-    "只按他的价钱买下药材"
+    "content01.ordinary.market-bargain.choice.sell-herbs",
+    "只把随身草药作价给他"
   ],
   [
     "content01.ordinary.market-bargain.choice.trade-for-news",

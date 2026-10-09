@@ -59,6 +59,25 @@
         </view>
       </view>
 
+      <!-- ------------------------------------------------ 本次结果 RESULT RECEIPT (PLAYUX01 B1) -->
+      <!-- The settled command's own account of what it changed. It renders as a full-screen panel so the
+           player reads it before anything else moves, and its one control only dismisses: the settlement
+           is already committed, so returning to 在世 must not re-issue the choice. Every line here comes
+           from the authoritative receipt; when the settlement changed nothing measurable the panel says
+           so instead of inventing a gain. -->
+      <view wx:if="{{vm.hasResult}}" class="result-overlay">
+        <view class="result-head">
+          <view class="result-title">{{vm.result.heading}}</view>
+        </view>
+        <scroll-view class="overlay-body" scroll-y="true">
+          <view wx:if="{{vm.result.lines.length > 0}}">
+            <view wx:for="{{vm.result.lines}}" wx:key="key" class="result-line">{{item.text}}</view>
+          </view>
+          <view wx:else class="body-text">{{vm.result.noGainText}}</view>
+        </scroll-view>
+        <view class="cta" bindtap="onDismissResult">返回在世</view>
+      </view>
+
       <!-- ------------------------------------------------ 择命 DESTINY_OFFER -->
       <view wx:if="{{vm.isOffer}}" class="block">
         <view class="block-title">{{vm.offerTitle}}</view>
@@ -130,28 +149,66 @@
       </view>
 
       <!-- ------------------------------------------------ 终局 ENDING -->
+      <!-- PLAYUX01 (B2): ENDING answers "when did it end, why, and what did I leave behind". The counts
+           come from the same shared basis as LIFE_BOOK and REBIRTH_RESULT, so the same run cannot read
+           11 experiences here and 0 there. When the sidecar has not been written yet the screen says the
+           record is being assembled — it does not report zeroes, which would be a verdict on a life
+           nobody has summarised. -->
       <view wx:if="{{vm.isTerminal && vm.terminal && vm.terminal.isEnding}}" class="block">
-        <view class="block-title">{{vm.pageStateLabel}}</view>
+        <view class="block-title">此生已终</view>
         <view wx:if="{{vm.terminal.lifeBook.runName}}" class="body-text">{{vm.terminal.lifeBook.runName}} · {{vm.terminal.lifeBook.age}} / {{vm.terminal.lifeBook.maxAge}} · {{vm.terminal.lifeBook.realm}}</view>
-        <!-- PLAYUX01: the counts only render once the sidecar actually carries a life book. Reporting
-             0 往事 / 0 故人 / 0 道途 before then reads as a verdict on a life that has not been summarised
-             yet, so the row stays hidden until there is something true to say. -->
-        <view wx:if="{{vm.terminal.lifeBook.hasLifeBook}}" class="body-text">因果已成定局，{{vm.terminal.lifeBook.eventsCount}} 件往事、{{vm.terminal.lifeBook.peopleCount}} 位故人、{{vm.terminal.lifeBook.buildsCount}} 道道途。</view>
+        <view wx:if="{{!vm.terminal.lifeBook.hasLifeBook}}" class="body-text">此生记录整理中，卷宗尚未生成。</view>
+        <view wx:if="{{vm.terminal.lifeBook.hasLifeBook && vm.terminal.lifeBook.hasDeath}}" class="body-text">终因：{{vm.terminal.lifeBook.deathCause}}</view>
+        <view wx:if="{{vm.terminal.lifeBook.hasLifeBook}}" class="body-text">此生留下 {{vm.terminal.lifeBook.counts.experiences}} 件往事、{{vm.terminal.lifeBook.counts.people}} 位故人、{{vm.terminal.lifeBook.counts.paths}} 条道途、{{vm.terminal.lifeBook.counts.causes}} 段公开因果。</view>
         <view wx:if="{{vm.terminalCta}}" class="cta" data-action="{{vm.terminalCta.action}}" bindtap="onTerminalAdvance">{{vm.terminalCta.label}}</view>
       </view>
 
       <!-- ------------------------------------------------ 人生书 LIFE_BOOK -->
+      <!-- PLAYUX01 (B2): a retrospective, not a counter page. The turning points are the real recorded
+           Events in order, each naming what happened and — when the save recorded one — which option was
+           taken. An older save says the choice was not recorded rather than reconstructing it. -->
       <view wx:elif="{{vm.isTerminal && vm.terminal && vm.terminal.isLifeBook}}" class="block">
-        <view class="block-title">{{vm.pageStateLabel}}</view>
+        <view class="block-title">人生书</view>
         <view wx:if="{{vm.terminal.lifeBook.runName}}" class="body-text">{{vm.terminal.lifeBook.runName}} · {{vm.terminal.lifeBook.age}} / {{vm.terminal.lifeBook.maxAge}} · {{vm.terminal.lifeBook.realm}}</view>
-        <scroll-view class="bounded" scroll-y="true">
-          <view wx:if="{{vm.terminal.lifeBook.hasLifeBook}}" class="card">
-            <view class="card-title">经历</view>
-            <view class="card-row"><view class="card-key">事件</view><view class="card-value">{{vm.terminal.lifeBook.eventsCount}}</view></view>
-            <view class="card-row"><view class="card-key">故人</view><view class="card-value">{{vm.terminal.lifeBook.peopleCount}}</view></view>
-            <view class="card-row"><view class="card-key">道途</view><view class="card-value">{{vm.terminal.lifeBook.buildsCount}}</view></view>
-            <view class="card-row"><view class="card-key">因果</view><view class="card-value">{{vm.terminal.lifeBook.causesCount}}</view></view>
+        <view wx:if="{{!vm.terminal.lifeBook.hasLifeBook}}" class="body-text">此生记录整理中，卷宗尚未生成。</view>
+        <scroll-view wx:if="{{vm.terminal.lifeBook.hasLifeBook}}" class="bounded" scroll-y="true">
+          <view wx:if="{{vm.terminal.lifeBook.timeline.length > 0}}" class="archive-section">
+            <view class="archive-section-title">关键转折</view>
+            <view wx:for="{{vm.terminal.lifeBook.timeline}}" wx:key="key" class="archive-row">
+              <view class="archive-kind">第 {{item.order}} 节点</view>
+              <view class="archive-main">
+                <view class="archive-title">{{item.title}}</view>
+                <view wx:if="{{item.body}}" class="archive-summary">{{item.body}}</view>
+                <view wx:if="{{item.hasChoice}}" class="archive-summary">当时选择：{{item.choiceLabel}}</view>
+                <view wx:else class="archive-summary">此前选择未记录</view>
+              </view>
+            </view>
           </view>
+
+          <view wx:if="{{vm.terminal.lifeBook.peopleRows.length > 0}}" class="archive-section">
+            <view class="archive-section-title">结识的人</view>
+            <view wx:for="{{vm.terminal.lifeBook.peopleRows}}" wx:key="npcId" class="card-row">
+              <view class="card-key">{{item.displayName}}</view>
+              <view class="card-value">{{item.statusLabel}}</view>
+            </view>
+          </view>
+
+          <view wx:if="{{vm.terminal.lifeBook.trackRows.length > 0}}" class="archive-section">
+            <view class="archive-section-title">道途</view>
+            <view wx:for="{{vm.terminal.lifeBook.trackRows}}" wx:key="buildId" class="card-row">
+              <view class="card-key">{{item.name}}</view>
+              <view class="card-value">{{item.stageLabel}}{{item.dominant ? ' · 主修' : ''}}</view>
+            </view>
+          </view>
+
+          <view wx:if="{{vm.terminal.lifeBook.causeRows.length > 0}}" class="archive-section">
+            <view class="archive-section-title">公开因果</view>
+            <view wx:for="{{vm.terminal.lifeBook.causeRows}}" wx:key="key" class="archive-row">
+              <view class="archive-kind">{{item.levelLabel}}</view>
+              <view class="archive-main"><view class="archive-summary">{{item.text}}</view></view>
+            </view>
+          </view>
+
           <view wx:if="{{vm.terminal.lifeBook.hasEnding}}" class="card">
             <view class="card-title">终局</view>
             <view class="card-row"><view class="card-key">结局</view><view class="card-value">{{vm.terminal.lifeBook.endingId}}</view></view>
@@ -213,6 +270,10 @@
           <view class="archive-main">
             <view class="archive-title">{{item.title}}</view>
             <view class="archive-summary">{{item.summary}}</view>
+            <!-- PLAYUX01 (B2): the live journal now names the option the player took, but only when the
+                 save recorded one. A pre-PLAYUX01 save has no choiceId and says so instead of guessing. -->
+            <view wx:if="{{item.hasChoice}}" class="archive-summary">当时选择：{{item.choiceLabel}}</view>
+            <view wx:else class="archive-summary">此前选择未记录</view>
           </view>
         </view>
       </view>

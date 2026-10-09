@@ -1,7 +1,7 @@
 // GENERATED FILE — DO NOT HAND-EDIT.
 //
 // Source of truth: packages/content/src/build-v1.ts
-// Source sha256:   6cf0b2e259bbc20949d81944378e074fa5e1a8d2336ade98d896d15f959aad2c
+// Source sha256:   6b8ce9c57beaf0a2a829866f43d3e7af2fae7279868faea0d0c65c99c77d7624
 // Generator:       tools/ui04d-cloud-runtime-artifact.mjs
 // Regenerate:      node tools/ui04d-cloud-runtime-artifact.mjs --write
 //
@@ -34,7 +34,11 @@ const BUILD_DEFINITIONS_V1                    = [
   definition({ id: "build.sword", displayName: "剑修", familyTags: ["martial"], tags: ["sword"], systemOwners: ["BUILD01", "PROG01", "COMBAT01"], compatibleWith: ["build.body"], stages: [stage("latent", "build.sword.latent"), stage("emerging", "build.sword.emerging"), stage("formed", "build.sword.formed", [progression("cultivationGainRateDeltaBps", 300), progression("breakthroughScoreDelta", 10)]), stage("refined", "build.sword.refined", [progression("breakthroughScoreDelta", 10)])] }),
   definition({ id: "build.body", displayName: "炼体", familyTags: ["martial"], tags: ["body"], systemOwners: ["BUILD01", "PROG01", "RISK01", "COMBAT01"], compatibleWith: ["build.sword"], stages: [stage("latent", "build.body.latent"), stage("emerging", "build.body.emerging"), stage("formed", "build.body.formed", [progression("foundationGainRateDeltaBps", 400), risk("riskScoreDelta", 10)]), stage("refined", "build.body.refined", [risk("riskScoreDelta", 10)])] }),
   definition({ id: "build.alchemy", displayName: "丹修", familyTags: ["craft"], tags: ["alchemy"], systemOwners: ["BUILD01", "PROG01", "ALCHEMY01"], stages: [stage("latent", "build.alchemy.latent"), stage("emerging", "build.alchemy.emerging"), stage("formed", "build.alchemy.formed", [progression("foundationGainRateDeltaBps", 300), progression("breakthroughDifficultyDelta", -10)]), stage("refined", "build.alchemy.refined", [progression("failureCultivationLossDelta", -500)])] }),
-  definition({ id: "build.fortune", displayName: "气运", familyTags: ["fate"], tags: ["fortune"], systemOwners: ["BUILD01", "DIRECTOR01", "CONTENT01", "CAUSE01"], hooks: [{ id: "build.fortune.director-signal", systemOwner: "DIRECTOR01", order: 100 }] })
+  // PLAYUX01: build.fortune now declares its stages explicitly. It previously relied on the
+  // `definition()` default, which builds `build.${id}.${stage}`; since id is already "build.fortune"
+  // that produced the doubled key `build.build.fortune.latent`, which no catalog can translate and
+  // which the client therefore rendered verbatim. Declaring the stages keeps the key well-formed.
+  definition({ id: "build.fortune", displayName: "气运", familyTags: ["fate"], tags: ["fortune"], systemOwners: ["BUILD01", "DIRECTOR01", "CONTENT01", "CAUSE01"], hooks: [{ id: "build.fortune.director-signal", systemOwner: "DIRECTOR01", order: 100 }], stages: [stage("latent", "build.fortune.latent"), stage("emerging", "build.fortune.emerging"), stage("formed", "build.fortune.formed"), stage("refined", "build.fortune.refined")] })
 ];
 
 const BUILD_V1            = {

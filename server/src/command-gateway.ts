@@ -80,9 +80,24 @@ function resultReceipt(output: ReduceOutput, envelope: CommandEnvelope): { domai
     else if (["ADD_NPC_SIGNIFICANCE", "ADJUST_NPC_RELATION", "REVEAL_NPC_FACT", "REVEAL_NPC_TRAIT", "REVEAL_NPC_STATUS"].includes(op)) lines.push({ kind: "npc", labelKey: "result.npc_noted" });
     else if (["GAIN_ITEM", "ADD_ITEM", "CONSUME_ITEM"].includes(op)) lines.push({ kind: "item", labelKey: "result.item" });
   }
-  const narrative: Record<string, unknown> = { eventId: (envelope.command as { eventId?: unknown }).eventId, changed: lines.length > 0, lines };
+  // PLAYUX01 (B1) — `eventId` is added only when the command actually carries one.
+  //
+  // It used to be written unconditionally as `(envelope.command).eventId`, so a START_RUN or a
+  // CHOOSE_ACTION receipt held an `eventId` key whose value was `undefined`. The idempotency store
+  // persists the receipt as JSON, and JSON drops an undefined value, so a duplicate submission read back
+  // from the store no longer matched the freshly built result — `tests/ui04d.test.mjs` compares them
+  // field for field and fails on exactly that. A receipt that cannot survive its own storage round trip
+  // is not an authoritative record of a settlement, which is the whole point of keeping one.
+  const narrative: Record<string, unknown> = { changed: lines.length > 0, lines };
+  const settledEventId = (envelope.command as { eventId?: unknown }).eventId;
+  if (typeof settledEventId === "string" && settledEventId.length > 0) narrative.eventId = settledEventId;
   const outcome = output.narrativeFacts.find((fact) => (fact as { type?: unknown }).type === "EVENT_OUTCOME") as { choiceId?: unknown; appliedTier?: unknown } | undefined;
-  if (outcome !== undefined) { narrative.choiceId = outcome.choiceId; narrative.appliedTier = outcome.appliedTier; }
+  // Same round-trip rule as `eventId` above: an absent value must be an absent key, never a key the
+  // store drops on the way to disk.
+  if (outcome !== undefined) {
+    if (typeof outcome.choiceId === "string" && outcome.choiceId.length > 0) narrative.choiceId = outcome.choiceId;
+    if (typeof outcome.appliedTier === "string" && outcome.appliedTier.length > 0) narrative.appliedTier = outcome.appliedTier;
+  }
   return { domainEffects: lines, narrative };
 }
 

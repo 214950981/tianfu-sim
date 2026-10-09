@@ -34,6 +34,7 @@
     "test:content01": "node --test tests/content01.test.mjs",
     "content01:lint": "node tools/content01-lint.mjs",
     "test:playux01": "node --test tests/playux01.test.mjs",
+    "test:playux01b": "node --test tests/playux01b.test.mjs",
     "playux01:map": "node tools/playux01-mapping-probe.mjs",
     "playux01:nogain": "node tools/playux01-nogain-probe.mjs",
     "playux01:ending": "node tools/playux01-ending-probe.mjs",

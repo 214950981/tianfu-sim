@@ -66,7 +66,7 @@ function choices(spec: Spec): ChoiceDefinition[] {
   if (spec.risk !== undefined) return [
     { id: "take-risk", scope: "core", labelKey: text(`${spec.id}.choice.take-risk`, "承担此险"), threatId: spec.risk, ...(repeatable(spec) ? { riskRepeatBehavior: "allow-repeat-resolution" as const } : {}), outcomes: { success: { effects: safePrimary }, costlySuccess: { effects: safePrimary }, failure: { effects: declare([{ op: "ADD_CULTIVATION", amount: 60 }]) } } },
     { id: "read-signs", scope: "core", labelKey: text(`${spec.id}.choice.read-signs`, "先辨征兆"), outcomes: { success: { effects: declare([{ op: "ADD_CULTIVATION", amount: 180 }]) } } },
-    { id: "turn-away", scope: "core", labelKey: text(`${spec.id}.choice.turn-away`, "及时折返"), outcomes: { success: { effects: declare([{ op: "ADD_RESOURCE", key: "spiritStone", amount: 1 }]) } } }
+    { id: "turn-away", scope: "core", labelKey: text(`${spec.id}.choice.turn-away`, "及时折返"), outcomes: { success: { effects: declare([{ op: "ADD_CULTIVATION", amount: 60 }]) } } }
   ];
   const npcEffect: EffectSpec[] = declare(spec.participant === undefined ? [] : [{ op: "ADJUST_NPC_RELATION", actorBindingKey: "actor", affinityDelta: 6, trustDelta: 4, reasonTag: "npc.reason.event" }]);
   // PLAYUX01 — an authored choiceSet replaces the generic engage/consider/leave trio entirely, so an
@@ -76,7 +76,19 @@ function choices(spec: Spec): ChoiceDefinition[] {
   return [
     { id: "engage", scope: "core", labelKey: text(`${spec.id}.choice.engage`, spec.build === undefined ? "顺势而行" : "依此磨炼"), outcomes: { success: { effects: [...safePrimary, ...npcEffect, ...close("RESOLVE_CAUSE")] } } },
     { id: "consider", scope: "core", labelKey: text(`${spec.id}.choice.consider`, "停步细看"), outcomes: { success: { effects: [...declare([{ op: "ADD_CULTIVATION", amount: 150 }]), ...close("RESOLVE_CAUSE")] } } },
-    { id: "leave", scope: "core", labelKey: text(`${spec.id}.choice.leave`, "见好便收"), outcomes: { success: { effects: [...declare([{ op: "ADD_RESOURCE", key: "spiritStone", amount: 1 }]), ...close("EXPIRE_CAUSE")] } } }
+    // PLAYUX01 (B3): the two decline options no longer pay spiritStone — that was the literal
+    // "跑路就送钱" / "说'暂避风险'却发放无来源灵石" the locked spec bans, and the receipt would have had to
+    // report a gain with no origin.
+    //
+    // WHY CULTIVATION RATHER THAN TIME: the registry requires a core choice to change a long-term
+    // dimension, and the two honest candidates were time or a minimal registered effect. Time was rejected
+    // because a decline that costs a year moves the lifespan-ceiling crossing of a short run into an Event
+    // resolution, and CONTENT01-022 pins that a 24-year life ends by node 3–5. 修为 is what this template
+    // already uses for its cautious dimension (`consider` 150, risk `read-signs` 180); withdrawal is the
+    // smallest of the three, so it takes the smallest amount. Nothing is fabricated and no resource is
+    // granted. The remaining defect on these template Events is their generic wording, which is disclosed
+    // separately rather than hidden inside an effect change.
+    { id: "leave", scope: "core", labelKey: text(`${spec.id}.choice.leave`, "见好便收"), outcomes: { success: { effects: [...declare([{ op: "ADD_CULTIVATION", amount: 60 }]), ...close("EXPIRE_CAUSE")] } } }
   ];
 }
 
@@ -95,17 +107,49 @@ function event(spec: Spec): EventDefinition {
 
 const onboarding: Spec[] = [
   { id: "content01.onboarding.first-breath", title: "初息", summary: "晨雾尚未散尽，你第一次把纷乱心绪收进一呼一吸之间。", actions: ["cultivate"], salience: 1, topic: "cultivation", continuity: ["cultivation"], onboarding: true, body: "晨雾尚未散尽。你盘坐下来，第一次试着把纷乱心绪收进一呼一吸之间。气息刚走过第三个周天，胸口的滞涩提醒你：这一步还太急。你可以按原路继续行功，也可以先松开半分，或者就到此收功。", choiceSet: [{"id":"keep-driving","label":"照原路继续行功，把这口气推过去","effects":[{"op":"ADD_CULTIVATION","amount":220}]},{"id":"ease-off","label":"松开半分，改用更缓的呼吸","effects":[{"op":"ADD_CULTIVATION","amount":120},{"op":"OUTCOME_TIME_DELTA","years":1}]},{"id":"stop-here","label":"就到这里收功，先记住这个节奏","effects":[{"op":"ADD_CULTIVATION","amount":60},{"op":"OUTCOME_TIME_DELTA","years":1}]}] },
-  { id: "content01.onboarding.mountain-road", title: "山路", summary: "一条山路分向林深与村郭，两边都有人走过，却没有人为你担保。", actions: ["travel"], salience: 2, topic: "travel", continuity: ["exploration"], onboarding: true, body: "一条山路在前方分成两股：靠林的一侧树影深，脚下有旧车辙；绕村的一侧路平些，能听见炊烟，没有新鲜的脚印。没有人为你担保，也没有人为你指路。要紧的是你此刻要赶路，还是要看得清楚。", choiceSet: [{"id":"take-ford","label":"走林边有车辙的那条近路","effects":[{"op":"ADD_CULTIVATION","amount":200},{"op":"OUTCOME_TIME_DELTA","years":1}]},{"id":"scout-ridge","label":"先爬上高处看清林里的情形","effects":[{"op":"ADD_CULTIVATION","amount":130},{"op":"OUTCOME_TIME_DELTA","years":1}]},{"id":"go-village","label":"绕去村里，按路平的那条走","effects":[{"op":"ADD_RESOURCE","key":"spiritStone","amount":1},{"op":"OUTCOME_TIME_DELTA","years":2}]}] },
-  { id: "content01.onboarding.market-choice", title: "早市", summary: "早市里灵石与人情一同流转，摊主的话半真半假，买卖之外还有眼色。", actions: ["worldly"], salience: 2, topic: "trade", continuity: ["human-world"], onboarding: true, body: "早市刚开。摊主报出的价钱比市价低了两成，可他没有说为什么低。你可以照他说的数买下，也可以压回一个公道价，或者先问问这批货的来路。", choiceSet: [{"id":"take-deal","label":"照他报的价买下，先把货拿到手","effects":[{"op":"ADD_RESOURCE","key":"spiritStone","amount":2}]},{"id":"haggle-fair","label":"压回一个公道价再成交","effects":[{"op":"ADD_RESOURCE","key":"spiritStone","amount":1},{"op":"ADD_CULTIVATION","amount":140}]},{"id":"ask-source","label":"先问清这批货的来路再决定","effects":[{"op":"ADD_CULTIVATION","amount":160},{"op":"OUTCOME_TIME_DELTA","years":1}]}] },
-  { id: "content01.onboarding.old-trace", title: "旧痕", summary: "石壁上一道旧痕延伸进荒草，来处模糊，去处也未必值得追。", actions: ["pursuit"], salience: 2, topic: "secret", continuity: ["exploration"], onboarding: true, body: "石壁上一道旧痕延伸进荒草。来处已经模糊了，断口却很新——留下它的人不久之前还在这里。你可以沿着断口追进荒草，也可以先记下位置，或者转去问附近的人。", choiceSet: [{"id":"follow-fresh","label":"顺着新断口追进荒草","effects":[{"op":"ADD_CULTIVATION","amount":210},{"op":"OUTCOME_TIME_DELTA","years":1}]},{"id":"mark-spot","label":"先记下位置，不急于这一步","effects":[{"op":"ADD_CULTIVATION","amount":90},{"op":"OUTCOME_TIME_DELTA","years":1}]},{"id":"ask-locals","label":"转去问附近的人有无异常","effects":[{"op":"ADD_CULTIVATION","amount":150},{"op":"OUTCOME_TIME_DELTA","years":1}]}] },
+  // PLAYUX01 (B3): `go-village` no longer pays a spiritStone. Walking the flat road around the village had
+  // no transaction and no found object behind it, so the currency had no origin. What the option really
+  // costs is time — it is the long way round — and OUTCOME_TIME_DELTA is exactly that. The body already
+  // frames the choice as 赶路 versus 看得清楚, so a route that only differs in hours is the honest reading.
+  { id: "content01.onboarding.mountain-road", title: "山路", summary: "一条山路分向林深与村郭，两边都有人走过，却没有人为你担保。", actions: ["travel"], salience: 2, topic: "travel", continuity: ["exploration"], onboarding: true, body: "一条山路在前方分成两股：靠林的一侧树影深，脚下有旧车辙；绕村的一侧路平些，能听见炊烟，没有新鲜的脚印。没有人为你担保，也没有人为你指路。要紧的是你此刻要赶路，还是要看得清楚。", choiceSet: [{"id":"take-ford","label":"走林边有车辙的那条近路","effects":[{"op":"ADD_CULTIVATION","amount":200},{"op":"OUTCOME_TIME_DELTA","years":1}]},{"id":"scout-ridge","label":"先爬上高处看清林里的情形","effects":[{"op":"ADD_CULTIVATION","amount":130},{"op":"OUTCOME_TIME_DELTA","years":1}]},{"id":"go-village","label":"绕去村里，按路平的那条走","effects":[{"op":"OUTCOME_TIME_DELTA","years":2}]}] },
+  // PLAYUX01 (B3): the money here now has an origin. The scene used to have the player BUY at a discount
+  // and then award spiritStone — so buying produced currency and no goods, which is the contradiction the
+  // screenshots showed. Rewriting it as a SALE fixes it without inventing an item: the spiritStone is the
+  // price of the player's own herbs. A purchase could not be modelled honestly anyway, because
+  // REMOVE_RESOURCE fails as INVALID_OPTION `insufficient spiritStone` at zero, so a buy option would be a
+  // choice that errors for a starting player.
+  //
+  // The trade-off is money against time, not a free upgrade: taking the vendor's lowball price settles at
+  // once, while pushing back to a fair price is worth more but costs a year of haggling. The 140 cultivation
+  // that used to ride on haggling is gone — bargaining is not 修行, and the spec forbids calling an
+  // unrelated cultivation gain the reward for a social act.
+  { id: "content01.onboarding.market-choice", title: "早市", summary: "早市里灵石与人情一同流转，摊主的话半真半假，买卖之外还有眼色。", actions: ["worldly"], salience: 2, topic: "trade", continuity: ["human-world"], onboarding: true, body: "早市刚开。你把路上采得的一把草药摊在摊边，摊主报出的价钱比市价低了两成，可他没有说为什么低。你可以照他报的价卖给他，也可以压回一个公道价，或者先问清他收这批药做什么。", choiceSet: [{"id":"take-deal","label":"照他报的价卖给他，先把这事了结","effects":[{"op":"ADD_RESOURCE","key":"spiritStone","amount":1}]},{"id":"haggle-fair","label":"压回一个公道价再成交","effects":[{"op":"ADD_RESOURCE","key":"spiritStone","amount":2},{"op":"OUTCOME_TIME_DELTA","years":1}]},{"id":"ask-source","label":"先问清他收这批药做什么再决定","effects":[{"op":"OUTCOME_TIME_DELTA","years":1}]}] },
+  // PLAYUX01 (B3): every option here used to pay cultivation for tracking, noting a position or asking
+  // around — none of which is 修行, and none of which recorded a clue. The spec is explicit: without a
+  // legitimate recordable clue, do not show "found a lead". No actor-free Cause template exists, so a
+  // pursuit Event with no participant cannot plant one; the honest settlement is therefore the time each
+  // course of action really costs. Following the cut trail into the brush and detouring to question
+  // villagers both spend two years; merely noting the position spends one. Nothing is claimed to have
+  // been found, and the receipt says so if nothing measurable moved.
+  { id: "content01.onboarding.old-trace", title: "旧痕", summary: "石壁上一道旧痕延伸进荒草，来处模糊，去处也未必值得追。", actions: ["pursuit"], salience: 2, topic: "secret", continuity: ["exploration"], onboarding: true, body: "石壁上一道旧痕延伸进荒草。来处已经模糊了，断口却很新——留下它的人不久之前还在这里。你可以沿着断口追进荒草，也可以先记下位置，或者转去问附近的人。", choiceSet: [{"id":"follow-fresh","label":"顺着新断口追进荒草","effects":[{"op":"OUTCOME_TIME_DELTA","years":2}]},{"id":"mark-spot","label":"先记下位置，不急于这一步","effects":[{"op":"OUTCOME_TIME_DELTA","years":1}]},{"id":"ask-locals","label":"转去问附近的人有无异常","effects":[{"op":"OUTCOME_TIME_DELTA","years":2}]}] },
+  // PLAYUX01 (B3): the social act here has no participant to bind to, so no relation could be recorded —
+  // and the option was paying a spiritStone for walking away, which is the banned pattern. A participant
+  // was deliberately NOT added: materializing one consumes an `npc` RNG draw, which would change the
+  // deterministic stream for every run (G02/G06). What staying or leaving really costs is time, so the
+  // three options differ only in how long the player stands under the eaves.
   { id: "content01.onboarding.rain-shelter", title: "避雨", summary: "骤雨把几名陌生人困在同一檐下，沉默比寒意更先试探彼此。", actions: ["travel", "worldly"], salience: 1, topic: "trust", continuity: ["travel"], onboarding: true, body: "骤雨把几名陌生人困在同一檐下。雨声太大，说话要提高嗓门，反而没人先开口。沉默比寒意更先试探彼此：谁挪一挪，谁就先把话说出去了。", choiceSet: [
-  {"id":"engage","label":"挪半个身位，先把伞递过去","effects":[{"op":"ADD_CULTIVATION","amount":150},{"op":"OUTCOME_TIME_DELTA","years":1}]},
-  {"id":"consider","label":"靠着柱子不动，听这一场雨落完","effects":[{"op":"ADD_CULTIVATION","amount":80},{"op":"OUTCOME_TIME_DELTA","years":1}]},
-  {"id":"leave","label":"雨脚一转就先行赶路","effects":[{"op":"ADD_RESOURCE","key":"spiritStone","amount":1},{"op":"OUTCOME_TIME_DELTA","years":1}]}
+  {"id":"engage","label":"挪半个身位，先把伞递过去","effects":[{"op":"OUTCOME_TIME_DELTA","years":2}]},
+  {"id":"consider","label":"靠着柱子不动，听这一场雨落完","effects":[{"op":"OUTCOME_TIME_DELTA","years":1}]},
+  {"id":"leave","label":"雨脚一转就先行赶路","effects":[{"op":"OUTCOME_TIME_DELTA","years":1}]}
 ] },
   { id: "content01.onboarding.quiet-retreat", title: "静室", summary: "静室里没有异象，只有一次次走神与重新坐定，修行显得朴素而漫长。", actions: ["cultivate"], salience: 1, topic: "cultivation", continuity: ["discipline"], onboarding: true, body: "静室里没有异象，只有一次次走神与重新坐定。你数到第几遍时开始怀疑自己走了岔路。你可以照原样再坐一段，也可以换个法子重起一轮，或者今日就此收束。", choiceSet: [{"id":"sit-again","label":"照原样再坐一段，看能否坐稳","effects":[{"op":"ADD_CULTIVATION","amount":200}]},{"id":"change-method","label":"换个法子重起一轮行功","effects":[{"op":"ADD_CULTIVATION","amount":130},{"op":"OUTCOME_TIME_DELTA","years":1}]},{"id":"close-day","label":"今日就此收束，改日再来","effects":[{"op":"ADD_CULTIVATION","amount":70},{"op":"OUTCOME_TIME_DELTA","years":1}]}] },
   { id: "content01.onboarding.roadside-injury", title: "路边伤者", summary: "路边有人捂着伤口，血已经止住，他仍警惕每一双靠近的手。", actions: ["worldly"], salience: 2, topic: "injury", continuity: ["trust"], onboarding: true, participant: generated("mortal-traveler"), body: "路边有人坐着捂住伤口。血已经止住，他仍盯着每一双靠近的手。你可以上前替他处理，也可以先站远些问清发生了什么，或者只记住这个人。", choiceSet: [{"id":"help-dress","label":"上前替他处理伤口","effects":[{"op":"ADD_CULTIVATION","amount":180},{"op":"ADD_NPC_SIGNIFICANCE","actorBindingKey":"actor","amount":500,"reasonTag":"npc.reason.event"}]},{"id":"keep-distance","label":"先站远些问清他遇到了什么","effects":[{"op":"ADD_CULTIVATION","amount":120}]},{"id":"just-notice","label":"只记下这个人的样子，不去打扰","effects":[{"op":"ADD_CULTIVATION","amount":60},{"op":"OUTCOME_TIME_DELTA","years":1}]}] },
-  { id: "content01.onboarding.forked-path", title: "岔路", summary: "你追寻的线索在此分成两股，一股清楚，一股更像有意留下的诱饵。", actions: ["pursuit"], salience: 2, topic: "opportunity", continuity: ["secret"], onboarding: true , body: "你追寻的线索在此分成两股。一股脚印清楚、方向明确；另一串痕迹像是特意留下的，过于整齐。你可以顺着清楚的那股走，也可以去试那串整齐的，或者暂时按兵不动。", choiceSet: [{"id":"clear-trail","label":"顺着清楚的那股脚印走","effects":[{"op":"ADD_CULTIVATION","amount":190},{"op":"OUTCOME_TIME_DELTA","years":1}]},{"id":"neat-trail","label":"去试那串过于整齐的痕迹","effects":[{"op":"ADD_CULTIVATION","amount":240},{"op":"OUTCOME_TIME_DELTA","years":2}]},{"id":"hold-position","label":"暂不动作，先把两股都记下","effects":[{"op":"ADD_CULTIVATION","amount":80},{"op":"OUTCOME_TIME_DELTA","years":1}]}]}
+  // PLAYUX01 (B3): the same pursuit contradiction as old-trace, on the other 追索 opening. Choosing which
+  // of two trails to walk is not 修行 and recorded no clue, so paying cultivation for it was the spec's
+  // "追查真相却只给纯修为奖励". No actor-free Cause template exists to record a real lead, so the honest
+  // settlement is the time each course takes — the bait trail is the longest, because following a
+  // deliberately tidy track means walking further before it thins out.
+  { id: "content01.onboarding.forked-path", title: "岔路", summary: "你追寻的线索在此分成两股，一股清楚，一股更像有意留下的诱饵。", actions: ["pursuit"], salience: 2, topic: "opportunity", continuity: ["secret"], onboarding: true , body: "你追寻的线索在此分成两股。一股脚印清楚、方向明确；另一串痕迹像是特意留下的，过于整齐。你可以顺着清楚的那股走，也可以去试那串整齐的，或者暂时按兵不动。", choiceSet: [{"id":"clear-trail","label":"顺着清楚的那股脚印走","effects":[{"op":"OUTCOME_TIME_DELTA","years":2}]},{"id":"neat-trail","label":"去试那串过于整齐的痕迹","effects":[{"op":"OUTCOME_TIME_DELTA","years":3}]},{"id":"hold-position","label":"暂不动作，先把两股都记下","effects":[{"op":"OUTCOME_TIME_DELTA","years":1}]}]}
 ];
 
 const ordinary: Spec[] = [
@@ -117,9 +161,19 @@ const ordinary: Spec[] = [
   { id: "content01.ordinary.roadside-debate", title: "道旁争言", summary: "两名修士为一条旧规争得面红耳赤，围观者各有私心，却都说为了公道。", salience: 2, topic: "rivalry", continuity: ["human-world"], participant: generated("wandering-cultivator"), ordinaryActions: ["worldly"], body: "两名修士为一条旧规争得面红耳赤，围观者各有私心，嘴上却都说为了公道。你可以当场评一句谁站得住，也可以只问清这条旧规究竟伤过谁，再决定要不要开口。", choiceSet: [{"id":"pick-a-side","label":"当场评一句谁站得住","effects":[{"op":"ADD_CULTIVATION","amount":140}]},{"id":"ask-who-hurt","label":"只问这条旧规究竟伤过谁","effects":[{"op":"ADD_CULTIVATION","amount":120},{"op":"ADD_NPC_SIGNIFICANCE","actorBindingKey":"actor","amount":300,"reasonTag":"npc.reason.event"}]}] },
   { id: "content01.ordinary.empty-search", title: "空寻", summary: "你按旧图找了一日，只见苔痕、碎石与几处被雨冲淡的脚印。", salience: 1, topic: "exploration", continuity: ["secret"], ordinaryActions: ["pursuit"], body: "你按旧图找了一日，只见苔痕、碎石与几处被雨冲淡的脚印。旧图上标的方位已经偏了。你可以照脚印的走向继续追，也可以承认今日无所得，回头重画。", choiceSet: [{"id":"follow-footprints","label":"照那几处脚印继续追下去","effects":[{"op":"ADD_CULTIVATION","amount":130},{"op":"OUTCOME_TIME_DELTA","years":1}]},{"id":"redraw-map","label":"承认今日无所得，回头重画","effects":[{"op":"OUTCOME_TIME_DELTA","years":1}]}] },
   { id: "content01.ordinary.shared-fire", title: "同火", summary: "荒野风紧，陌生旅人分出半边篝火，彼此都没有追问来历。", salience: 2, topic: "trust", continuity: ["travel"], participant: generated("mortal-traveler"), ordinaryActions: ["travel"], body: "荒野风紧，陌生旅人分出半边篝火，谁也没有追问来历。你可以守着火陪到天亮，也可以问问他接下来往哪条路走——问了他才记得你们照过面。", choiceSet: [{"id":"keep-watch","label":"守着火陪到天亮","effects":[{"op":"OUTCOME_TIME_DELTA","years":1}]},{"id":"ask-route","label":"问他接下来往哪条路走","effects":[{"op":"ADD_CULTIVATION","amount":130},{"op":"ADD_NPC_SIGNIFICANCE","actorBindingKey":"actor","amount":400,"reasonTag":"npc.reason.event"}]}] },
-  { id: "content01.ordinary.market-bargain", title: "小交易", summary: "行商修士摆出几味寻常药材，真正要交换的却是一条路况消息。", salience: 2, topic: "trade", continuity: ["opportunity"], participant: generated("merchant-cultivator"), ordinaryActions: ["worldly"], body: "行商修士摆出几味寻常药材，价钱报得干脆利落。可他真正想交换的，是一条路况消息：哪一段路近来不太平。你可以只谈药材付了灵石，也可以加进这条消息，用一个承诺换它。", choiceSet: [{"id":"buy-herbs","label":"只按他的价钱买下药材","effects":[{"op":"ADD_RESOURCE","key":"spiritStone","amount":1},{"op":"ADD_NPC_SIGNIFICANCE","actorBindingKey":"actor","amount":300,"reasonTag":"npc.reason.event"}]},{"id":"trade-for-news","label":"加进那条路况消息，用一个承诺换它","effects":[{"op":"ADD_CULTIVATION","amount":180},{"op":"ADD_NPC_SIGNIFICANCE","actorBindingKey":"actor","amount":500,"reasonTag":"npc.reason.event"}]}] },
+  // PLAYUX01 (B3): same contradiction class as market-choice, and it was authored in stage B. `buy-herbs`
+  // read "买下药材" while paying a spiritStone, so buying produced money. It is now a sale, and the option
+  // id was renamed to match so the id and the wording cannot disagree. `trade-for-news` loses its 180
+  // cultivation: promising to pass along a road report is a social act, not 修行 — what it really costs is
+  // the time the detour to carry the news takes.
+  { id: "content01.ordinary.market-bargain", title: "小交易", summary: "行商修士摆出几味寻常药材，真正要交换的却是一条路况消息。", salience: 2, topic: "trade", continuity: ["opportunity"], participant: generated("merchant-cultivator"), ordinaryActions: ["worldly"], body: "行商修士摆出几味寻常药材，也收草药。价钱报得干脆利落，可他真正想交换的，是一条路况消息：哪一段路近来不太平。你可以只把随身草药作价给他，也可以加进那条消息，用一个承诺换它。", choiceSet: [{"id":"sell-herbs","label":"只把随身草药作价给他","effects":[{"op":"ADD_RESOURCE","key":"spiritStone","amount":1},{"op":"ADD_NPC_SIGNIFICANCE","actorBindingKey":"actor","amount":300,"reasonTag":"npc.reason.event"}]},{"id":"trade-for-news","label":"加进那条路况消息，用一个承诺换它","effects":[{"op":"ADD_NPC_SIGNIFICANCE","actorBindingKey":"actor","amount":500,"reasonTag":"npc.reason.event"},{"op":"OUTCOME_TIME_DELTA","years":1}]}] },
   { id: "content01.ordinary.mountain-view", title: "山色", summary: "登高之后并无奇遇，只有群山在暮色里一层层远去，呼吸也随之平缓。", salience: 1, topic: "cultivation", continuity: ["travel"], body: "登高之后并无奇遇。群山在暮色里一层层远去，呼吸也随之平缓。你可以就地调息，把这段山路换来的清醒收进气机；也可以辨清方位后继续上路。", ordinaryActions: ["travel","cultivate"], choiceSet: [{"id":"breathe-here","label":"就地调息，把这段清醒收进气机","effects":[{"op":"ADD_CULTIVATION","amount":160}]},{"id":"orient-and-go","label":"辨清方位后继续上路","effects":[{"op":"OUTCOME_TIME_DELTA","years":1}]}] },
-  { id: "content01.ordinary.harvest-help", title: "收谷", summary: "村人赶在风雨前收谷，人手不足，修士的一日也能换来许多凡俗年月。", salience: 2, topic: "human-world", continuity: ["time"], participant: generated("mortal-traveler"), ordinaryActions: ["worldly"], body: "村人赶在风雨前收谷，人手不足，只要你肯搭把手，一个时辰就能补上缺口。你可以下地收谷，也可以替他们看住堆在院里的谷堆，等他们回来再一起分。", choiceSet: [{"id":"work-field","label":"下地一起收谷","effects":[{"op":"ADD_RESOURCE","key":"spiritStone","amount":2},{"op":"OUTCOME_TIME_DELTA","years":1}]},{"id":"guard-store","label":"替他们看住院里的谷堆","effects":[{"op":"ADD_CULTIVATION","amount":120},{"op":"ADD_NPC_SIGNIFICANCE","actorBindingKey":"actor","amount":400,"reasonTag":"npc.reason.event"}]}] },
+  // PLAYUX01 (B3): the villagers are mortals and have no spiritStone to pay with, so `work-field` paying
+  // two of them was a currency with no plausible payer. What the player actually takes away from a day of
+  // field work is that these people now remember them, which is exactly what ADD_NPC_SIGNIFICANCE records —
+  // and the Event already carries a generated mortal participant for it to bind to. `guard-store`'s 120
+  // cultivation is gone for the same reason as elsewhere in this pass: watching a grain pile is not 修行.
+  { id: "content01.ordinary.harvest-help", title: "收谷", summary: "村人赶在风雨前收谷，人手不足，修士的一日也能换来许多凡俗年月。", salience: 2, topic: "human-world", continuity: ["time"], participant: generated("mortal-traveler"), ordinaryActions: ["worldly"], body: "村人赶在风雨前收谷，人手不足，只要你肯搭把手，一个时辰就能补上缺口。你可以下地收谷，也可以替他们看住堆在院里的谷堆，等他们回来再一起分。", choiceSet: [{"id":"work-field","label":"下地一起收谷","effects":[{"op":"ADD_NPC_SIGNIFICANCE","actorBindingKey":"actor","amount":500,"reasonTag":"npc.reason.event"},{"op":"OUTCOME_TIME_DELTA","years":1}]},{"id":"guard-store","label":"替他们看住院里的谷堆","effects":[{"op":"ADD_NPC_SIGNIFICANCE","actorBindingKey":"actor","amount":300,"reasonTag":"npc.reason.event"},{"op":"OUTCOME_TIME_DELTA","years":1}]}] },
   { id: "content01.ordinary.old-song", title: "旧曲", summary: "客栈角落有人弹起旧曲，旋律并不精妙，却让几位过客同时安静下来。", salience: 1, topic: "memory", continuity: ["human-world"] , body: "客栈角落有人弹起旧曲。旋律并不精妙，几位过客却同时安静下来。你可以坐到曲终再起身，也可以直接起身去看弹琴的人是谁——后者也许更接近这段曲子的来处。", choiceSet: [{"id":"sit-through","label":"坐到这一曲终了再起身","effects":[{"op":"ADD_CULTIVATION","amount":100}]},{"id":"meet-player","label":"起身去看弹琴的人是谁","effects":[{"op":"ADD_CULTIVATION","amount":140},{"op":"OUTCOME_TIME_DELTA","years":1}]}]}
 ];
 
@@ -169,7 +223,11 @@ const npcEvents: Spec[] = [
 ]  },
 
   { id: "content01.xu.mortal-letter", title: "人间来信", summary: "许长安托人送来一封短笺，问的不是仙途，只是你是否还记得旧日门前那棵树。", actions: ["worldly", "pursuit"], salience: 3, topic: "human-world", continuity: ["promise", "time"], npcRole: "mortal", participant: core("xu-changan"), origins: [{ templateId: "content01.cause.mortal-promise", salience: 4, label: "答应归去" }], cooldown: oncePerRun, body: "许长安托人送来一封短笺，问的不是仙途，只是你是否还记得旧日门前那棵树。送信人不肯多等，收了脚程钱就走了。信很短，短到只够问这一件事。" },
-  { id: "content01.xu.ten-year-return", title: "十年重逢", summary: "你眼中的数次闭关，已是许长安鬓边的一层霜。他仍认得你，也不假装岁月轻巧。", actions: ["worldly"], salience: 4, topic: "time", continuity: ["memory", "human-world"], npcRole: "mortal", participant: core("xu-changan"), cooldown: spaced(5), body: "你眼中的数次闭关，在许长安鬓边已经积了一层霜。他仍认得你，也没有假装岁月轻巧。院门开着，门前那棵树比记忆里高了一些。" },
+  // PLAYUX01 (B3): a reunion pays nothing in currency. It declared no `effects` and no build, so the
+  // template's primary option fell through to the default +2 spiritStone — money with no origin, awarded
+  // for meeting an old friend. The scene already carries 许长安 as a core participant, so what the moment
+  // really produces is that he matters more in this life, which ADD_NPC_SIGNIFICANCE records.
+  { id: "content01.xu.ten-year-return", title: "十年重逢", summary: "你眼中的数次闭关，已是许长安鬓边的一层霜。他仍认得你，也不假装岁月轻巧。", actions: ["worldly"], salience: 4, topic: "time", continuity: ["memory", "human-world"], npcRole: "mortal", participant: core("xu-changan"), cooldown: spaced(5), effects: [{ op: "ADD_NPC_SIGNIFICANCE", actorBindingKey: "actor", amount: 600, reasonTag: "npc.reason.event" }], body: "你眼中的数次闭关，在许长安鬓边已经积了一层霜。他仍认得你，也没有假装岁月轻巧。院门开着，门前那棵树比记忆里高了一些。" },
   { id: "content01.xu.empty-courtyard", title: "空院", summary: "院门仍旧，檐下却积了厚灰。邻人只说许长安早已离开，没有人知道他最后去了哪里。", actions: ["pursuit"], salience: 4, topic: "loss", continuity: ["time", "promise"], npcRole: "mortal", participant: core("xu-changan"), effects: [{ op: "SET_NPC_STATUS", actorBindingKey: "actor", targetStatus: "departed", revealToPlayer: true, reasonTag: "npc.reason.status" }], cooldown: spaced(4) , closure: true, body: "院门仍旧，檐下却积了厚灰。邻人只说许长安早已离开，具体去了哪里无人知道。院角那棵旧树还活着，落叶堆在墙根，没有被扫过。", choiceSet: [
   {"id":"engage","label":"扫开墙根的落叶，让院子有人住的样子","effects":[{"op":"ADD_CULTIVATION","amount":130},{"op":"ADD_NPC_SIGNIFICANCE","actorBindingKey":"actor","amount":300,"reasonTag":"npc.reason.cause"}]},
   {"id":"consider","label":"向邻人多问一句他可能去了哪里","effects":[{"op":"ADD_CULTIVATION","amount":90},{"op":"OUTCOME_TIME_DELTA","years":1}]},

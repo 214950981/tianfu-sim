@@ -1,7 +1,7 @@
 // GENERATED FILE — DO NOT HAND-EDIT.
 //
 // Source of truth: packages/core/src/director.ts
-// Source sha256:   230f6d1e744cc69403c662546c4e5f67e2d098fbed0a694dd698ba24b458849a
+// Source sha256:   311801c1182194992bbf92d2a2e8f64ab3443c6b11042f291cc33a59ddde8997
 // Generator:       tools/ui04d-cloud-runtime-artifact.mjs
 // Regenerate:      node tools/ui04d-cloud-runtime-artifact.mjs --write
 //
@@ -23,6 +23,17 @@ var { drawInt } = require("./core-rng.js");
                                 
                                                                                                   
                                                                                                                         
+     
+                                                                              
+    
+                                                                                          
+                                                                                           
+                                                                                              
+                                                                                         
+                                                                                           
+                                       
+     
+                                    
  
                                 
                                                                                                          
@@ -88,9 +99,20 @@ function scoreDirectorEvent(state           , eventValue         , action       
   const pack = content.getDirector(state.contentVersion); const rules = pack.rules; const event = eventObject(eventValue); const hints = normalizedDirectorHints(event, rules); const riskTier = riskPreview(state, event, content, state.contentVersion);
   if (!isEventEligible(event, state)) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "event-ineligible" };
   if (slot === "P2" && !(state.run.director.profileId === "first_run" && state.run.nodeIndex <= rules.firstRunWindowNodes && hints.onboardingEligible === true)) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "not-onboarding" };
+  // PLAYUX01 — P2 action coherence. A first-run onboarding scene that declares `actionAffinity`
+  // must declare the action the player actually pressed, so cultivating cannot open a road-side
+  // injury lesson and pursuing cannot open a market lesson. `actionAffinityBonus` stays a weight
+  // only; this is the semantic gate the spec asks for. Content with no declared affinity is
+  // left alone so a genuinely cross-action onboarding scene remains legal.
+  if (slot === "P2" && event.actionAffinity !== undefined && !event.actionAffinity.includes(action)) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "onboarding-action-mismatch" };
   const coreActorIds = matchingActorIds(state, hints.npcRoleAffinityTags, "core"); if (slot === "P4" && coreActorIds.length === 0) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "no-core-npc" };
   if (slot === "P4" && coreNpcRepeatGate(state, coreActorIds)) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "core-npc-repeat-gate" };
   if (slot === "P5" && contextualGapGate(state, rules)) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "contextual-gap" };
+  // PLAYUX01 — P6 ordinary action coherence. An ordinary Event that declares `ordinaryActionTags`
+  // is only offered for those actions. This is a hard eligibility filter, not a weight bonus, so a
+  // generic scene can no longer answer "pursuit" by being merely plausible. It is applied after
+  // eligibility so an ineligible Event is reported as such, and it reads authored content only.
+  if (slot === "P6" && hints.ordinaryActionTags !== undefined && !hints.ordinaryActionTags.includes(action)) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "ordinary-action-mismatch" };
   if ((slot === "P5" || slot === "P6") && hints.salience >= rules.majorSalienceThreshold && recentWithin(state, rules.majorGapNodes, (scene) => scene.salience >= rules.majorSalienceThreshold && scene.slot !== "P3" && scene.slot !== "CONTINUATION")) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "major-gap" };
   if ((slot === "P5" || slot === "P6") && (riskTier === "dangerous" || riskTier === "lethal") && recentWithin(state, rules.randomDangerGapNodes, (scene) => scene.riskTier === "dangerous" || scene.riskTier === "lethal")) return { eligible: false, weight: 0, reasons: [], actorIds: [], buildIds: [], riskTier, exclusionReason: "danger-gap" };
   let weight = hints.baseWeight; const reasons           = [];
@@ -108,7 +130,7 @@ function scoreDirectorEvent(state           , eventValue         , action       
 function appendScene(state           , event               , content                       , slot              , details                                                                                                             = {})            { const rules = content.getDirector(state.contentVersion).rules; const hints = normalizedDirectorHints(event, rules); const scene                      = { eventId: event.id, nodeIndex: state.run.nodeIndex, slot, salience: hints.salience, topicTags: hints.topicTags, continuityTags: hints.continuityTags, actorIds: canonical(details.actorIds ?? []), buildIds: canonical(details.buildIds ?? []), ...(details.causeId === undefined ? {} : { causeId: details.causeId }), ...(details.riskTier === undefined ? {} : { riskTier: details.riskTier }) }; const recentScenes = [...state.run.director.recentScenes, scene].slice(-rules.recentWindowSize); return { ...state, run: { ...state.run, director: { ...state.run.director, recentScenes } } }; }
 function recordDirectorScene(state           , eventId        , content                       , slot              , details                                                                 = {})            { const event = eventObject(content.getEvent(state.contentVersion, eventId)); return appendScene(state, event, content, slot, { ...details, riskTier: riskPreview(state, event, content, state.contentVersion) }); }
 
-function queryForSlot(state           , action            , slot                           , content                       )                           { const buildTags = content.get(state.contentVersion).buildPackId === undefined || content.getBuild === undefined ? [] : canonical(projectDirectorBuildSignals(state, content.getBuild(state.contentVersion)).builds.filter((build) => build.stage !== "latent").flatMap((build) => build.tags)); const coreRoles = roleTagsFor(state, "core"); const generatedRoles = roleTagsFor(state, "generated"); const query                     = slot === "P2" ? { slot: "onboarding" } : slot === "P4" ? { slot: "coreNpc", npcRoleTags: coreRoles } : slot === "P5" ? { slot: "contextual", action, buildTags, worldTags: [...state.run.world.tags], npcRoleTags: generatedRoles } : { slot: "ordinary" }; return content.queryDirectorCandidates(state.contentVersion, query); }
+function queryForSlot(state           , action            , slot                           , content                       )                           { const buildTags = content.get(state.contentVersion).buildPackId === undefined || content.getBuild === undefined ? [] : canonical(projectDirectorBuildSignals(state, content.getBuild(state.contentVersion)).builds.filter((build) => build.stage !== "latent").flatMap((build) => build.tags)); const coreRoles = roleTagsFor(state, "core"); const generatedRoles = roleTagsFor(state, "generated"); const query                     = slot === "P2" ? { slot: "onboarding", action } : slot === "P4" ? { slot: "coreNpc", npcRoleTags: coreRoles } : slot === "P5" ? { slot: "contextual", action, buildTags, worldTags: [...state.run.world.tags], npcRoleTags: generatedRoles } : { slot: "ordinary", action }; return content.queryDirectorCandidates(state.contentVersion, query); }
 
 function selectDirectorEvent(state           , action            , content                       , slots                                        )                          {
   const before = state.run.rng.streams.director.drawIndex; const exclusionReasonCounts                         = {}; let lastStats = { indexLookups: 0, candidateIdsVisited: 0, totalEvents: 0 }; let lastCandidateCount = 0;

@@ -1,7 +1,7 @@
 // GENERATED FILE — DO NOT HAND-EDIT.
 //
 // Source of truth: server/src/command-gateway.ts
-// Source sha256:   6b949bb96c862a432f9777977cdb3fca58f4e2332e03d5ab37b76b899cd0f0ec
+// Source sha256:   9fad6012fc7bbc7b562f14622cc3e1140285411f46105a9341da40aff61c4578
 // Generator:       tools/ui04d-cloud-runtime-artifact.mjs
 // Regenerate:      node tools/ui04d-cloud-runtime-artifact.mjs --write
 //
@@ -42,6 +42,63 @@ function commandIdFrom(value         )         {
 function byteLength(value        )         { return new TextEncoder().encode(value).length; }
 function identifiersWithinLimit(envelope                 )          {
   return [envelope.commandId, envelope.playerId, envelope.runId, envelope.rulesVersion, envelope.contentVersion, envelope.clientBuild].every((value) => value.length <= MAX_GATEWAY_ID_LENGTH);
+}
+
+/**
+ * PLAYUX01 — turns the reducer's real output into the result surface's receipt.
+ *
+ * WHY THE AUTHORITY ORDER MATTERS
+ * The product spec ranks the data sources: the authoritative receipt first, then a diff of the public
+ * view before and after submission, then a minimal compatibility projection. This function is the first
+ * rank, and it is only possible because the reducer already reports what it applied. Nothing here is
+ * inferred, and nothing is fabricated: an effect the reducer did not apply cannot appear.
+ *
+ * WHAT IS DELIBERATELY NOT PROJECTED
+ * `trace` is dropped, so the RNG state, the roll and the selector never leave the server. NPC effects are
+ * reduced to their public edge only (`npc.relevance`), because an `ADJUST_NPC_RELATION` carries hidden
+ * affinity and trust numbers the player has not earned the right to read. Cause effects are reported by
+ * state transition ("这段因果了结") rather than by echoing the op, so no hidden cause id or template leaks.
+ *
+ * WHY A ZERO-EFFECT CHOICE IS AN HONEST ANSWER
+ * The spec asks for a clear "nothing gained" outcome when a choice changes nothing measurable. An option
+ * can settle a real time cost and no resource gain at all — `OUTCOME_TIME_DELTA` is a registered op. So
+ * when nothing is reported here, `changed` is false and the client writes "此行没有明显收获" rather than
+ * inventing a gain. An empty effects list is a true statement about the settlement, not a missing message.
+ */
+function resultReceipt(output              , envelope                 )                                                                     {
+  const lines                            = [];
+  for (const effect of output.effects) {
+    if (typeof effect !== "object" || effect === null) continue;
+    const op = String((effect                           ).op);
+    if (op === "ADD_CULTIVATION") lines.push({ kind: "cultivation", labelKey: "result.cultivation", delta: (effect                           ).amount });
+    else if (op === "ADD_RESOURCE") lines.push({ kind: "resource", labelKey: "result.resource", resource: (effect                           ).key, delta: (effect                           ).amount });
+    else if (op === "ADD_BUILD_EVIDENCE") lines.push({ kind: "build", labelKey: "result.build_evidence", buildId: (effect                           ).buildId, delta: (effect                           ).amount });
+    else if (op === "OUTCOME_TIME_DELTA") lines.push({ kind: "time", labelKey: "result.time", years: (effect                           ).years });
+    else if (op === "RESOLVE_CAUSE") lines.push({ kind: "cause", labelKey: "result.cause_resolved" });
+    else if (op === "EXPIRE_CAUSE") lines.push({ kind: "cause", labelKey: "result.cause_expired" });
+    else if (op === "ADD_CAUSE") lines.push({ kind: "cause", labelKey: "result.cause_planted" });
+    else if (["ADD_NPC_SIGNIFICANCE", "ADJUST_NPC_RELATION", "REVEAL_NPC_FACT", "REVEAL_NPC_TRAIT", "REVEAL_NPC_STATUS"].includes(op)) lines.push({ kind: "npc", labelKey: "result.npc_noted" });
+    else if (["GAIN_ITEM", "ADD_ITEM", "CONSUME_ITEM"].includes(op)) lines.push({ kind: "item", labelKey: "result.item" });
+  }
+  // PLAYUX01 (B1) — `eventId` is added only when the command actually carries one.
+  //
+  // It used to be written unconditionally as `(envelope.command).eventId`, so a START_RUN or a
+  // CHOOSE_ACTION receipt held an `eventId` key whose value was `undefined`. The idempotency store
+  // persists the receipt as JSON, and JSON drops an undefined value, so a duplicate submission read back
+  // from the store no longer matched the freshly built result — `tests/ui04d.test.mjs` compares them
+  // field for field and fails on exactly that. A receipt that cannot survive its own storage round trip
+  // is not an authoritative record of a settlement, which is the whole point of keeping one.
+  const narrative                          = { changed: lines.length > 0, lines };
+  const settledEventId = (envelope.command                         ).eventId;
+  if (typeof settledEventId === "string" && settledEventId.length > 0) narrative.eventId = settledEventId;
+  const outcome = output.narrativeFacts.find((fact) => (fact                      ).type === "EVENT_OUTCOME")                                                             ;
+  // Same round-trip rule as `eventId` above: an absent value must be an absent key, never a key the
+  // store drops on the way to disk.
+  if (outcome !== undefined) {
+    if (typeof outcome.choiceId === "string" && outcome.choiceId.length > 0) narrative.choiceId = outcome.choiceId;
+    if (typeof outcome.appliedTier === "string" && outcome.appliedTier.length > 0) narrative.appliedTier = outcome.appliedTier;
+  }
+  return { domainEffects: lines, narrative };
 }
 
                                         
@@ -89,11 +146,18 @@ class CommandGateway {
       if (stored.state.rulesVersion !== envelope.rulesVersion || stored.state.contentVersion !== envelope.contentVersion) return settle(failure(envelope.commandId, stored.state.stateVersion, "CONTENT_MISMATCH", "content.version_mismatch"));
       try {
         const context = this.#resolveContext(envelope); const executed = executeLoggedCommand(stored.state, stored.commandLog, envelope, context, this.#content                                                );
-        validateGameState(executed.output.state); const success                = { ok: true, commandId: envelope.commandId, stateVersion: executed.output.state.stateVersion };
+        validateGameState(executed.output.state);
+        // PLAYUX01: the result surface is fed from the authoritative receipt, not from a client-side
+        // guess. `output.effects` is exactly what the reducer really applied (applyEventEffects pushes
+        // each one into publicEffects), so "修为 0→150 (+150)" is a statement about settled state rather
+        // than a prediction. It is attached here, inside the transaction, so it is written into the same
+        // idempotency record as the result: a replay of the same commandId returns this identical receipt,
+        // which is what makes the surface show the same outcome at most once per choice.
+        const receipt                = { ok: true, commandId: envelope.commandId, stateVersion: executed.output.state.stateVersion, ...resultReceipt(executed.output, envelope) };
         const successes = stored.successfulCommandsSinceSnapshot + 1; const snapshotDue = shouldCreateSnapshot(successes, executed.output.state, envelope.command);
         const nextStored            = { state: executed.output.state, commandLog: executed.commandLog, successfulCommandsSinceSnapshot: snapshotDue ? 0 : successes, ...(snapshotDue ? { lastSnapshot: createSnapshot(executed.output.state, executed.commandLog.baseSequence + executed.commandLog.entries.length) } : stored.lastSnapshot === undefined ? {} : { lastSnapshot: stored.lastSnapshot }) };
         if (this.#beforeCommit !== undefined) await this.#beforeCommit(envelope);
-        transaction.setRun(envelope.runId, nextStored); settle(success); newlyCommitted = true; return success;
+        transaction.setRun(envelope.runId, nextStored); settle(receipt); newlyCommitted = true; return receipt;
       } catch (error) {
         if (error instanceof ReducerError) return settle(failure(envelope.commandId, stored.state.stateVersion, error.code, error.messageKey, error.retryable));
         if (error instanceof PersistenceError) return failure(envelope.commandId, stored.state.stateVersion, "TRANSIENT", "persistence.invalid", true);
