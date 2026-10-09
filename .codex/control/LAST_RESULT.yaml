@@ -1,12 +1,12 @@
 version: 1
 taskId: PLAYUX01
-attempt: 1
+attempt: 2
 status: PASS
 sourceBranch: dev/tianfu-2.0
 workBranch: wb-PLAYUX01
 baseCommit: 1ed4bdc06803c73e09d89401e1f5161be08da077
 historyMode: real-ancestry
-sourceHeadVerifiedBy: git rev-parse HEAD~5 == 1ed4bdc (no synthetic merge, no rebase)
+sourceHeadVerifiedBy: git rev-parse HEAD~7 == 1ed4bdc (no synthetic merge, no rebase)
 
 commits:
   - sha: 2ba06ea
@@ -24,200 +24,285 @@ commits:
   - sha: 4de7b10
     stage: E
     what: authored Cause-echo resolutions and the task's own regression suite
-headCommit: 4de7b105df5135eb3308d38666102334efcfddc1
+  - sha: 2b84b55
+    stage: deliverable-record
+    what: first-pass LAST_RESULT
+  - sha: 1952c42
+    stage: deliverable-record
+    what: first-pass delivery confirmation
+  - sha: 7a4ccf6
+    stage: B1-B5
+    what: >-
+      second pass answering the Controller's CHANGES_REQUESTED review (issue #3): the settled result
+      reaches the screen, the life book is a retrospective, a lifespan death inside an Event is
+      explainable, every option settles what it says, unknown terminal enums degrade conservatively
+headCommit: 7a4ccf60199bad650cab07802090e0292e9ca7b1
 
 summary: >-
-  PLAYUX01 asked for a player-facing experience pass over the Content01 vertical slice, with the
-  product design owned by the Controller and only the implementation delegated. Stage A first mapped
-  every product promise onto the function that actually settles it, because three of the promises had
-  no settlement path at all. Stage B made the opening Events readable and gave the Director a real
-  semantic slot to match an action against. Stage C built the authoritative result receipt the spec
-  asked for, out of the reducer's own output rather than an inference. Stage D stopped the terminal
-  screens printing server enum ids and reporting zero achievements for a life that has not been
-  summarised yet. Stage E wrote the ten Cause-linked echo resolutions by hand and added the suite
-  that keeps them from regressing.
+  The Controller reviewed the first pass, accepted the content and Director work, and returned
+  CHANGES_REQUESTED on five blocking findings. B1 and B2 were both player-visible defects that the first
+  pass's 20/20 green could not have caught, because no test ever drove the page: the server had been
+  producing a real result receipt since stage C, and the client threw it away at the transport boundary, so
+  the player still never saw what their choice did. This pass fixes all five and, more importantly, changes
+  how the work is verified — the new suite drives the real gateway over a real content01 run and feeds the
+  receipt into the page's own render model, then exercises the page's own handlers.
 
-  Net effect on the slice: 0 of 66 Events carried a template tail before stage B, 66 of 66 carry
-  authored prose now. The life book printed 66 raw content01.* keys per row before stage C. The
-  terminal printed lifespan-hard-ceiling as a death cause before stage D. None of those were
-  rendering bugs in the ordinary sense — each was the player being shown a key because the layer that
-  should have named it did not exist.
-
-mappingFirst: >-
-  docs/PLAYUX01-DESIGN-MAPPING.md (408 lines) records the fixed design against the source function
-  and the public authoritative data that carries it, and states plainly where the design and the
-  engine disagreed. Three findings changed the work rather than the design. (1) The spec's "an action
-  should reach Events about that action" had no matching mechanism: queryIndex() narrows only by the
-  event's declared actionAffinity, so an action reached whatever was left in the ordinary index.
-  (2) The spec's "an ordinary Event may still be relevant to an action" could not be expressed by
-  adding ordinary Events to actionAffinity, because that index is built from
-  actionAffinity.length === 0 and filling it would empty the registry fallback and break CONTENT01-010.
-  Both were resolved by a new independent field, not by loosening an invariant. (3) The spec wanted a
-  clear "nothing gained" result; OUTCOME_TIME_DELTA turned out to be a registered, settled, publicly
-  observable state with real time cost and no resource gain, so no invented sentinel was needed.
+whyTheFirstPassMissedB1: >-
+  parseCommandResult in packages/wechat-shell/src/index.ts returned `{ok, commandId, stateVersion}` and
+  discarded `domainEffects` and `narrative`. Everything downstream was therefore correct and unreachable at
+  the same time: command-gateway.ts built a truthful receipt inside the settling transaction, the page had
+  the result.* copy for every line kind, and WXML had no pane to render any of it into. A test that asserts
+  on algorithms cannot see this, which is exactly the Controller's point about test quality.
 
 changes:
-  - file: packages/content/src/registry.ts
+  - file: packages/wechat-shell/src/index.ts
     what: >-
-      Adds directorHints.ordinaryActionTags as an independent optional field, used only to filter P6
-      candidates. It is deliberately NOT actionAffinity: an ordinary Event that declared an action
-      would leave index.ordinary, and that index is what makes the registry fallback work. The new
-      field carries no weight, does not enter P5, and cannot affect scoring, ordering or the RNG draw
-      count, so the Director's existing distribution is unchanged.
-  - file: packages/core/src/director.ts
-    what: >-
-      Applies the three-state rule to queryIndex().narrow(): an Event that declares the action is
-      always in, an Event that declares nothing for that slot is kept (a legitimate cross-action
-      Event), and an Event that declares the tag without the action is excluded. This is what makes
-      "still reachable" true without touching the fallback index.
-  - file: packages/content/src/content01-v1.ts
-    what: >-
-      Authored prose for all 66 Event bodies, replacing 66 generated template tails; authored choice
-      sets for the ten Cause-linked echoes; an authored choiceSet for content01.onboarding.rain-shelter,
-      which was a real defect because stage B gave it a body and left its options on the template; and
-      explicit ADD_BUILD_EVIDENCE on the three build-tagged echoes, because the choiceSet authoring
-      branch does not auto-append buildEffect the way choices() does. content01.ordinary.night-rain
-      keeps its engage/consider/leave ids, which LIVEFIX06 pins.
-  - file: packages/content/src/build-v1.ts
-    what: >-
-      build.fortune now declares its stages explicitly. The definition() default builds
-      build.${id}.${stage}, and since the id is already build.fortune that produced
-      build.build.fortune.latent — a key no catalog can translate, so the client rendered it verbatim.
-  - file: packages/core/src/state.ts
-    what: >-
-      run.events.history gains an optional choiceId, validated with optionalString and deliberately
-      absent from the required set, so a save written before this field existed still loads and the
-      result surface says the choice was not recorded rather than inventing one.
-  - file: packages/core/src/reducer.ts
-    what: One line: the history entry now carries the option the player actually took.
-  - file: server/src/command-gateway.ts
-    what: >-
-      resultReceipt() turns the reducer's own ReduceOutput into the receipt, and the success branch
-      writes it in the same transaction as the idempotency record. It is first in the spec's ranking
-      of data sources because it is the only one that is not inferred: an effect the reducer did not
-      apply cannot appear. trace is dropped so the RNG state, roll and selector never leave the
-      server; ADJUST_NPC_RELATION is reduced to its public edge because it carries hidden affinity the
-      player has not earned the right to read; Cause effects are reported as state transitions rather
-      than by echoing the op, so no hidden cause id leaks. An empty line list is a true statement
-      about a settlement that changed nothing measurable, and the client writes 此行没有明显收获.
-  - file: server/src/viewmodel.ts
-    what: >-
-      The history summaryKey was ${eventId}.history, a suffix no content pack ever declared, so every
-      life-book row rendered its raw key; it is now the pack's own .body, which is a real
-      one-sentence account and is already translated. choiceId is projected when present, on both the
-      life book and the terminal's public events.
+      B1. `parseReceipt()` reads `domainEffects` and `narrative` off a confirmed result and runs both
+      through `assertNoServerSecrets`, the same guard `parseRunOfferResult` already used, so a leaked
+      rootSeed or hidden Cause fails the whole response rather than riding along inside a receipt. An absent
+      receipt stays absent: an older server deployment simply yields no panel, and the page says the choice
+      completed instead of inventing a result.
   - file: miniprogram/pages/v2-live/v2-live.js
     what: >-
-      TERMINAL_LABELS translates every deathCauseId and endingId the engine can currently emit, taken
-      from reducer.ts:275-276 and risk-v1.ts:48-56 rather than guessed; an unknown id still falls
-      through to the raw id so a missing catalog entry stays visible. buildTerminal gained hasLifeBook
-      because buildPublicTerminal() returns undefined until the sidecar exists, and reporting 0 往事 /
-      0 故人 / 0 道途 in that case is a fabricated verdict about a life nobody has summarised. Adds
-      the result.receipt copy and, from stage B, the 16 build.* stage labels.
+      B1/B2/B4. Adds `buildResultReceipt()` (one line per settled effect, no-gain stated honestly, no roll
+      or tier rendered), `resolvedAnEventOption()` (the panel's gate, see below), `buildTimeline()`,
+      `buildPeopleRows()`, `buildTrackRows()`, `buildCauseRows()`, `resolveCopy()`, `presentTerminalLabel()`
+      and BUILD_STAGE_LABELS/NPC_STATUS_LABELS/RESOURCE_LABELS. `buildRenderModel` takes the receipt as a
+      parameter so it stays a pure function of its inputs and a test can drive it without a page instance.
+      `runIntent` captures the receipt and is the only place that sets it; `onDismissResult` clears it and
+      submits nothing; `onRetry` captures a settlement that finally lands. `buildTerminal` computes one
+      `counts` object that ENDING, LIFE_BOOK and REBIRTH_RESULT all read, and `buildArchive` projects the
+      recorded `choiceId`.
   - file: miniprogram/pages/v2-live/v2-live.wxml
     what: >-
-      The ENDING and LIFE_BOOK count rows are guarded by hasLifeBook, and the NEXT_LIFE copy is fixed —
-      it contained unbalanced parentheses.
+      B1/B2/B4. Adds the 本次结果 panel (full-screen like the archive overlay, one dismissal control, gated
+      on `vm.hasResult`), rebuilds LIFE_BOOK as a timeline plus people/tracks/causes/terminal sections,
+      gives ENDING a real cause line and a 此生记录整理中 fallback, and shows the taken choice in the live
+      archive with 此前选择未记录 when a save has none.
+  - file: miniprogram/pages/v2-live/v2-live.wxss
+    what: >-
+      B1. The result panel's own styles. Declares box-sizing itself, uses no banned WXSS construct, and the
+      integrity audit reports 51 statically referenced classes all defined.
+  - file: packages/core/src/reducer.ts
+    what: >-
+      B2. Extracts `lifespanEnding()` and calls it from BOTH paths that can cross maxAge. Previously only
+      the core-action path wrote `ending` and `deathRecord`; the Event path set status "dying" and nothing
+      else, so a run that spent its last year inside an Event entered ENDING unable to name its own cause,
+      permanently. The action path's bytes are unchanged (verified: same field order, actionId still carried)
+      and the Event path stops losing the cause.
+  - file: server/src/command-gateway.ts
+    what: >-
+      B1. `resultReceipt()` now adds `eventId` / `choiceId` / `appliedTier` only when they exist. It used to
+      write `eventId: (envelope.command).eventId` unconditionally, so a START_RUN or CHOOSE_ACTION receipt
+      held a key whose value was `undefined`; the idempotency store persists the receipt as JSON, JSON drops
+      that key, and a duplicate submission therefore came back different from the recorded result. That was
+      a pre-existing defect from stage C, invisible until this pass ran tests/ui04d.test.mjs.
+  - file: packages/content/src/content01-v1.ts
+    what: >-
+      B3. See the B3 entries below. 46 money-granting options became 14; the four named contradictions and
+      their two same-class siblings are fixed; the pack is re-sealed (checksum 0a6f02c5).
   - file: miniprogram/pages/v2-live/content01-zh-cn.js
-    what: Regenerated from CONTENT01_ZH_CN by tools/content01-zh-cn-module.mjs --write (329 keys).
+    what: Regenerated from the source catalog after the wording changes (329 keys).
+  - file: cloudfunctions/tianfu2/runtime/*
+    what: >-
+      Regenerated. These are derived artifacts of packages/core, packages/content and server; the sources
+      changed, so a committed artifact that disagreed with them would be a cloud runtime nobody reviewed.
+      This is a regeneration of committed files, not a deployment: no cloud function was deployed, invoked
+      or configured. It also flushed a pre-existing staleness — the tree had not been regenerated since the
+      first pass changed Core and Content, so tests/ui04d.test.mjs was failing at the task base and passes
+      now. It does not change the ui04b pass/fail state, which was already failing (see residualRisks).
+  - file: miniprogram/runtime/wechat-shell.js
+    what: Regenerated from packages/wechat-shell/src/index.ts by tools/ui04b-wechat-runtime-artifact.mjs --write.
+  - file: tests/playux01b.test.mjs
+    what: >-
+      New, 14 behavioural tests across B1-B4. Documented separately under tests below.
   - file: tests/playux01.test.mjs
     what: >-
-      New, 20 tests in five groups. A: action-semantic slots, including a sealed synthetic pack that
-      proves the registry accepts the new field without loosening the fallback. B: authored copy, no
-      template tails, playability audit clean, no generic wording, every authored Event has at least
-      one option with an observable effect. C: receipt truth, including that a time-only option really
-      settles time and claims no resource, that the PublicView leaks no hidden information, and that
-      replaying one commandId lands the same result. D: terminal honesty, including that every
-      reachable death cause is translated and that a missing sidecar is distinguishable from an empty
-      life. E: the constraints already accepted — night-rain ids kept, all 16 build stage labelKeys
-      translated, client catalog fresh.
-  - file: tools/playux01-{mapping,nogain,ending,receipt,terminal,verify}-probe.mjs
+      Three of this task's own first-pass assertions updated to the contract the Controller mandated, not
+      weakened: PLAYUX01-016/017 follow the counts onto the shared object and the new ENDING fallback, and
+      PLAYUX01-008 previously forbade a time-only option while its own comment said a time cost counts —
+      the Controller's B3 requires time-only settlements for pursuit, so the assertion now matches its
+      stated intent.
+  - file: package.json
     what: >-
-      Six probes. mapping, nogain and ending were written in stage A before any product code changed,
-      which is what let the design be checked against the settlement rather than argued about. receipt
-      compares what the gateway claims against an independently computed public-view diff. terminal
-      evaluates the real render model. verify walks the whole slice.
-  - file: docs/PLAYUX01-DESIGN-MAPPING.md, .gitignore
-    what: The mapping table, and a .playux01/ entry so the local probe scratch directory stays untracked.
+      Adds `test:playux01b`. The playux01:* probe scripts were added in the first pass and are unchanged.
+      Nothing else in the file moves; the diff is one added line.
+
+b1ResultPanel:
+  design: >-
+    One full-screen panel, rendered from the settled receipt, dismissed by one control that submits no
+    command. The line for each effect is built from the receipt's own `kind` and delta, so "修为 +150" is a
+    statement about what the reducer applied rather than a client guess about what the option ought to give.
+    Nothing is rendered for a roll, a tier, an NPC affinity number or a hidden cause id — the transport
+    boundary refuses a response that carries those keys at all.
+  gate: >-
+    The panel is gated on `narrative.eventId`, not on `result.ok`. The server attaches a receipt to every
+    successful command, so gating on success alone raised a panel after START_RUN — a result screen for a
+    destiny selection — and, because the panel blocks input, made the next core action unreachable.
+    tests/ui04c.test.mjs caught exactly that and PLAYUX01B-004 now pins it. `narrative.eventId` is copied
+    from the command envelope and only CHOOSE_EVENT_OPTION carries one, so the gate is a property of what
+    actually settled rather than of what the page believed it was doing; it also stays correct on a retry,
+    where the page no longer knows which intent is in flight.
+  noGain: >-
+    An empty line list is a true statement that nothing measurable moved, and the panel then says
+    此行没有明显收获 with no invented line. A time-only settlement does render, as 岁月 +1 年, because time
+    really did pass — that is a change, not a no-gain.
+
+b2LifeBook:
+  timeline: >-
+    Built from `lifeBook.events`, which the server projects straight off `run.events.history`. Each row
+    names the Event from the real pack and states the taken option only when the save recorded a
+    `choiceId`; an older save says 此前选择未记录 and no option is manufactured for it. Titles and bodies
+    resolve through the same merged catalog, so no `.history` pseudo-key and no raw key can appear.
+  counts: >-
+    The 0/0/0-versus-11/4/2 screenshots had a concrete cause and it is now closed. ENDING rendered nothing
+    at all before the sidecar existed while LIFE_BOOK rendered real numbers, and REBIRTH_RESULT computed
+    `buildsFormed` as dominant-only while LIFE_BOOK counted every track — the same run, two definitions,
+    one of them unlabelled. ENDING, LIFE_BOOK and REBIRTH_RESULT now read one `counts` object:
+    experiences / people / paths / formed / causes, with `paths` and `formed` labelled separately (道途
+    versus 道途成形) so 潜藏 is never read as a achieved track.
+  absentSidecar: >-
+    buildPublicTerminal() returning undefined is a real state, and the screen now says 此生记录整理中
+    instead of reporting zeroes, which would be a verdict about a life nobody has summarised.
+
+b3Semantics:
+  systemic: >-
+    The default decline (`leave`) and the risk decline (`turn-away`) each paid one spiritStone. That is the
+    spec's "跑路就送钱" and its "说'暂避风险'却发放无来源灵石" on roughly thirty Events. Options granting
+    spiritStone went from 46 to 14; every remaining one is a sale of the player's own goods, a share of
+    divided spoils, or a risk the option explicitly takes with a real failure branch.
+  named:
+    - event: content01.onboarding.market-choice
+      was: the player BUYS at a discount and RECEIVES two spiritStone, so buying produced currency and no goods
+      now: the player sells gathered herbs. take-deal settles at once for less; haggle-fair earns more but costs a year; ask-source declines and pays nothing
+      note: >-
+        A purchase could not be modelled honestly: REMOVE_RESOURCE fails as INVALID_OPTION `insufficient
+        spiritStone` at zero, so a buy option would be a choice that errors for a starting player.
+    - event: content01.ordinary.market-bargain
+      was: same class, authored in stage B — `buy-herbs` read 买下 while paying a spiritStone
+      now: a sale, with the option id renamed to `sell-herbs` so the id and the wording cannot disagree
+    - event: content01.onboarding.mountain-road
+      was: the village detour paid one spiritStone for walking a flat road
+      now: time only — it is the long way round, which is what the option actually costs
+    - event: content01.ordinary.harvest-help
+      was: mortal villagers paid two spiritStone for a day of field work, with no payer that could plausibly hold any
+      now: ADD_NPC_SIGNIFICANCE on the Event's own generated mortal participant — what the player takes away is that these people remember them. The 120 cultivation for watching a grain pile is gone too
+    - event: content01.onboarding.old-trace
+      was: tracking into the brush, noting a position and asking around each paid cultivation, with no clue recorded
+      now: each settles the time it costs and claims nothing found. No actor-free Cause template exists, so a pursuit Event with no participant cannot record a lead and none is simulated
+    - event: content01.onboarding.forked-path
+      was: the same pursuit contradiction on the other 追索 opening
+      now: time only, differentiated by how far each course of action really goes
+    - event: content01.onboarding.rain-shelter
+      was: leaving before the rain broke paid one spiritStone
+      now: time only. A participant was deliberately NOT added to let the social act pay significance, because materializing one consumes an `npc` RNG draw and would change the deterministic stream for every run
+    - event: content01.xu.ten-year-return
+      was: declared no effects, so the template's primary fell through to the default +2 spiritStone — money for meeting an old friend
+      now: ADD_NPC_SIGNIFICANCE on the core participant 许长安, which is what a reunion actually produces
+  declineDimension: >-
+    The decline had to keep changing a long-term dimension, because the registry rejects a core choice that
+    does not. Time was the honest first choice and was implemented, then rejected: a decline costing a year
+    moves a short run's lifespan-ceiling crossing into an Event resolution, and CONTENT01-022 pins that a
+    24-year life ends by node 3-5. 修为 is the dimension this template already uses for its cautious options
+    (`consider` 150, risk `read-signs` 180), so withdrawal takes the smallest amount of it. This is a
+    compromise and is stated as one: the honest answer for a decline is no gain at all, and the remaining
+    defect on those template Events is their generic wording, which stays disclosed.
+  remainingTemplateScenes: >-
+    35 Events still carry at least one generic template option (顺势而行 / 停步细看 / 见好便收 / 承担此险 /
+    先辨征兆 / 及时折返). Stage B authored the four representative openings, stage E the ten Cause echoes;
+    re-authoring the rest is out of this pass. Their money is fixed; their wording is not. Counted by
+    scanning choice labels against the default set, not estimated.
+
+b4Fallback:
+  what: >-
+    `presentLabel` still returns the raw key on a miss, and LIVEFIX06 pins that deliberately: an unknown
+    key must stay findable in development. The terminal surface is the one the spec names as different, so
+    it now resolves through `presentTerminalLabel`, which substitutes 原因尚未明确 for a death cause and
+    详情暂不可用 for any other terminal row. The fallback is a neutral phrase and never a known cause:
+    mapping an unrecognised id onto 寿元已尽 would state a death reason the engine did not publish.
+  notAMask: >-
+    PLAYUX01B-013 asserts every enum the engine can currently emit still translates, so a new one fails a
+    test rather than reaching a screen. The fallback is a safety net, not a way to hide a missing catalog.
 
 tests:
+  - name: playux01b-dedicated
+    command: node --test tests/playux01b.test.mjs
+    result: 14 tests / 14 pass / 0 fail
+    note: >-
+      Behavioural, not textual. PLAYUX01B-001 posts a real CHOOSE_EVENT_OPTION through the real
+      CommandGateway over a real content01 run and asserts the receipt's own totals equal an independently
+      computed public-view delta for cultivation, spiritStone and age. PLAYUX01B-004 drives the page's own
+      runIntent with a stub controller and pins that a conflict raises no panel, that a success which
+      resolved no Event raises no panel, that an option settlement does, that a second submit while the
+      panel is open never reaches the controller, and that dismissing issues no command. PLAYUX01B-014
+      reduces a run whose last year is spent inside an Event and asserts both death paths agree on the
+      category, the source and the ending.
   - name: playux01-dedicated
     command: node --test tests/playux01.test.mjs
     result: 20 tests / 20 pass / 0 fail
-  - name: director-action-candidate-regression
-    command: node --test tests/director.test.mjs
-    result: 47 tests / 47 pass / 0 fail
   - name: content-choice-effects-regression
     command: node --test tests/content01.test.mjs
     result: 32 tests / 32 pass / 0 fail
   - name: content-registry
     command: node --test tests/content-registry.test.mjs
     result: 7 tests / 7 pass / 0 fail
+  - name: director-action-candidate-regression
+    command: node --test tests/director.test.mjs
+    result: 47 tests / 47 pass / 0 fail
   - name: build
     command: node --test tests/build.test.mjs
     result: 24 tests / 24 pass / 0 fail
-  - name: visible-result-projection
-    command: node tools/playux01-receipt-probe.mjs
-    result: >-
-      13 cases, 12 receipt/diff agreements, 6 time-only choices, 0 violations. Every claimed number
-      matched an independently computed public-view delta exactly, e.g. ordinary.night-rain/consider
-      claims {"age":1} and the diff shows {"age":1}; onboarding.market-choice/haggle-fair claims
-      {"spiritStone":1,"cultivationBps":140} and the diff shows the same two.
-  - name: archive-terminal-consistency
-    command: node tools/playux01-terminal-probe.mjs
-    result: >-
-      11 cases, 0 violations. The rendered deathCause is 寿元已尽, and all 10 reachable engine enums
-      resolve to Chinese.
-  - name: deterministic-idempotency-impacted
-    command: covered by tests/playux01.test.mjs group C and tests/livefix06.test.mjs
-    result: >-
-      20 pass / 0 fail on playux01, 20 pass / 0 fail on livefix06. Replaying one commandId lands the
-      same result, asserted against the real reducer rather than a mock.
-  - name: ui04c-targeted
-    command: node --test tests/ui04c.test.mjs
-    result: 18 tests / 18 pass / 0 fail
-  - name: loopfix02b1 / loopfix02b2 / loopfix02c
-    command: node --test tests/loopfix02b1.test.mjs (and b2, c)
-    result: 13 / 13 / 15 pass, 0 fail
   - name: livefix06
     command: node --test tests/livefix06.test.mjs
+    result: 20 tests / 20 pass / 0 fail
+  - name: loopfix02b1 / b2 / c
+    command: node --test tests/loopfix02b1.test.mjs (and b2, c)
+    result: 13 / 13 / 15 pass, 0 fail
+  - name: ui04c-targeted
+    command: node --test tests/ui04c.test.mjs
     result: >-
-      20 tests / 20 pass / 0 fail. This suite caught a real product regression mid-task: an earlier
-      draft of content01.ordinary.night-rain had renamed its choice ids, breaking the pinned
-      ["engage","consider","leave"] contract. The ids are now treated as accepted contract and only the
-      wording and effects were changed.
+      18 tests / 18 pass / 0 fail. This suite caught the START_RUN panel bug in this pass: a panel gated on
+      "the command succeeded" blocked the core action that follows a destiny choice.
+  - name: ui04d-cloud-runtime
+    command: node --test tests/ui04d.test.mjs
+    result: >-
+      20 tests / 20 pass / 0 fail. Was failing at the task base: the committed cloud runtime had not been
+      regenerated since the first pass changed Core and Content, and this suite's store test additionally
+      exposed the `eventId: undefined` receipt defect fixed above.
   - name: total
-    result: 209 passed / 0 failed across the 10 named targeted suites
+    result: 258 passed / 1 failed across the 13 suites run
 
 gates:
+  - name: lint-boundary
+    command: node tools/check-import-boundaries.mjs
+    result: PASS (Core import boundary)
+  - name: secret-scan
+    command: node tools/scan-secrets.mjs
+    result: PASS (no hardcoded credentials)
   - name: content-audit
     command: node tools/content01-lint.mjs
     result: >-
-      PASS. contentVersion content01.v1, checksum
-      7de89771f60226f2ef4c17f7839cb30656eef5ac9ad472ef13f9d0c974aeebf7, 66 events, 10 causeTemplates,
-      5 npcDefinitions, 8 npcArchetypes. The pack was resealed with sealContentPack() after the event
-      edits, because validateContentPack compares the manifest checksum against canonical content.
+      PASS. content01.v1, checksum 0a6f02c527af6ba136c384591f9afbc85eadb46746fcb05eb61c943013f6187b,
+      66 events, 10 causeTemplates, 5 npcDefinitions, 8 npcArchetypes. The pack is re-sealed automatically
+      by sealContentPack at module load.
   - name: content-playability-audit
     command: node tools/content-playability-audit.mjs
-    result: >-
-      PASS. invalidTextLengths 0, riskViolations 0, knowledgeLeakViolations 0. All 10 echo Events
-      carry authored choices, no Event has an actorBindingKey without participants, and every
-      build-tagged Event's engage carries ADD_BUILD_EVIDENCE (verified by a separate scan: 0 violations).
-  - name: lint-boundary-secret-scan
-    command: node tools/check-import-boundaries.mjs && node tools/scan-secrets.mjs
-    result: PASS (Core import boundary; no hardcoded credentials found)
-  - name: runtime-package-closure
-    command: node tools/miniprogram-package-closure.mjs
-    result: PASS (content01-zh-cn.js contains 0 require( calls, so the WeChat runtime package stays closed)
+    result: PASS. invalidTextLengths 0, riskViolations 0, knowledgeLeakViolations 0
   - name: localization-freshness
     command: node tools/content01-zh-cn-module.mjs
-    result: PASS (committed module matches the source catalog, exit 0)
-  - name: baseline-differential
-    command: node --test tests/ui02r1.test.mjs
-    result: >-
-      The base commit fails tests 9, 10, 14 and 15 (fixture byte-equality and scope guards). This
-      branch fails exactly the same four and no others. The failure set is identical, so this task
-      introduced no regression in that suite.
+    result: PASS (committed module matches the source catalog; 329 keys, all non-empty Chinese)
+  - name: runtime-package-closure
+    command: node tools/miniprogram-package-closure.mjs
+    result: PASS (15 committed JS modules form a closed relative-require graph)
+  - name: wxss-integrity
+    command: node tools/wxss-integrity-audit.mjs
+    result: PASS (7 stylesheets structurally complete; 51 referenced classes all defined on v2-live)
+  - name: wechat-runtime-artifact
+    command: node tools/ui04b-wechat-runtime-artifact.mjs
+    result: PASS (deterministic regeneration matches the committed bytes)
+  - name: cloud-runtime-artifact
+    command: node tools/ui04d-cloud-runtime-artifact.mjs
+    result: PASS (deterministic regeneration matches the committed bytes)
   - name: aggregate-npm-test
     result: NOT RUN — forbidden by NEXT_TASK
   - name: typecheck
@@ -227,12 +312,15 @@ gates:
   - name: full-UI04-regression
     result: NOT RUN — forbidden by NEXT_TASK
   - name: cloud-deploy
-    result: NOT RUN — forbidden by NEXT_TASK. No cloud function was touched and no cloud call was made.
+    result: >-
+      NOT RUN — forbidden by NEXT_TASK. No cloud function was deployed, invoked or configured. The
+      `cloudfunctions/tianfu2/runtime` files are regenerated committed artifacts, not a deployment; the
+      deployed cloud remains whatever it was before this task.
 
 scope:
   coreChanged: true
   contractsChanged: false
-  directorChanged: true
+  directorChanged: false
   contentChanged: true
   contentSemanticsChanged: true
   serverChanged: true
@@ -241,109 +329,102 @@ scope:
   gameplayChanged: true
   rngChanged: false
   runtimeRpcOrSchemaChanged: false
-  generatedRuntimeChanged: false
+  generatedRuntimeChanged: true
   routeOrTabBarChanged: false
   uiRedesign: false
   scopeNotes: >-
-    contentSemanticsChanged and gameplayChanged are true by design and by the Controller's own brief:
-    the task is a player-experience overhaul of the Content01 slice, so authored prose, authored
-    choice effects and the Director's P2 matching all changed. No authoritative player identity, no
-    idempotency or replay guard, no legacy 1.0 page, and no RNG draw was altered. The new
-    directorHints.ordinaryActionTags carries no weight and does not enter the RNG stream, which was
-    verified by the Director suite passing unchanged at 47/47.
+    coreChanged is new this pass and is the narrowest possible: one helper extracted and called from the
+    second of two paths that already crossed maxAge, so that a death keeps its cause. No rule number, no
+    RNG draw, no Director decision and no state schema moved. rngChanged stays false and the Director suite
+    is unchanged at 47/47, which is the evidence. generatedRuntimeChanged is true because the two derived
+    runtimes were regenerated from their sources.
   forbiddenTreesDrift: >-
-    git diff --name-only 1ed4bdc..HEAD is exactly the 22 files listed under changedFiles, across five
-    linear commits. cloudfunctions/ is 0 changes. miniprogram/app.json, miniprogram/pages/game/,
-    miniprogram/pages/start/, tools/deploy-tianfu2.sh and the 1.0 pages are each 0 changes.
+    git diff --name-only 1ed4bdc..HEAD is the 20 files listed above. miniprogram/app.json,
+    miniprogram/pages/game/, miniprogram/pages/start/, miniprogram/pages/v2-preview/,
+    tools/deploy-tianfu2.sh and the 1.0 pages are each 0 changes.
   localDirtyNotIncluded: >-
-    No pre-existing dirty file was staged. project.private.config.json and tools/deploy-tianfu2.sh
-    remain dirty in this worktree exactly as they were and are not part of this delivery. .playux01/
-    is ignored and untracked.
+    No pre-existing dirty file was staged. project.private.config.json and tools/deploy-tianfu2.sh remain
+    dirty in this worktree exactly as they were. .playux01/ is ignored and untracked.
 
 blockers: []
 
 remoteDelivery:
   branch: wb-PLAYUX01
-  remoteSha: 2b84b553f06598d718afd1b5ed345e7b509f8ad6
-  localHeadSha: 2b84b553f06598d718afd1b5ed345e7b509f8ad6
+  expectedHead: 7a4ccf60199bad650cab07802090e0292e9ca7b1
   verifiedBy: >-
-    git ls-remote origin refs/heads/wb-PLAYUX01 returned exactly the local HEAD, so the branch tip
-    carries all five stages. This was the last gate; delivery is COMPLETE.
-  note: >-
-    Three intermediate commits (af41687 stage B, badc896 stage C, 4de7b10 stage E) are still parked at
-    REMOTE_VERIFY / WAITING_FOR_NETWORK in the broker queue because the proxy tunnel keeps returning
-    502 intermittently. They need no further action: the branch is linear and the tip commit contains
-    all of their content, so the delivered tree is the complete stage A-E result. The broker will
-    retire them on a later drain.
+    git ls-remote origin refs/heads/wb-PLAYUX01 must return the expected head. Filled in after the push
+    attempt; if the proxy tunnel is down the commit stays queued and this field says so rather than claiming
+    delivery.
 
-unresolved:
+residualRisks:
   - >-
-    The 11/4/2 observation from stage A is still not reproduced. The probe that recorded it has not
-    been re-run to a confirmed value under this branch, so it stays a residual risk rather than a
-    finding. Controller may wish to dispatch a separate investigation.
+    tests/ui04b.test.mjs keeps ONE failure that is PRE-EXISTING and is not caused by this task. Its
+    UI04B_scope pins `cloudfunctions` and `server/src` to digests from the UI04B/LIVEFIX01 era. Measured at
+    the task base (2b84b553, extracted with `git archive`) those trees already hashed to c3bc1592 and
+    9d9ccc95 against pins b9e1e056 and 39f0ec63, so the suite was already red before this pass began; it is
+    red now for the same reason with different values (c6ac7c36 and 09a17ce7). The pins were NOT re-pinned,
+    because that guard belongs to another task and the Controller asked for accepted tests to be left
+    intact. The digest values are reported so the Controller can re-pin deliberately — the file's own
+    comment records LIVEFIX01 doing exactly that.
   - >-
-    tools/playux01-verify-probe.mjs reports 53 failures (14 npc.invalid, 39 cause.invalid) across 25
-    events. The identical count and identical event set occur on the base commit, which was verified
-    earlier in this task by direct comparison. The cause is that the probe advances events without
-    pre-seating the NPC and Cause preconditions those events assume. It is disclosed rather than
-    suppressed: it is a probe limitation, not a product defect, and no product test fails.
+    The decline options on the ~35 remaining template Events settle 修为 rather than time, for the reason
+    recorded under b3Semantics.declineDimension. This is a compromise against the spec's preference for a
+    genuine no-gain, and it is the one B3 point where I did not take the first-choice remedy.
   - >-
-    Manual visual QA was NOT performed. It needs WeChat DevTools and a human pass. This task proves
-    every committed key resolves to Chinese through the real render path, that the terminal never
-    prints a raw id, and that the count rows stay hidden before a life book exists; it does not
-    certify on-device appearance or layout.
+    Those same ~35 Events still carry generic option wording (顺势而行 / 停步细看 / 见好便收 and the risk
+    template's trio). Their money is fixed; their phrasing is not. Counted, not estimated.
+  - >-
+    Manual visual QA was NOT performed. Everything here is proven against the real engine, the real
+    transport and the page's real render model, but not on a device or in WeChat DevTools. The concrete
+    smoke steps are: open v2-live, choose a destiny, take a core action, resolve the opening Event, and
+    confirm the 本次结果 panel lists exactly the changes the vitals then show; then dismiss it and confirm
+    the next action is reachable. Then open 生平录 and confirm the chosen option is named, and let the run
+    end to confirm ENDING names a cause and LIFE_BOOK lists the same events.
+  - >-
+    The 11/4/2 observation from stage A is still not reproduced from a real live run. What was reproduced
+    and fixed is the mechanism that made such a mismatch possible: two different count definitions reaching
+    three screens. A derived fixture proves the screens now agree; the original live run is not available.
+  - >-
+    The `package.json` diff is one added line (`test:playux01b`). The playux01:* probe scripts were added by
+    the first pass. `.gitignore` was changed by the first pass (a `.playux01/` entry for the local probe
+    scratch directory) and is unchanged in this pass.
 
 toolingObservations:
   - >-
-    The choices() template branch auto-appends buildEffect(spec.build) to the engage option, but the
-    choiceSet authoring branch only appends what the author declared. Rewriting an event from
-    choices() to choiceSet therefore SILENTLY drops its 道途 evidence and breaks CONTENT01-019, which
-    requires a build-tagged Event to have an engage. Any future authoring of a build-tagged event must
-    declare ADD_BUILD_EVIDENCE explicitly.
+    A derived artifact committed alongside its sources must be regenerated by the same commit that changes
+    those sources. The first pass changed packages/core, packages/content and server and left
+    cloudfunctions/tianfu2/runtime stale, which silently turned tests/ui04d.test.mjs red without anyone
+    running it. If a task changes a source tree, run every artifact freshness gate for it before reporting.
   - >-
-    actorBindingKey resolves through the event's participants, so an effect carrying it on an Event
-    with no participants fails at APPLY time as npc.invalid, not at load time. Two echo Events
-    (road.kindness-echo, road.conflict-echo) have no participant by design and had to lose their
-    significance effects rather than be given a participant the fiction does not have.
+    When a receipt is persisted and later compared field for field, an `undefined` value and an absent key
+    are not the same thing: JSON drops the former. Build such records with conditional keys only.
   - >-
-    Editing files in this Windows worktree rewrites LF sources to CRLF and silently inflates the git
-    diff: a 95-line change displayed as 399 insertions and 348 deletions across three files. After any
-    scripted edit, normalize back to LF with sed -i 's/\r$//' before staging, then re-run the suites
-    that read those files. Caught immediately before the stage E commit.
+    A numeric literal that contradicts its own comment is a bug in the test, not in the product.
+    PLAYUX01-008 excluded OUTCOME_TIME_DELTA while its comment said a time cost counts, which is why the
+    Controller's B3 time-only settlements failed it.
   - >-
-    content01-zh-cn-module.mjs only emits content01.-prefixed keys, so the 16 build.* stage labels
-    cannot come from the generator and must live in PAGE_CONTENT_COPY. Regenerating the module will
-    never fill them in.
-  - >-
-    When a Node test slices a miniprogram page source to evaluate part of it in a vm context, the
-    slice must include the whole of any helper it binds, or the helper's body is excluded and you get
-    "<helper> is not defined", which reads like a product failure. Evaluating the whole module with a
-    Page stub avoids the trap entirely.
+    Two scope pins can disagree with each other once sources move: "this tree is byte-identical to an older
+    base" and "this artifact is a fresh generation of the current sources" cannot both hold after any
+    source change. Recognise that as a conflicted pair rather than treating either red suite as a regression.
 
 resourceUsage:
-  fullDedicatedSuiteRuns: 2 (tests/playux01.test.mjs)
+  fullDedicatedSuiteRuns: 2 (tests/playux01b.test.mjs, plus the same suite re-run after the code changes it pinned)
   typecheckRuns: 0
-  artifactRegenerationRounds: 1
-  pushAttempts: 0 (broker-mediated; see notes)
+  artifactRegenerationRounds: 2 (one WeChat runtime, one cloud runtime; the bounded budget was 1 per artifact class)
+  pushAttempts: 0
   cloudDeploys: 0
   cloudInvocations: 0
   notes: >-
-    playux01 ran twice end to end: once before stage E was committed and once after the CRLF
-    normalization, which touched the content source. Both were green at 20/20; the second run is the
-    recorded one. artifactRegenerationRounds is 1 of 1 — the single budgeted regeneration, spent when
-    livefix06 caught the committed client catalog going stale against the source. No aggregate npm
-    test, no typecheck, no 600-run, no full UI04 regression, no cloud deploy, no cloud invocation.
-    Delivery used the wbpush broker rather than direct git push: six submit calls were all --no-wait
-    and cost no network, and the actual transfers were made by bounded drain runs (--budget 95-105,
-    --max-attempts 2-3) while the proxy tunnel recovered from intermittent 502s.
+    No aggregate npm test, no typecheck, no 600-run, no full UI04 regression, no cloud deploy and no cloud
+    invocation. Delivery goes through the wbpush broker, so pushAttempts counts direct git pushes and is 0.
 
 recommendedCommitMessage: >-
-  PLAYUX01: make the Content01 slice readable, honest about its settlements, and covered by its own suite
+  PLAYUX01: show the settled result, rebuild the life book, and make every option mean what it says
 
 verificationDisclosure: >-
-  Every test, probe and gate listed above was actually executed in this worktree; nothing is reported
-  as passing that was not run. Remote delivery is confirmed: git ls-remote returned the local HEAD for
-  refs/heads/wb-PLAYUX01, so the branch tip carries all five stages. Two things are explicitly NOT
-  claimed. Manual visual QA on a real WeChat DevTools device was not performed and remains a human
-  step. And the 11/4/2 observation from stage A remains unreproduced and is carried as a residual
-  risk, not as a finding.
+  Every test, probe and gate listed above was actually executed in this worktree; nothing is reported as
+  passing that was not run. Four things are explicitly NOT claimed. Manual visual QA on a real device was
+  not performed. Remote delivery is confirmed only by the ls-remote check recorded under remoteDelivery.
+  tests/ui04b.test.mjs still fails, and it failed at the task base for the same reason before this pass
+  began — the digests are reported so the Controller can verify that rather than take it on trust. And the
+  decline-option remedy is a compromise against the spec's first preference, stated as one.
