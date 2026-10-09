@@ -1,5 +1,5 @@
 version: 1
-status: READY
+status: HOLD
 attempt: 1
 taskId: PLAYUX01
 title: PLAYUX01 - Integrated action event consequence and lifetime UX
@@ -13,9 +13,9 @@ verificationProfile: standard
 executionProfile: credit-efficient
 execution:
   readProtocolFirst: true
-  workBuddyMayImplement: true
-  commitTaskResult: true
-  pushWorkBranch: true
+  workBuddyMayImplement: false
+  commitTaskResult: false
+  pushWorkBranch: false
   updateSourceBranch: false
   startNextTask: false
   runAggregateNpmTest: false
@@ -35,13 +35,30 @@ controllerIntent:
   productDecisionsBy: Controller
   mode: INTEGRATED_PLAYER_EXPERIENCE_REWORK
   goal: "One linked action event choice consequences history ending life-book renovation without task splitting"
-  postTask: "Controller reviews and determines acceptance; WorkBuddy must not merge or start next task"
+  postTask: "Accepted and fast-forward merged; HOLD until explicit user instruction for separate sync/deploy QA"
+controllerAcceptance:
+  taskId: PLAYUX01
+  result: ACCEPTED_WITH_CAVEATS_FAST_FORWARDED
+  reviewedDate: "2026-10-09"
+  originalSourceHead: 1ed4bdc06803c73e09d89401e1f5161be08da077
+  workBranch: wb-PLAYUX01
+  acceptedRemoteHead: 325c55563bf3fd812a8659aa1bc9d56cd6b42eaa
+  mergedMethod: NON_FORCE_FAST_FORWARD_WITH_EXPECTED_SHA
+  ancestry: "ahead 12, behind 0 at final check"
+  reviewDocument: docs/PLAYUX01-CONTROLLER-ACCEPTANCE.md
+  sourceReview: PASS_WITH_CAVEATS
+  testsReported: "264 pass / 0 fail across 12 bounded suites; not rerun by Controller"
+  legacyUi04bScope: "Known prior stale pins, not included among the 12 passing suites"
+  visualQa: PENDING_WECHAT_DEVTOOLS
+  cloudDeployment: NOT_PERFORMED
+  nextAction: HOLD_UNTIL_EXPLICIT_USER_DECISION
+
 notes:
   - User approved the integrated task and explicitly requires Controller decisions rather than WorkBuddy inventing product design. Read docs/PLAYUX01-PRODUCT-SPEC.md in full; implement the fixed product specification.
   - Read .codex/control/PROTOCOL.md and the task definition. Run node .codex/context.mjs PLAYUX01 once if available; do not roam the whole repository.
-  - No automated WorkBuddy invocation from GitHub writing alone. User manually sends the kickoff message.
+  - PLAYUX01 has been accepted and merged; HOLD denies further WorkBuddy task starts. User must explicitly authorize any new local QA or cloud deployment task.
   - Preserve main and all existing local dirty files. The actual WeChat DevTools project may be the WorkBuddy worktree documented in TOOLING_RUNBOOK; do not assume main clone.
   - GitHub API push fallback on transport failure with bounded attempts and remote SHA ancestry verification. Do not modify dev/tianfu-2.0 directly.
-  - Do not deploy server or cloudfunctions as part of this task without explicit user approval. If needed for real interaction after a server change, report the exact deployment artifacts and block real-environment claims until done.
+  - The accepted branch contains updated Core/Content/server and generated cloud runtime but deployed CloudBase is not updated by Git. No live-environment behavior may be claimed until authorized sync/deployment and WeChat verification.
   - Do not run aggregate npm test or 600-run. Apply bounded touched-boundary rule tests if Core or server code changes.
   - No automatic follow-up tasks. Controller will review the result before merging or authorizing real deployment.

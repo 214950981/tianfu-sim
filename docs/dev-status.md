@@ -9,7 +9,7 @@
 - Repository: `214950981/tianfu-sim`
 - Active branch: `dev/tianfu-2.0`
 - Stable 1.0: `main`
-- lastReviewedCommit: `31bbc5b4e79d5ca447e26062a8c8d00a3969c782`
+- lastReviewedCommit: `325c55563bf3fd812a8659aa1bc9d56cd6b42eaa`
 - reviewedDate: `2026-10-09`
 - ui04FinalWorkBranch: `wb-UI04FINAL`（Controller 已验收并 fast-forward 到 dev）
 
@@ -20,10 +20,18 @@
 - **LIVEFIX05 已被 Controller 接受并快进合并**：`wb-LIVEFIX05` 的实际提交 `3a6c6d70be6132147ccb09d9a718ccd5189109c7`，自原 dev HEAD `171a6c690499f66e7333b784a5c7557b61b5096f` 真实单提交后代快进。
 - 改动范围恰好三个文件：`miniprogram/pages/v2-live/v2-live.wxml`、`tests/livefix05.test.mjs`、`.codex/control/LAST_RESULT.yaml`。未改 server/cloudfunction/Core/Content/main，也没有云端部署。
 - Controller 已核验远端 WXML 的显式否定 `wx:if` 与原有选项/CTA 绑定；WorkBuddy `LAST_RESULT` 报告 `livefix05: 6/6`、`ui04c: 18/18`，以及限定范围的静态门禁全部 PASS。**本轮未重新执行测试，也没有新 CI 结果。**
-- **当前控制面：READY / PLAYUX01（用户授权的单次一体化改造）**；用户提交的五张实机截图证明中文事件、选项、存档、生平录、终局和人生书都已到达，但玩法区分、叙事逻辑、即时反馈、历史键名及终局计数存在体验缺陷。统一安排为一个 PLAYUX01，WorkBuddy 按行动→事件→选择→反馈→生平录→终局→人生书的顺序内部施工，最终一次验收。禁止派发 PLAYUX02 或其他自动后续任务。
+- **当前控制面：HOLD / PLAYUX01 已验收合并**；Controller 审核工作分支 wb-PLAYUX01 的 F1–F4 并于 2026-10-09 将真实线性后代 325c55563bf3fd812a8659aa1bc9d56cd6b42eaa 从 1ed4bdc06803c73e09d89401e1f5161be08da077 非强制快进到 dev（ahead 12, behind 0）；WorkBuddy 报告 264 项定向测试通过 / 0 项失败，不代表整仓库全绿或实际 DevTools PASS。详细验收：docs/PLAYUX01-CONTROLLER-ACCEPTANCE.md。云函数仍未部署；需用户明确授权 WorkBuddy 做本地项目更新和有界云端部署，再做微信开发者工具实际体验验收。没有派发下一任务。
 - **LIVEFIX05 真实视觉验收已通过**：用户截图显示 `DESTINY_OFFER` 页面择命候选正常，旧版“服务器投影”多余提示消失；选择命格后成功进入 `RUN_HOME`。随后点击一次“游历”进入 `EVENT`，页面标注第 4 版，出现新的 LIVEFIX06 文案缺陷。
 - 真实云函数首次开局与数据库持久化验收已在 Issue #2 完成，**不能**把本次仅 UI 条件修复的通过解释成完整游戏正式上线。
 - **LIVEFIX06 已合并（源码 PASS WITH CAVEATS）**：`wb-LIVEFIX06@31bbc5b4e79d5ca447e26062a8c8d00a3969c782` 从 `86707ac5f6ab3f775cd611017441022e59b4589c` 安全快进；新增 340 键中文生成资源及覆盖/负控测试，修复所有现有 Content01 原始键名显示缺陷。WorkBuddy 报告 LIVEFIX06 20/20、UI04C 18/18、UI02COPY 11/11 PASS，静态门禁 PASS；本次 Controller 未重新执行测试。已修复任务定义中的 `evidence`/`goal` 不支持字段及折叠列表写法；历史 UI02R1 两项基线失败待后续统一测试计划处理。**WorkBuddy 已报告真实 DevTools CLI 编译通过；尚未获得人工视觉截图与真实事件选项结算结果。无需云函数部署。**
+
+## PLAYUX01 代码验收与部署边界（2026-10-09）
+
+- **结论**：ACCEPTED WITH CAVEATS，最终交付 `325c555` 已合并到 `dev/tianfu-2.0`，与 Controller 合同一致的设计保底方案得到执行。F1 结果面板同时显示事件与实际选项、公开结果；F2 将事件流水标为“此生经历”，并单列公开事实的“此生的变化”；F3 35 个模板事件已改为场景专属文案，且早市与追索声明更严谨；F4 专项行为测试及生成物新鲜度门禁由 WorkBuddy 报告全过。
+- **仍未验证**：真实云函数运行新版 Core/Content/Server、新旧存档交互、真实微信编译/视觉交互。WorkBuddy 未做云部署，Controller 没有远程访问本机或独立执行其测试。
+- **保留事项**：用户原先看到的 11/4/2 与 0/0/0 没有同一存档实机重现，使用同一事实源的派生夹具检验；逐事件显著性不存在公开投影，故不假装所有经历都是“关键转折”；旧 ui04b scope 引脚先前已失效但未重钉，未包含在 264 项测试中。
+- **下一步**：等待用户授权；WorkBuddy 优先发现 DevTools 实际 worktree、同步前端和云函数源/派生产物并核对当前云端环境、按许可部署需要的云函数，复核运行时版本，保留本地脏文件和旧数据库；用户最后截图体验。严禁无授权自行部署。
+- 原始问题与派发基线继续保留在下文，作为验收记录的历史背景，而非当前 READY 任务。
 
 ## PLAYUX01 用户实机问题与新任务基线（2026-10-09）
 
@@ -100,6 +108,7 @@ Tianfu-sim 是一款以选择驱动、Build 构筑、因果回响、轮回成长
 - LIVEFIX04: PASS（Controller 已验收；精确支持 CloudBase `errCode=-1` + `document.get:fail ... <32-hex> ... does not exist` 缺文档形状，generic `-1` 仍 fail-closed）
 - LIVEFIX05: PASS（Controller 于 2026-10-09 验收并 fast-forward；修复 v2-live 终局链 `wx:else` 在择命等正常状态下额外出现的服务器投影提示；真实 DevTools 视觉验收待用户完成）
 - LIVEFIX06: PASS WITH CAVEATS（Controller 于 2026-10-09 验收并 fast-forward；Content01 340 个键完整中文映射、自动生成与新鲜度门禁，实机视觉验收待完成；历史 UI02R1 基线失败单独记录）
+- PLAYUX01: ACCEPTED WITH CAVEATS（F1–F4 最终远端 325c555，Controller 独立代码审查，已快进 dev；待云端部署授权及实机视觉/交互验收）
 - LIVEQA06: LOCAL PREPARATION REPORTED PASS / VISUAL PENDING（WorkBuddy 已核对实际 DevTools worktree 的前端文件与 LIVEFIX06 一致，CLI 编译日志报告正常；人工页面验收等待用户截图。当前 HOLD）。
 
 不要重新实现上述模块，除非后续审计确认存在真实缺陷。
