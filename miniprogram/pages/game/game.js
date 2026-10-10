@@ -13,6 +13,7 @@ Page({
     isBottleneck: false,     
     isBigBottleneck: false,  
     hasUsedDiamondArray: false, 
+    hasUsedGoldShield: false,   // 本次天劫是否已用过灵石护道
     gambleBonus: 0, 
     isWandering: false, 
     lastLogId: "log-bottom-anchor",
@@ -256,7 +257,9 @@ Page({
     this.setData({ isWandering: nextState });
     
     if (nextState) {
-      this.addLog("【苟道】你施展秘法隐匿修为，停止吐纳，开始在红尘中游历寻找机缘！", "event-epic");
+      this.addLog(
+        "【苟道】你施展秘法隐匿修为，停止吐纳，开始在红尘中游历寻找机缘！" +
+        "（奇遇翻倍、但修为被压制无法突破，且寿元消耗加倍）", "event-epic");
     } else {
       this.addLog("【出关】你结束了游历，回到洞府开始全力闭关，修为再次涌动！", "event-breakthrough");
     }
@@ -269,14 +272,33 @@ Page({
     let config = this.getRealmConfig(this.data.levelId);
     let years = config.baseYears;
 
-    let lifeCost = Math.floor(years * Math.pow(1.15, config.index)); 
-  
+    // 【区分度设计】游历在外奔波，单 tick 寿元消耗是闭关的 2 倍。
+    // 这是游历的真实代价 —— 原来两者寿元消耗完全相同，游历唯一的区别是
+    // "不涨修为"，纯粹是显性陷阱而非策略选项。
+    let lifeMulti = this.data.isWandering ? 2 : 1;
+    let lifeCost = Math.floor(years * Math.pow(1.15, config.index) * lifeMulti); 
+
+    // 【灵石消耗口 3】续命丹：寿元告急时自动服用。
+    // 玩家不需要操作，但会在日志里看到"灵石换了命"，
+    // 这让前面攒下的灵石在最关键的时刻产生可感知的价值。
+    if (this.data.age + lifeCost * 4 >= this.data.maxAge) {
+      let pillCost = Math.floor(800 * Math.pow(2.6, config.index));
+      if (this.data.gold >= pillCost) {
+        let addAge = lifeCost * 15;
+        this.setData({ gold: this.data.gold - pillCost, maxAge: this.data.maxAge + addAge });
+        this.addLog(
+          `【续命丹】寿元将尽，耗 ${this.formatBigInt(pillCost)} 灵石求得续命丹，最大寿元 +${this.formatBigInt(addAge)}！`,
+          "event-epic", isInstant
+        );
+      }
+    }
+
     if (this.data.age + lifeCost >= this.data.maxAge) {
       this.setData({ age: this.data.maxAge });
       // 【体验修复】原文案只说"天人五衰降临"，玩家分不清是修炼太慢还是寿元不够，
       // 这正是用户反馈"反复暴死但看不懂"的直接来源。补上具体数字。
       this.triggerDeath(
-        `天人五衰降临！【${this.getRealmInfo(this.data.levelId).name}】每次闭关需耗 ` +
+        `天人五衰降临！【${this.getRealmInfo(this.data.levelId).name}】每次${this.data.isWandering ? '游历' : '闭关'}需耗 ` +
         `${this.formatBigInt(lifeCost)} 年，而你仅余 ` +
         `${this.formatBigInt(Math.max(0, this.data.maxAge - this.data.age))} 年，` +
         `寿元先于修为枯竭，身死道消！`,
@@ -340,6 +362,7 @@ Page({
         this.setData({ 
           isBigBottleneck: true, 
           hasUsedDiamondArray: false,
+          hasUsedGoldShield: false,
           gambleBonus: 0 
         });
         this.recalcRate();
@@ -379,13 +402,22 @@ Page({
     let arrayText = this.data.hasUsedDiamondArray ? '💎 阵法已毁 (单次天劫限购1次)' : `💎 钻石逆天 (耗${diamondCost}钻 +20%胜率)`;
     let gambleText = this.data.gambleBonus >= 20 ? '🧘 底蕴已满 (无法再提升胜率)' : `🧘 沉淀底蕴 (耗${this.formatBigInt(gambleCost)}年搏几率)`;
 
+    // 【灵石消耗口 2】灵石护道：天劫前花灵石买胜率。
+    // 这是灵石最重要的消耗场景 —— 玩家在整局最紧张的时刻决定要不要花钱，
+    // 灵石的价值在这一刻被直接兑现成"活下来"。
+    let shieldCost = this.getShieldCost(m);
+    let shieldText = this.data.hasUsedGoldShield
+      ? '🛡 护道已用 (单次天劫限用1次)'
+      : `🛡 灵石护道 (耗${this.formatBigInt(shieldCost)}灵石 +15%胜率)`;
+
     wx.showActionSheet({
-      title: `【雷劫降临】胜率: ${rate}% | 余寿: ${this.formatBigInt(lifeLeft)}年`,
-      itemList: ['⚡ 逆天而行 (强行引雷劫)', gambleText, arrayText],
+      title: `【雷劫降临】胜率: ${rate}% | 余寿: ${this.formatBigInt(lifeLeft)}年 | 灵石: ${this.formatBigInt(this.data.gold)}`,
+      itemList: ['⚡ 逆天而行 (强行引雷劫)', gambleText, shieldText, arrayText],
       success: (res) => {
         if (res.tapIndex === 0) this.executeBigTribulation(false);
         else if (res.tapIndex === 1) this.gambleLifespan(gambleCost);
-        else if (res.tapIndex === 2) this.buyDiamondArray(diamondCost);
+        else if (res.tapIndex === 2) this.buyGoldShield(shieldCost);
+        else if (res.tapIndex === 3) this.buyDiamondArray(diamondCost);
       }
     });
   },
@@ -436,6 +468,31 @@ Page({
     this.handleBigBottleneck(); 
   },
 
+  // 灵石护道价码：与坊市同一套几何增长基准，保证"护道一次"约等于
+  // "少买一两件当前档位的道具"，玩家能直观感到取舍。
+  getShieldCost(realmIndex) {
+    return Math.floor(2500 * Math.pow(2.6, Math.max(0, realmIndex)));
+  },
+
+  buyGoldShield(cost) {
+    if (this.data.hasUsedGoldShield) {
+      wx.showToast({ title: '护道之法在同一次天劫中仅可用一回！', icon: 'none' });
+      this.handleBigBottleneck(); return;
+    }
+    if (this.data.gold < cost) {
+      wx.showToast({ title: `需灵石 ${this.formatBigInt(cost)}，囊中不足！`, icon: 'none' });
+      this.handleBigBottleneck(); return;
+    }
+    this.setData({
+      gold: this.data.gold - cost,
+      hasUsedGoldShield: true,
+      breakthroughRate: Math.min(100, this.data.breakthroughRate + 15)
+    });
+    this.addLog(`【灵石护道】耗 ${this.formatBigInt(cost)} 灵石布下护道灵阵，雷劫胜率 +15%！`, "event-epic");
+    this.updateUI(true);
+    this.handleBigBottleneck();
+  },
+
   buyDiamondArray(cost) {
     if (this.data.hasUsedDiamondArray) {
       wx.showToast({ title: '此阵法在同一次天劫中仅可开启一回！', icon: 'none' });
@@ -476,7 +533,7 @@ Page({
       }
     }
 
-    this.setData({ hasUsedDiamondArray: false, gambleBonus: 0 });
+    this.setData({ hasUsedDiamondArray: false, hasUsedGoldShield: false, gambleBonus: 0 });
 
     if (success) {
       let nextLevel = this.data.levelId + 1;
