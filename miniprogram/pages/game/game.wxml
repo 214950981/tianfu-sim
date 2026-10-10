@@ -57,6 +57,9 @@
     <view class="stat-card">
       <view class="stat-label">灵根</view>
       <view class="stat-val color-{{rootColorClass}}" style="font-size: 24rpx;">{{rootName}}</view>
+      <!-- 【体验】把灵根倍率显式打出来。原来灵根只有名字，玩家无法感知
+           "极品灵根到底强多少"，这是用户反馈"天赋差异不明显"的一部分 -->
+      <view class="stat-label color-Gold" style="font-size: 20rpx;">修炼 x{{rootMultiStr}}</view>
     </view>
     <view class="stat-card">
       <view class="stat-label">灵石</view>

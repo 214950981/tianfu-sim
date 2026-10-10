@@ -1,5 +1,6 @@
 // pages/start/start.js
 const { MASTER_TALENTS, ROOT_POOL, GAME_HELP } = require('./data.js');
+const { AdService, PaymentService, claimReward } = require('../../services/commerce.js');
 
 Page({
   data: {
@@ -471,12 +472,25 @@ onTierChange(e) {
   },
 
   watchAd() {
-    wx.showLoading({ title: '观摩天道中...' });
-    setTimeout(() => {
-      wx.hideLoading();
-      this.addTickets(5);
-      wx.showToast({ title: '次数 +5', icon: 'success' });
-    }, 1500);
+    // 【商业化接口 + 防刷】原实现是 setTimeout 后直接 addTickets(5)，
+    // 既是假广告，次数也只记在本地 storage，清缓存即可无限刷。
+    // 现在：观看走 AdService，发奖走云函数 claimReward（服务端日限 20 次）。
+    AdService.show().then(async (res) => {
+      if (!res.completed) {
+        wx.showToast({ title: '未看完广告，奖励未发放', icon: 'none' });
+        return;
+      }
+      const r = await claimReward('ad_ticket');
+      if (r.success) {
+        this.setData({ ad_tickets: r.ad_tickets });
+        let assets = wx.getStorageSync('global_assets') || {};
+        assets.ad_tickets = r.ad_tickets;
+        wx.setStorageSync('global_assets', assets);
+        wx.showToast({ title: `次数 +${r.granted.ad_tickets}`, icon: 'success' });
+      } else {
+        wx.showToast({ title: r.msg || '今日次数已用尽', icon: 'none' });
+      }
+    });
   },
 
   onShareAppMessage() {

@@ -1,6 +1,7 @@
 // pages/game/game.js
 
 const { REALM_NAMES, SUB_REALMS, REALM_CONFIG, ADVENTURE_EVENTS, MASTER_ITEMS } = require('./game_data.js');
+const { AdService, PaymentService, claimReward } = require('../../services/commerce.js');
 
 Page({
   data: {
@@ -40,6 +41,7 @@ Page({
     showRechargeModal: false,  
     showSpeedModal: false,     
     dailyShareCount: 0,
+    rootMultiStr: "1.0",   // 【体验】灵根修炼倍率，显示在灵根卡片下方
 
     // ⭐ 新增：仙籍登记状态变量
     hasRealInfo: wx.getStorageSync('hasRealInfo') || false,
@@ -191,17 +193,28 @@ Page({
     this.setData({ showRechargeModal: !this.data.showRechargeModal });
   },
 
-  doRecharge(e) {
+  async doRecharge(e) {
+    // 【收入漏损修复】原实现对 1/6/30/98/198/648 元六个档位一律
+    // setTimeout 后直接 updateDiamonds(totalGain) —— 不付钱直接到账。
+    // 既没有支付流程，也绕过了服务端记账。
+    // 现在统一走 PaymentService；未接入支付时明确告知，不再白送钻石。
     let index = e.currentTarget.dataset.index;
     let tier = this.data.rechargeTiers[index];
-    let totalGain = tier.base + tier.bonus;
-    wx.showLoading({ title: '呼叫仙界商行...' });
-    setTimeout(() => {
-      wx.hideLoading();
-      wx.showToast({ title: `充值成功，获得 ${totalGain} 钻石`, icon: 'none' });
-      this.updateDiamonds(totalGain);
+
+    const r = await PaymentService.pay(tier);
+    if (r.success) {
+      // 真实支付成功后，钻石由支付回调云函数在服务端发放，
+      // 这里只需重新拉取云端资产，不在客户端自行加数。
+      this.syncCloudAssets();
       this.setData({ showRechargeModal: false });
-    }, 800);
+      return;
+    }
+    wx.showModal({
+      title: '仙界商行未开张',
+      content: '支付通道尚未接入，暂时无法充值。可先通过【传道分享】免费领取钻石。',
+      showCancel: false,
+      confirmText: '知道了'
+    });
   },
 
   // ==========================================
@@ -337,7 +350,18 @@ Page({
         this.doAutoSmallTribulation(isInstant);
       }
     } else {
-      this.addLog(`闭关 ${years} 载，修为增加 ${this.formatBigInt(gain)}`, "normal", isInstant);
+      // 【日志降噪】原来每个 tick 都打一条"闭关N载"，刷屏且无信息量。
+      // 改为每 5 个 tick 汇总一条，并附带本境界进度百分比与修炼效率，
+      // 让玩家知道自己"为什么变强、还差多少"。
+      this._quietTick = (this._quietTick || 0) + 1;
+      if (this._quietTick % 5 === 0) {
+        let pct = this.coreData.nextExp > 0n
+          ? Number(this.coreData.exp * 100n / this.coreData.nextExp) : 0;
+        this.addLog(
+          `闭关 ${this.formatBigInt(years * 5)} 载，修为 ${this.formatBigInt(this.coreData.exp)}/${this.formatBigInt(this.coreData.nextExp)} (${pct}%)｜效率 x${this.data.rootMultiStr}`,
+          "normal", isInstant
+        );
+      }
     }
   },
 
@@ -475,7 +499,9 @@ Page({
       this.coreData.power = this.coreData.basePower;
 
       this.setData({ levelId: nextLevel, isBigBottleneck: false, maxAge: this.data.maxAge + ageGain });
-      this.addLog(`${msg}【飞升】天雷散去！跨入【${this.getRealmInfo(nextLevel).name}】，获寿 ${ageGain} 载！`, "event-breakthrough", isInstant);
+      // 【日志降噪】大境界突破是整局最重要的事件，用 ★★★★★ 顶格标记，
+      // 与大量"闭关N载"的流水日志拉开视觉层级。
+      this.addLog(`★★★★★【飞升】${msg}天雷散去！跨入【${this.getRealmInfo(nextLevel).name}】，获寿 ${this.formatBigInt(ageGain)} 载！`, "event-breakthrough", isInstant);
       this.recalcRate();
       if (!isInstant) this.startEngine();
     } else {
@@ -490,7 +516,7 @@ Page({
       attrs[randomKey] = Math.max(1, attrs[randomKey] - 5);
 
       this.setData({ isBigBottleneck: false, maxAge: Math.max(this.data.age + 1, this.data.maxAge - ageLost), playerAttrs: attrs });
-      this.addLog(`${msg}【道陨】天劫无情碾碎了道基！寿元暴跌 ${ageLost}，${this.getAttrName(randomKey)}-5！`, "event-deadly", isInstant);
+      this.addLog(`★★★★★【道陨】${msg}天劫无情碾碎了道基！寿元暴跌 ${this.formatBigInt(ageLost)}，${this.getAttrName(randomKey)}-5！`, "event-deadly", isInstant);
       this.recalcRate();
       if (!isInstant) this.startEngine();
     }
@@ -509,7 +535,7 @@ Page({
     let tickCostNow = Math.max(1, Math.floor(cfgNow.baseYears * Math.pow(1.15, cfgNow.index)));
     let ageGain = Math.floor(tickCostNow * 80 * (1 + this.data.playerAttrs.talent / 100));
     this.setData({ levelId: nextLevel, isBottleneck: false, maxAge: this.data.maxAge + ageGain });
-    this.addLog(`【精进】真气溢满，水到渠成晋升【${this.getRealmInfo(nextLevel).name}】！`, "event-breakthrough", isInstant);
+    this.addLog(`★★【精进】真气溢满，水到渠成晋升【${this.getRealmInfo(nextLevel).name}】，获寿 ${this.formatBigInt(ageGain)} 载。`, "event-breakthrough", isInstant);
   },
 
   recalcRate() {
@@ -761,11 +787,19 @@ Page({
       return;
     }
     if (type === 'ad') {
-      wx.showLoading({ title: '观摩天道中...' });
-      setTimeout(() => {
-        wx.hideLoading();
-        this.unlockSpeed(currentMax + 1);
-      }, 1500);
+      // 【商业化接口】改走统一的 AdService。当前为桩实现（未配置广告位时
+      // 等价于原来的 setTimeout 模拟），接入真实激励视频后此处无需改动。
+      AdService.show().then((res) => {
+        if (res.completed) {
+          this.unlockSpeed(currentMax + 1);
+          if (res.stub) {
+            // 明确标注这是桩，便于真机联调时发现广告没真正接入
+            console.warn('[AdService] 桩实现发奖，广告位未配置:', res.reason);
+          }
+        } else {
+          wx.showToast({ title: '未看完广告，提速失败', icon: 'none' });
+        }
+      });
     }
   },
 
@@ -870,6 +904,7 @@ Page({
       rootName: runData.root ? runData.root.name : "凡人无灵根",
       rootColorClass: runData.root ? runData.root.color : "Gray",
       rootMulti: runData.root ? runData.root.multi : 1.0,
+      rootMultiStr: (runData.root ? runData.root.multi : 1.0).toFixed(1),
       isWandering: runData.isWandering || false,
       gameSpeed: runData.gameSpeed || 1,             
       unlockedSpeed: runData.unlockedSpeed || 1      
