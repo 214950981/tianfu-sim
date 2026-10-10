@@ -451,9 +451,23 @@ Page({
     if (success) {
       let nextLevel = this.data.levelId + 1;
       this.coreData.exp = 0n;
-      this.coreData.nextExp = this.coreData.nextExp * 100n; 
+      // 【数值平衡】大境界经验需求阶跃：100n -> 2n
+      // 原因：每跨一个大境界，单 tick 收益只增长 (baseYears 比值 × 2)，
+      // 14 次大境界累计收益增长约 8.19e9；而需求增长为 100 × 1.5^3 = 337.5 每境界，
+      // 14 次累计约 1.7e35，两者差 25 个数量级，必然在金丹期前后形成必死局。
+      // 取 2n 后需求累计增长 = (2 × 1.5^3)^14 = 6.75^14 ≈ 8.3e11，
+      // 与收益增长同阶，境界推进速度才能保持在每级 1~100 tick 的可玩区间。
+      this.coreData.nextExp = this.coreData.nextExp * 2n; 
       let talentBonus = 1 + (this.data.playerAttrs.talent / 100);
-      let ageGain = Math.floor((200 * (m + 1) * (m + 1)) * talentBonus);
+      // 【数值平衡】突破寿元奖励：从二次式 200*(m+1)^2 改为「按下一境界单 tick 成本计价」
+      // 原因：寿命消耗是指数的 baseYears * 1.15^index（化神期约 87 年/tick，
+      // 天道境约 353 万年/tick），而旧奖励是二次的（化神期只给 5500 年 ≈ 63 tick），
+      // 两条曲线不同阶 —— 这才是玩家在元婴/化神反复暴死的真实原因，
+      // 单独调经验或单独调 1.15 都无法解决。
+      // 现在直接用「下一境界能修炼多少 tick」来发寿元，预算 TICK_BUDGET_MAJOR 跨境界恒定。
+      let nextIdx = Math.min(m + 1, REALM_CONFIG.length - 1);
+      let nextTickCost = Math.max(1, Math.floor(REALM_CONFIG[nextIdx].baseYears * Math.pow(1.15, nextIdx)));
+      let ageGain = Math.floor(nextTickCost * 200 * talentBonus);
       let powerGain = BigInt(Math.floor(2000 * (m + 1) * (m + 1) * talentBonus));
       this.coreData.basePower += powerGain;
       this.coreData.power = this.coreData.basePower;
@@ -487,7 +501,12 @@ Page({
     let powerGain = BigInt(100 * nextLevel);
     this.coreData.basePower += powerGain;
     this.coreData.power = this.coreData.basePower;
-    let ageGain = 20 + nextLevel * 5;
+    // 【数值平衡】小境界寿元奖励：从常数 20+level*5 改为按当前境界单 tick 成本计价。
+    // 旧式在化神期只给约 110 年，而该境界 1 个 tick 就要 87 年，等于奖励不到 2 tick。
+    let cfgNow = this.getRealmConfig(this.data.levelId);
+    let tickCostNow = Math.max(1, Math.floor(cfgNow.baseYears * Math.pow(1.15, cfgNow.index)));
+    let talentBonusSmall = 1 + (this.data.playerAttrs.talent / 100);
+    let ageGain = Math.floor(tickCostNow * 80 * talentBonusSmall);
     this.setData({ levelId: nextLevel, isBottleneck: false, maxAge: this.data.maxAge + ageGain });
     this.addLog(`【精进】真气溢满，水到渠成晋升【${this.getRealmInfo(nextLevel).name}】！`, "event-breakthrough", isInstant);
   },
