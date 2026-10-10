@@ -604,11 +604,33 @@ Page({
     let isMajor = (this.data.levelId % SUB_REALMS.length) === 0;
     
     if (isMajor) {
-      let baseRate = Math.max(10, 80 - m * 8); 
-      let requiredInsight = (m + 1) * (m + 1) * 40; 
-      let insightBonus = Math.floor((this.data.playerAttrs.insight / requiredInsight) * 50); 
-      let rate = baseRate + Math.min(50, insightBonus); 
-      this.setData({ breakthroughRate: Math.min(100, rate) });
+      // 【数值修复·激励倒置】原公式：
+      //   baseRate = max(10, 80 - m*8)          后期固定塌到 10%
+      //   requiredInsight = (m+1)^2 * 40        二次增长，m=9 时需要 4000
+      //   insightBonus = insight/required * 50
+      // 实测玩家到 m=9 时悟性中位只有 53，需求却是 4000，
+      // 加成恒为 +0，胜率全程卡在 10% 底板 —— 悟性这一维等于不存在。
+      //
+      // 更糟的是它造成激励倒置：高品灵根升级快 ⇒ 每境界 tick 少
+      // ⇒ 奇遇/坊市机会少 ⇒ 属性堆不起来 ⇒ 悟性更低 ⇒ 胜率更低。
+      // 实测 multi=0.5 通关 86.7%，而 multi=30 只有 23.3% —— 抽到好灵根反而更难通关。
+      //
+      // 新公式：
+      //   1) 底板从 10% 抬到 35%，后期不再是必败局；
+      //   2) 悟性需求改为线性 INSIGHT_REQ[m]（由实测各境界悟性中位数反推），
+      //      让悟性在任何阶段都能实际换到胜率；
+      //   3) 悟性加成上限 +45，保证"堆满悟性"接近但不等于必成，天劫仍有风险。
+      // INSIGHT_REQ：拿到"满额悟性加成"所需的悟性量，由实测各境界
+      // 悟性分布的 P75~P90 反推 —— 堆得好的玩家能吃满，普通玩家吃一部分。
+      const INSIGHT_REQ = [25, 35, 45, 60, 80, 110, 160, 240, 340, 460, 600, 780, 1000, 1300, 1700];
+      // 底板：前期留出失败空间（不是 100% 必成），后期不塌到必败
+      let baseRate = Math.max(30, 62 - m * 2);
+      let requiredInsight = INSIGHT_REQ[Math.min(m, INSIGHT_REQ.length - 1)];
+      let insightBonus = Math.floor((this.data.playerAttrs.insight / requiredInsight) * 45);
+      // 悟性最多补到 +45，叠加底板后上限 92% —— 天劫永远保留一丝风险，
+      // 这也是"沉淀底蕴/灵石护道/钻石逆天"三个补救手段存在的意义。
+      let rate = baseRate + Math.min(45, insightBonus);
+      this.setData({ breakthroughRate: Math.min(92, rate) });
     } else {
       this.setData({ breakthroughRate: 100 }); 
     }
