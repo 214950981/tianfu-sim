@@ -1,0 +1,233 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>上线前人工操作清单</title><style>
+:root{--bg:#0a0a0f;--card:#14141c;--card2:#1b1b26;--line:#2b2b3a;--gold:#ffd700;--txt:#e8e8f0;--dim:#9a9aae;--red:#ff5c5c;--green:#4ade80;--yellow:#fbbf24;--blue:#60a5fa}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%}
+.wrap{max-width:900px;margin:0 auto;padding:20px 16px 64px}
+h1{font-size:25px;line-height:1.35;margin:8px 0 6px;color:var(--gold);letter-spacing:.5px}
+h2{font-size:20px;margin:38px 0 14px;padding-bottom:9px;border-bottom:1px solid var(--line);color:var(--gold)}
+h3{font-size:17px;margin:26px 0 10px;color:#ffe9a0}
+h4{font-size:15px;margin:18px 0 8px;color:var(--dim);font-weight:600}
+p{margin:11px 0}
+.sub{color:var(--dim);font-size:13.5px;margin:0 0 22px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.card{background:var(--card);border-radius:10px;padding:15px 16px;margin:16px 0;border-left:4px solid var(--line)}
+.card.red{border-left-color:var(--red);background:#1e1416}
+.card.green{border-left-color:var(--green);background:#111c16}
+.card.yellow{border-left-color:var(--yellow);background:#1e1a12}
+.card.blue{border-left-color:var(--blue);background:#121823}
+.card .t{font-weight:700;margin:0 0 8px;font-size:15.5px}
+.card.red .t{color:#ff8f8f}.card.green .t{color:#86efac}.card.yellow .t{color:#fcd34d}.card.blue .t{color:#93c5fd}
+.card p:first-of-type{margin-top:0}.card p:last-child{margin-bottom:0}
+.sc{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:18px 0}
+.sc .t{color:var(--gold);font-weight:700;margin:0 0 8px}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:16px 0;border-radius:8px;border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;min-width:480px;font-size:14px}
+th{background:#23232f;color:var(--gold);text-align:left;padding:10px 12px;font-weight:600;white-space:nowrap;border-bottom:1px solid var(--line)}
+td{padding:9px 12px;border-bottom:1px solid #22222e;vertical-align:top}
+tbody tr:nth-child(odd){background:#13131a}
+tbody tr:last-child td{border-bottom:none}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}
+code{background:#23232f;padding:2px 6px;border-radius:4px;color:#ffe9a0;word-break:break-all}
+pre{background:#0d0d14;border:1px solid var(--line);border-radius:8px;padding:13px;overflow-x:auto;margin:14px 0}
+pre code{background:none;padding:0;color:#c8c8dc;white-space:pre;line-height:1.65}
+ul,ol{padding-left:22px;margin:11px 0}
+li{margin:6px 0}
+.bad{color:var(--red);font-weight:600}.good{color:var(--green);font-weight:600}.warn{color:var(--yellow);font-weight:600}
+.arrow{color:var(--gold);font-weight:700}
+.foot{margin-top:50px;padding-top:18px;border-top:1px solid var(--line);color:var(--dim);font-size:13px}
+.kv{margin:9px 0}.kv b{color:#ffe9a0;font-weight:600}
+.chart{background:#0d0d14;border:1px solid var(--line);border-radius:8px;padding:12px 8px;margin:16px 0;overflow-x:auto}
+.chart svg{display:block;min-width:620px}
+.pill{display:inline-block;background:#23232f;border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12.5px;color:var(--dim);margin:0 6px 6px 0}
+.big{font-size:19px;font-weight:700;color:var(--gold)}
+hr{border:none;border-top:1px solid var(--line);margin:30px 0}
+
+.item{background:var(--card);border-radius:10px;padding:16px;margin:20px 0;border-left:4px solid var(--line)}
+.item.p0{border-left-color:var(--red);background:#1e1416}
+.item.p1{border-left-color:var(--yellow);background:#1e1a12}
+.item.p2{border-left-color:var(--blue);background:#121823}
+.item.p3{border-left-color:var(--line)}
+.item>h3{margin:0 0 12px;font-size:17.5px;color:#ffe9a0}
+.item.p0>h3{color:#ff8f8f}
+.lbl{display:block;color:var(--gold);font-size:13px;font-weight:700;margin:14px 0 4px;letter-spacing:.4px}
+.item>p{margin:4px 0 10px}
+.badge{display:inline-block;border-radius:5px;padding:1px 8px;font-size:12px;font-weight:700;margin-left:8px;vertical-align:middle}
+.b0{background:#4c1d1d;color:#ff8f8f}.b1{background:#4a3a12;color:#fcd34d}.b2{background:#14304d;color:#93c5fd}.b3{background:#2b2b3a;color:#9a9aae}
+</style></head><body><div class="wrap">
+<h1>上线前人工操作清单</h1>
+<p class="sub">分支 <code>opt/live-baseline</code>　·　2026-10-10</p>
+<div class="sc"><p class="t">说明</p><p>以下事项<b>无法在代码层面完成或验证</b>，必须由你在微信云开发控制台 / 开发者工具里人工处理。已按优先级排序。</p>
+<p>第 1 项是唯一一项「<span class="bad">不做就会让其他所有安全工作失效</span>」的事，请优先处理。</p></div>
+
+<div class="item p0"><h3>第 1 项：检查 <code>player_data</code> 集合权限<span class="badge b0">⚠️ 最高</span></h3>
+<span class="lbl">要做什么</span>
+<p>把云数据库 <code>player_data</code> 集合的权限改为 <b>「仅创建者可读写」</b> 或 <b>「所有用户不可读，仅管理端可写」</b>。</p>
+<span class="lbl">在哪里做</span>
+<p>微信开发者工具 <span class="arrow">→</span> 云开发控制台 <span class="arrow">→</span> 数据库 <span class="arrow">→</span> 选中 <code>player_data</code> 集合 <span class="arrow">→</span> 右上角「权限设置」</p>
+<span class="lbl">为什么必须人工做</span>
+<p>集合权限存在云端配置里，代码仓库里完全看不到，我没有任何办法从代码确认当前是什么状态。</p>
+<span class="lbl">不做的后果</span>
+<p>如果当前是「所有用户可读写」：</p>
+<ul>
+<li>任何玩家可以在小程序里直接 <code>wx.cloud.database().collection('player_data').doc(别人的id).update(...)</code> <b>改写任何人的数据</b></li>
+<li><b>本次 Phase 2 做的全部 44 项校验等于白做</b>——攻击者根本不需要调用云函数，直接操作数据库即可</li>
+<li>排行榜可被任意改写，玩家存档可被恶意清空</li>
+</ul>
+<span class="lbl">怎么验证做成功了</span>
+<ol>
+<li>控制台权限设置页显示「仅创建者可读写其所创建的数据」</li>
+<li>在小程序里执行一次跨用户写入测试，<b>应当失败</b>：</li>
+</ol>
+<pre><code>wx.cloud.database().collection('player_data')
+  .where({ _openid: '别人的openid' })
+  .update({ data: { diamonds: 999999 } })
+  .then(r =&gt; console.log('不该成功', r))
+  .catch(e =&gt; console.log('正确被拒', e))</code></pre>
+<p>期望结果：报权限错误。</p>
+<div class="card yellow"><p class="t">重要补充：收紧权限会让排行榜失效</p>
+<p><code>rank.js</code> 的排行榜是用 <code>db.collection('player_data').orderBy(...).get()</code> <b>在客户端直接读库</b>的。</p>
+<ul>
+<li>收紧到「所有用户不可读」<span class="arrow">→</span> 排行榜读不到数据</li>
+<li>改成「仅创建者可读写」<span class="arrow">→</span> 同样失效（只能读到自己）</li>
+</ul>
+<p><b>推荐做法：</b>权限设为「所有用户不可读写」<b>+ 排行榜改走云函数</b>（新增 <code>action: 'getRank'</code>）。如果你选择收紧，<b>告诉我，我来改这部分。</b></p></div></div>
+
+<div class="item p1"><h3>第 2 项：核实线上云函数实际部署版本<span class="badge b1">高</span></h3>
+<span class="lbl">要做什么</span>
+<p>确认当前线上 <code>syncPlayerData</code> 云函数的实际代码版本，并在部署新版本前<b>先备份旧版本</b>。</p>
+<span class="lbl">在哪里做</span>
+<p>云开发控制台 <span class="arrow">→</span> 云函数 <span class="arrow">→</span> <code>syncPlayerData</code> <span class="arrow">→</span> 「版本与配置」/「代码」标签页</p>
+<span class="lbl">为什么必须人工做</span>
+<p><code>NEXT_TASK.yaml</code> 里记录了 <code>REPORTED_DEPLOYED_BACKUP_GATE_VIOLATED</code>——<b>线上曾绕过备份闸门上线</b>。加上你上传的代码与仓库任何分支都不一致，说明仓库从未保存住线上状态。云端实际跑的是什么，<b>只有控制台能告诉你</b>。</p>
+<span class="lbl">不做的后果</span>
+<ul>
+<li>如果线上云函数版本比你上传的压缩包更新，本次改动会<b>覆盖掉某些你不知道的线上修复</b></li>
+<li>没有备份就部署，一旦新版本有问题，<b>无法回滚</b></li>
+</ul>
+<span class="lbl">怎么验证做成功了</span>
+<ol>
+<li>下载当前线上云函数代码，和 <code>cloudfunctions/syncPlayerData/index.js</code> 的<b>基线版本</b>（提交 <code>e33c3129</code>）做 diff</li>
+<li>如果有差异，<b>先告诉我差异内容，不要直接部署</b></li>
+<li>备份文件存到本地，记录文件 SHA256 和备份时间</li>
+</ol></div>
+
+<div class="item p1"><h3>第 3 项：部署前在开发者工具里真机编译一次<span class="badge b1">高</span></h3>
+<span class="lbl">要做什么</span>
+<p>用微信开发者工具打开本分支代码，确认编译通过、三个页面可正常打开、完整玩一局。</p>
+<span class="lbl">在哪里做</span>
+<p>微信开发者工具 <span class="arrow">→</span> 导入项目 <span class="arrow">→</span> 选择 <code>opt/live-baseline</code> 分支的本地副本</p>
+<span class="lbl">为什么必须人工做</span>
+<p>我没有微信开发者工具环境。我做的是<b>静态检查</b>（<code>node --check</code> 语法、JSON 可解析、<code>require</code> 路径可解析、<code>app.json</code> 注册文件完整性）——<b>静态检查通过不等于 IDE 编译通过</b>。WXSS 语法、WXML 数据绑定、基础库兼容性都要真实编译才知道。</p>
+<span class="lbl">不做的后果</span>
+<p>可能带着编译错误上线，<b>玩家直接白屏</b>。</p>
+<span class="lbl">怎么验证做成功了</span>
+<p>按这个顺序走一遍：</p>
+<ol>
+<li>编译无报错、无警告</li>
+<li>首页「投胎」能正常摇出天赋和灵根，<b>灵根卡片下方能看到「修炼 xN.N」</b>（本次新增）</li>
+<li>进入游戏页，日志<b>每 5 次闭关</b>出一条，带进度百分比</li>
+<li>修炼到第一次大境界突破，<b>日志应显示 <code>★★★★★【飞升】</code></b></li>
+<li>切到「仙榜」页，排行榜能加载、能切换日榜/总榜</li>
+<li><b>老存档兼容性</b>：用改动前的存档进游戏，确认不崩溃（<code>syncFromStorage</code> 读的字段我没动，但要实测）</li>
+</ol></div>
+<div class="item p2"><h3>第 4 项：确认激励视频广告是否开通<span class="badge b2">中</span></h3>
+<span class="lbl">要做什么</span>
+<p>确认小程序是否已开通「激励视频广告」，如已开通则把广告位 ID 填进代码。</p>
+<span class="lbl">在哪里做</span>
+<ul>
+<li>开通状态：微信公众平台 <span class="arrow">→</span> 流量主 <span class="arrow">→</span> 广告位管理</li>
+<li>填写位置：<code>miniprogram/services/commerce.js</code> 第 29 行 <code>REWARDED_VIDEO_AD_UNIT_ID: ''</code></li>
+</ul>
+<span class="lbl">为什么必须人工做</span>
+<p>流量主开通状态和广告位 ID 在公众平台账号里，代码层面拿不到。开通还有门槛（通常要求累计独立访客达标）。</p>
+<span class="lbl">不做的后果</span>
+<p>不填也能跑——<code>AdService.show()</code> 会退化为桩实现（模拟 1.5 秒后必然成功），行为和你现在线上一样，并在控制台打 <code>console.warn</code>。</p>
+<p><b>但要注意：</b>桩实现意味着<b>玩家点「看广告」你没有广告收入</b>，而奖励照发。现在发奖已经改为走服务端日限（广告换次数每日 20 次），所以不会被无限刷，<b>但仍然是净支出</b>。</p>
+<span class="lbl">未开通时的建议处理方式</span>
+<ol>
+<li><b>短期</b>：保持桩实现，但把 <code>ad_ticket</code> 的日限从 20 次调低（在云函数 <code>REWARD_RULES</code> 里改），减少白送</li>
+<li>或者<b>暂时隐藏</b>「看广告得次数」入口，只保留分享得次数</li>
+<li><b>中期</b>：达到流量主开通门槛后填入广告位 ID，<code>commerce.js</code> <b>不需要改任何其他代码</b></li>
+</ol>
+<span class="lbl">怎么验证做成功了</span>
+<p>填入广告位 ID 后，<b>真机</b>（不是模拟器，模拟器不支持广告）点击「看广告」应弹出真实广告；看完发奖、中途退出不发奖。</p></div>
+
+<div class="item p2"><h3>第 5 项：支付功能决策<span class="badge b2">中 · 需你决策</span></h3>
+<div class="card red"><p class="t">背景：这是本次发现的收入漏损</p>
+<p>你线上代码的 <code>doRecharge()</code> 对 <b>1/6/30/98/198/648 元六个档位，一律 <code>setTimeout</code> 后直接发钻石——玩家不付钱就能拿到</b>。既没有支付流程，也绕过服务端记账。</p>
+<p>我已经改成走 <code>PaymentService.pay()</code>，当前返回 <code>NOT_IMPLEMENTED</code> 并提示「仙界商行尚未开张」。<b>也就是说：现在这 6 个档位点了不再白送钻石，但也收不到钱。</b></p></div>
+<span class="lbl">三个选项，你选一个</span>
+<div class="tw"><table><thead><tr><th>选项</th><th>做法</th><th>适用情况</th></tr></thead><tbody>
+<tr><td><b>A. 暂时隐藏</b></td><td>把 <code>rechargeTiers</code> 里 6 个付费档位注释掉，只留分享得钻</td><td>还没做小程序支付资质</td></tr>
+<tr><td><b>B. 接入真实支付</b></td><td>需要：小程序已认证为企业主体 + 开通微信支付 + 新建 <code>createOrder</code>/<code>paymentNotify</code> 两个云函数</td><td>想开始变现</td></tr>
+<tr><td><b>C. 保持现状</b></td><td>档位可见但点击提示未开张</td><td>短期过渡</td></tr>
+</tbody></table></div>
+<span class="lbl">选 B 的话必须按这个顺序</span>
+<p>（<code>commerce.js</code> 里有完整注释）</p>
+<ol>
+<li>云函数 <code>createOrder</code> 按档位 ID <b>在服务端查表</b>确定金额和钻石数（<b>金额和钻石数绝对不能由客户端传入</b>）</li>
+<li>云函数调微信支付下单，返回 payment 参数</li>
+<li>客户端 <code>wx.requestPayment(payment)</code></li>
+<li>支付结果回调打到云函数 <code>paymentNotify</code></li>
+<li><code>paymentNotify</code> <b>校验签名后</b>在服务端加钻石，并用订单号去重</li>
+</ol>
+<p>客户端全程不参与「加多少钻石」的决定。<b>如果你选 B，告诉我，我可以把这两个云函数写出来。</b></p></div>
+
+<div class="item p3"><h3>第 6 项：确认 <code>quickstartFunctions</code> 是否还在用<span class="badge b3">低</span></h3>
+<span class="lbl">要做什么</span>
+<p>确认线上 <code>quickstartFunctions</code> 云函数是否还有用途，没用就删除。</p>
+<span class="lbl">在哪里做</span>
+<p>云开发控制台 <span class="arrow">→</span> 云函数 <span class="arrow">→</span> <code>quickstartFunctions</code></p>
+<span class="lbl">为什么必须人工做</span>
+<p>这是微信官方 quickstart 模板自带的示例函数，我无法判断你是否在某处用到了它。线上部署状态也只有控制台能看到。</p>
+<span class="lbl">不做的后果</span>
+<p>示例函数通常包含数据库读写、文件上传等演示接口，<b>留在线上等于多一个攻击面</b>。</p>
+<span class="lbl">怎么验证做成功了</span>
+<p>全局搜索 <code>callFunction</code> 确认没有调用 <code>quickstartFunctions</code>（我查过当前代码里没有），然后在控制台删除该云函数，重新走一遍第 3 项的完整流程确认一切正常。</p></div>
+
+<div class="item p3"><h3>第 7 项：历史脏数据清理<span class="badge b3">低</span></h3>
+<span class="lbl">要做什么</span>
+<p>检查 <code>player_data</code> 里是否已存在被刷进去的异常数据。</p>
+<span class="lbl">在哪里做</span>
+<p>云开发控制台 <span class="arrow">→</span> 数据库 <span class="arrow">→</span> <code>player_data</code> <span class="arrow">→</span> 按 <code>power</code> 字段倒序查看前几条</p>
+<span class="lbl">为什么必须人工做</span>
+<p>我这次加的是「<b>防止新的异常数据写入</b>」。已经存在的脏数据需要你判断哪些是正常玩家、哪些是刷的，这个判断我做不了。</p>
+<span class="lbl">不做的后果</span>
+<p><code>rank.js</code> 的 <code>safeBigPower()</code> 会把超过 <code>10³⁰</code> 的记录从榜单剔除（展示层防线），所以<b>不会继续锁榜</b>。但：</p>
+<ul>
+<li>脏数据仍留在数据库里占空间</li>
+<li>如果有人刷到 <code>10²⁰</code> 这种「<b>没超上界但明显不合理</b>」的值，仍会霸榜</li>
+</ul>
+<span class="lbl">判断参考</span>
+<p>正常玩家战力量级（按本次数值改动后）：</p>
+<div class="tw"><table><thead><tr><th>境界</th><th>正常战力量级</th></tr></thead><tbody>
+<tr><td>元婴期</td><td>约 10⁴ ~ 10⁵</td></tr>
+<tr><td>化神期</td><td>约 10⁵ ~ 10⁶</td></tr>
+<tr><td>天道境圆满（通关）</td><td>约 10⁸ ~ 10⁹</td></tr>
+<tr><td>多次轮回叠加</td><td>理论不超过 10²⁴</td></tr>
+</tbody></table></div>
+<p><b>超过 10¹⁰ 的记录基本可以确定是刷的</b>（除非是大量轮回的老玩家）。</p>
+<span class="lbl">怎么验证做成功了</span>
+<p>清理后排行榜前 10 名的战力量级和境界匹配（比如「天道境」对应 10⁸~10⁹，不会出现「炼气期」挂着 10¹⁵ 战力）。</p></div>
+
+<h2>清单汇总</h2>
+<div class="tw"><table><thead><tr><th>#</th><th>事项</th><th>优先级</th><th>不做的后果</th></tr></thead><tbody>
+<tr><td>1</td><td><code>player_data</code> 集合权限</td><td class="bad">⚠️ 最高</td><td class="bad"><b>所有安全加固失效</b></td></tr>
+<tr><td>2</td><td>核实线上云函数版本 + 备份</td><td class="warn">高</td><td>可能覆盖未知线上修复、无法回滚</td></tr>
+<tr><td>3</td><td>开发者工具真机编译</td><td class="warn">高</td><td>可能带编译错误上线</td></tr>
+<tr><td>4</td><td>激励视频广告开通状态</td><td>中</td><td>无广告收入但照发奖励</td></tr>
+<tr><td>5</td><td>支付功能决策</td><td>中</td><td>6 个档位收不到钱（但已不白送）</td></tr>
+<tr><td>6</td><td>删除 <code>quickstartFunctions</code></td><td>低</td><td>多一个攻击面</td></tr>
+<tr><td>7</td><td>历史脏数据清理</td><td>低</td><td>脏数据占空间、中等量级仍可霸榜</td></tr>
+</tbody></table></div>
+
+<div class="card yellow"><p class="t">需要你回复我的三个决策点</p>
+<ol>
+<li><b>第 1 项</b>：权限收紧后排行榜会读不到数据。要不要我把排行榜查询改成走云函数？（推荐：要）</li>
+<li><b>第 2 项</b>：如果线上云函数和基线有差异，<b>先别部署</b>，把差异发我</li>
+<li><b>第 5 项</b>：支付选 <b>A / B / C</b>？选 B 我可以把 <code>createOrder</code> 和 <code>paymentNotify</code> 写出来</li>
+</ol></div>
+
+<div class="foot">分支 <code>opt/live-baseline</code>　·　基线：用户上传的线上实际部署代码（文字修仙-完整无bug代码2026-2-27.zip）　·　2026-10-10<br>配套文档：《优化说明报告》</div>
+</div></body></html>

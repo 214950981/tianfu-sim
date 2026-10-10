@@ -1,0 +1,257 @@
+<!DOCTYPE html><html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>放置修仙小程序 · 优化说明报告</title><style>
+:root{--bg:#0a0a0f;--card:#14141c;--card2:#1b1b26;--line:#2b2b3a;--gold:#ffd700;--txt:#e8e8f0;--dim:#9a9aae;--red:#ff5c5c;--green:#4ade80;--yellow:#fbbf24;--blue:#60a5fa}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--txt);font:16px/1.75 -apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue",Helvetica,Arial,sans-serif;-webkit-text-size-adjust:100%}
+.wrap{max-width:900px;margin:0 auto;padding:20px 16px 64px}
+h1{font-size:25px;line-height:1.35;margin:8px 0 6px;color:var(--gold);letter-spacing:.5px}
+h2{font-size:20px;margin:38px 0 14px;padding-bottom:9px;border-bottom:1px solid var(--line);color:var(--gold)}
+h3{font-size:17px;margin:26px 0 10px;color:#ffe9a0}
+h4{font-size:15px;margin:18px 0 8px;color:var(--dim);font-weight:600}
+p{margin:11px 0}
+.sub{color:var(--dim);font-size:13.5px;margin:0 0 22px;padding-bottom:16px;border-bottom:1px solid var(--line)}
+.card{background:var(--card);border-radius:10px;padding:15px 16px;margin:16px 0;border-left:4px solid var(--line)}
+.card.red{border-left-color:var(--red);background:#1e1416}
+.card.green{border-left-color:var(--green);background:#111c16}
+.card.yellow{border-left-color:var(--yellow);background:#1e1a12}
+.card.blue{border-left-color:var(--blue);background:#121823}
+.card .t{font-weight:700;margin:0 0 8px;font-size:15.5px}
+.card.red .t{color:#ff8f8f}.card.green .t{color:#86efac}.card.yellow .t{color:#fcd34d}.card.blue .t{color:#93c5fd}
+.card p:first-of-type{margin-top:0}.card p:last-child{margin-bottom:0}
+.sc{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin:18px 0}
+.sc .t{color:var(--gold);font-weight:700;margin:0 0 8px}
+.tw{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:16px 0;border-radius:8px;border:1px solid var(--line)}
+table{border-collapse:collapse;width:100%;min-width:480px;font-size:14px}
+th{background:#23232f;color:var(--gold);text-align:left;padding:10px 12px;font-weight:600;white-space:nowrap;border-bottom:1px solid var(--line)}
+td{padding:9px 12px;border-bottom:1px solid #22222e;vertical-align:top}
+tbody tr:nth-child(odd){background:#13131a}
+tbody tr:last-child td{border-bottom:none}
+code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:13px}
+code{background:#23232f;padding:2px 6px;border-radius:4px;color:#ffe9a0;word-break:break-all}
+pre{background:#0d0d14;border:1px solid var(--line);border-radius:8px;padding:13px;overflow-x:auto;margin:14px 0}
+pre code{background:none;padding:0;color:#c8c8dc;white-space:pre;line-height:1.65}
+ul,ol{padding-left:22px;margin:11px 0}
+li{margin:6px 0}
+.bad{color:var(--red);font-weight:600}.good{color:var(--green);font-weight:600}.warn{color:var(--yellow);font-weight:600}
+.arrow{color:var(--gold);font-weight:700}
+.foot{margin-top:50px;padding-top:18px;border-top:1px solid var(--line);color:var(--dim);font-size:13px}
+.kv{margin:9px 0}.kv b{color:#ffe9a0;font-weight:600}
+.chart{background:#0d0d14;border:1px solid var(--line);border-radius:8px;padding:12px 8px;margin:16px 0;overflow-x:auto}
+.chart svg{display:block;min-width:620px}
+.pill{display:inline-block;background:#23232f;border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12.5px;color:var(--dim);margin:0 6px 6px 0}
+.big{font-size:19px;font-weight:700;color:var(--gold)}
+hr{border:none;border-top:1px solid var(--line);margin:30px 0}
+
+</style></head><body><div class="wrap">
+<h1>放置修仙小程序 · 优化说明报告</h1>
+<p class="sub">分支 <code>opt/live-baseline</code>　·　基线：用户上传的线上实际部署代码　·　2026-10-10</p>
+
+<div class="sc"><p class="t">结论摘要</p>
+<p>以你上传的线上部署代码为唯一基线重做了全部工作。核心结论：<span class="bad">改动前 7 档资质全部暴死，通关率 0%</span>，中等资质死在 L9 金丹期入门。根因有<b>两条</b>（上一轮审计只找到一条），必须同时改。修复后 <span class="good">中等资质可 L60 天道境圆满通关</span>，全程最低安全余量 12.6x，无必死局。</p>
+<p>另修复 4 个 Bug、完成 8 项云函数安全加固（44 项断言全过）、事件池基础事件 34→54 条、堵住一处「不付钱直接到账」的收入漏损。</p>
+<p><span class="pill">数值平衡 ✅</span><span class="pill">Bug 修复 ✅</span><span class="pill">安全加固 ✅</span><span class="pill">玩法扩充 ✅</span><span class="pill">真机编译 ⚠️ 待你操作</span></p></div>
+
+<h2>0. 基线修正：上一轮审计的两个结论需更正</h2>
+<div class="card yellow"><p class="t">⚠️ 这两点会影响你对项目状态的判断</p>
+<p><b>(1)「main 分支缺 4 个文件、不可运行」对线上版本不成立。</b>线上 <code>miniprogram/</code> 下文件齐全，<code>app.json</code> 注册的 3 个页面全部可解析，可直接编译。该问题只存在于 GitHub 仓库的 <code>main</code> 分支，不在你的线上包里。</p>
+<p><b>(2) 线上代码与仓库任何分支都不一致。</b>线上标题是「顶级气运-悄悄修炼千年」，仓库 main/dev 都是「天赋模拟小工具」；线上 <code>rechargeTiers</code> 是 6 档真实价格（1/6/30/98/198/648 元），dev-2.0 已改成只有「分享得 300 钻」。线上还多出 <code>quickstartFunctions</code>、<code>cloudTipModal</code>、<code>minitest/</code>、<code>uploadCloudFunction.sh</code>。</p>
+<p>这印证了仓库 <code>NEXT_TASK.yaml</code> 里 <code>REPORTED_DEPLOYED_BACKUP_GATE_VIOLATED</code> 的记录——<b>线上曾绕过备份闸门上线，仓库从未保存住线上状态</b>。建议把本分支合回去让仓库与线上重新对齐，否则下次还会出现「不知道该改哪份代码」的问题。</p></div>
+
+<h2>1. 必死局：根因与修复</h2>
+<h3>1.1 实测确认的现象</h3>
+<p>我把线上 <code>game.js</code> 的 <code>Page({...})</code> 对象直接取出来跑推演（<b>跑真实代码路径，不是估算公式</b>），<span class="bad">7 档资质全部暴死，通关率 0%</span>：</p>
+<div class="tw"><table><thead><tr><th>资质</th><th>改动前终点</th></tr></thead><tbody>
+<tr><td>凡人无灵根（最差）</td><td>L5 筑基期入门</td></tr>
+<tr><td>杂品废灵根</td><td>L6 筑基期小成</td></tr>
+<tr><td>三系真灵根（中等）</td><td><b>L9 金丹期入门</b></td></tr>
+<tr><td>真木灵根</td><td>L9 金丹期入门</td></tr>
+<tr><td>单系天灵根</td><td>L9 金丹期入门</td></tr>
+<tr><td>变异雷灵根</td><td>L10 金丹期小成</td></tr>
+<tr><td>鸿蒙本源根（最好）</td><td>L13 元婴期入门</td></tr>
+</tbody></table></div>
+<div class="card red"><p class="t">关键洞察</p><p>注意最后一行：<b>最好的灵根（修炼倍率是最差的 300 倍）只比最差的多走 8 级。</b>你说的「天赋差异不明显」不是天赋数值差距不够大，<b>是所有人都被同一道墙拦死了</b>。</p></div>
+
+<h3>1.2 根因有两条，必须同时改</h3>
+<p>上一轮审计只找到第一条。<b>单独改任何一条，游戏仍然是死局。</b></p>
+<div class="card red"><p class="t">根因 A：大境界经验需求阶跃失控（<code>game.js</code> 原第 452 行 <code>nextExp * 100n</code>）</p>
+<ul>
+<li>收益端：跨一个大境界，单 tick 修为收益只增长 <code>(baseYears 比值 × 2)</code>，14 个大境界累计约 <b>8.19e9</b></li>
+<li>需求端：每个大境界 <code>100 × 1.5³ = 337.5</code> 倍，14 次累计约 <b>1.7e35</b></li>
+<li>两端差 <span class="bad">25 个数量级</span></li>
+</ul></div>
+<div class="card red"><p class="t">根因 B：寿元奖励是二次式，寿元消耗是指数式（审计漏掉，但<u>这才是主因</u>）</p>
+<ul>
+<li>消耗端：<code>baseYears × 1.15^index</code>，化神期 <b>87 年/tick</b>，天道境 <b>353 万年/tick</b></li>
+<li>奖励端：<code>200 × (m+1)²</code>，化神期突破只给 5500 年 ≈ <b>63 个 tick</b>；小境界只给 <code>20 + level×5</code> ≈ <b>110 年，不到 2 个 tick</b></li>
+<li>两条曲线<b>根本不同阶</b></li>
+</ul>
+<p>这解释了为什么你「反复在元婴/化神暴死」——<b>正是指数消耗开始碾压二次奖励的位置。</b></p></div>
+
+<h3>1.3 修复方式</h3>
+<div class="tw"><table><thead><tr><th>项目</th><th>改动前</th><th>改动后</th></tr></thead><tbody>
+<tr><td>大境界经验阶跃</td><td><code>nextExp × 100n</code></td><td><code>nextExp × 2n</code></td></tr>
+<tr><td>大境界寿元奖励</td><td><code>200 × (m+1)² × 根骨加成</code></td><td><code>下一境界单tick成本 × 200 × 根骨加成</code></td></tr>
+<tr><td>小境界寿元奖励</td><td><code>20 + level × 5</code></td><td><code>当前境界单tick成本 × 80 × 根骨加成</code></td></tr>
+</tbody></table></div>
+<div class="card green"><p class="t">思路转变</p><p>关键是第 2、3 项：<b>不再按「等级」发寿元，而是按「能修炼多少个 tick」发寿元。</b>这样寿元预算跨境界恒定，不会被指数消耗吃掉。</p></div>
+
+<h3>1.4 修复后实测</h3>
+<p>纯修炼曲线（渡劫成功率强制 100%，隔离随机性）：</p>
+<div class="tw"><table><thead><tr><th>资质</th><th>改动前</th><th>改动后</th></tr></thead><tbody>
+<tr><td>凡人无灵根</td><td class="bad">L5 暴死</td><td>L28 合体期圆满</td></tr>
+<tr><td>杂品废灵根</td><td class="bad">L6 暴死</td><td>L47 仙尊境大成</td></tr>
+<tr><td>三系真灵根（中等）</td><td class="bad">L9 暴死</td><td class="good">L60 天道境圆满通关（1161 tick）</td></tr>
+<tr><td>真木灵根</td><td class="bad">L9 暴死</td><td class="good">L60 通关（350 tick）</td></tr>
+<tr><td>单系天灵根</td><td class="bad">L9 暴死</td><td class="good">L60 通关（176 tick）</td></tr>
+<tr><td>变异雷灵根</td><td class="bad">L10 暴死</td><td class="good">L60 通关（101 tick）</td></tr>
+<tr><td>鸿蒙本源根</td><td class="bad">L13 暴死</td><td class="good">L60 通关（60 tick）</td></tr>
+</tbody></table></div>
+<h4>中等资质逐境界安全余量（余寿 ÷ 本级所需寿元，&gt;1 即可通过）</h4>
+<div class="chart"><svg viewBox="0 0 640 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="中等资质各大境界安全余量曲线"><rect x="0" y="0" width="640" height="300" fill="none"/><line x1="52" y1="241.3" x2="626" y2="241.3" stroke="#2b2b3a" stroke-width="1"/><text x="45" y="245.3" fill="#9a9aae" font-size="11" text-anchor="end">10x</text><line x1="52" y1="178.6" x2="626" y2="178.6" stroke="#2b2b3a" stroke-width="1"/><text x="45" y="182.6" fill="#9a9aae" font-size="11" text-anchor="end">30x</text><line x1="52" y1="109.9" x2="626" y2="109.9" stroke="#2b2b3a" stroke-width="1"/><text x="45" y="113.9" fill="#9a9aae" font-size="11" text-anchor="end">100x</text><line x1="52" y1="47.2" x2="626" y2="47.2" stroke="#2b2b3a" stroke-width="1"/><text x="45" y="51.2" fill="#9a9aae" font-size="11" text-anchor="end">300x</text><line x1="52" y1="18.0" x2="626" y2="18.0" stroke="#2b2b3a" stroke-width="1"/><text x="45" y="22.0" fill="#9a9aae" font-size="11" text-anchor="end">500x</text><line x1="52" y1="254.0" x2="626" y2="254.0" stroke="#ff5c5c" stroke-width="1.5" stroke-dasharray="5,4"/><text x="626" y="247.0" fill="#ff5c5c" font-size="11" text-anchor="end">安全余量 1x = 必死线（本图最低点 12.6x，远高于此）</text><polyline points="52.0,102.4 93.0,29.8 134.0,25.2 175.0,57.9 216.0,78.3 257.0,60.0 298.0,76.8 339.0,98.6 380.0,126.0 421.0,156.4 462.0,181.9 503.0,209.0 544.0,213.0 585.0,228.1 626.0,222.9" fill="none" stroke="#ffd700" stroke-width="2.5" stroke-linejoin="round"/><circle cx="52.0" cy="102.4" r="3.6" fill="#0a0a0f" stroke="#ffd700" stroke-width="2"/><text x="52.0" y="91.4" fill="#e8e8f0" font-size="10.5" text-anchor="middle">114</text><text x="52.0" y="271" fill="#9a9aae" font-size="10.5" text-anchor="middle">炼气</text><circle cx="93.0" cy="29.8" r="3.6" fill="#0a0a0f" stroke="#ffd700" stroke-width="2"/><text x="93.0" y="18.8" fill="#e8e8f0" font-size="10.5" text-anchor="middle">406.5</text><text x="93.0" y="271" fill="#9a9aae" font-size="10.5" text-anchor="middle">筑基</text><circle cx="134.0" cy="25.2" r="3.6" fill="#0a0a0f" stroke="#ffd700" stroke-width="2"/><text x="134.0" y="14.2" fill="#e8e8f0" font-size="10.5" text-anchor="middle">440.8</text><text x="134.0" y="271" fill="#9a9aae" font-size="10.5" text-anchor="middle">金丹</text><circle cx="175.0" cy="57.9" r="3.6" fill="#0a0a0f" stroke="#ffd700" stroke-width="2"/><text x="175.0" y="46.9" fill="#e8e8f0" font-size="10.5" text-anchor="middle">248.5</text><text x="175.0" y="271" fill="#9a9aae" font-size="10.5" text-anchor="middle">元婴</text><circle cx="216.0" cy="78.3" r="3.6" fill="#0a0a0f" stroke="#ffd700" stroke-width="2"/><text x="216.0" y="67.3" fill="#e8e8f0" font-size="10.5" text-anchor="middle">173.9</text><text x="216.0" y="271" fill="#9a9aae" font-size="10.5" text-anchor="middle">化神</text><circle cx="257.0" cy="60.0" r="3.6" fill="#0a0a0f" stroke="#ffd700" stroke-width="2"/><text x="257.0" y="49.0" fill="#e8e8f0" font-size="10.5" text-anchor="middle">239.7</text><text x="257.0" y="271" fill="#9a9aae" font-size="10.5" text-anchor="middle">炼虚</text><circle cx="298.0" cy="76.8" r="3.6" fill="#0a0a0f" stroke="#ffd700" stroke-width="2"/><text x="298.0" y="65.8" fill="#e8e8f0" font-size="10.5" text-anchor="middle">178.5</text><text x="298.0" y="271" fill="#9a9aae" font-size="10.5" text-anchor="middle">合体</text><circle cx="339.0" cy="98.6" r="3.6" fill="#0a0a0f" stroke="#ffd700" stroke-width="2"/><text x="339.0" y="87.6" fill="#e8e8f0" font-size="10.5" text-anchor="middle">121.7</text><text x="339.0" y="271" fill="#9a9aae" font-size="10.5" text-anchor="middle">大乘</text><circle cx="380.0" cy="126.0" r="3.6" fill="#0a0a0f" stroke="#ffd700" stroke-width="2"/><text x="380.0" y="115.0" fill="#e8e8f0" font-size="10.5" text-anchor="middle">75.3</text><text x="380.0" y="271" fill="#9a9aae" font-size="10.5" text-anchor="middle">渡劫</text><circle cx="421.0" cy="156.4" r="3.6" fill="#0a0a0f" stroke="#ffd700" stroke-width="2"/><text x="421.0" y="145.4" fill="#e8e8f0" font-size="10.5" text-anchor="middle">44.2</text><text x="421.0" y="271" fill="#9a9aae" font-size="10.5" text-anchor="middle">真仙</text><circle cx="462.0" cy="181.9" r="3.6" fill="#0a0a0f" stroke="#ffd700" stroke-width="2"/><text x="462.0" y="170.9" fill="#e8e8f0" font-size="10.5" text-anchor="middle">28.3</text><text x="462.0" y="271" fill="#9a9aae" font-size="10.5" text-anchor="middle">金仙</text><circle cx="503.0" cy="209.0" r="3.6" fill="#0a0a0f" stroke="#ffd700" stroke-width="2"/><text x="503.0" y="198.0" fill="#e8e8f0" font-size="10.5" text-anchor="middle">17.6</text><text x="503.0" y="271" fill="#9a9aae" font-size="10.5" text-anchor="middle">仙尊</text><circle cx="544.0" cy="213.0" r="3.6" fill="#0a0a0f" stroke="#ffd700" stroke-width="2"/><text x="544.0" y="202.0" fill="#e8e8f0" font-size="10.5" text-anchor="middle">16.4</text><text x="544.0" y="271" fill="#9a9aae" font-size="10.5" text-anchor="middle">仙帝</text><circle cx="585.0" cy="228.1" r="3.6" fill="#0a0a0f" stroke="#ffd700" stroke-width="2"/><text x="585.0" y="217.1" fill="#e8e8f0" font-size="10.5" text-anchor="middle">12.6</text><text x="585.0" y="271" fill="#9a9aae" font-size="10.5" text-anchor="middle">神帝</text><circle cx="626.0" cy="222.9" r="3.6" fill="#0a0a0f" stroke="#ffd700" stroke-width="2"/><text x="626.0" y="211.9" fill="#e8e8f0" font-size="10.5" text-anchor="middle">13.8</text><text x="626.0" y="271" fill="#9a9aae" font-size="10.5" text-anchor="middle">天道</text><text x="52" y="294" fill="#9a9aae" font-size="11">各大境界「入门」级 · 纵轴为对数刻度</text></svg></div>
+<div class="card green"><p class="t">全程最低 12.6x，无必死局</p><p>单级所需 tick 落在 <b>1~100</b>。改动前中等资质在 L9 需要约 <span class="bad">19 万 tick</span>——那就是那道墙。</p></div>
+
+<h3>1.5 天赋差异现在才真正生效</h3>
+<p>加入真实渡劫掷骰（含失败惩罚、属性掉落、幸运二次判定），N=200 次模拟中位终点：</p>
+<div class="tw"><table><thead><tr><th>资质</th><th>改动前</th><th>改动后</th><th>通关率</th></tr></thead><tbody>
+<tr><td>凡人无灵根</td><td>L5</td><td><b>L20 化神期</b></td><td>0%</td></tr>
+<tr><td>杂品废灵根</td><td>L6</td><td>L28 合体期</td><td>0%</td></tr>
+<tr><td>三系真灵根（中等）</td><td>L9</td><td>L36 渡劫期</td><td>0%</td></tr>
+<tr><td>真木灵根</td><td>L9</td><td>L36 渡劫期</td><td>0%</td></tr>
+<tr><td>单系天灵根</td><td>L9</td><td>L40 真仙境</td><td>0.5%</td></tr>
+<tr><td>变异雷灵根</td><td>L10</td><td>L44 金仙境</td><td>3.0%</td></tr>
+<tr><td>鸿蒙本源根</td><td>L13</td><td><b>L48 仙尊境</b></td><td>20%</td></tr>
+</tbody></table></div>
+<div class="card green"><p class="t">不需要加大天赋数值差距</p><p>跨度从「L5→L13」拉开到「<b>L20→L48</b>」。原有的灵根倍率设计（0.1 到 30 倍）<b>本身是合理的</b>，只是之前被需求阶跃吞掉了。</p></div>
+<div class="card yellow"><p class="t">诚实提示：通关率仍偏低</p><p>通关率整体偏低（中等资质 0%），这是<b>渡劫失败惩罚叠加</b>的结果，属于<b>可玩的难度</b>而非死局——纯修炼曲线证明路径是通的。若希望中等资质也有一定通关率，需要你先定一个目标通关率，我<b>没有擅自改</b>。</p></div>
+<h2>2. Bug 修复</h2>
+<h3>2.1 <code>formatBigInt</code> 数组越界，界面显示 "undefined"</h3>
+<p><code>game.js</code> 的单位表只有 8 项（最大「穰」= 32 位），33 位数时 <code>units[idx]</code> 是 <code>undefined</code>，界面直接渲染出 <code>1undefined</code>。实测：33 位 <span class="arrow">→</span> <code>"1undefined"</code>，36 位 <span class="arrow">→</span> <code>"1000undefined"</code>。</p>
+<p>有意思的是 <code>rank.js</code> 的 <code>formatPower</code> 本来就有 <code>unitIdx</code> 上限保护，<b>只有 <code>game.js</code> 这份漏了</b>。</p>
+<p><b>修复：</b>单位扩到 12 个（至「载」= 48 位），超出退化为科学计数 <code>1000e56</code>，并对 <code>undefined</code>/<code>null</code>/负数兜底返回 <code>"0"</code>。实测 60 位、200 位、<code>undefined</code>、<code>null</code>、负数全部不再输出 <code>undefined</code>。</p>
+<h3>2.2 死亡文案没有信息量</h3>
+<p>原文案只有「天人五衰降临，你终究敌不过天道岁月，身死道消！」——玩家看不出自己是修炼太慢还是寿元不够。<b>这正是你反馈「反复暴死但看不懂」的直接来源。</b></p>
+<p><b>修复：</b>给出具体数字——当前境界、单次闭关耗寿、剩余寿元，并点明「寿元先于修为枯竭」。</p>
+<h3>2.3 日榜排序字段错误</h3>
+<p><code>rank.js</code> 日榜原本按 <code>lastUpdate</code> 倒序取前 100 条——拿到的是「<b>最近活跃</b>的 100 人」，不是「<b>今日战力最高</b>的 100 人」。之后第 9 步又按 <code>dailyPower</code> 重排，结果是<b>今日战力很高但当下不在线的玩家在第一步就被截断，永远进不了日榜</b>。</p>
+<p><b>修复：</b>改为按 <code>dailyPower</code> 排序。</p>
+<h3>2.4 异常战力永久锁榜</h3>
+<p><code>rank.js</code> 原本直接 <code>BigInt(String(user.power))</code>，无上界校验。<span class="bad">一次性写入 60 位数即可永久霸占榜首且不可逆。</span></p>
+<p><b>修复：</b>新增 <code>safeBigPower()</code>——先截位数再转 <code>BigInt</code>（避免 10 万位字符串转换本身卡死页面），超过 <code>10³⁰</code> 硬上界返回 <code>-1n</code> 并在过滤步骤剔除。</p>
+<p><b>上界推导：</b>突破奖励量级 <code>2000×(m+1)²</code>、奇遇 <code>power_max</code> 为 <code>100000×m³</code>，多次轮回累计不超过 <code>10²⁴</code>，留足 6 个数量级余量。</p>
+
+<h2>3. 安全加固</h2>
+<h3>3.1 加固前的实际问题</h3>
+<p>读线上云函数 <code>syncPlayerData/index.js</code> 确认：</p>
+<div class="card red"><p class="t">5 个确认存在的问题</p><ol>
+<li><code>update</code> 分支把 <code>event.data</code> 原样展开写库（<code>{ ...data }</code>），<b>字段零校验</b>。客户端可写入任意字段、类型、大小——<b>包括 <code>_openid</code> 本身</b>（可覆写他人数据归属）</li>
+<li><code>update</code> <b>没有账号存在性检查</b>，未初始化账号也会走 <code>where().update()</code>，静默匹配 0 条却返回 <code>success: true</code>，掩盖真实失败</li>
+<li><code>diamonds</code>/<code>merit</code>/<code>ad_tickets</code> 最终值完全由客户端决定，发 <code>{ diamonds: 99999999 }</code> 即到账</li>
+<li><code>power</code> 有「只增不减」保护但<b>无上界</b></li>
+<li>日限 10 次领钻、膜拜去重、免费领钻全靠 <code>wx.setStorageSync</code>，<b>清缓存即可无限刷</b></li>
+</ol></div>
+<h3>3.2 改动内容</h3>
+<div class="tw"><table><thead><tr><th>加固项</th><th>做法</th></tr></thead><tbody>
+<tr><td>白名单字段校验</td><td><code>FIELD_RULES</code> 显式声明允许字段，未声明字段直接拒绝并回传 <code>FIELD_NOT_ALLOWED</code>（不再 <code>{...data}</code> 盲展开）</td></tr>
+<tr><td>逐字段类型/范围</td><td><code>power</code> 必须纯数字且 ≤31 位；昵称 ≤20 字且非空白；<code>avatarUrl</code> 限微信域名（qpic/qlogo/myqcloud）或本地路径，拒绝任意外链；资产类必须整数且在上界内</td></tr>
+<tr><td>账号存在性</td><td>未初始化账号的 <code>update</code>/<code>claimReward</code>/<code>worship</code> 全部拒绝</td></tr>
+<tr><td>资产增加通道关闭</td><td><code>update</code> 只允许资产<b>不增加</b>（即消耗），增加必须走服务端发奖</td></tr>
+<tr><td>服务端发奖 <code>claimReward</code></td><td>分享领钻/分享送次数/免费领钻/广告换次数的<b>次数与去重按 openid + 北京时间日期记在服务端</b>，奖励数额为服务端常量，客户端只提交动作类型</td></tr>
+<tr><td>服务端膜拜 <code>worship</code></td><td>去重与每日上限服务端记账，奖励服务端掷骰</td></tr>
+<tr><td>服务端扣减 <code>spend</code></td><td>校验余额后扣减，换算比例不信任客户端</td></tr>
+<tr><td>异常信息收敛</td><td>不再回传原始 <code>error</code> 对象，避免泄漏内部结构</td></tr>
+</tbody></table></div>
+<h3>3.3 测试</h3>
+<p>附带 <code>cloudfunctions/syncPlayerData/__test__.security.mjs</code>，<span class="good">44 项断言全部通过</span>：</p>
+<pre><code>=== 入口与白名单校验 ===         4 项
+=== update 白名单 ===             6 项（含 _openid 注入、_id 注入）
+=== update 类型与范围 ===        12 项（含 60 位锁榜、外链头像、违规昵称）
+=== 资产不可由客户端增加 ===      4 项（自充钻石/功德/次数）
+=== power 单调性 ===              2 项
+=== claimReward 服务端记账 ===    4 项（第 11 次被拒、客户端指定数额无效）
+=== worship 服务端去重 ===        5 项（重复膜拜、自我膜拜、超限）
+=== spend 服务端扣减 ===          4 项
+=== 未初始化账号 ===              3 项
+合计 PASS=44 FAIL=0</code></pre>
+<p>运行方式：</p>
+<pre><code>cd cloudfunctions/syncPlayerData
+mkdir -p node_modules/wx-server-sdk   # 测试用桩，内含内存数据库模拟
+node __test__.security.mjs</code></pre>
+<div class="card red"><p class="t">⚠️ 这些校验可能全部白做</p><p>如果云数据库 <code>player_data</code> 集合权限是「所有用户可读写」，客户端可以<b>绕过云函数直接改库</b>。这一点我<b>无法从代码确认</b>，必须你去控制台看——见《人工操作清单》第 1 项。</p></div>
+
+<h2>4. 玩法与体验</h2>
+<h3>4.1 随机事件池扩充</h3>
+<div class="card yellow"><p class="t">先说一个发现：「2000+ 条奇遇」是组合填充的产物</p><p><code>generateRoguelikeEvents()</code> 把「地点 × 遭遇」随机配对，每档各生成 60 条，但<b>实际唯一基础事件只有 34 条</b>。这就是你觉得「事件重复率高」的原因——<b>玩家感知到的是 34 条，不是 2000 条。</b></p></div>
+<p>本次新增 <b>20 条基础事件 + 12 个地点</b>，全部是修仙题材、单次事件单次反馈，不引入分支剧情：</p>
+<div class="tw"><table><thead><tr><th>层级</th><th>基础事件</th><th>地点</th><th>组合空间</th></tr></thead><tbody>
+<tr><td>TIER_1 炼气~元婴</td><td>12 <span class="arrow">→</span> <b>19</b></td><td>7 <span class="arrow">→</span> 11</td><td>84 <span class="arrow">→</span> 209</td></tr>
+<tr><td>TIER_2 化神~大乘</td><td>9 <span class="arrow">→</span> <b>14</b></td><td>6 <span class="arrow">→</span> 9</td><td>54 <span class="arrow">→</span> 126</td></tr>
+<tr><td>TIER_3 渡劫~金仙</td><td>7 <span class="arrow">→</span> <b>11</b></td><td>5 <span class="arrow">→</span> 8</td><td>35 <span class="arrow">→</span> 88</td></tr>
+<tr><td>TIER_4 仙尊~天道</td><td>6 <span class="arrow">→</span> <b>10</b></td><td>5 <span class="arrow">→</span> 7</td><td>30 <span class="arrow">→</span> 70</td></tr>
+<tr><td><b>合计</b></td><td class="good"><b>34 → 54（+59%）</b></td><td>23 → 35</td><td class="good"><b>203 → 493（+143%）</b></td></tr>
+</tbody></table></div>
+<p>已校验所有新增占位符（<code>{exp_large}</code>/<code>{life_lose_mid}</code> 等）均为 <code>applyDynamicEffect</code> 支持的形式，运行期池子结构不变。</p>
+<h3>4.2 日志降噪</h3>
+<ul>
+<li>大境界突破/道陨用 <code>★★★★★</code> 顶格，小境界精进用 <code>★★</code>，与流水日志拉开视觉层级</li>
+<li>「闭关 N 载」原来<b>每个 tick 一条</b>刷屏且无信息量，改为每 5 tick 汇总一条，并附带<b>本境界进度百分比 + 修炼效率倍率</b>，让玩家知道「为什么变强、还差多少」</li>
+<li>突破获寿改用 <code>formatBigInt</code>，避免大数字糊屏</li>
+</ul>
+<h3>4.3 显示灵根倍率</h3>
+<p>这是「天赋差异不明显」的<b>另一半</b>。灵根卡片下方新增「<b>修炼 xN.N</b>」，日志中同步显示效率倍率。原来灵根只有名字，玩家无法感知极品灵根到底强多少。</p>
+
+<h2>5. 商业化接口预留（仅桩实现）</h2>
+<p>新增 <code>miniprogram/services/commerce.js</code>，把广告和支付从页面逻辑剥离：</p>
+<ul>
+<li><code>AdService.show()</code> — 统一激励视频入口。未配置广告位时退化为原 <code>setTimeout</code> 行为并打 <code>console.warn</code>，接入真实广告<b>只需填 <code>adUnitId</code></b></li>
+<li><code>PaymentService.pay()</code> — 返回 <code>NOT_IMPLEMENTED</code>，附完整接入步骤注释</li>
+<li><code>claimReward()</code> / <code>spendDiamonds()</code> — 统一走云函数，奖励数额由服务端决定</li>
+</ul>
+<div class="card red"><p class="t">顺带堵住一处收入漏损</p><p><code>game.js</code> 的 <code>doRecharge()</code> 原本对 <b>1/6/30/98/198/648 元六个档位一律 <code>setTimeout</code> 后直接 <code>updateDiamonds(totalGain)</code>——不付钱直接到账</b>。既没有支付流程，也绕过服务端记账。</p>
+<p>现改为走 <code>PaymentService</code>，未接入支付时明确提示，<b>不再白送</b>。<code>start.js</code> 的 <code>watchAd()</code> 假广告发奖同样改为 <code>AdService</code> + 服务端 <code>claimReward</code>。</p></div>
+<h2>6. 提交记录</h2>
+<pre><code>9b0ed96c  style: 恢复基线的 CRLF 行尾，使 diff 只显示真实改动
+17e5a9b9  feat(content,ux,commerce): 扩大事件池 / 日志降噪 / 商业化接口桩
+cd2dbfe3  feat(security): 云函数白名单校验 + 次数限制改服务端记账
+5707c4e5  fix(ui,rank): formatBigInt 越界 / 日榜排序字段 / 异常战力锁榜
+71954e10  fix(balance): 修复必死局 —— 经验阶跃与寿元奖励曲线不同阶
+e33c3129  chore(baseline): 导入用户确认的线上实际部署代码作为优化基线</code></pre>
+<p>真实改动量（已恢复 CRLF，diff 只显示实际修改）：</p>
+<div class="tw"><table><thead><tr><th>文件</th><th>新增</th><th>删除</th></tr></thead><tbody>
+<tr><td><code>miniprogram/pages/game/game.js</code></td><td>+89</td><td>-23</td></tr>
+<tr><td><code>miniprogram/pages/game/game_data.js</code></td><td>+40</td><td>-4</td></tr>
+<tr><td><code>miniprogram/pages/game/game.wxml</code></td><td>+3</td><td>-0</td></tr>
+<tr><td><code>miniprogram/pages/rank/rank.js</code></td><td>+27</td><td>-4</td></tr>
+<tr><td><code>miniprogram/pages/start/start.js</code></td><td>+20</td><td>-6</td></tr>
+<tr><td><code>cloudfunctions/syncPlayerData/index.js</code></td><td>+416</td><td>-78（安全重写，预期）</td></tr>
+<tr><td><code>miniprogram/services/commerce.js</code></td><td>+173</td><td>新增</td></tr>
+<tr><td><code>__test__.security.mjs</code></td><td>+85</td><td>新增</td></tr>
+</tbody></table></div>
+<p>每个提交的 message 里都写了「<b>为什么这么改</b>」和实测数据，可直接作为 code review 依据。</p>
+
+<h2>7. 已验证 / 未验证</h2>
+<div class="card green"><p class="t">✅ 已验证</p><ul>
+<li>6 个被改文件 <code>node --check</code> 全部通过；4 个 JSON 文件可解析</li>
+<li><code>app.json</code> 注册的 3 个页面，必需文件（.js/.wxml）<b>缺失数 0</b></li>
+<li>所有 <code>require()</code> 路径可解析（含新增的 <code>../../services/commerce.js</code>）</li>
+<li>数值曲线：用真实 <code>game.js</code> 对象推演（7 档资质 + 逐境界安全余量）</li>
+<li>云函数：44 项安全断言</li>
+<li><code>formatBigInt</code>：33/48/60/200 位、<code>undefined</code>、<code>null</code>、负数</li>
+</ul></div>
+<div class="card yellow"><p class="t">⚠️ 未验证（需要你操作）</p><ul>
+<li><b>微信开发者工具真机编译</b>——我没有该环境，<b>静态检查通过 ≠ IDE 编译通过</b>（WXSS 语法、WXML 数据绑定、基础库兼容性都要真实编译才知道）</li>
+<li><b>云函数真实部署</b>——测试用的是内存数据库桩，不是真实云环境</li>
+<li><b>云数据库集合权限</b>——代码里看不到，见清单第 1 项</li>
+<li><b>WXSS 视觉效果</b>——新增的「修炼 xN.N」只验证了 WXML 结构，没验证实际渲染</li>
+</ul></div>
+
+<h2>8. 下一阶段建议（本次未做）</h2>
+<ol>
+<li><b>修为/境界/战力仍是客户端计算后提交结果值</b>，服务端只做上界和单调性校验，没做完整服务端模拟。彻底防刷需要把挂机结算搬到服务端，这是较大改造，我没有擅自做。</li>
+<li><b>通关率调优</b>——中等资质目前通关率 0%（路径是通的，但渡劫失败惩罚累积）。需要你先定目标通关率。</li>
+<li><b>事件池继续扩充</b>——54 条基础事件对放置游戏仍偏少，建议长期补到 150+ 条。</li>
+<li><b><code>quickstartFunctions</code> 云函数</b>——线上包里带着微信官方模板的示例函数，确认没用后建议删除，减少攻击面。</li>
+</ol>
+
+<div class="foot">分支 <code>opt/live-baseline</code>　·　基线：用户上传的线上实际部署代码（文字修仙-完整无bug代码2026-2-27.zip）　·　2026-10-10<br>配套文档：《上线前人工操作清单》</div>
+</div></body></html>
