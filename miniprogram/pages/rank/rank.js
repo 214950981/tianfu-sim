@@ -58,7 +58,11 @@ Page({
 
       // ⭐ 5. 拉取全服数据
       const db = wx.cloud.database();
-      const orderField = this.data.currentTab === 'daily' ? 'lastUpdate' : 'power';
+      // 【Bug 修复】日榜排序字段错误：原来按 lastUpdate 倒序取前 100，
+      // 拿到的是"最近活跃的 100 人"而不是"今日战力最高的 100 人"；
+      // 第 9 步又按 dailyPower 重排，导致今日战力很高但当下不在线的玩家
+      // 在这一步被直接截断、永远进不了日榜。日榜应按 dailyPower 排序。
+      const orderField = this.data.currentTab === 'daily' ? 'dailyPower' : 'power';
       const res = await db.collection('player_data') 
         .orderBy(orderField, 'desc') 
         .limit(100)
@@ -70,15 +74,18 @@ Page({
         nickname: user.nickName || "神秘道友",
         avatar: user.avatarUrl || "/assets/default_avatar.png",
         province: user.province || "诸天万界",
-        power: BigInt(String(user.power || 0).replace(/[^0-9]/g, '')),
-        dailyPower: BigInt(String(user.dailyPower || 0).replace(/[^0-9]/g, '')),
+        power: this.safeBigPower(user.power),
+        dailyPower: this.safeBigPower(user.dailyPower),
         realm: user.realm_name || "炼气期",
         isMe: false, 
         lastUpdate: user.lastUpdate
       }));
 
       // 7. 精准踢掉云端里和自己 OpenID 重复的数据
-      serverData = serverData.filter(p => p.uid !== myOpenid);
+      // 【安全修复】同时踢掉战力超出理论上界的异常号（safeBigPower 标记为 -1n）。
+      // 云函数侧已加提交上界校验，但历史数据里可能已存在被刷进去的超大数值
+      // （例如一次性写入 60 位数永久锁死榜首），这里做展示层第二道防线。
+      serverData = serverData.filter(p => p.uid !== myOpenid && p.power >= 0n && p.dailyPower >= 0n);
       
       // 8. 合并数据
       let allPlayers = [...serverData, myPlayerObj];
@@ -232,6 +239,22 @@ Page({
   },
 
   // === 工具：大数值优雅展示 ===
+  // 【安全修复】战力字符串安全转换 + 理论上界校验。
+  // 上界推导：战力来源是 basePower 累加，单次突破奖励量级 2000*(m+1)^2*talentBonus，
+  // 奇遇 power_max 为 100000*m^3，多次轮回累计也不会超过 10^24；
+  // 取 10^30 作为硬上界，超过即视为异常数据，不参与榜单。
+  // 返回 -1n 表示"异常，应剔除"。
+  safeBigPower(v) {
+    try {
+      const digits = String(v === undefined || v === null ? 0 : v).replace(/[^0-9]/g, '');
+      if (!digits) return 0n;
+      // 先截位数再转 BigInt，避免超长字符串（如 10 万位）本身卡死页面
+      if (digits.length > 31) return -1n;
+      const b = BigInt(digits);
+      return b > (10n ** 30n) ? -1n : b;
+    } catch (e) { return 0n; }
+  },
+
   formatPower(power) {
     const units = ["", "万", "亿", "兆", "京", "垓", "秭", "穰", "沟", "涧"];
     let pStr = power.toString();
