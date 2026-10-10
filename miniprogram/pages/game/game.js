@@ -616,11 +616,15 @@ Page({
 
     let parsedText = text.replace(/\{(\w+)\}/g, (match, p1) => {
         let val = 0;
-        if (p1 === 'gold_small') { val = 100 * m; newGold += val; return "+" + val; }
-        if (p1 === 'gold_mid') { val = 500 * m * m; newGold += val; return "+" + val; }
-        if (p1 === 'gold_large') { val = 5000 * m * m; newGold += val; return "+" + val; }
-        if (p1 === 'gold_huge') { val = 50000 * m * m; newGold += val; return "+" + val; }
-        if (p1 === 'gold_max') { val = 500000 * m * m * m; newGold += val; return "+" + val; }
+        // 【联动】家境 → 灵石产出乘数 = 1 + wealth/50。
+        // 原来家境只在天劫失败减伤里用过一次（条件 wealth > (m+1)*30，实测几乎不可达），
+        // 是事实上的死属性（全程推演终局中位 = 1）。现在它直接决定灵石收入。
+        let goldMulti = 1 + attrs.wealth / 50;
+        if (p1 === 'gold_small') { val = Math.floor(100 * m * goldMulti); newGold += val; return "+" + val; }
+        if (p1 === 'gold_mid') { val = Math.floor(500 * m * m * goldMulti); newGold += val; return "+" + val; }
+        if (p1 === 'gold_large') { val = Math.floor(5000 * m * m * goldMulti); newGold += val; return "+" + val; }
+        if (p1 === 'gold_huge') { val = Math.floor(50000 * m * m * goldMulti); newGold += val; return "+" + val; }
+        if (p1 === 'gold_max') { val = Math.floor(500000 * m * m * m * goldMulti); newGold += val; return "+" + val; }
         
         if (p1 === 'gold_lose_small') { val = 100 * m; newGold = Math.max(0, newGold - val); return "-" + val; }
         if (p1 === 'gold_lose_mid') { val = 500 * m * m; newGold = Math.max(0, newGold - val); return "-" + val; }
@@ -628,11 +632,16 @@ Page({
         if (p1 === 'gold_lose_huge') { val = 50000 * m * m; newGold = Math.max(0, newGold - val); return "-" + val; }
         if (p1 === 'gold_lose_max') { val = 500000 * m * m * m; newGold = Math.max(0, newGold - val); return "-" + val; }
 
-        if (p1 === 'life_small') { val = 5 * m; newMaxAge += val; return "+" + val; }
-        if (p1 === 'life_mid') { val = 20 * m; newMaxAge += val; return "+" + val; }
-        if (p1 === 'life_large') { val = 100 * m; newMaxAge += val; return "+" + val; }
-        if (p1 === 'life_huge') { val = 500 * m; newMaxAge += val; return "+" + val; }
-        if (p1 === 'life_max') { val = 2000 * m; newMaxAge += val; return "+" + val; }
+        // 寿元奖励锚定「本境界单 tick 成本」而非绝对年数。
+        // 原来 life_max 固定 2000*m，在炼气期就是几千年白送，
+        // 低境界反复刷奇遇即可无限续命；而到了天道境 2000*m 又几乎不够一次闭关。
+        // 游历期额外打 WANDER_LIFE_GAIN 折，杜绝「边游历边自我续命」的无限 farm。
+        let lifeScale = this.data.isWandering ? 0.15 : 1;
+        if (p1 === 'life_small') { val = Math.max(1, Math.floor(tickCostNow * 2 * lifeScale)); newMaxAge += val; return "+" + this.formatBigInt(BigInt(val)); }
+        if (p1 === 'life_mid') { val = Math.max(1, Math.floor(tickCostNow * 5 * lifeScale)); newMaxAge += val; return "+" + this.formatBigInt(BigInt(val)); }
+        if (p1 === 'life_large') { val = Math.max(1, Math.floor(tickCostNow * 12 * lifeScale)); newMaxAge += val; return "+" + this.formatBigInt(BigInt(val)); }
+        if (p1 === 'life_huge') { val = Math.max(1, Math.floor(tickCostNow * 30 * lifeScale)); newMaxAge += val; return "+" + this.formatBigInt(BigInt(val)); }
+        if (p1 === 'life_max') { val = Math.max(1, Math.floor(tickCostNow * 80 * lifeScale)); newMaxAge += val; return "+" + this.formatBigInt(BigInt(val)); }
         
         if (p1 === 'life_lose_small') { val = Math.floor(1.5 * m); newMaxAge = Math.max(1, newMaxAge - val); return "-" + val; }
         if (p1 === 'life_lose_mid') { val = Math.floor(3 * m); newMaxAge = Math.max(1, newMaxAge - val); return "-" + val; }
