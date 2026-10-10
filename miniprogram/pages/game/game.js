@@ -449,9 +449,19 @@ Page({
     if (success) {
       let nextLevel = this.data.levelId + 1;
       this.coreData.exp = 0n;
-      this.coreData.nextExp = this.coreData.nextExp * 100n; 
+      // 【数值平衡】大境界经验需求阶跃：100n -> 2n
+      // 单 tick 收益跨大境界只增长 (baseYears比值 × 2)，14 次累计约 8.19e9；
+      // 旧需求增长 100 × 1.5^3 = 337.5/境界，14 次累计约 1.7e35，差 25 个数量级。
+      // 取 2n 后需求累计 (2 × 1.5^3)^14 ≈ 8.3e11，与收益同阶。
+      this.coreData.nextExp = this.coreData.nextExp * 2n; 
       let talentBonus = 1 + (this.data.playerAttrs.talent / 100);
-      let ageGain = Math.floor((200 * (m + 1) * (m + 1)) * talentBonus);
+      // 【数值平衡】突破寿元奖励：二次式 -> 按「下一境界单 tick 成本 × tick 预算」计价。
+      // 寿元消耗是指数的 baseYears * 1.15^index（化神期 87 年/tick，天道境 353 万年/tick），
+      // 旧奖励是二次的（化神期只给 5500 年 ≈ 63 tick），两条曲线不同阶 —— 这才是
+      // 玩家在元婴/化神反复暴死的主因，单独改经验或单独改 1.15 都解决不了。
+      let nextIdx = Math.min(m + 1, REALM_CONFIG.length - 1);
+      let nextTickCost = Math.max(1, Math.floor(REALM_CONFIG[nextIdx].baseYears * Math.pow(1.15, nextIdx)));
+      let ageGain = Math.floor(nextTickCost * 200 * talentBonus);
       let powerGain = BigInt(Math.floor(2000 * (m + 1) * (m + 1) * talentBonus));
       this.coreData.basePower += powerGain;
       this.coreData.power = this.coreData.basePower;
@@ -485,7 +495,11 @@ Page({
     let powerGain = BigInt(100 * nextLevel);
     this.coreData.basePower += powerGain;
     this.coreData.power = this.coreData.basePower;
-    let ageGain = 20 + nextLevel * 5;
+    // 【数值平衡】小境界寿元奖励同理改为按当前境界单 tick 成本计价。
+    // 旧式在化神期只给约 110 年，而该境界 1 个 tick 就要 87 年。
+    let cfgNow = this.getRealmConfig(this.data.levelId);
+    let tickCostNow = Math.max(1, Math.floor(cfgNow.baseYears * Math.pow(1.15, cfgNow.index)));
+    let ageGain = Math.floor(tickCostNow * 80 * (1 + this.data.playerAttrs.talent / 100));
     this.setData({ levelId: nextLevel, isBottleneck: false, maxAge: this.data.maxAge + ageGain });
     this.addLog(`【精进】真气溢满，水到渠成晋升【${this.getRealmInfo(nextLevel).name}】！`, "event-breakthrough", isInstant);
   },
