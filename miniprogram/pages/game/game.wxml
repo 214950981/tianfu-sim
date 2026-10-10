@@ -182,32 +182,32 @@
 
         <view class="divider">突破天道限制</view>
 
+        <view class="unlock-free" wx:if="{{unlockedSpeed < 5}}">
+          <button class="btn-ad mb-10" bindtap="unlockSpeedFree" data-type="ad">📺 观摩天道 (免费升至 x{{unlockedSpeed + 1}})</button>
+          <button class="btn-share" open-type="share" data-type="speed">📤 传道于人 (免费升至 x{{unlockedSpeed + 1}})</button>
+        </view>
+
         <view class="unlock-pay" wx:if="{{unlockedSpeed < 10}}">
           <button class="btn-pay-speed" bindtap="buySpeed" data-target="{{unlockedSpeed + 1}}">
             💎 豪掷 {{(unlockedSpeed + 1 - unlockedSpeed) * 1}} 钻石突破至 x{{unlockedSpeed + 1}}
           </button>
         </view>
-        <view class="hint-text mt-10">天道指引：钻石最多可突破至 10 倍流速</view>
+        <view class="hint-text mt-10">免费最高可至5倍，钻石最多可至10倍</view>
       </view>
     </view>
   </view>
 
   <view class="modal-mask" wx:if="{{showRechargeModal}}">
     <view class="modal-content">
-      <view class="modal-title">福利商行 <text class="close-btn" bindtap="toggleRechargeModal">×</text></view>
-      <view class="modal-body text-center">
-        <view class="recharge-notice" style="color: #FFD700; font-size: 24rpx; margin-bottom: 30rpx; line-height: 1.5; padding: 0 10rpx;">
-          天道垂怜：只需点击下方按钮传道于道友，即可领取 300 钻石，每日限领 10 次！
-        </view>
-
-        <view class="recharge-grid single-item">
-          <block wx:for="{{rechargeTiers}}" wx:key="index">
-            <button open-type="share" data-type="{{item.type}}" class="recharge-item" hover-class="none" style="width: 260rpx; margin: 0 auto;">
-              <view class="r-icon">💎</view>
-              <view class="r-base">{{item.base}} 钻</view>
-              <view class="r-price">昭告诸天</view>
-            </button>
-          </block>
+      <view class="modal-title">仙界商行 <text class="close-btn" bindtap="toggleRechargeModal">×</text></view>
+      <view class="modal-body">
+        <view class="recharge-grid">
+          <view class="recharge-item" wx:for="{{rechargeTiers}}" wx:key="price" bindtap="doRecharge" data-index="{{index}}">
+            <view class="r-icon">💎</view>
+            <view class="r-base">{{item.base}} 钻</view>
+            <view class="r-bonus" wx:if="{{item.bonus > 0}}">赠 {{item.bonus}}</view>
+            <view class="r-price">￥{{item.price}}</view>
+          </view>
         </view>
       </view>
     </view>
@@ -232,4 +232,3 @@
   </view>
 
 </view>
-

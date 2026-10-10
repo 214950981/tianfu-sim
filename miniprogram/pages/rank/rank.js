@@ -29,7 +29,7 @@ Page({
       // 3. 获取微信信息 (兜底)
       const wxInfo = await this.safeGetWechatUserInfo();
 
-      // 4. 融合本地与云端战力，取最高值！防兵解后战力显示掉落
+      // ⭐ 4. 核心修复：融合本地与云端战力，取最高值！防兵解后战力显示掉落
       let localPowerRaw = runData.power ? String(runData.power) : "0";
       let localPower = BigInt(localPowerRaw.replace(/[^0-9]/g, '') || "0");
 
@@ -56,7 +56,7 @@ Page({
         lastUpdate: new Date()
       };
 
-      // 5. 拉取全服数据
+      // ⭐ 5. 拉取全服数据
       const db = wx.cloud.database();
       const orderField = this.data.currentTab === 'daily' ? 'lastUpdate' : 'power';
       const res = await db.collection('player_data') 
@@ -77,14 +77,8 @@ Page({
         lastUpdate: user.lastUpdate
       }));
 
-      // ⭐ 7. 【天道净网行动】：精准过滤废号与分身
-      serverData = serverData.filter(p => {
-        // A. 踢掉自己的云端分身，防止自己和自己打架
-        if (p.uid === myOpenid) return false; 
-        // B. 踢掉未完成仙籍登记的“幽灵白号”
-        if (p.nickname === "神秘道友") return false; 
-        return true;
-      });
+      // 7. 精准踢掉云端里和自己 OpenID 重复的数据
+      serverData = serverData.filter(p => p.uid !== myOpenid);
       
       // 8. 合并数据
       let allPlayers = [...serverData, myPlayerObj];
@@ -126,6 +120,7 @@ Page({
         else if (currentRank === 3) title = "造化大能";
         else if (currentRank <= 10) title = "一方宗主";
 
+        // ⭐ 修复幻觉：真实排名超过 100 时，不显示 101，而是显示未入榜
         let displayRank = currentRank > 100 ? "未入榜" : currentRank;
 
         return {
@@ -205,6 +200,7 @@ Page({
     });
   },
 
+  // === 护城河：安全获取微信信息 ===
   safeGetWechatUserInfo() {
     return new Promise((resolve) => {
       let isResolved = false;
@@ -235,6 +231,7 @@ Page({
     });
   },
 
+  // === 工具：大数值优雅展示 ===
   formatPower(power) {
     const units = ["", "万", "亿", "兆", "京", "垓", "秭", "穰", "沟", "涧"];
     let pStr = power.toString();

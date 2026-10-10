@@ -6,15 +6,14 @@
   ],
   "window": {
     "navigationBarTextStyle": "white",
-    "navigationBarTitleText": "天赋模拟小工具",
-    "navigationBarBackgroundColor": "#050508",
-    "backgroundColor": "#050508",
-    "backgroundTextStyle": "light"
+    "navigationBarTitleText": "顶级气运-悄悄修炼千年",
+    "navigationBarBackgroundColor": "#0a0a0a",
+    "backgroundColor": "#030303"
   },
   "tabBar": {
-    "color": "#888888",
-    "selectedColor": "#FFD700",
-    "backgroundColor": "#0A0A0F",
+    "color": "#666666",
+    "selectedColor": "#ffd700",
+    "backgroundColor": "#1a1a1a",
     "borderStyle": "black",
     "list": [
       {

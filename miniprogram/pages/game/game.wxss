@@ -1,0 +1,460 @@
+/* pages/game/game.wxss */
+page {
+  background-color: #050508; /* 深渊暗紫黑底色 */
+  color: #d0d0d0;
+  font-family: 'PingFang SC', 'Helvetica Neue', sans-serif;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  padding: 20rpx;
+  box-sizing: border-box;
+}
+
+/* ==========================================
+   1. 顶部核心区 (境界与兵解)
+   ========================================== */
+.header-monitor {
+  margin-bottom: 24rpx;
+}
+.realm-box {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16rpx;
+  padding: 0 10rpx;
+}
+.realm-title {
+  font-size: 46rpx;
+  font-weight: 900;
+  text-shadow: 0 4rpx 10rpx rgba(0,0,0,0.8);
+  letter-spacing: 2rpx;
+}
+
+/* 兵解按钮：老位置，精致且威慑力十足 */
+.suicide-btn {
+  background: linear-gradient(135deg, #3a0000 0%, #7a0000 100%);
+  color: #ffcccc;
+  font-size: 26rpx;
+  font-weight: bold;
+  padding: 10rpx 32rpx;
+  border-radius: 12rpx;
+  border: 1px solid rgba(255, 68, 68, 0.6);
+  box-shadow: 0 0 15rpx rgba(255, 0, 0, 0.3), inset 0 0 10rpx rgba(255, 0, 0, 0.2);
+  animation: suicideBreath 3s infinite;
+  transition: all 0.2s;
+}
+.suicide-btn:active { transform: scale(0.92); background: linear-gradient(135deg, #550000 0%, #aa0000 100%); }
+@keyframes suicideBreath {
+  0% { box-shadow: 0 0 10rpx rgba(255, 0, 0, 0.2); }
+  50% { box-shadow: 0 0 25rpx rgba(255, 0, 0, 0.6); border-color: #ff4444; }
+  100% { box-shadow: 0 0 10rpx rgba(255, 0, 0, 0.2); }
+}
+
+/* 修为进度条 */
+.exp-progress-wrap {
+  height: 20rpx;
+  background: #111;
+  border-radius: 10rpx;
+  overflow: hidden;
+  box-shadow: inset 0 4rpx 8rpx rgba(0,0,0,0.8);
+  margin-bottom: 12rpx;
+}
+.exp-progress-bar {
+  height: 100%;
+  border-radius: 10rpx;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: inset 0 4rpx 8rpx rgba(255,255,255,0.4);
+}
+.bar-wandering {
+  background: linear-gradient(90deg, #555, #888) !important;
+  box-shadow: 0 0 10rpx rgba(136,136,136,0.5);
+}
+.exp-text {
+  display: flex;
+  justify-content: space-between;
+  font-size: 24rpx;
+  color: #999;
+  padding: 0 10rpx;
+}
+.exp-nums { font-family: monospace; }
+
+/* ==========================================
+   2. 资产与属性数据区 (暗黑琉璃拟态)
+   ========================================== */
+.stats-grid {
+  display: flex;
+  justify-content: space-between;
+  gap: 12rpx;
+  margin-bottom: 16rpx;
+}
+.stat-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: linear-gradient(180deg, rgba(30,30,40,0.6) 0%, rgba(15,15,20,0.8) 100%);
+  padding: 16rpx 0;
+  border-radius: 12rpx;
+  border: 1px solid rgba(255,255,255,0.05);
+  box-shadow: 0 4rpx 10rpx rgba(0,0,0,0.5);
+}
+.stat-label { font-size: 22rpx; color: #888; margin-bottom: 8rpx; }
+.stat-val { font-size: 28rpx; font-weight: 900; color: #eee; text-shadow: 0 2rpx 4rpx rgba(0,0,0,0.8); white-space: nowrap;}
+
+.clickable-card {
+  background: linear-gradient(180deg, rgba(50,40,10,0.6) 0%, rgba(20,15,5,0.8) 100%);
+  border-color: rgba(255,215,0,0.2);
+  transition: all 0.2s;
+}
+.clickable-card:active { transform: scale(0.95); box-shadow: 0 0 15rpx rgba(255,215,0,0.3); }
+
+/* 五维属性 */
+.attr-bar {
+  display: flex;
+  justify-content: space-between;
+  gap: 8rpx;
+  margin-bottom: 24rpx;
+  background: rgba(10,10,15,0.8);
+  padding: 16rpx;
+  border-radius: 16rpx;
+  border: 1px solid #222;
+}
+.attr-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.attr-name { font-size: 22rpx; color: #777; margin-bottom: 6rpx; }
+.attr-val { font-size: 32rpx; font-weight: 900; color: #ddd; }
+.rate-box { background: rgba(255,0,0,0.05); border-radius: 8rpx; padding: 4rpx 0; border: 1px dashed rgba(255,0,0,0.2); }
+
+/* ==========================================
+   3. 天道纪事 (沉浸式滚动日志)
+   ========================================== */
+.log-scroll-view {
+  flex: 1;
+  min-height: 0;
+  background: linear-gradient(180deg, rgba(8,8,12,0.9) 0%, rgba(5,5,8,0.95) 100%);
+  border-radius: 16rpx;
+  border: 1px solid #1a1a20;
+  padding: 20rpx;
+  margin-bottom: 24rpx;
+  box-shadow: inset 0 0 40rpx rgba(0,0,0,0.9);
+}
+.log-row {
+  display: flex;
+  align-items: flex-start;
+  font-size: 26rpx;
+  line-height: 1.6;
+  padding: 12rpx 0;
+  border-bottom: 1px dashed rgba(255,255,255,0.03);
+}
+.log-year { color: #555; margin-right: 16rpx; font-family: Courier New, monospace; font-weight: bold; flex-shrink: 0;}
+.log-content { color: #aaa; flex: 1; word-break: break-all;}
+
+.event-epic .log-content { color: #FFD700; text-shadow: 0 0 8rpx rgba(255,215,0,0.4); font-weight: bold;}
+.event-breakthrough .log-content { color: #55ccff; text-shadow: 0 0 8rpx rgba(85,204,255,0.4); font-weight: bold;}
+.event-deadly .log-content { color: #ff5555; font-weight: bold; text-shadow: 0 0 8rpx rgba(255,85,85,0.4);}
+
+/* ==========================================
+   4. 底部操作矩阵 (核心控制台)
+   ========================================== */
+.footer-control-panel {
+  background: linear-gradient(180deg, #111116 0%, #08080a 100%);
+  border-radius: 20rpx 20rpx 0 0;
+  padding: 24rpx 10rpx;
+  border-top: 2rpx solid #2a2a35;
+  box-shadow: 0 -10rpx 20rpx rgba(0,0,0,0.5);
+}
+
+/* 正常四宫格 */
+.btn-matrix {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 20rpx;
+}
+.game-btn {
+  margin: 0 !important;
+  background: linear-gradient(180deg, #1e1e24 0%, #111 100%) !important;
+  border: 2rpx solid #333;
+  border-radius: 16rpx;
+  padding: 20rpx 10rpx !important;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 6rpx 12rpx rgba(0,0,0,0.6);
+  transition: all 0.2s;
+  line-height: 1.2;
+}
+.game-btn:active { transform: scale(0.96); box-shadow: 0 2rpx 4rpx rgba(0,0,0,0.8);}
+.game-btn[disabled] { opacity: 0.4; filter: grayscale(100%); transform: none;}
+
+.btn-icon { font-size: 46rpx; margin-right: 16rpx; text-shadow: 0 4rpx 8rpx rgba(0,0,0,0.8);}
+.btn-texts { display: flex; flex-direction: column; align-items: flex-start;}
+.btn-main { font-size: 32rpx; color: #fff; font-weight: bold; margin-bottom: 4rpx;}
+.btn-sub { font-size: 20rpx; color: #777; }
+
+/* 动态状态光效 */
+.btn-active { 
+  border-color: #2a6a3c; background: linear-gradient(180deg, #18281c 0%, #0a140d 100%) !important;
+  box-shadow: 0 0 20rpx rgba(50,200,80,0.15), inset 0 0 15rpx rgba(50,200,80,0.1);
+  animation: breatheGreen 2s infinite;
+}
+.btn-active .btn-main { color: #88ffaa; text-shadow: 0 0 10rpx rgba(85,255,170,0.5);}
+@keyframes breatheGreen { 0%{box-shadow:0 0 10rpx rgba(50,200,80,0.1);} 50%{box-shadow:0 0 30rpx rgba(50,200,80,0.3);} 100%{box-shadow:0 0 10rpx rgba(50,200,80,0.1);} }
+
+.btn-wander {
+  border-color: #6a2a6a; background: linear-gradient(180deg, #281828 0%, #140a14 100%) !important;
+  animation: breathePurple 2s infinite;
+}
+.btn-wander .btn-main { color: #ff88ff; text-shadow: 0 0 10rpx rgba(255,136,255,0.5);}
+@keyframes breathePurple { 0%{box-shadow:0 0 10rpx rgba(150,50,200,0.1);} 50%{box-shadow:0 0 30rpx rgba(150,50,200,0.3);} 100%{box-shadow:0 0 10rpx rgba(150,50,200,0.1);} }
+
+/* 雷劫特显 */
+.tribulation-action { display: flex; flex-direction: column; align-items: center; padding: 10rpx 0; }
+.btn-tribulation {
+  width: 90% !important; background: linear-gradient(135deg, #aa3300 0%, #ff8800 50%, #aa3300 100%) !important;
+  color: #fff !important; font-size: 42rpx !important; font-weight: 900 !important;
+  letter-spacing: 12rpx; padding: 28rpx 0 !important; border-radius: 50rpx; border: 4rpx solid #ffcc00;
+  box-shadow: 0 0 40rpx rgba(255, 100, 0, 0.6), inset 0 0 20rpx rgba(255,255,255,0.5);
+  animation: tribulationPulse 0.8s infinite alternate; text-shadow: 0 4rpx 4rpx rgba(0,0,0,0.5);
+}
+.btn-tribulation:active { transform: scale(0.96) !important; animation: none;}
+@keyframes tribulationPulse { 0% { transform: scale(1); box-shadow: 0 0 20rpx rgba(255,100,0,0.4); } 100% { transform: scale(1.02); box-shadow: 0 0 60rpx rgba(255,100,0,0.9), 0 0 20rpx #fff; } }
+.tribulation-hint { margin-top: 16rpx; font-size: 26rpx; color: #ffcccc; animation: flash 1s infinite;}
+@keyframes flash { 0%{opacity:0.5;} 50%{opacity:1;} 100%{opacity:0.5;} }
+
+/* 死亡面板 (防止死锁的核心) */
+.dead-panel { display: flex; flex-direction: column; align-items: center; padding: 20rpx 0; }
+.dead-tips { font-size: 30rpx; color: #ff8888; margin-bottom: 24rpx; font-weight: bold; text-shadow: 0 0 10rpx rgba(255,0,0,0.5);}
+.btn-rebirth {
+  background: linear-gradient(135deg, #FFD700 0%, #aa7700 100%);
+  color: #fff; font-size: 36rpx; font-weight: 900; padding: 24rpx 60rpx;
+  border-radius: 50rpx; box-shadow: 0 8rpx 20rpx rgba(255,215,0,0.4);
+  text-shadow: 0 2rpx 4rpx rgba(0,0,0,0.5); transition: all 0.2s;
+}
+.btn-rebirth:active { transform: scale(0.95); }
+.text-merit { font-size: 40rpx; font-family: monospace; }
+
+/* ==========================================
+   5. 系统全量弹窗区 (极致精美版)
+   ========================================== */
+.modal-mask {
+  position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.85); display: flex; justify-content: center; align-items: center;
+  z-index: 999; backdrop-filter: blur(8px);
+}
+.modal-content {
+  background: linear-gradient(180deg, #1f1f27 0%, #0d0d12 100%);
+  width: 86%; border-radius: 24rpx; border: 2rpx solid rgba(255, 215, 0, 0.3);
+  box-shadow: 0 20rpx 60rpx rgba(0,0,0,0.9), inset 0 0 30rpx rgba(255, 215, 0, 0.05);
+  position: relative; overflow: hidden;
+}
+.speed-modal, .death-modal { width: 82%; }
+.modal-title {
+  text-align: center; font-size: 36rpx; font-weight: 900; color: #FFD700; padding: 32rpx 0; 
+  background: linear-gradient(90deg, transparent, rgba(255, 215, 0, 0.1), transparent);
+  border-bottom: 1rpx solid rgba(255, 215, 0, 0.2); text-shadow: 0 0 15rpx rgba(255,215,0,0.5);
+}
+.close-btn { position: absolute; right: 30rpx; top: 28rpx; font-size: 46rpx; color: #888; transition: color 0.2s; z-index: 10;}
+.close-btn:active { color: #fff; }
+.modal-body { padding: 40rpx 36rpx; }
+.text-center { text-align: center; }
+
+/* 岁月法则弹窗专属 */
+.speed-status { font-size: 30rpx; color: #ccc; margin-bottom: 30rpx; font-weight: bold;}
+.highlight { color: #FFD700; font-weight: 900; font-size: 40rpx; margin: 0 10rpx; text-shadow: 0 0 15rpx rgba(255,215,0,0.5);}
+.speed-grid { display: flex; flex-wrap: wrap; gap: 20rpx; justify-content: center; margin-bottom: 30rpx;}
+.speed-item {
+  width: 86rpx; height: 86rpx; line-height: 86rpx; background: linear-gradient(135deg, #2a2a35 0%, #15151a 100%); 
+  border: 2rpx solid #444; border-radius: 16rpx; font-size: 32rpx; color: #999; font-weight: bold; transition: all 0.2s;
+  box-shadow: 0 4rpx 10rpx rgba(0,0,0,0.5);
+}
+.speed-item.active { 
+  background: linear-gradient(135deg, #5a4a10 0%, #2a2005 100%); border-color: #FFD700; color: #FFD700; 
+  box-shadow: 0 0 20rpx rgba(255,215,0,0.4), inset 0 0 10rpx rgba(255,255,255,0.2);
+}
+.divider { text-align: center; color: #666; font-size: 24rpx; margin: 30rpx 0; position: relative; }
+.divider::before, .divider::after { content: ''; position: absolute; top: 50%; width: 25%; height: 1px; background: rgba(255,255,255,0.1); }
+.divider::before { left: 0; } .divider::after { right: 0; }
+
+.unlock-free { display: flex; flex-direction: column; gap: 24rpx; margin-bottom: 24rpx;}
+.mb-10 { margin-bottom: 10rpx; }
+.btn-ad { background: linear-gradient(135deg, #1e3c28 0%, #0d1f14 100%) !important; color: #88ffaa !important; border: 2rpx solid #3a7a4c !important; font-size: 30rpx; padding: 20rpx 0; border-radius: 16rpx; box-shadow: 0 4rpx 12rpx rgba(30,60,40,0.5);}
+.btn-share { background: linear-gradient(135deg, #2b2b4b 0%, #141428 100%) !important; color: #aaaaff !important; border: 2rpx solid #5a5a8c !important; font-size: 30rpx; padding: 20rpx 0; border-radius: 16rpx; box-shadow: 0 4rpx 12rpx rgba(40,40,80,0.5);}
+.btn-pay-speed { background: linear-gradient(135deg, #4a3a10 0%, #2a2005 100%) !important; color: #FFD700 !important; border: 2rpx solid #8a6a20 !important; font-size: 30rpx; font-weight: bold; padding: 20rpx 0; border-radius: 16rpx; box-shadow: 0 6rpx 20rpx rgba(255,215,0,0.2);}
+.hint-text { text-align: center; font-size: 24rpx; color: #777; display: block;}
+
+/* 充值商城弹窗 */
+.recharge-grid { display: flex; flex-wrap: wrap; gap: 24rpx; justify-content: space-between; }
+.recharge-item {
+  width: 46%; background: linear-gradient(135deg, #262630 0%, #15151a 100%);
+  border: 2rpx solid rgba(255,255,255,0.05); border-radius: 16rpx; padding: 36rpx 0 24rpx 0;
+  text-align: center; position: relative; box-shadow: 0 8rpx 20rpx rgba(0,0,0,0.5); transition: all 0.2s;
+}
+.recharge-item:active { transform: scale(0.95); border-color: rgba(255,215,0,0.4); }
+.r-icon { font-size: 56rpx; margin-bottom: 12rpx; text-shadow: 0 10rpx 10rpx rgba(0,0,0,0.8);}
+.r-base { font-size: 34rpx; font-weight: 900; color: #fff; text-shadow: 0 2rpx 4rpx #000;}
+.r-bonus {
+  position: absolute; top: -12rpx; right: -12rpx; background: linear-gradient(135deg, #ff4444 0%, #aa0000 100%); 
+  color: #fff; font-size: 20rpx; padding: 6rpx 14rpx; border-radius: 16rpx 16rpx 16rpx 0; 
+  box-shadow: 0 4rpx 10rpx rgba(255,0,0,0.4); border: 1rpx solid #ffaaaa; font-weight: bold;
+}
+.r-price { font-size: 28rpx; color: #FFD700; margin-top: 16rpx; font-weight: bold;}
+
+/* 死亡分享结算弹窗专属 */
+.death-icon { font-size: 110rpx; text-shadow: 0 10rpx 30rpx rgba(0,0,0,0.8); margin-bottom: 20rpx;}
+.death-text { font-size: 32rpx; color: #ccc; line-height: 1.6; display: block; margin-bottom: 40rpx; font-weight: bold;}
+.merit-box { background: rgba(255,215,0,0.05); border: 2rpx solid rgba(255,215,0,0.2); padding: 30rpx; border-radius: 20rpx; margin-bottom: 30rpx; box-shadow: inset 0 0 20rpx rgba(255,215,0,0.05);}
+.merit-label { display: block; font-size: 28rpx; color: #999; margin-bottom: 12rpx;}
+.merit-val { font-size: 56rpx; font-weight: 900; color: #FFD700; text-shadow: 0 0 20rpx rgba(255,215,0,0.6);}
+.mb-20 { margin-bottom: 20rpx; }
+.btn-share-rebirth { width: 100% !important; background: linear-gradient(135deg, #1e3c28 0%, #0d1f14 100%) !important; color: #88ffaa !important; border: 2rpx solid #3a7a4c !important; font-size: 34rpx; font-weight: bold; padding: 22rpx 0; border-radius: 16rpx; box-shadow: 0 6rpx 15rpx rgba(30,60,40,0.5);}
+.btn-cancel-rebirth { width: 100% !important; background: #222 !important; color: #888 !important; border: 2rpx solid #444 !important; font-size: 30rpx; padding: 20rpx 0; border-radius: 16rpx;}
+
+/* ==========================================
+   全局品阶色彩类 (完美复刻)
+   ========================================== */
+.color-White { color: #ffffff; }
+.color-Gray { color: #999999; }
+.color-Green { color: #55ff55; text-shadow: 0 0 10rpx rgba(85,255,85,0.3); }
+.color-Blue { color: #55ccff; text-shadow: 0 0 12rpx rgba(85,204,255,0.4); }
+.color-Purple { color: #dd55ff; text-shadow: 0 0 15rpx rgba(221,85,255,0.5); }
+.color-Orange { color: #ffaa00; text-shadow: 0 0 18rpx rgba(255,170,0,0.6); }
+.color-Gold { color: #ffff55; text-shadow: 0 0 20rpx rgba(255,255,0,0.8); font-weight: 900;}
+.color-Red { color: #ff4444; text-shadow: 0 0 25rpx rgba(255,68,68,1); font-weight: 900;}
+
+.border-Gray { border-color: #444; }
+.border-Green { border-color: rgba(85,255,85,0.4); box-shadow: inset 0 0 15rpx rgba(85,255,85,0.1); }
+.border-Blue { border-color: rgba(85,204,255,0.4); box-shadow: inset 0 0 15rpx rgba(85,204,255,0.1); }
+.border-Purple { border-color: rgba(221,85,255,0.4); box-shadow: inset 0 0 15rpx rgba(221,85,255,0.1); }
+.border-Orange { border-color: rgba(255,170,0,0.4); box-shadow: inset 0 0 15rpx rgba(255,170,0,0.1); }
+.border-Gold { border-color: rgba(255,215,0,0.6); box-shadow: inset 0 0 20rpx rgba(255,215,0,0.15); }
+.border-Red { border-color: rgba(255,68,68,0.6); box-shadow: inset 0 0 25rpx rgba(255,68,68,0.2); }
+
+.color-bg-Gray { background: linear-gradient(90deg, #555, #888); }
+.color-bg-Green { background: linear-gradient(90deg, #2b4b2b, #55ff55); box-shadow: 0 0 10rpx rgba(85,255,85,0.4);}
+.color-bg-Blue { background: linear-gradient(90deg, #2b4b6b, #55ccff); box-shadow: 0 0 10rpx rgba(85,204,255,0.4);}
+.color-bg-Purple { background: linear-gradient(90deg, #4b2b6b, #dd55ff); box-shadow: 0 0 10rpx rgba(221,85,255,0.4);}
+.color-bg-Orange { background: linear-gradient(90deg, #6b4b2b, #ffaa00); box-shadow: 0 0 10rpx rgba(255,170,0,0.4);}
+.color-bg-Gold { background: linear-gradient(90deg, #6b5b1b, #ffff55); box-shadow: 0 0 15rpx rgba(255,255,0,0.6);}
+.color-bg-Red { background: linear-gradient(90deg, #6b1b1b, #ff4444); box-shadow: 0 0 15rpx rgba(255,68,68,0.6);}
+
+/* === 仙籍登记弹窗样式 === */
+.auth-mask {
+  position: fixed; 
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.9); /* 极暗背景，屏蔽原有操作 */
+  display: flex; 
+  justify-content: center; 
+  align-items: center;
+  z-index: 9999; /* 保证在最顶层 */
+}
+
+.auth-panel {
+  width: 600rpx;
+  background: linear-gradient(180deg, #1a1a25 0%, #08080a 100%);
+  border: 2rpx solid #D4AF37;
+  border-radius: 20rpx;
+  padding: 50rpx 40rpx;
+  display: flex; 
+  flex-direction: column; 
+  align-items: center;
+  box-shadow: 0 0 40rpx rgba(212, 175, 55, 0.2);
+}
+
+.auth-title { 
+  font-size: 38rpx; 
+  font-weight: 900; 
+  color: #FFDF00; 
+  margin-bottom: 12rpx; 
+  text-shadow: 0 2rpx 10rpx rgba(255, 223, 0, 0.4);
+}
+
+.auth-desc { 
+  font-size: 22rpx; 
+  color: #888; 
+  margin-bottom: 50rpx; 
+}
+
+/* ⭐ 强制覆盖微信 button 的默认样式，打造完美的圆形头像框 */
+.avatar-btn {
+  width: 160rpx !important; 
+  height: 160rpx !important;
+  min-height: 160rpx !important; /* 锁死高度，绝不向弹窗低头 */
+  padding: 0 !important; 
+  margin: 0 auto 50rpx auto !important; /* 居中对齐，并和下方留出间距 */
+  border-radius: 50% !important; 
+  border: 4rpx solid #D4AF37 !important;
+  background: #222 !important; 
+  position: relative; 
+  display: flex !important; /* 让内部图片绝对填满 */
+  justify-content: center;
+  align-items: center;
+  overflow: visible !important; /* 允许底部的“点击凝聚真容”标签超出圆圈边界 */
+}
+
+.avatar-img { 
+  width: 100%; 
+  height: 100%; 
+  border-radius: 50%; 
+}
+
+.avatar-hint {
+  position: absolute; 
+  bottom: -16rpx; 
+  left: 50%; 
+  transform: translateX(-50%);
+  background: #FFDF00; 
+  color: #3E2723; 
+  font-size: 20rpx;
+  padding: 4rpx 16rpx; 
+  border-radius: 20rpx; 
+  white-space: nowrap; 
+  font-weight: bold;
+}
+
+.nickname-box { 
+  width: 100%; 
+  margin-bottom: 50rpx; 
+}
+
+.nickname-input {
+  background: rgba(255, 255, 255, 0.05); 
+  border: 1rpx solid #444;
+  color: #fff; 
+  height: 88rpx; 
+  border-radius: 12rpx; 
+  text-align: center; 
+  font-size: 30rpx;
+  transition: all 0.3s;
+}
+
+.nickname-input {
+  background: rgba(255, 255, 255, 0.05); 
+  border: 2rpx solid #666; /* 加粗边框，更有质感 */
+  color: #fff; 
+  height: 90rpx; /* 增加整体高度 */
+  min-height: 90rpx; /* 强制锁死高度，防止被挤扁 */
+  line-height: 90rpx; /* 文字绝对居中 */
+  border-radius: 12rpx; 
+  text-align: center; 
+  font-size: 32rpx; /* 字体稍微放大 */
+  padding: 0 20rpx;
+  box-sizing: border-box; /* 防止 padding 撑破输入框 */
+  transition: all 0.3s;
+}
+
+.auth-submit-btn {
+  width: 80%; 
+  background: linear-gradient(135deg, #FFDF00 0%, #D4AF37 100%);
+  color: #3E2723; 
+  font-weight: 900; 
+  border-radius: 44rpx;
+  font-size: 32rpx;
+  box-shadow: 0 8rpx 20rpx rgba(212, 175, 55, 0.4);
+}

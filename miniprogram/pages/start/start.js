@@ -32,7 +32,7 @@ Page({
     isAutoRolling: false,       // 当前是否正在自动投胎
     autoRollLeft: 0,            // 自动投胎剩余次数
 
-    // --- 自动投胎阈值配置 ---
+    // --- 新增：自动投胎阈值配置 ---
     stopTierIndex: 2, // 默认选中索引2（紫阶及以上）
     tierPickerList: [
       { name: '蓝阶及以上', values: ['Blue', 'Purple', 'Orange', 'Gold', 'Red'] },
@@ -42,12 +42,16 @@ Page({
       { name: '仅限红阶停', values: ['Red'] }
     ],
 
-    // ⭐ 美工改造：隐藏多余按钮，只留 300 钻超级福利，并添加传道文案
-    rechargeTiers: [
-      { name: "昭告诸天", desc: "传道得 300 钻", base: 300, bonus: 0, type: "share_300" }
-    ],
-    rechargeNotice: "天道垂怜：只需点击下方传道按钮分享至道友，即可领取 300 钻石，每日限领 10 次！",
 
+    // 氪金档位配置表
+    rechargeTiers: [
+      { price: 1, base: 10, bonus: 0 },
+      { price: 6, base: 60, bonus: 6 },
+      { price: 30, base: 300, bonus: 30 },
+      { price: 98, base: 980, bonus: 200 },
+      { price: 198, base: 1980, bonus: 600 },
+      { price: 648, base: 6480, bonus: 2408 }
+    ],
     helpData: GAME_HELP
   },
 
@@ -56,12 +60,12 @@ Page({
   },
 
   onShow() {
-    // 核心防刷：每次回到首页，强制从云端拉取真实资产
+    // ⭐ 核心防刷：每次回到首页，强制从云端拉取真实资产
     this.syncCloudAssets();
   },
 
   // ==========================================
-  // 云端天道同步防刷机制
+  // ⭐ 云端天道同步防刷机制
   // ==========================================
   syncCloudAssets() {
     wx.cloud.callFunction({
@@ -117,7 +121,7 @@ Page({
       consumedMerit: merit - leftMerit
     });
 
-    // 防刷闭环：如果玩家消耗了功德转化为属性点，必须同步扣除云端功德，防止无限重刷！
+    // ⭐ 防刷闭环：如果玩家消耗了功德转化为属性点，必须同步扣除云端功德，防止无限重刷！
     if (extraPoints > 0) {
       this.updateCloudData({ merit: leftMerit });
     }
@@ -194,8 +198,13 @@ Page({
     if (!this.data.isRootLocked) {
       let finalLuck = attrs.luck > 0 ? attrs.luck : 0;
       let rootWeight = ROOT_POOL.reduce((sum, item) => sum + item.weight, 0);
+      
       let rootRoll = Math.floor(Math.random() * rootWeight) + (finalLuck * 25); 
-      if (rootRoll >= rootWeight) rootRoll = rootWeight - 1; 
+      
+      if (rootRoll >= rootWeight) {
+        rootRoll = rootWeight - 1; 
+      }
+      
       let cWeight = 0;
       for (let i = 0; i < ROOT_POOL.length; i++) {
         cWeight += ROOT_POOL[i].weight;
@@ -238,41 +247,58 @@ Page({
     if (count === 1) return 10;
     if (count === 2) return 30;
     if (count === 3) return 50;
-    if (count >= 4) return 100; 
+    if (count >= 4) return 100; // 最多锁4个(3天赋+1灵根)，防止出Bug给个保底高价
     return 0;
   },
 
 // === 3. 极品防误触监测 (动态阈值版) ===
 checkHighRarity() {
+  // 读取当前玩家选择的目标阶位数组
   const targetTiers = this.data.tierPickerList[this.data.stopTierIndex].values;
   let hasHigh = false;
+  
+  // 检查没锁定的天赋里有没有达标的
   for (let i = 0; i < 3; i++) {
     if (!this.data.lockedTalents[i] && this.data.currentTalents[i] && targetTiers.includes(this.data.currentTalents[i].rarity)) {
       hasHigh = true;
     }
   }
+  // 检查没锁定的灵根里有没有达标的
   if (!this.data.isRootLocked && this.data.currentRoot && targetTiers.includes(this.data.currentRoot.color)) {
     hasHigh = true;
   }
+  
   return hasHigh;
 },
 
   // === 4. 手动投胎 ===
   reRoll() {
-    if (this.data.isAutoRolling) { this.stopAutoRoll(); return; }
+    // 正在自动则停止
+    if (this.data.isAutoRolling) {
+      this.stopAutoRoll();
+      return;
+    }
+
+    // 极品防误触
     if (this.checkHighRarity()) {
       wx.showModal({
         title: '仙缘警示',
         content: '检测到未锁定的【高品质命格/灵根】！继续投胎将永久错失此等仙缘，执意重入轮回？',
-        confirmText: '无情抛弃', cancelText: '我再看看',
+        confirmText: '无情抛弃',
+        cancelText: '我再看看',
         success: (res) => { if (res.confirm) this.executeRoll(false); }
       });
-    } else { this.executeRoll(false); }
+    } else {
+      this.executeRoll(false);
+    }
   },
 
   // === 5. 自动投胎系统 ===
   toggleAutoRollModal() {
-    if (this.data.isAutoRolling) { this.stopAutoRoll(); return; }
+    if (this.data.isAutoRolling) {
+      this.stopAutoRoll();
+      return;
+    }
     this.setData({ showAutoRollModal: !this.data.showAutoRollModal, autoRollAmount: 10 });
   },
 
@@ -283,6 +309,8 @@ checkHighRarity() {
 
   startAutoRoll() {
     if (this.data.autoRollAmount <= 0) return;
+    
+    // 开始前先检测防误触
     if (this.checkHighRarity()) {
       wx.showModal({
         title: '仙缘警示',
@@ -300,61 +328,84 @@ checkHighRarity() {
     }
   },
 
-  stopAutoRoll() { this.setData({ isAutoRolling: false, autoRollLeft: 0 }); },
-  onTierChange(e) { this.setData({ stopTierIndex: e.detail.value }); },
-
+  stopAutoRoll() {
+    this.setData({ isAutoRolling: false, autoRollLeft: 0 });
+  },
+// 切换自动洗髓停止阈值
+onTierChange(e) {
+  this.setData({
+    stopTierIndex: e.detail.value
+  });
+},
   // === 6. 核心扣费与执行逻辑 ===
   executeRoll(isAuto) {
     let locks = this.getLockCount();
     let lockCost = this.getLockCost(locks);
 
+    // 【1】扣费逻辑判定
     if (locks > 0) {
+      // 有锁定，强行消耗钻石
       if (this.data.diamonds < lockCost) {
         if (isAuto) this.stopAutoRoll();
         wx.showModal({
           title: '仙玉不足',
           content: `锁定 ${locks} 项天机，单次投胎需消耗 ${lockCost} 钻石。`,
-          confirmText: '获取钻石',
+          confirmText: '去充值',
           success: (res) => { if (res.confirm) this.toggleRechargeModal(); }
         });
         return;
       }
+      // 扣除钻石
       let newDiamonds = this.data.diamonds - lockCost;
       this.setData({ diamonds: newDiamonds });
       let assets = wx.getStorageSync('global_assets') || {};
       assets.diamonds = newDiamonds;
       wx.setStorageSync('global_assets', assets);
+
+      // ⭐ 防刷闭环：锁定消耗了钻石，必须立刻备案云端
       this.updateCloudData({ diamonds: newDiamonds });
+
     } else {
+      // 没锁定，消耗免费次数
       if (this.data.ad_tickets <= 0) {
         if (isAuto) this.stopAutoRoll();
         wx.showModal({
           title: '轮回次数已尽',
-          content: '请使用钻石购买次数',
+          content: '观看广告、分享或使用钻石购买次数',
           confirmText: '去购买',
           success: (res) => { if (res.confirm) this.toggleBuyTicketModal(); }
         });
         return;
       }
+      // 扣除次数
       let newTickets = this.data.ad_tickets - 1;
       this.setData({ ad_tickets: newTickets });
       let assets = wx.getStorageSync('global_assets') || {};
       assets.ad_tickets = newTickets;
       wx.setStorageSync('global_assets', assets);
+
+      // ⭐ 防刷闭环：次数变动也同步云端，防止清缓存无限投胎
       this.updateCloudData({ ad_tickets: newTickets });
     }
 
+    // 【2】产生新结果
     this.generateCharacter();
 
+    // 【3】自动模式后续推进
     if (isAuto && this.data.isAutoRolling) {
       let left = this.data.autoRollLeft - 1;
       this.setData({ autoRollLeft: left });
+      
       if (left > 0) {
+        // 自动摇完立刻检测，出了极品强制停车！
         if (this.checkHighRarity()) {
           this.stopAutoRoll();
           wx.showToast({ title: '已刷出极品仙缘，自动停止！', icon: 'none', duration: 3000 });
         } else {
-          setTimeout(() => { if (this.data.isAutoRolling) this.executeRoll(true); }, 150);
+          // 继续下一次递归 (150毫秒的极速快感)
+          setTimeout(() => {
+            if (this.data.isAutoRolling) this.executeRoll(true);
+          }, 150);
         }
       } else {
         this.stopAutoRoll();
@@ -363,98 +414,85 @@ checkHighRarity() {
     }
   },
 
-  // === 7. 资产面板与充值方法 ===
+  // === 7. 资产面板、弹窗与充值方法 ===
   toggleRechargeModal() { this.setData({ showRechargeModal: !this.data.showRechargeModal }); },
   toggleBuyTicketModal() { this.setData({ showBuyTicketModal: !this.data.showBuyTicketModal, buyAmount: 1 }); },
   
   doRecharge(e) {
     let index = e.currentTarget.dataset.index;
     let tier = this.data.rechargeTiers[index];
-    
-    if (tier.type === "free") {
-      let assets = wx.getStorageSync('global_assets') || {};
-      let today = new Date().toDateString();
-      if (assets.last_free_diamond_date === today) {
-        wx.showToast({ title: '今日已领低保，道友明儿再来吧！', icon: 'none' }); return; 
-      }
-      assets.last_free_diamond_date = today;
-      wx.setStorageSync('global_assets', assets);
-      let totalGain = tier.base + tier.bonus;
-      wx.showToast({ title: `白嫖成功，获得 ${totalGain} 钻石`, icon: 'none' });
+    let totalGain = tier.base + tier.bonus;
+    wx.showLoading({ title: '呼叫仙界商行...' });
+    setTimeout(() => {
+      wx.hideLoading();
+      wx.showToast({ title: `充值成功，获得 ${totalGain} 钻石`, icon: 'none' });
       let newDiamonds = this.data.diamonds + totalGain;
       this.setData({ diamonds: newDiamonds, showRechargeModal: false });
-      assets.diamonds = newDiamonds; wx.setStorageSync('global_assets', assets);
+      let assets = wx.getStorageSync('global_assets') || {};
+      assets.diamonds = newDiamonds;
+      wx.setStorageSync('global_assets', assets);
+      
+      // ⭐ 防刷闭环：充值获得钻石，必须立刻存入云端
       this.updateCloudData({ diamonds: newDiamonds });
-    } else {
-      wx.showToast({ title: '请点击传道按钮分享领钻！', icon: 'none' });
-    }
+    }, 800);
   },
 
-  onAmountInput(e) { let val = parseInt(e.detail.value); this.setData({ buyAmount: isNaN(val) || val <= 0 ? 1 : val }); },
-  buyMaxTickets() { if (this.data.diamonds <= 0) { wx.showToast({ title: '钻石不足', icon: 'none' }); return; } this.setData({ buyAmount: this.data.diamonds }); },
+  onAmountInput(e) {
+    let val = parseInt(e.detail.value);
+    this.setData({ buyAmount: isNaN(val) || val <= 0 ? 1 : val });
+  },
+
+  buyMaxTickets() {
+    if (this.data.diamonds <= 0) {
+      wx.showToast({ title: '钻石不足', icon: 'none' }); return;
+    }
+    this.setData({ buyAmount: this.data.diamonds });
+  },
 
   confirmBuyTickets() {
     let cost = this.data.buyAmount;
     if (this.data.diamonds < cost) {
       wx.showToast({ title: '钻石不足', icon: 'none' });
-      this.setData({ showBuyTicketModal: false }); this.toggleRechargeModal(); return;
+      this.setData({ showBuyTicketModal: false });
+      this.toggleRechargeModal();
+      return;
     }
     let newDiamonds = this.data.diamonds - cost;
     this.setData({ diamonds: newDiamonds, showBuyTicketModal: false });
     let assets = wx.getStorageSync('global_assets') || {};
-    assets.diamonds = newDiamonds; wx.setStorageSync('global_assets', assets);
+    assets.diamonds = newDiamonds;
+    wx.setStorageSync('global_assets', assets);
+    
+    // ⭐ 防刷闭环：购买消耗了钻石，必须同步云端
     this.updateCloudData({ diamonds: newDiamonds });
+
     this.addTickets(cost);
     wx.showToast({ title: `购得 ${cost} 次轮回`, icon: 'success' });
   },
 
   watchAd() {
     wx.showLoading({ title: '观摩天道中...' });
-    setTimeout(() => { wx.hideLoading(); this.addTickets(5); wx.showToast({ title: '次数 +5', icon: 'success' }); }, 1500);
+    setTimeout(() => {
+      wx.hideLoading();
+      this.addTickets(5);
+      wx.showToast({ title: '次数 +5', icon: 'success' });
+    }, 1500);
   },
 
-  // ⭐ 爆改：起步页裂变分享模块 (新增 10 次分享上限锁)
-  onShareAppMessage(options) {
-    // 场景 1：300 钻传道分享
-    if (options.from === 'button' && options.target && options.target.dataset.type === 'share_300') {
-      let assets = wx.getStorageSync('global_assets') || {};
-      let today = new Date().toDateString();
-      
-      // 跨天计数重置
-      if (assets.last_diamond_share_date !== today) {
-        assets.last_diamond_share_date = today;
-        assets.daily_diamond_share_count = 0;
-      }
-
-      // 上限检查
-      if ((assets.daily_diamond_share_count || 0) >= 10) {
-        wx.showToast({ title: '今日传道功德已满，明日请早！', icon: 'none' });
-        return { title: '放置成仙！极品命格等你测！', path: '/pages/start/start' };
-      }
-
-      setTimeout(() => {
-        let reward = 300;
-        let newDiamonds = this.data.diamonds + reward;
-        assets.daily_diamond_share_count = (assets.daily_diamond_share_count || 0) + 1;
-        assets.diamonds = newDiamonds;
-        
-        this.setData({ diamonds: newDiamonds, showRechargeModal: false });
-        wx.setStorageSync('global_assets', assets);
-        this.updateCloudData({ diamonds: newDiamonds });
-
-        wx.showToast({ title: `传道成功！获 ${reward} 钻 (${assets.daily_diamond_share_count}/10)`, icon: 'none' });
-      }, 1500);
-
-      return { title: `开局送300钻！帮我点一下，你也能领！`, path: '/pages/start/start' };
-    }
-
-    // 场景 2：默认分享逻辑保持完整
+  onShareAppMessage() {
     let assets = wx.getStorageSync('global_assets') || {};
     let today = new Date().toDateString();
-    if (assets.last_share_date !== today) { assets.last_share_date = today; assets.daily_share_count = 0; }
+    if (assets.last_share_date !== today) {
+      assets.last_share_date = today;
+      assets.daily_share_count = 0;
+    }
     if (assets.daily_share_count < 3) {
-      assets.daily_share_count++; wx.setStorageSync('global_assets', assets); this.addTickets(3);
-      setTimeout(() => { wx.showToast({ title: '投胎次数 +3', icon: 'none' }); }, 1000);
+      assets.daily_share_count++;
+      wx.setStorageSync('global_assets', assets);
+      this.addTickets(3);
+      setTimeout(() => { wx.showToast({ title: '次数 +3', icon: 'none' }); }, 1000);
+    } else {
+      setTimeout(() => { wx.showToast({ title: '今日奖励已达上限', icon: 'none' }); }, 1000);
     }
     return { title: '放置成仙！极品命格等你测！', path: '/pages/start/start' };
   },
@@ -463,7 +501,10 @@ checkHighRarity() {
     let t = this.data.ad_tickets + num;
     this.setData({ ad_tickets: t });
     let assets = wx.getStorageSync('global_assets') || {};
-    assets.ad_tickets = t; wx.setStorageSync('global_assets', assets);
+    assets.ad_tickets = t;
+    wx.setStorageSync('global_assets', assets);
+    
+    // ⭐ 防刷闭环：获得了次数，存入云端
     this.updateCloudData({ ad_tickets: t });
   },
 
@@ -472,11 +513,18 @@ checkHighRarity() {
   launchGame() {
     let activeTalentIds = this.data.currentTalents.map(t => t.t_id);
     let runData = {
-      is_alive: true, seed: "Run_" + Date.now(), base_attrs: this.data.finalAttrs, talents_active: activeTalentIds, root: this.data.currentRoot,  
+      is_alive: true,
+      seed: "Run_" + Date.now(),
+      base_attrs: this.data.finalAttrs,             
+      talents_active: activeTalentIds,    
+      root: this.data.currentRoot,  
       start_gold: (this.data.finalAttrs.wealth < 0 ? 0 : this.data.finalAttrs.wealth) * 100 
     };
     wx.setStorageSync('current_run', runData);
     wx.showLoading({ title: '踏入仙路...', mask: true });
-    setTimeout(() => { wx.hideLoading(); wx.reLaunch({ url: '/pages/game/game' }); }, 1000);
+    setTimeout(() => {
+      wx.hideLoading();
+      wx.reLaunch({ url: '/pages/game/game' });
+    }, 1000);
   }
 });
