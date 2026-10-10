@@ -56,21 +56,29 @@ Page({
         lastUpdate: new Date()
       };
 
-      // ⭐ 5. 拉取全服数据
-      const db = wx.cloud.database();
-      // 【Bug 修复】日榜排序字段错误：原来按 lastUpdate 倒序取前 100，
-      // 拿到的是"最近活跃的 100 人"而不是"今日战力最高的 100 人"；
-      // 第 9 步又按 dailyPower 重排，导致今日战力很高但当下不在线的玩家
-      // 在这一步被直接截断、永远进不了日榜。日榜应按 dailyPower 排序。
-      const orderField = this.data.currentTab === 'daily' ? 'dailyPower' : 'power';
-      const res = await db.collection('player_data') 
-        .orderBy(orderField, 'desc') 
-        .limit(100)
-        .get();
-      
-      // 6. 格式化真人数据
-      let serverData = res.data.map(user => ({
-        uid: user._openid,
+      // ⭐ 5. 拉取全服数据 —— 改走云函数（用户决策 1）
+      //
+      // 原来这里是客户端直接 db.collection('player_data').orderBy().get()，
+      // 依赖集合"所有用户可读"的宽松权限。把权限收紧为"仅创建者可读写"后
+      // （这是正确的安全配置），客户端直读会立刻失效、榜单全空。
+      // 现统一走 syncPlayerData 的 rank action，服务端做排序、字段投影
+      // 与异常值过滤，客户端只负责渲染。
+      const rankRes = await wx.cloud.callFunction({
+        name: 'syncPlayerData',
+        data: { action: 'rank', data: { tab: this.data.currentTab, limit: 100 } }
+      });
+
+      const rankPayload = rankRes && rankRes.result ? rankRes.result : null;
+      if (!rankPayload || !rankPayload.success) {
+        // 云函数不可用时明确提示，不静默显示空榜单
+        this.setData({ loading: false });
+        wx.showToast({ title: '天机榜暂时无法窥探，请稍后再试', icon: 'none' });
+        return;
+      }
+
+      // 6. 格式化真人数据（服务端已做排序与过滤，这里只做类型转换）
+      let serverData = (rankPayload.data || []).map(user => ({
+        uid: user.uid,
         nickname: user.nickName || "神秘道友",
         avatar: user.avatarUrl || "/assets/default_avatar.png",
         province: user.province || "诸天万界",

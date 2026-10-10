@@ -208,6 +208,74 @@ exports.main = async (event, context) => {
     }
 
     // =====================================================================
+    // action: rank —— 服务端读取榜单（用户决策 1）
+    //
+    // 原来 rank.js 直接在客户端 db.collection('player_data').orderBy().get()，
+    // 依赖 player_data 集合"所有用户可读"的宽松权限。一旦把集合权限收紧为
+    // "仅创建者可读写"（这是正确的安全配置），客户端直读会立刻失效、榜单全空。
+    // 改为云函数读取后，集合可以收紧权限，且服务端能统一做：
+    //   - 字段投影：只返回展示需要的字段，不泄露 diamonds/merit/记账计数等
+    //   - 异常值过滤：战力超上界的历史脏数据不进榜
+    //   - 日榜按 dailyPower 排序、并只取当日活跃
+    // =====================================================================
+    if (action === 'rank') {
+      const tab = (data && data.tab) === 'daily' ? 'daily' : 'total';
+      const orderField = tab === 'daily' ? 'dailyPower' : 'power';
+      const limit = Math.min(Math.max(parseInt(data && data.limit) || 100, 1), 100);
+
+      const q = await db.collection(COLLECTION)
+        .orderBy(orderField, 'desc')
+        .limit(limit)
+        .field({
+          // 只投影展示字段。显式排除 diamonds / merit / ad_tickets /
+          // cnt_* / worshipped_uids 等敏感或无关字段。
+          _openid: true,
+          nickName: true,
+          avatarUrl: true,
+          province: true,
+          power: true,
+          dailyPower: true,
+          realm_name: true,
+          lastUpdate: true
+        })
+        .get();
+
+      // 服务端过滤超上界的异常战力（历史脏数据）
+      const maxLen = POWER_MAX_DIGITS;
+      const isSane = (v) => {
+        const str = String(v === undefined || v === null ? '0' : v);
+        return /^\d+$/.test(str) && str.length <= maxLen;
+      };
+
+      let list = q.data.filter(u => isSane(u.power) && isSane(u.dailyPower));
+
+      // 日榜只保留当日有更新的记录
+      if (tab === 'daily') {
+        const today = cstDayStr(Date.now());
+        list = list.filter(u => {
+          if (!u.lastUpdate) return false;
+          return cstDayStr(new Date(u.lastUpdate).getTime()) === today;
+        });
+      }
+
+      return {
+        success: true,
+        tab: tab,
+        myOpenid: openid,
+        data: list.map(u => ({
+          uid: u._openid,
+          nickName: u.nickName || '神秘道友',
+          avatarUrl: u.avatarUrl || '/assets/default_avatar.png',
+          province: u.province || '诸天万界',
+          power: String(u.power || '0'),
+          dailyPower: String(u.dailyPower || '0'),
+          realm_name: u.realm_name || '炼气期',
+          lastUpdate: u.lastUpdate
+        }))
+      };
+    }
+
+    // =====================================================================
     // action: update —— 白名单字段校验后写入
     // =====================================================================
     if (action === 'update') {
