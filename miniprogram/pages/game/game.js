@@ -772,17 +772,54 @@ Page({
   },
 
   autoMarket(isInstant) {
-    let available = MASTER_ITEMS.filter(i => i.minLevel <= this.data.levelId && i.price <= this.data.gold);
-    if (available.length > 0) {
-      available.sort((a, b) => b.price - a.price);
-      let item = available[0];
-      let attrs = { ...this.data.playerAttrs };
-      attrs[item.attr] += item.value;
-      let newMaxAge = this.data.maxAge;
-      if (item.attr === 'body') newMaxAge += item.value * 5; 
-      this.setData({ gold: this.data.gold - item.price, playerAttrs: attrs, maxAge: newMaxAge });
-      this.addLog(`【坊市淘宝】豪掷 ${item.price} 灵石，得 [${item.name}]，${this.getAttrName(item.attr)}大涨！`, "event-epic", isInstant);
-    }
+    // 【灵石经济重设计】这里原来是"把买得起的最贵一件买掉"，带来三个问题：
+    //   1. 实测消耗/产出 = 96.3%，终局结余中位 0 —— 玩家从不经手灵石，
+    //      全被自动花光，所以"灵石没什么感觉"。
+    //   2. 永远买最贵的那件，属性会全部堆到单一维度（实测 body 能堆到 2503，
+    //      而 wealth/talent 中位只有 1）。
+    //   3. 体魄道具额外 maxAge += value*5，构成
+    //      灵石→体魄道具→寿命→更多tick→更多灵石 的自我供能回路，
+    //      实测纯游历 3000 tick 可刷到 body=2308、灵石产出 1.57e7，无上界。
+    //
+    // 现在的规则：
+    //   - 临劫储备金：大境界圆满（下一步就是天劫）时，预留护道+续命的钱，
+    //     只花超出储备线的部分。平时自由消费，临劫前自动留底。
+    //   - 补最短板：优先买当前最低的那一维，避免单维暴堆。
+    //   - 体魄道具不再直接加 maxAge（断开自我供能回路）。
+    //     体魄仍通过"初始寿命 80+body*5"和"天劫减损 body*0.1"发挥作用。
+    let config = this.getRealmConfig(this.data.levelId);
+    let m = config.index;
+
+    // 大境界圆满时为天劫留出储备金
+    let nearTribulation = (this.data.levelId % SUB_REALMS.length) === 0;
+    let reserve = nearTribulation ? Math.floor(2500 * Math.pow(2.6, m)) : 0;
+    let spendable = Math.max(0, this.data.gold - reserve);
+
+    let available = MASTER_ITEMS.filter(i =>
+      i.minLevel <= this.data.levelId && i.price <= spendable && i.attr !== 'wealth'
+    );
+    if (available.length === 0) return;
+
+    // 找当前最短的一维（家境不在坊市售卖，避免 灵石→家境→灵石 的放大环）
+    const shopAttrs = ['body', 'talent', 'luck', 'insight'];
+    let lowKey = shopAttrs[0];
+    shopAttrs.forEach(k => {
+      if (this.data.playerAttrs[k] < this.data.playerAttrs[lowKey]) lowKey = k;
+    });
+
+    let candidates = available.filter(i => i.attr === lowKey);
+    if (candidates.length === 0) candidates = available;
+    // 同一维度里取数值最高的，其次取价格最高的
+    candidates.sort((a, b) => (b.value - a.value) || (b.price - a.price));
+    let item = candidates[0];
+
+    let attrs = { ...this.data.playerAttrs };
+    attrs[item.attr] += item.value;
+    this.setData({ gold: this.data.gold - item.price, playerAttrs: attrs });
+    this.addLog(
+      `【坊市淘宝】豪掷 ${item.price} 灵石补短板，得 [${item.name}]，${this.getAttrName(item.attr)}+${item.value}！`,
+      "event-epic", isInstant
+    );
   },
 
   skipRealm() {

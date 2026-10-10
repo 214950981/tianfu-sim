@@ -201,33 +201,50 @@ const CORE_ITEMS = [
   { id: 501, name: "混沌道果", desc: "世界之源", price: 2000000, attr: "insight", value: 150, rarity: "Red", minLevel: 80 }
 ];
 
+// 坊市道具生成。
+//
+// 原实现的问题：200 件道具按 i%5 轮转五维、价格 150+i*120+levelReq*200 线性增长，
+// 而灵石产出是 500*m² 这类几何增长 —— 后期灵石以几个数量级压过道具价格，
+// 导致"永远买得起全池最贵的那件"，道具池形同虚设。
+// 且 value = floor(levelReq/5)+1 最高只有 21，和后期属性量级完全脱节。
+//
+// 现实现：按大境界分 15 档，每档覆盖 体魄/根骨/福源/悟性 四维（家境不售，
+// 避免 灵石→家境→灵石 的放大环），价格与数值都随境界几何增长，
+// 使"灵石够不够买下一档"始终是个真问题。
 function generateFullDictionary() {
   let dictionary = [...CORE_ITEMS];
-  const prefixes = ["破碎的", "陈旧的", "古朴的", "发光的", "神秘的", "被封印的", "远古的", "不朽的", "禁忌的", "史前的", "滴血的", "残缺的", "温润的", "冰冷的", "炽热的"];
-  const suffixes = ["残页", "石刻", "断剑", "玉佩", "香囊", "舍利", "卷轴", "木匣", "灵印", "经文", "指骨", "兽皮", "龟甲", "罗盘", "面具"];
-  const attrs = ["insight", "body", "talent", "luck", "wealth"];
 
-  for (let i = 0; i < 200; i++) {
-    const attrKey = attrs[i % 5];
-    const levelReq = Math.floor(i / 2) + 1; 
-    
-    let rarity = "Gray";
-    if (i > 160) rarity = "Gold";
-    else if (i > 120) rarity = "Orange";
-    else if (i > 80) rarity = "Purple";
-    else if (i > 40) rarity = "Blue";
-    else if (i > 20) rarity = "Green";
+  const TIER_PREFIX = ["凝气", "筑基", "金丹", "元婴", "化神", "炼虚", "合体", "大乘",
+                       "渡劫", "真仙", "金仙", "仙尊", "仙帝", "神帝", "天道"];
+  const ATTR_ITEMS = [
+    { attr: "body",    names: ["锻体丹", "淬骨液", "龙血石"] },
+    { attr: "talent",  names: ["洗髓经", "通脉散", "易筋帖"] },
+    { attr: "luck",    names: ["转运符", "祈福玉", "锦鲤佩"] },
+    { attr: "insight",  names: ["明心茶", "悟道香", "清灵篆"] }
+  ];
+  const RARITY_BY_TIER = ["Gray", "Gray", "Green", "Green", "Blue", "Blue", "Blue",
+                          "Purple", "Purple", "Purple", "Orange", "Orange", "Orange", "Gold", "Gold"];
 
-    dictionary.push({
-      id: 2000 + i,
-      name: prefixes[i % prefixes.length] + suffixes[Math.floor(i / suffixes.length) % suffixes.length] + ` +${Math.floor(levelReq / 5) + 1}`,
-      desc: `挂机自动购买的奇珍。`,
-      price: 150 + (i * 120) + (levelReq * 200),
-      attr: attrKey,
-      value: Math.floor(levelReq / 5) + 1,
-      rarity: rarity,
-      minLevel: levelReq
-    });
+  let id = 2000;
+  for (let m = 0; m < 15; m++) {
+    // 价格与数值同步几何增长，保证各境界都存在"买不买得起"的张力
+    let price = Math.floor(400 * Math.pow(2.6, m));
+    let value = Math.floor(6 * Math.pow(1.62, m));
+    for (const grp of ATTR_ITEMS) {
+      for (let k = 0; k < grp.names.length; k++) {
+        dictionary.push({
+          id: id++,
+          name: TIER_PREFIX[m] + grp.names[k],
+          desc: `${TIER_PREFIX[m]}境界的${grp.names[k]}，可提升对应资质。`,
+          // 同档内三件做轻微价差，避免完全同质
+          price: Math.floor(price * (0.8 + k * 0.2)),
+          attr: grp.attr,
+          value: Math.max(1, Math.floor(value * (0.8 + k * 0.2))),
+          rarity: RARITY_BY_TIER[m],
+          minLevel: m * 4 + 1
+        });
+      }
+    }
   }
   return dictionary;
 }
