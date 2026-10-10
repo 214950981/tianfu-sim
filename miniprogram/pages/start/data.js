@@ -225,78 +225,99 @@ const MASTER_TALENTS = [
 ];
 
 // === 灵根库 (60种，完全覆盖所有品质与变异种类) ===
+// =============================================================================
+// 灵根池（70 种）
+//
+// 改动原因（基于实测，详见 VALIDATED_PARAMS.md）：
+//   1. 原 multi 地板是 0.1/0.3，实测这两档在纯修炼下必死（L39/L48 暴死），
+//      且根骨从 10 拉到 120 都补不回来 —— 灵根是唯一命门，没有替代路径。
+//      扫描出的生存阈值是 0.5，故地板抬到 0.5，占比 10.74% 的玩家不再开局即废。
+//   2. 原灵根只有 multi 一个作用（ROOT_POOL 连 effects 字段都没有），
+//      现为每个灵根补 bonus 五维加成，灵根与八维属性真正联动。
+//   3. 金品原为 2/8382 ≈ 1/4191，极难见到；现调整为约 1/418，
+//      稀有感保留，但玩家有合理期待。
+//
+// 各品阶实测概率（总权重 9202，10 万次抽样验证偏差 ≤ 0.27pp）：
+//   Gray 36.514% / Green 34.449% / Blue 17.822%
+//   Purple 8.520% / Orange 2.456% / Gold 0.239%
+// =============================================================================
 const ROOT_POOL = [
-  // --- 灰品 (13种) - 修炼极慢 ---
-  { name: "凡人无灵根", color: "Gray", multi: 0.1, weight: 500},
-  { name: "杂品废灵根", color: "Gray", multi: 0.3, weight: 400 },
-  { name: "五系斑驳灵根", color: "Gray", multi: 0.5, weight: 300 },
-  { name: "四系伪灵根", color: "Gray", multi: 0.7, weight: 250 },
-  { name: "朽木灵根", color: "Gray", multi: 0.8, weight: 200 },
-  { name: "浊土灵根", color: "Gray", multi: 0.8, weight: 200 },
-  { name: "枯水灵根", color: "Gray", multi: 0.8, weight: 200 },
-  { name: "暗金残根", color: "Gray", multi: 0.8, weight: 200 },
-  { name: "微火弱根", color: "Gray", multi: 0.8, weight: 200 },
-  { name: "废土灵根", color: "Gray", multi: 0.6, weight: 250 },
-  { name: "死水灵根", color: "Gray", multi: 0.6, weight: 250 },
-  { name: "钝金灵根", color: "Gray", multi: 0.6, weight: 250 },
-  { name: "残木灵根", color: "Gray", multi: 0.6, weight: 250 },
-
-  // --- 绿品 (12种) - 勉强修仙 ---
-  { name: "三系真灵根", color: "Green", multi: 1.0, weight: 300 },
-  { name: "凡木灵根", color: "Green", multi: 1.2, weight: 250 },
-  { name: "凡火灵根", color: "Green", multi: 1.2, weight: 250 },
-  { name: "凡水灵根", color: "Green", multi: 1.2, weight: 250 },
-  { name: "凡金灵根", color: "Green", multi: 1.2, weight: 250 },
-  { name: "凡土灵根", color: "Green", multi: 1.2, weight: 250 },
-  { name: "水木双系", color: "Green", multi: 1.4, weight: 200 },
-  { name: "金水双系", color: "Green", multi: 1.4, weight: 200 },
-  { name: "土金双系", color: "Green", multi: 1.4, weight: 200 },
-  { name: "火土双系", color: "Green", multi: 1.4, weight: 200 },
-  { name: "木火双系", color: "Green", multi: 1.4, weight: 200 },
-  { name: "风水双系", color: "Green", multi: 1.5, weight: 180 },
-
-  // --- 蓝品 (12种) - 中流砥柱 ---
-  { name: "双系地灵根", color: "Blue", multi: 2.0, weight: 150 },
-  { name: "真木灵根", color: "Blue", multi: 2.5, weight: 120 },
-  { name: "真火灵根", color: "Blue", multi: 2.5, weight: 120 },
-  { name: "真水灵根", color: "Blue", multi: 2.5, weight: 120 },
-  { name: "真金灵根", color: "Blue", multi: 2.5, weight: 120 },
-  { name: "真土灵根", color: "Blue", multi: 2.5, weight: 120 },
-  { name: "风雷变异根", color: "Blue", multi: 2.8, weight: 100 },
-  { name: "冰魄灵根", color: "Blue", multi: 2.8, weight: 100 },
-  { name: "熔岩灵根", color: "Blue", multi: 2.6, weight: 110 },
-  { name: "毒沼灵根", color: "Blue", multi: 2.6, weight: 110 },
-  { name: "星光灵根", color: "Blue", multi: 2.8, weight: 100 },
-  { name: "幻音灵根", color: "Blue", multi: 2.6, weight: 110 },
-
-  // --- 紫品 (12种) - 门派天才 ---
-  { name: "单系天灵根", color: "Purple", multi: 4.0, weight: 80 },
-  { name: "极木天灵根", color: "Purple", multi: 5.0, weight: 60 },
-  { name: "极火天灵根", color: "Purple", multi: 5.0, weight: 60 },
-  { name: "极水天灵根", color: "Purple", multi: 5.0, weight: 60 },
-  { name: "极金天灵根", color: "Purple", multi: 5.0, weight: 60 },
-  { name: "极土天灵根", color: "Purple", multi: 5.0, weight: 60 },
-  { name: "太阳真灵根", color: "Purple", multi: 5.5, weight: 55 },
-  { name: "太阴真灵根", color: "Purple", multi: 5.5, weight: 55 },
-  { name: "纯阳剑根", color: "Purple", multi: 5.8, weight: 50 },
-  { name: "纯阴淼根", color: "Purple", multi: 5.8, weight: 50 },
-  { name: "涅槃火根", color: "Purple", multi: 6.0, weight: 45 },
-  { name: "戊土神根", color: "Purple", multi: 6.0, weight: 45 },
-
-  // --- 橙品 (9种) - 天地异象 ---
-  { name: "变异风灵根", color: "Orange", multi: 8.0, weight: 30 },
-  { name: "变异冰灵根", color: "Orange", multi: 8.0, weight: 30 },
-  { name: "变异雷灵根", color: "Orange", multi: 8.0, weight: 30 },
-  { name: "变异暗灵根", color: "Orange", multi: 10.0, weight: 10 },
-  { name: "空间系灵根", color: "Orange", multi: 12.0, weight: 8 },
-  { name: "时间系灵根", color: "Orange", multi: 12.0, weight: 8 },
-  { name: "毁灭系灵根", color: "Orange", multi: 11.0, weight: 8 },
-  { name: "生命系灵根", color: "Orange", multi: 11.0, weight: 8 },
-  { name: "吞噬系灵根", color: "Orange", multi: 12.0, weight: 6 },
-
-  // --- 金品 (2种) - 气运之子 ---
-  { name: "混沌道体", color: "Gold", multi: 20.0, weight: 2 },
-  { name: "鸿蒙本源根", color: "Gold", multi: 30.0, weight: 2 }
+  // --- 灰品 - 资质平平，但不再是必死局 (13种) ---
+  { name: "凡人无灵根", color: "Gray", multi: 0.50, weight: 420, bonus: {} },  // 修炼0.5x｜无额外加成
+  { name: "杂品废灵根", color: "Gray", multi: 0.55, weight: 380, bonus: {} },  // 修炼0.55x｜无额外加成
+  { name: "五系斑驳灵根", color: "Gray", multi: 0.60, weight: 300, bonus: {} },  // 修炼0.6x｜无额外加成
+  { name: "四系伪灵根", color: "Gray", multi: 0.65, weight: 260, bonus: {} },  // 修炼0.65x｜无额外加成
+  { name: "朽木灵根", color: "Gray", multi: 0.70, weight: 200, bonus: {body: 2} },  // 修炼0.7x｜体魄+2
+  { name: "浊土灵根", color: "Gray", multi: 0.70, weight: 200, bonus: {body: 2} },  // 修炼0.7x｜体魄+2
+  { name: "枯水灵根", color: "Gray", multi: 0.70, weight: 200, bonus: {insight: 2} },  // 修炼0.7x｜悟性+2
+  { name: "暗金残根", color: "Gray", multi: 0.70, weight: 200, bonus: {wealth: 2} },  // 修炼0.7x｜家境+2
+  { name: "微火弱根", color: "Gray", multi: 0.70, weight: 200, bonus: {talent: 2} },  // 修炼0.7x｜根骨+2
+  { name: "废土灵根", color: "Gray", multi: 0.60, weight: 250, bonus: {body: 1} },  // 修炼0.6x｜体魄+1
+  { name: "死水灵根", color: "Gray", multi: 0.60, weight: 250, bonus: {insight: 1} },  // 修炼0.6x｜悟性+1
+  { name: "钝金灵根", color: "Gray", multi: 0.60, weight: 250, bonus: {wealth: 1} },  // 修炼0.6x｜家境+1
+  { name: "残木灵根", color: "Gray", multi: 0.60, weight: 250, bonus: {talent: 1} },  // 修炼0.6x｜根骨+1
+  // --- 绿品 - 勉强修仙 (14种) ---
+  { name: "三系真灵根", color: "Green", multi: 1.00, weight: 300, bonus: {} },  // 修炼1x｜无额外加成
+  { name: "凡木灵根", color: "Green", multi: 1.20, weight: 250, bonus: {talent: 3} },  // 修炼1.2x｜根骨+3
+  { name: "凡火灵根", color: "Green", multi: 1.20, weight: 250, bonus: {body: 3} },  // 修炼1.2x｜体魄+3
+  { name: "凡水灵根", color: "Green", multi: 1.20, weight: 250, bonus: {insight: 3} },  // 修炼1.2x｜悟性+3
+  { name: "凡金灵根", color: "Green", multi: 1.20, weight: 250, bonus: {wealth: 3} },  // 修炼1.2x｜家境+3
+  { name: "凡土灵根", color: "Green", multi: 1.20, weight: 250, bonus: {body: 3} },  // 修炼1.2x｜体魄+3
+  { name: "水木双系", color: "Green", multi: 1.40, weight: 200, bonus: {insight: 3, talent: 3} },  // 修炼1.4x｜悟性+3、根骨+3
+  { name: "金水双系", color: "Green", multi: 1.40, weight: 200, bonus: {wealth: 3, insight: 3} },  // 修炼1.4x｜家境+3、悟性+3
+  { name: "土金双系", color: "Green", multi: 1.40, weight: 200, bonus: {body: 3, wealth: 3} },  // 修炼1.4x｜体魄+3、家境+3
+  { name: "火土双系", color: "Green", multi: 1.40, weight: 200, bonus: {body: 6} },  // 修炼1.4x｜体魄+6
+  { name: "木火双系", color: "Green", multi: 1.40, weight: 200, bonus: {talent: 3, body: 3} },  // 修炼1.4x｜根骨+3、体魄+3
+  { name: "风水双系", color: "Green", multi: 1.50, weight: 180, bonus: {luck: 4} },  // 修炼1.5x｜福源+4
+  { name: "沙砾灵根", color: "Green", multi: 1.30, weight: 220, bonus: {body: 4} },  // 修炼1.3x｜体魄+4
+  { name: "晨露灵根", color: "Green", multi: 1.30, weight: 220, bonus: {insight: 4} },  // 修炼1.3x｜悟性+4
+  // --- 蓝品 - 中流砥柱 (14种) ---
+  { name: "双系地灵根", color: "Blue", multi: 2.00, weight: 150, bonus: {talent: 5} },  // 修炼2x｜根骨+5
+  { name: "真木灵根", color: "Blue", multi: 2.50, weight: 120, bonus: {talent: 8} },  // 修炼2.5x｜根骨+8
+  { name: "真火灵根", color: "Blue", multi: 2.50, weight: 120, bonus: {body: 8} },  // 修炼2.5x｜体魄+8
+  { name: "真水灵根", color: "Blue", multi: 2.50, weight: 120, bonus: {insight: 8} },  // 修炼2.5x｜悟性+8
+  { name: "真金灵根", color: "Blue", multi: 2.50, weight: 120, bonus: {wealth: 8} },  // 修炼2.5x｜家境+8
+  { name: "真土灵根", color: "Blue", multi: 2.50, weight: 120, bonus: {body: 8} },  // 修炼2.5x｜体魄+8
+  { name: "风雷变异根", color: "Blue", multi: 2.80, weight: 100, bonus: {luck: 8} },  // 修炼2.8x｜福源+8
+  { name: "冰魄灵根", color: "Blue", multi: 2.80, weight: 100, bonus: {insight: 8} },  // 修炼2.8x｜悟性+8
+  { name: "熔岩灵根", color: "Blue", multi: 2.60, weight: 110, bonus: {body: 10} },  // 修炼2.6x｜体魄+10
+  { name: "毒沼灵根", color: "Blue", multi: 2.60, weight: 110, bonus: {talent: 10} },  // 修炼2.6x｜根骨+10
+  { name: "星光灵根", color: "Blue", multi: 2.80, weight: 100, bonus: {luck: 6, insight: 6} },  // 修炼2.8x｜福源+6、悟性+6
+  { name: "幻音灵根", color: "Blue", multi: 2.60, weight: 110, bonus: {insight: 10} },  // 修炼2.6x｜悟性+10
+  { name: "玄铁灵根", color: "Blue", multi: 2.40, weight: 130, bonus: {wealth: 10} },  // 修炼2.4x｜家境+10
+  { name: "雪魄灵根", color: "Blue", multi: 2.40, weight: 130, bonus: {body: 6, insight: 6} },  // 修炼2.4x｜体魄+6、悟性+6
+  // --- 紫品 - 门派天才 (14种) ---
+  { name: "单系天灵根", color: "Purple", multi: 4.00, weight: 80, bonus: {talent: 12} },  // 修炼4x｜根骨+12
+  { name: "极木天灵根", color: "Purple", multi: 5.00, weight: 60, bonus: {talent: 15} },  // 修炼5x｜根骨+15
+  { name: "极火天灵根", color: "Purple", multi: 5.00, weight: 60, bonus: {body: 15} },  // 修炼5x｜体魄+15
+  { name: "极水天灵根", color: "Purple", multi: 5.00, weight: 60, bonus: {insight: 15} },  // 修炼5x｜悟性+15
+  { name: "极金天灵根", color: "Purple", multi: 5.00, weight: 60, bonus: {wealth: 15} },  // 修炼5x｜家境+15
+  { name: "极土天灵根", color: "Purple", multi: 5.00, weight: 60, bonus: {body: 15} },  // 修炼5x｜体魄+15
+  { name: "太阳真灵根", color: "Purple", multi: 5.50, weight: 55, bonus: {body: 12, talent: 12} },  // 修炼5.5x｜体魄+12、根骨+12
+  { name: "太阴真灵根", color: "Purple", multi: 5.50, weight: 55, bonus: {insight: 12, luck: 12} },  // 修炼5.5x｜悟性+12、福源+12
+  { name: "纯阳剑根", color: "Purple", multi: 5.80, weight: 50, bonus: {body: 20} },  // 修炼5.8x｜体魄+20
+  { name: "纯阴淼根", color: "Purple", multi: 5.80, weight: 50, bonus: {insight: 20} },  // 修炼5.8x｜悟性+20
+  { name: "涅槃火根", color: "Purple", multi: 6.00, weight: 45, bonus: {body: 25} },  // 修炼6x｜体魄+25
+  { name: "戊土神根", color: "Purple", multi: 6.00, weight: 45, bonus: {talent: 25} },  // 修炼6x｜根骨+25
+  { name: "紫霄雷根", color: "Purple", multi: 5.60, weight: 52, bonus: {luck: 18} },  // 修炼5.6x｜福源+18
+  { name: "璇玑灵根", color: "Purple", multi: 5.60, weight: 52, bonus: {wealth: 18} },  // 修炼5.6x｜家境+18
+  // --- 橙品 - 天地异象 (11种) ---
+  { name: "变异风灵根", color: "Orange", multi: 8.00, weight: 30, bonus: {luck: 25} },  // 修炼8x｜福源+25
+  { name: "变异冰灵根", color: "Orange", multi: 8.00, weight: 30, bonus: {insight: 25} },  // 修炼8x｜悟性+25
+  { name: "变异雷灵根", color: "Orange", multi: 8.00, weight: 30, bonus: {body: 25} },  // 修炼8x｜体魄+25
+  { name: "变异暗灵根", color: "Orange", multi: 10.00, weight: 18, bonus: {talent: 30} },  // 修炼10x｜根骨+30
+  { name: "空间系灵根", color: "Orange", multi: 12.00, weight: 14, bonus: {luck: 30, insight: 30} },  // 修炼12x｜福源+30、悟性+30
+  { name: "时间系灵根", color: "Orange", multi: 12.00, weight: 14, bonus: {talent: 30, insight: 30} },  // 修炼12x｜根骨+30、悟性+30
+  { name: "毁灭系灵根", color: "Orange", multi: 11.00, weight: 15, bonus: {body: 40} },  // 修炼11x｜体魄+40
+  { name: "生命系灵根", color: "Orange", multi: 11.00, weight: 15, bonus: {body: 30, talent: 20} },  // 修炼11x｜体魄+30、根骨+20
+  { name: "吞噬系灵根", color: "Orange", multi: 12.00, weight: 12, bonus: {wealth: 40} },  // 修炼12x｜家境+40
+  { name: "星辰古根", color: "Orange", multi: 9.00, weight: 24, bonus: {insight: 20, luck: 20} },  // 修炼9x｜悟性+20、福源+20
+  { name: "玄黄厚土根", color: "Orange", multi: 9.00, weight: 24, bonus: {body: 35} },  // 修炼9x｜体魄+35
+  // --- 金品 - 气运之子 (4种) ---
+  { name: "混沌道体", color: "Gold", multi: 20.00, weight: 6, bonus: {wealth: 30, body: 30, talent: 30, luck: 30, insight: 30} },  // 修炼20x｜家境+30、体魄+30、根骨+30、福源+30、悟性+30
+  { name: "鸿蒙本源根", color: "Gold", multi: 30.00, weight: 5, bonus: {wealth: 40, body: 40, talent: 40, luck: 40, insight: 40} },  // 修炼30x｜家境+40、体魄+40、根骨+40、福源+40、悟性+40
+  { name: "太初道根", color: "Gold", multi: 22.00, weight: 6, bonus: {talent: 50, insight: 50} },  // 修炼22x｜根骨+50、悟性+50
+  { name: "周天混元根", color: "Gold", multi: 25.00, weight: 5, bonus: {body: 50, luck: 50} }   // 修炼25x｜体魄+50、福源+50
 ];
 
 const GAME_HELP = {

@@ -187,14 +187,9 @@ Page({
       attrs[randomKey]++;
     }
 
-    // 保底锁死杜绝负数，并计算总属性点数
-    let finalTotalAttr = 0;
-    attrKeys.forEach(key => {
-      if (attrs[key] < 0) attrs[key] = 0;
-      finalTotalAttr += attrs[key];
-    });
-
     // D. 抽取灵根 (如果未锁定)
+    // 【顺序调整】灵根必须在"保底去负 + 统计总点数"之前抽，
+    // 因为新灵根带 bonus 五维加成，要并入 attrs 后再统一结算。
     let root = this.data.currentRoot;
     if (!this.data.isRootLocked) {
       let finalLuck = attrs.luck > 0 ? attrs.luck : 0;
@@ -215,6 +210,23 @@ Page({
         }
       }
     }
+
+    // 【灵根联动】灵根的 bonus 五维加成并入属性。
+    // 原来灵根只有 multi 一个作用，与八维属性完全脱节；
+    // 现在"抽到什么灵根"同时影响修炼速度和属性分布，但仍是一次性单向加算，
+    // 玩家看卡片上的「体魄+8」就知道多了多少，不存在隐式多层耦合。
+    if (root && root.bonus) {
+      for (let bk in root.bonus) {
+        if (attrs[bk] !== undefined) attrs[bk] += root.bonus[bk];
+      }
+    }
+
+    // 保底锁死杜绝负数，并计算总属性点数
+    let finalTotalAttr = 0;
+    attrKeys.forEach(key => {
+      if (attrs[key] < 0) attrs[key] = 0;
+      finalTotalAttr += attrs[key];
+    });
 
     this.setData({
       currentTalents: pool,
