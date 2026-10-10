@@ -269,6 +269,17 @@ page {
 .speed-status { font-size: 30rpx; color: #ccc; margin-bottom: 30rpx; font-weight: bold;}
 .highlight { color: #FFD700; font-weight: 900; font-size: 40rpx; margin: 0 10rpx; text-shadow: 0 0 15rpx rgba(255,215,0,0.5);}
 .speed-grid { display: flex; flex-wrap: wrap; gap: 20rpx; justify-content: center; margin-bottom: 30rpx;}
+
+/* 滑块调速区。替代原来平铺 1~10 的 10 个方块，
+   把弹窗内可点元素从 13 个降到 4 个，手机上好点得多。 */
+.speed-slider-box { padding: 0 20rpx; margin-bottom: 30rpx; }
+.speed-slider-box slider { margin: 20rpx 0; }
+.speed-quick { display: flex; gap: 20rpx; justify-content: center; }
+.speed-quick .speed-item {
+  width: auto; min-width: 180rpx; padding: 0 24rpx;
+  height: 72rpx; line-height: 72rpx; font-size: 28rpx;
+}
+
 .speed-item {
   width: 86rpx; height: 86rpx; line-height: 86rpx; background: linear-gradient(135deg, #2a2a35 0%, #15151a 100%); 
   border: 2rpx solid #444; border-radius: 16rpx; font-size: 32rpx; color: #999; font-weight: bold; transition: all 0.2s;

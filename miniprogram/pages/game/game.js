@@ -882,11 +882,22 @@ Page({
     );
   },
 
+  // 【重设计】原「飞升推演」花 (major+1)*10 钻把 tick 快进到下一个大境界，
+  // 不改变任何结果 —— 它卖的是"跳过等待"。但本游戏已有岁月流速系统，
+  // 解锁到 x10 总共只要 9 钻且永久生效，比推演一个境界（第1个就要 10 钻）
+  // 还便宜。两个系统卖同一个东西，推演被严格支配，是冗余付费点。
+  //
+  // 决策：保留按钮但改变它卖的东西 —— 从"跳过等待"改为"闭死关冲刺"：
+  // 不再快进 tick，而是把当前境界的修为直接推满到瓶颈，
+  // 代价是按境界计价的寿元（而非钻石）。这样它与倍速不再重叠：
+  //   倍速   = 花钻石买"现实时间"
+  //   闭死关 = 花寿元买"游戏内进度"
+  // 两者维度不同，玩家在"寿元富余但没耐心"时才用它，形成真实选择。
   skipRealm() {
     if (this.data.isDead || this.data.isBigBottleneck) return;
     
     if (this.data.isWandering) {
-      wx.showToast({ title: '游历压制修为中，无法推演飞升！', icon: 'none' });
+      wx.showToast({ title: '游历压制修为中，无法闭死关冲刺！', icon: 'none' });
       return;
     }
 
@@ -895,6 +906,47 @@ Page({
     if (currentMajor >= REALM_NAMES.length - 1) {
        wx.showToast({ title: '已至巅峰，无可逾越', icon: 'none' }); return;
     }
+
+    // 冲刺到本小境界的瓶颈：代价是当前境界 12 个 tick 的寿元
+    let config = this.getRealmConfig(this.data.levelId);
+    let tickCost = Math.max(1, Math.floor(config.baseYears * Math.pow(1.15, config.index)));
+    let ageCost = tickCost * 12;
+    let lifeLeft = this.data.maxAge - this.data.age;
+
+    if (ageCost >= lifeLeft) {
+      wx.showToast({ title: `需耗 ${this.formatBigInt(ageCost)} 年，余寿不足！`, icon: 'none' });
+      return;
+    }
+
+    wx.showModal({
+       title: '闭死关冲刺',
+       content: `耗 ${this.formatBigInt(ageCost)} 年寿元，将【${this.getRealmInfo(this.data.levelId).name}】的修为直接推满至瓶颈？\n(余寿 ${this.formatBigInt(lifeLeft)} 年)`,
+       confirmText: '闭死关',
+       success: (res) => {
+          if (res.confirm) {
+             this.setData({ age: this.data.age + ageCost });
+             // 直接把修为推满，由下一次 gainExp 触发正常的瓶颈/天劫流程，
+             // 不绕过任何判定。
+             this.coreData.exp = this.coreData.nextExp;
+             this.addLog(
+               `【闭死关】燃烧 ${this.formatBigInt(ageCost)} 年寿元强行冲关，修为瞬间推至瓶颈！`,
+               "event-breakthrough"
+             );
+             this.updateUI(true);
+             // 立刻走一次 tick 以触发瓶颈判定
+             this.engineTick(true);
+             this.updateUI(true);
+             if (this.data.isRunning && !this.data.isDead && !this.data.isBigBottleneck) this.startEngine();
+          }
+       }
+    });
+  },
+
+  // 旧的钻石快进实现，保留备查但不再挂到任何入口。
+  // 如需恢复，把 wxml 的 bindtap 改回 skipRealmLegacy 即可。
+  skipRealmLegacy() {
+    let subLen = SUB_REALMS.length;
+    let currentMajor = Math.floor((this.data.levelId - 1) / subLen);
     let targetLevel = (currentMajor + 1) * subLen + 1;
     let cost = (currentMajor + 1) * 10; 
     wx.showModal({
@@ -947,6 +999,15 @@ Page({
   // ==========================================
   toggleSpeedModal() {
     this.setData({ showSpeedModal: !this.data.showSpeedModal });
+  },
+
+  // 滑块调速。滑块只能选到已解锁范围内的值（max 绑定 unlockedSpeed），
+  // 这里再做一次钳制，防止异常值绕过。
+  onSpeedSlide(e) {
+    let v = parseInt(e.detail.value) || 1;
+    v = Math.min(Math.max(v, 1), this.data.unlockedSpeed);
+    this.setData({ gameSpeed: v });
+    if (this.data.isRunning) { this.stopEngine(); this.startEngine(); }
   },
 
   setGameSpeed(e) {

@@ -125,8 +125,8 @@
           <button class="game-btn btn-skip" bindtap="skipRealm" disabled="{{isWandering}}">
             <text class="btn-icon">🚀</text>
             <view class="btn-texts">
-              <text class="btn-main">飞升推演</text>
-              <text class="btn-sub">(耗钻极速)</text>
+              <text class="btn-main">闭死关</text>
+              <text class="btn-sub">(耗寿元冲关)</text>
             </view>
           </button>
 
@@ -175,11 +175,20 @@
       <view class="modal-body text-center">
         <view class="speed-status">当前已解锁最高流速: <text class="highlight color-Gold">x{{unlockedSpeed}}</text></view>
         
-        <view class="speed-grid">
-          <view wx:for="{{[1,2,3,4,5,6,7,8,9,10]}}" wx:key="*this" wx:if="{{item <= unlockedSpeed}}" 
-                class="speed-item {{gameSpeed === item ? 'active' : ''}}" 
-                bindtap="setGameSpeed" data-speed="{{item}}">
-            x{{item}}
+        <!-- 【交互优化】原来这里平铺 1~10 共 10 个倍速方块，解锁满后
+             加上下方 3 个解锁按钮，弹窗内最多 13 个可点元素，挤在小程序
+             屏幕上很难点准。现改为「滑块 + 快捷档」：
+             滑块承载连续调速，下面只留当前/最高两个快捷键，
+             可点元素从 13 个降到 4 个。 -->
+        <view class="speed-slider-box">
+          <slider min="1" max="{{unlockedSpeed}}" value="{{gameSpeed}}" step="1"
+                  show-value activeColor="#d4af37" backgroundColor="#4a4a4a"
+                  block-size="24" bindchange="onSpeedSlide" />
+          <view class="speed-quick">
+            <view class="speed-item {{gameSpeed === 1 ? 'active' : ''}}"
+                  bindtap="setGameSpeed" data-speed="1">x1 常速</view>
+            <view class="speed-item {{gameSpeed === unlockedSpeed ? 'active' : ''}}"
+                  bindtap="setGameSpeed" data-speed="{{unlockedSpeed}}">x{{unlockedSpeed}} 最快</view>
           </view>
         </view>
 
