@@ -586,6 +586,9 @@ Page({
     let attrs = { ...this.data.playerAttrs };
     let newGold = this.data.gold;
     let newMaxAge = this.data.maxAge;
+    // 本境界单 tick 的寿元成本：事件的寿元增减一律以它为锚，
+    // 避免低境界刷奇遇就能攒出跨境界的寿元（原来是 5m/20m/100m 这类绝对值）。
+    let tickCostNow = Math.max(1, Math.floor(config.baseYears * Math.pow(1.15, config.index)));
 
     const attrMatch = [
       { regex: /悟性([+-]\d+)/, key: 'insight' }, { regex: /体魄([+-]\d+)/, key: 'body' },
@@ -597,6 +600,19 @@ Page({
         attrs[item.key] = Math.max(0, attrs[item.key] + parseInt(match[1])); 
       }
     });
+
+    // 【Bug 修复·根因A】「全属性±N」此前没有任何解析分支。
+    // game_data.js 中有 7 支文案写「全属性+2/+3/+5/+10/+20/+25/-10」，
+    // 而上面 5 条正则只认「悟性/体魄/根骨/福源/家境」单维短语，
+    // 导致这 7 支（全是 EPIC/DANGER 高稀有度）文字照常显示、数值一点不变 ——
+    // 这正是玩家反馈「奇遇文字显示了但实际没触发效果」的主因。
+    let allMatch = text.match(/全属性([+-]\d+)/);
+    if (allMatch) {
+      let delta = parseInt(allMatch[1]);
+      ['insight', 'body', 'talent', 'luck', 'wealth'].forEach(k => {
+        attrs[k] = Math.max(0, attrs[k] + delta);
+      });
+    }
 
     let parsedText = text.replace(/\{(\w+)\}/g, (match, p1) => {
         let val = 0;
@@ -650,9 +666,27 @@ Page({
               this.coreData.exp -= gain;
               if(this.coreData.exp < 0n) this.coreData.exp = 0n;
               return "-" + this.formatBigInt(gain);
+          } else if (this.data.isWandering) {
+              // 【Bug 修复·根因B-2】红尘游历期间 engineTick 不调用 gainExp，
+              // 因此修为涨了也永远不会触发突破判定，exp 会一直顶在 nextExp，
+              // 而日志每次仍打印全额「修为 +N」—— 第 2 次起实际增量为 0。
+              // 现在游历期的修为奖励按「压制修为」设定折算为寿元，
+              // 既与文案自洽（游历不长修为），也不再是假数字。
+              let bonusAge = Math.max(1, Math.floor(Number(gain * 100n / this.coreData.nextExp) / 100 * tickCostNow));
+              this.coreData.pendingAge = (this.coreData.pendingAge || 0) + bonusAge;
+              return "转化为寿元 +" + this.formatBigInt(BigInt(bonusAge));
           } else {
               this.coreData.exp += gain;
-              if(this.coreData.exp > this.coreData.nextExp) this.coreData.exp = this.coreData.nextExp; 
+              // 【Bug 修复·根因B-1】原来超出 nextExp 的部分被静默丢弃，
+              // 但日志已按 gain 全额显示。实测中位浪费 9.37e10 修为。
+              // 现在溢出部分按比例折算为寿元，显示与实际一致。
+              if (this.coreData.exp > this.coreData.nextExp) {
+                  let overflow = this.coreData.exp - this.coreData.nextExp;
+                  this.coreData.exp = this.coreData.nextExp;
+                  let bonusAge = Math.max(1, Math.floor(Number(overflow * 100n / this.coreData.nextExp) / 100 * tickCostNow));
+                  this.coreData.pendingAge = (this.coreData.pendingAge || 0) + bonusAge;
+                  return "+" + this.formatBigInt(gain - overflow) + "(溢出转寿元 +" + this.formatBigInt(BigInt(bonusAge)) + ")";
+              }
               return "+" + this.formatBigInt(gain);
           }
         }
@@ -660,7 +694,13 @@ Page({
     });
 
     this.coreData.power = this.coreData.basePower; 
-    
+
+    // 把修为溢出/游历压制折算出来的寿元并入本次结算
+    if (this.coreData.pendingAge) {
+      newMaxAge += this.coreData.pendingAge;
+      this.coreData.pendingAge = 0;
+    }
+
     this.setData({ playerAttrs: attrs, gold: newGold, maxAge: newMaxAge });
     this.addLog(`[气运] ${parsedText}`, type, isInstant);
   },
