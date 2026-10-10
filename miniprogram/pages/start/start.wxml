@@ -91,13 +91,20 @@
     <view class="modal-content">
       <view class="modal-title">仙界商行 <text class="close-btn" bindtap="toggleRechargeModal">×</text></view>
       <view class="modal-body">
-        <view class="recharge-grid">
+        <!-- 【用户决策 3】支付通道尚未接入，先隐藏档位列表，避免玩家误以为可以充值。
+             paymentEnabled 为 false 时展示说明文案；接入支付后把它置 true 即可恢复，
+             档位数据与 doRecharge 逻辑均原样保留，无需再改结构。 -->
+        <view class="recharge-grid" wx:if="{{paymentEnabled}}">
           <view class="recharge-item" wx:for="{{rechargeTiers}}" wx:key="price" bindtap="doRecharge" data-index="{{index}}">
             <view class="r-icon">💎</view>
             <view class="r-base">{{item.base}} 钻</view>
             <view class="r-bonus" wx:if="{{item.bonus > 0}}">赠 {{item.bonus}}</view>
             <view class="r-price">￥{{item.price}}</view>
           </view>
+        </view>
+        <view class="text-center" wx:else>
+          <view class="modal-text">仙界商行尚未开张。</view>
+          <view class="modal-text">当前可通过【观看广告】与【传道分享】免费获取钻石。</view>
         </view>
       </view>
     </view>

@@ -45,6 +45,9 @@ Page({
 
 
     // 氪金档位配置表
+    // 【用户决策 3】支付通道未接入期间隐藏充值档位。
+    // 接入支付后改为 true 即可恢复展示，档位数据与 doRecharge 均已保留。
+    paymentEnabled: false,
     rechargeTiers: [
       { price: 1, base: 10, bonus: 0 },
       { price: 6, base: 60, bonus: 6 },
@@ -431,23 +434,29 @@ onTierChange(e) {
   toggleRechargeModal() { this.setData({ showRechargeModal: !this.data.showRechargeModal }); },
   toggleBuyTicketModal() { this.setData({ showBuyTicketModal: !this.data.showBuyTicketModal, buyAmount: 1 }); },
   
-  doRecharge(e) {
+  async doRecharge(e) {
+    // 【收入漏损修复·补齐】上一轮只修了 game.js 的 doRecharge，
+    // 漏掉了本文件 —— 开局页的充值入口仍是原始漏洞版：
+    // setTimeout 后直接 setData({diamonds}) 再 updateCloudData，
+    // 不付钱即到账，且绕过服务端记账。玩家在开局页可无限白嫖钻石。
+    // 现与 game.js 保持一致，统一走 PaymentService。
     let index = e.currentTarget.dataset.index;
     let tier = this.data.rechargeTiers[index];
-    let totalGain = tier.base + tier.bonus;
-    wx.showLoading({ title: '呼叫仙界商行...' });
-    setTimeout(() => {
-      wx.hideLoading();
-      wx.showToast({ title: `充值成功，获得 ${totalGain} 钻石`, icon: 'none' });
-      let newDiamonds = this.data.diamonds + totalGain;
-      this.setData({ diamonds: newDiamonds, showRechargeModal: false });
-      let assets = wx.getStorageSync('global_assets') || {};
-      assets.diamonds = newDiamonds;
-      wx.setStorageSync('global_assets', assets);
-      
-      // ⭐ 防刷闭环：充值获得钻石，必须立刻存入云端
-      this.updateCloudData({ diamonds: newDiamonds });
-    }, 800);
+
+    const r = await PaymentService.pay(tier);
+    if (r.success) {
+      // 真实支付成功后钻石由支付回调云函数在服务端发放，
+      // 客户端只重新拉取云端资产，不自行加数。
+      this.syncCloudAssets();
+      this.setData({ showRechargeModal: false });
+      return;
+    }
+    wx.showModal({
+      title: '仙界商行未开张',
+      content: '支付通道尚未接入，暂时无法充值。可先通过【观看广告】或【传道分享】免费领取钻石。',
+      showCancel: false,
+      confirmText: '知道了'
+    });
   },
 
   onAmountInput(e) {

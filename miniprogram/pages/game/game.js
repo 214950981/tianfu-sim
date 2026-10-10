@@ -50,6 +50,9 @@ Page({
     tempNickName: wx.getStorageSync('myNickName') || '',
 
     // 氪金档位
+    // 【用户决策 3】支付通道未接入期间隐藏充值档位。
+    // 接入支付后改为 true 即可恢复展示，档位数据与 doRecharge 均已保留。
+    paymentEnabled: false,
     rechargeTiers: [
       { price: 1, base: 10, bonus: 0 },
       { price: 6, base: 60, bonus: 6 },
