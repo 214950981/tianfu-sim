@@ -254,7 +254,15 @@ Page({
   
     if (this.data.age + lifeCost >= this.data.maxAge) {
       this.setData({ age: this.data.maxAge });
-      this.triggerDeath("天人五衰降临，你终究敌不过天道岁月，身死道消！", isInstant);
+      // 【体验修复】原文案只说"天人五衰降临"，玩家无法判断自己是卡修炼速度
+      // 还是卡寿元，这正是用户反馈"在元婴/化神反复暴死但看不懂"的直接原因。
+      let cfgDeath = this.getRealmConfig(this.data.levelId);
+      this.triggerDeath(
+        `天人五衰降临！【${this.getRealmInfo(this.data.levelId).name}】每次闭关需耗 ` +
+        `${this.formatBigInt(lifeCost)} 年，而你仅余 ${this.formatBigInt(Math.max(0, this.data.maxAge - this.data.age))} 年，` +
+        `寿元先于修为枯竭，身死道消！`,
+        isInstant
+      );
       return;
     }
     
@@ -978,10 +986,19 @@ Page({
   },
 
   formatBigInt(n) {
-    const units = ["", "万", "亿", "兆", "京", "垓", "秭", "穰"];
-    let s = n.toString();
+    // 【Bug 修复】原实现没有数组越界保护：单位表只有 8 项（最大「穰」=32 位），
+    // 一旦数值达到 33 位，units[idx] 为 undefined，界面直接显示 "1undefined"。
+    // rank.js 的 formatPower 本来就有这个保护，这里缺了。
+    // 战力经多次轮回叠加完全可以超过 32 位，因此必须兜底。
+    const units = ["", "万", "亿", "兆", "京", "垓", "秭", "穰", "沟", "涧", "正", "载"];
+    let s = (n === undefined || n === null) ? "0" : n.toString();
+    if (s.charAt(0) === '-') return "0";
     if (s.length <= 4) return s;
     let idx = Math.floor((s.length - 1) / 4);
+    if (idx >= units.length) {
+      // 超出所有可命名单位，退化为科学计数，绝不输出 undefined
+      return s.substring(0, 4) + "e" + (s.length - 4);
+    }
     let head = s.substring(0, s.length % 4 || 4);
     return head + units[idx];
   }
