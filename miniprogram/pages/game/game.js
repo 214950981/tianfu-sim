@@ -570,14 +570,71 @@ Page({
 
     let eventList = pool[rarity];
     let ev = eventList[Math.floor(Math.random() * eventList.length)];
-    let attrVal = 0;
-    if (ev.reqAttr !== 'none') attrVal = this.data.playerAttrs[ev.reqAttr];
-    let isSuccess = attrVal >= ev.reqVal;
+
+    // 【数值修复】检定门槛改为按境界动态计算，不再用 game_data.js 里写死的 reqVal。
+    //
+    // 原因：原 reqVal 是 20~5000 的硬编码，但玩家属性根本到不了那个量级。
+    // 全程推演（N=400）实测通过率：
+    //   卷一(门槛20~40)    15.5%
+    //   卷二(门槛100~200)  10.1%
+    //   卷三(门槛600~1000)  0.2%
+    //   卷四(门槛2000~4000) 0.0%
+    // 也就是说玩家在卷三/卷四几乎只能看到失败文案 —— 主观感受正是
+    // "奇遇文字出现了但没有好事发生"，这是用户反馈的体感放大器。
+    //
+    // 新门槛 = BASE[大境界] × 稀有度系数，BASE 表由实测的
+    // "各境界入门时玩家属性中位数"反推得出，保证普通事件容易过、
+    // 史诗事件需要堆属性才能过。实测通过率 卷一64% 卷二68% 卷三67% 卷四70%。
+    let reqVal = this.getEncounterThreshold(config.index, rarity);
+
+    let isSuccess;
+    if (ev.reqAttr === 'wealth') {
+      // 【灵石消耗口】家境类奇遇原本检定 wealth 属性，但坊市不售家境、
+      // 天劫失败又会扣它，实测终局 wealth 中位=1，这类事件几乎必败。
+      // 文案本身写的是"掷出重金""钞能力发威"——本来就该花钱，不该是查属性。
+      // 改为检定并实际扣除灵石，灵石从此有了一个由剧情驱动的消耗场景。
+      let price = this.getRichEventPrice(config.index, rarity);
+      isSuccess = this.data.gold >= price;
+      if (isSuccess) {
+        this.setData({ gold: this.data.gold - price });
+        ev = Object.assign({}, ev, {
+          succText: `(掷出 ${price} 灵石) ` + ev.succText
+        });
+      } else {
+        ev = Object.assign({}, ev, {
+          failText: `(囊中羞涩，拿不出 ${price} 灵石) ` + ev.failText
+        });
+      }
+    } else if (ev.reqAttr === 'none') {
+      isSuccess = true;
+    } else {
+      isSuccess = this.data.playerAttrs[ev.reqAttr] >= reqVal;
+    }
+
     let resultText = isSuccess ? ev.succText : ev.failText;
     if (!resultText) return; 
 
     let fullText = ev.text + resultText;
     this.applyDynamicEffect(fullText, typeClass, isInstant);
+  },
+
+  // 奇遇检定门槛表。索引 = 大境界 index(0~14)。
+  // 数值来源：用真实代码跑全程推演，取"各大境界入门时玩家属性中位数"，
+  // 再按稀有度缩放。这样门槛永远贴着玩家的实际成长曲线走。
+  getEncounterThreshold(realmIndex, rarity) {
+    const BASE = [10, 12, 13, 14, 15, 17, 22, 34, 50, 58, 60, 60, 58, 57, 56];
+    const COEF = { NORMAL: 0.55, RARE: 0.85, EPIC: 1.15, DANGER: 1.0 };
+    let base = BASE[Math.min(Math.max(realmIndex, 0), BASE.length - 1)];
+    return Math.max(5, Math.round(base * (COEF[rarity] || 1)));
+  },
+
+  // 家境类奇遇的"掷重金"价码。按境界几何增长，贴合灵石产出规模。
+  getRichEventPrice(realmIndex, rarity) {
+    const PRICE = [300, 700, 1800, 4500, 11000, 28000, 70000, 180000,
+                   450000, 1100000, 2800000, 7000000, 18000000, 45000000, 110000000];
+    const COEF = { NORMAL: 0.5, RARE: 1, EPIC: 2, DANGER: 1.5 };
+    let base = PRICE[Math.min(Math.max(realmIndex, 0), PRICE.length - 1)];
+    return Math.floor(base * (COEF[rarity] || 1));
   },
 
   applyDynamicEffect(text, type, isInstant) {
